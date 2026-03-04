@@ -1,6 +1,6 @@
 # oncoteam
 
-Persistent AI agent for cancer treatment management. Searches PubMed and ClinicalTrials.gov, tracks treatment data. All persistence goes through erika-files-mcp.
+Persistent AI agent for cancer treatment management. Searches PubMed and ClinicalTrials.gov, tracks treatment data. All persistence goes through oncofiles MCP.
 
 ## Quick start
 
@@ -22,7 +22,7 @@ uv run oncoteam-mcp          # stdio mode
 - FastMCP 3.0+ for MCP server
 - Pydantic for data models
 - httpx for async HTTP (PubMed, ClinicalTrials.gov)
-- No local database — all persistence via erika MCP
+- No local database — all persistence via oncofiles MCP
 - ruff for linting/formatting
 
 ## Key commands

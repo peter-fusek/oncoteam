@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Erika MCP connection
-ERIKA_MCP_URL: str = os.environ.get(
-    "ERIKA_MCP_URL", "https://aware-kindness-production.up.railway.app/mcp"
+# Oncofiles MCP connection
+ONCOFILES_MCP_URL: str = os.environ.get(
+    "ONCOFILES_MCP_URL", "https://aware-kindness-production.up.railway.app/mcp"
 )
 
 # NCBI E-utilities

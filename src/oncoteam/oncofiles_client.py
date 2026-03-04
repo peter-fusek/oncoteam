@@ -5,15 +5,15 @@ import json
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 
-from .config import ERIKA_MCP_URL
+from .config import ONCOFILES_MCP_URL
 
 
 def _get_transport() -> StreamableHttpTransport:
-    return StreamableHttpTransport(ERIKA_MCP_URL)
+    return StreamableHttpTransport(ONCOFILES_MCP_URL)
 
 
-async def call_erika(tool_name: str, arguments: dict) -> dict | list | str:
-    """Call an erika-files-mcp tool and return parsed result."""
+async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
+    """Call an oncofiles MCP tool and return parsed result."""
     transport = _get_transport()
     async with Client(transport) as client:
         result = await client.call_tool(tool_name, arguments)
@@ -30,22 +30,22 @@ async def search_documents(text: str, category: str | None = None) -> dict:
     args: dict = {"text": text}
     if category:
         args["category"] = category
-    return await call_erika("search_documents", args)
+    return await call_oncofiles("search_documents", args)
 
 
 async def get_document(document_id: int) -> dict:
-    return await call_erika("get_document", {"document_id": document_id})
+    return await call_oncofiles("get_document", {"document_id": document_id})
 
 
 async def set_agent_state(key: str, value: dict, agent_id: str = "oncoteam") -> dict:
-    return await call_erika(
+    return await call_oncofiles(
         "set_agent_state",
         {"key": key, "value": json.dumps(value), "agent_id": agent_id},
     )
 
 
 async def get_agent_state(key: str, agent_id: str = "oncoteam") -> dict:
-    return await call_erika("get_agent_state", {"key": key, "agent_id": agent_id})
+    return await call_oncofiles("get_agent_state", {"key": key, "agent_id": agent_id})
 
 
 async def add_research_entry(
@@ -56,7 +56,7 @@ async def add_research_entry(
     tags: list[str] | None = None,
     raw_data: str = "",
 ) -> dict:
-    return await call_erika(
+    return await call_oncofiles(
         "add_research_entry",
         {
             "source": source,
@@ -73,7 +73,7 @@ async def search_research(text: str, source: str | None = None, limit: int = 20)
     args: dict = {"text": text, "limit": limit}
     if source:
         args["source"] = source
-    return await call_erika("search_research", args)
+    return await call_oncofiles("search_research", args)
 
 
 async def add_treatment_event(
@@ -83,7 +83,7 @@ async def add_treatment_event(
     notes: str = "",
     metadata: dict | None = None,
 ) -> dict:
-    return await call_erika(
+    return await call_oncofiles(
         "add_treatment_event",
         {
             "event_date": event_date,
@@ -99,4 +99,4 @@ async def list_treatment_events(event_type: str | None = None, limit: int = 50) 
     args: dict = {"limit": limit}
     if event_type:
         args["event_type"] = event_type
-    return await call_erika("list_treatment_events", args)
+    return await call_oncofiles("list_treatment_events", args)

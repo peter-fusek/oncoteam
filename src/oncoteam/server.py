@@ -7,7 +7,7 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from . import clinicaltrials_client, erika_client, pubmed_client
+from . import clinicaltrials_client, oncofiles_client, pubmed_client
 from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .models import ResearchSource
 from .patient_context import (
@@ -30,7 +30,7 @@ mcp = FastMCP(
         "Oncoteam is a persistent AI agent for cancer treatment management. "
         "It searches PubMed and ClinicalTrials.gov for relevant research, "
         "tracks treatment events, and provides lab trend analysis. "
-        "All data is persisted through the Erika Files MCP server."
+        "All data is persisted through the Oncofiles MCP server."
     ),
     auth=auth,
 )
@@ -54,7 +54,7 @@ def research_terms() -> str:
 
 @mcp.tool()
 async def search_pubmed(query: str, max_results: int = 10) -> str:
-    """Search PubMed for articles and store results in Erika.
+    """Search PubMed for articles and store results in Oncofiles.
 
     Args:
         query: PubMed search query (e.g. "colorectal cancer FOLFOX")
@@ -65,10 +65,10 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
     """
     articles = await pubmed_client.search_pubmed(query, max_results)
 
-    # Store each article in erika (don't fail search if storage fails)
+    # Store each article in oncofiles (don't fail search if storage fails)
     for article in articles:
         with contextlib.suppress(Exception):
-            await erika_client.add_research_entry(
+            await oncofiles_client.add_research_entry(
                 source=ResearchSource.PUBMED,
                 external_id=article.pmid,
                 title=article.title,
@@ -92,7 +92,7 @@ async def search_clinical_trials(
     intervention: str | None = None,
     max_results: int = 10,
 ) -> str:
-    """Search ClinicalTrials.gov for recruiting studies and store results in Erika.
+    """Search ClinicalTrials.gov for recruiting studies and store results in Oncofiles.
 
     Args:
         condition: Medical condition to search for
@@ -106,7 +106,7 @@ async def search_clinical_trials(
 
     for trial in trials:
         with contextlib.suppress(Exception):
-            await erika_client.add_research_entry(
+            await oncofiles_client.add_research_entry(
                 source=ResearchSource.CLINICALTRIALS,
                 external_id=trial.nct_id,
                 title=trial.title,
@@ -145,7 +145,7 @@ async def daily_briefing() -> str:
                     {"query": term, "pmid": article.pmid, "title": article.title}
                 )
                 with contextlib.suppress(Exception):
-                    await erika_client.add_research_entry(
+                    await oncofiles_client.add_research_entry(
                         source=ResearchSource.PUBMED,
                         external_id=article.pmid,
                         title=article.title,
@@ -165,7 +165,7 @@ async def daily_briefing() -> str:
                 {"nct_id": trial.nct_id, "title": trial.title, "status": trial.status}
             )
             with contextlib.suppress(Exception):
-                await erika_client.add_research_entry(
+                await oncofiles_client.add_research_entry(
                     source=ResearchSource.CLINICALTRIALS,
                     external_id=trial.nct_id,
                     title=trial.title,
@@ -188,7 +188,7 @@ async def daily_briefing() -> str:
 
 @mcp.tool()
 async def get_lab_trends(limit: int = 10) -> str:
-    """Query Erika for lab-related documents and format for trend analysis.
+    """Query Oncofiles for lab-related documents and format for trend analysis.
 
     Args:
         limit: Maximum number of lab documents to retrieve
@@ -197,15 +197,15 @@ async def get_lab_trends(limit: int = 10) -> str:
         JSON with lab documents for trend analysis.
     """
     try:
-        result = await erika_client.search_documents(text="lab", category="labs")
-        return json.dumps({"source": "erika", "lab_documents": result})
+        result = await oncofiles_client.search_documents(text="lab", category="labs")
+        return json.dumps({"source": "oncofiles", "lab_documents": result})
     except Exception as e:
-        return json.dumps({"error": str(e), "hint": "Erika MCP may not be available"})
+        return json.dumps({"error": str(e), "hint": "Oncofiles MCP may not be available"})
 
 
 @mcp.tool()
-async def search_erika_documents(text: str, category: str | None = None) -> str:
-    """Search medical documents stored in Erika.
+async def search_documents(text: str, category: str | None = None) -> str:
+    """Search medical documents stored in Oncofiles.
 
     Args:
         text: Search text
@@ -215,7 +215,7 @@ async def search_erika_documents(text: str, category: str | None = None) -> str:
         JSON with matching documents.
     """
     try:
-        result = await erika_client.search_documents(text, category)
+        result = await oncofiles_client.search_documents(text, category)
         return json.dumps({"query": text, "category": category, "results": result})
     except Exception as e:
         return json.dumps({"error": str(e)})
