@@ -17,12 +17,12 @@ async def call_erika(tool_name: str, arguments: dict) -> dict | list | str:
     transport = _get_transport()
     async with Client(transport) as client:
         result = await client.call_tool(tool_name, arguments)
-        # FastMCP returns list of content blocks; extract text
-        if result and hasattr(result[0], "text"):
+        # FastMCP 3.x returns CallToolResult with .content list
+        if result.content and hasattr(result.content[0], "text"):
             try:
-                return json.loads(result[0].text)
+                return json.loads(result.content[0].text)
             except (json.JSONDecodeError, TypeError):
-                return result[0].text
+                return result.content[0].text
         return str(result)
 
 
