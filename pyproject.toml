@@ -1,0 +1,37 @@
+[project]
+name = "oncoteam"
+version = "0.1.0"
+description = "Persistent AI agent for cancer treatment management"
+requires-python = ">=3.12"
+dependencies = [
+    "fastmcp>=3.0.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8.0",
+    "respx>=0.22.0",
+]
+
+[project.scripts]
+oncoteam-mcp = "oncoteam.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
