@@ -8,6 +8,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from . import clinicaltrials_client, oncofiles_client, pubmed_client
+from .activity_logger import log_activity, log_to_diary
 from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .models import ResearchSource
 from .patient_context import (
@@ -30,7 +31,11 @@ mcp = FastMCP(
         "Oncoteam is a persistent AI agent for cancer treatment management. "
         "It searches PubMed and ClinicalTrials.gov for relevant research, "
         "tracks treatment events, and provides lab trend analysis. "
-        "All data is persisted through the Oncofiles MCP server."
+        "All data is persisted through the Oncofiles MCP server.\n\n"
+        "LOGGING GUIDELINES:\n"
+        "- Use log_research_decision() when making or recommending clinical/research decisions.\n"
+        "- Use log_session_note() to record observations, context, or session summaries.\n"
+        "- All tool calls are automatically logged for audit purposes."
     ),
     auth=auth,
 )
@@ -53,6 +58,7 @@ def research_terms() -> str:
 
 
 @mcp.tool()
+@log_activity
 async def search_pubmed(query: str, max_results: int = 10) -> str:
     """Search PubMed for articles and store results in Oncofiles.
 
@@ -87,6 +93,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
 
 
 @mcp.tool()
+@log_activity
 async def search_clinical_trials(
     condition: str = "colorectal cancer",
     intervention: str | None = None,
@@ -126,6 +133,7 @@ async def search_clinical_trials(
 
 
 @mcp.tool()
+@log_activity
 async def daily_briefing() -> str:
     """Run preset research queries for Erika's case and compile a summary.
 
@@ -187,6 +195,7 @@ async def daily_briefing() -> str:
 
 
 @mcp.tool()
+@log_activity
 async def get_lab_trends(limit: int = 10) -> str:
     """Query Oncofiles for lab-related documents and format for trend analysis.
 
@@ -204,6 +213,7 @@ async def get_lab_trends(limit: int = 10) -> str:
 
 
 @mcp.tool()
+@log_activity
 async def search_documents(text: str, category: str | None = None) -> str:
     """Search medical documents stored in Oncofiles.
 
@@ -222,6 +232,7 @@ async def search_documents(text: str, category: str | None = None) -> str:
 
 
 @mcp.tool()
+@log_activity
 async def get_patient_context() -> str:
     """Return the full patient treatment profile.
 
@@ -229,6 +240,49 @@ async def get_patient_context() -> str:
         JSON with patient diagnosis, treatment, biomarkers, and hospitals.
     """
     return json.dumps(PATIENT.model_dump(), default=str)
+
+
+@mcp.tool()
+async def log_research_decision(
+    decision: str, reasoning: str, tags: list[str] | None = None
+) -> str:
+    """Record a clinical/research decision with reasoning.
+
+    Use this when making or recommending treatment decisions, protocol changes,
+    or research directions.
+
+    Args:
+        decision: Short description of the decision
+        reasoning: Detailed reasoning behind the decision
+        tags: Optional tags for categorization
+    """
+    await log_to_diary(
+        title=decision,
+        content=reasoning,
+        entry_type="decision",
+        tags=tags,
+    )
+    return "Decision logged."
+
+
+@mcp.tool()
+async def log_session_note(note: str, tags: list[str] | None = None) -> str:
+    """Record an observation, context note, or diary entry.
+
+    Use this to capture important observations, session summaries, or
+    contextual information worth preserving.
+
+    Args:
+        note: The note content
+        tags: Optional tags for categorization
+    """
+    await log_to_diary(
+        title=note[:100],
+        content=note,
+        entry_type="note",
+        tags=tags,
+    )
+    return "Note logged."
 
 
 # ── Health check ────────────────────────────────

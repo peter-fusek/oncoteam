@@ -12,6 +12,12 @@ class ResearchSource(StrEnum):
     MANUAL = "manual"
 
 
+class ActivityStatus(StrEnum):
+    OK = "ok"
+    ERROR = "error"
+    TIMEOUT = "timeout"
+
+
 class EventType(StrEnum):
     CHEMO_CYCLE = "chemo_cycle"
     LAB_WORK = "lab_work"

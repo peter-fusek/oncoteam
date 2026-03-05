@@ -100,3 +100,126 @@ async def list_treatment_events(event_type: str | None = None, limit: int = 50) 
     if event_type:
         args["event_type"] = event_type
     return await call_oncofiles("list_treatment_events", args)
+
+
+# ── Activity log wrappers ──────────────────────
+
+
+async def add_activity_log(
+    session_id: str,
+    agent_id: str,
+    tool_name: str,
+    input_summary: str | None = None,
+    output_summary: str | None = None,
+    duration_ms: int | None = None,
+    status: str = "ok",
+    error_message: str | None = None,
+    tags: list[str] | None = None,
+) -> dict:
+    args: dict = {
+        "session_id": session_id,
+        "agent_id": agent_id,
+        "tool_name": tool_name,
+        "status": status,
+    }
+    if input_summary:
+        args["input_summary"] = input_summary
+    if output_summary:
+        args["output_summary"] = output_summary
+    if duration_ms is not None:
+        args["duration_ms"] = duration_ms
+    if error_message:
+        args["error_message"] = error_message
+    if tags:
+        args["tags"] = json.dumps(tags)
+    return await call_oncofiles("add_activity_log", args)
+
+
+async def search_activity_log(
+    session_id: str | None = None,
+    agent_id: str | None = None,
+    tool_name: str | None = None,
+    status: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    limit: int = 50,
+) -> dict:
+    args: dict = {"limit": limit}
+    if session_id:
+        args["session_id"] = session_id
+    if agent_id:
+        args["agent_id"] = agent_id
+    if tool_name:
+        args["tool_name"] = tool_name
+    if status:
+        args["status"] = status
+    if date_from:
+        args["date_from"] = date_from
+    if date_to:
+        args["date_to"] = date_to
+    return await call_oncofiles("search_activity_log", args)
+
+
+# ── Conversation wrappers ──────────────────────
+
+
+async def log_conversation(
+    title: str,
+    content: str,
+    entry_type: str = "note",
+    participant: str = "oncoteam",
+    session_id: str | None = None,
+    tags: str | None = None,
+    document_ids: str | None = None,
+) -> dict:
+    args: dict = {
+        "title": title,
+        "content": content,
+        "entry_type": entry_type,
+        "participant": participant,
+    }
+    if session_id:
+        args["session_id"] = session_id
+    if tags:
+        args["tags"] = tags
+    if document_ids:
+        args["document_ids"] = document_ids
+    return await call_oncofiles("log_conversation", args)
+
+
+async def search_conversations(
+    text: str | None = None,
+    entry_type: str | None = None,
+    participant: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    tags: str | None = None,
+    limit: int = 20,
+) -> dict:
+    args: dict = {"limit": limit}
+    if text:
+        args["text"] = text
+    if entry_type:
+        args["entry_type"] = entry_type
+    if participant:
+        args["participant"] = participant
+    if date_from:
+        args["date_from"] = date_from
+    if date_to:
+        args["date_to"] = date_to
+    if tags:
+        args["tags"] = tags
+    return await call_oncofiles("search_conversations", args)
+
+
+async def get_journey_timeline(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    limit: int = 50,
+) -> dict:
+    args: dict = {"limit": limit}
+    if date_from:
+        args["date_from"] = date_from
+    if date_to:
+        args["date_to"] = date_to
+    return await call_oncofiles("get_journey_timeline", args)
