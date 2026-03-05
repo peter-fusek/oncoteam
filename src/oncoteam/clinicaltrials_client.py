@@ -10,6 +10,7 @@ async def search_trials(
     condition: str,
     intervention: str | None = None,
     max_results: int = 10,
+    country: str | None = None,
 ) -> list[ClinicalTrial]:
     """Search ClinicalTrials.gov API v2 for recruiting studies."""
     params: dict = {
@@ -24,6 +25,8 @@ async def search_trials(
     }
     if intervention:
         params["query.intr"] = intervention
+    if country:
+        params["query.locn"] = country
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.get(f"{CTGOV_BASE_URL}/studies", params=params)

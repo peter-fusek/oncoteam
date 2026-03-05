@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from .models import PatientProfile
 
 PATIENT = PatientProfile(
@@ -7,6 +9,7 @@ PATIENT = PatientProfile(
     diagnosis_code="C18.7",
     diagnosis_description="Malignant neoplasm of sigmoid colon",
     tumor_site="Sigmoid colon",
+    diagnosis_date=date(2025, 12, 1),
     biomarkers={"HER2": "negative"},
     treatment_regimen="FOLFOX",
     hospitals=["NOU (Narodny onkologicky ustav)", "Bory Nemocnica"],

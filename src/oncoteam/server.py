@@ -98,6 +98,7 @@ async def search_clinical_trials(
     condition: str = "colorectal cancer",
     intervention: str | None = None,
     max_results: int = 10,
+    country: str | None = None,
 ) -> str:
     """Search ClinicalTrials.gov for recruiting studies and store results in Oncofiles.
 
@@ -105,11 +106,17 @@ async def search_clinical_trials(
         condition: Medical condition to search for
         intervention: Optional intervention/treatment filter
         max_results: Maximum number of trials to return (default 10)
+        country: Optional country filter (e.g. "Slovakia", "Czech Republic")
 
     Returns:
         JSON with list of matching clinical trials.
     """
-    trials = await clinicaltrials_client.search_trials(condition, intervention, max_results)
+    trials = await clinicaltrials_client.search_trials(
+        condition,
+        intervention,
+        max_results,
+        country,
+    )
 
     for trial in trials:
         with contextlib.suppress(Exception):
@@ -206,7 +213,7 @@ async def get_lab_trends(limit: int = 10) -> str:
         JSON with lab documents for trend analysis.
     """
     try:
-        result = await oncofiles_client.search_documents(text="lab", category="labs")
+        result = await oncofiles_client.search_documents(text="lab", category="labs", limit=limit)
         return json.dumps({"source": "oncofiles", "lab_documents": result})
     except Exception as e:
         return json.dumps({"error": str(e), "hint": "Oncofiles MCP may not be available"})
@@ -240,6 +247,62 @@ async def get_patient_context() -> str:
         JSON with patient diagnosis, treatment, biomarkers, and hospitals.
     """
     return json.dumps(PATIENT.model_dump(), default=str)
+
+
+@mcp.tool()
+@log_activity
+async def view_document(file_id: str) -> str:
+    """View full document content with OCR text and images from Oncofiles.
+
+    Args:
+        file_id: The document file ID in Oncofiles
+
+    Returns:
+        JSON with document content.
+    """
+    try:
+        result = await oncofiles_client.view_document(file_id)
+        return json.dumps({"file_id": file_id, "content": result})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+@log_activity
+async def analyze_labs(file_id: str | None = None, limit: int = 10) -> str:
+    """Analyze lab results in oncology context via Oncofiles.
+
+    Args:
+        file_id: Optional specific lab document file ID
+        limit: Maximum number of lab results to analyze (default 10)
+
+    Returns:
+        JSON with lab analysis.
+    """
+    try:
+        result = await oncofiles_client.analyze_labs(file_id, limit)
+        return json.dumps({"analysis": result})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+@log_activity
+async def compare_labs(file_id_a: str, file_id_b: str) -> str:
+    """Compare two lab documents for trend analysis via Oncofiles.
+
+    Args:
+        file_id_a: First lab document file ID
+        file_id_b: Second lab document file ID
+
+    Returns:
+        JSON with lab comparison.
+    """
+    try:
+        result = await oncofiles_client.compare_labs(file_id_a, file_id_b)
+        return json.dumps({"comparison": result})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
 
 
 @mcp.tool()

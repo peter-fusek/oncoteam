@@ -26,11 +26,32 @@ async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
         return str(result)
 
 
-async def search_documents(text: str, category: str | None = None) -> dict:
+async def search_documents(
+    text: str,
+    category: str | None = None,
+    limit: int | None = None,
+) -> dict:
     args: dict = {"text": text}
     if category:
         args["category"] = category
+    if limit is not None:
+        args["limit"] = limit
     return await call_oncofiles("search_documents", args)
+
+
+async def view_document(file_id: str) -> dict:
+    return await call_oncofiles("view_document", {"file_id": file_id})
+
+
+async def analyze_labs(file_id: str | None = None, limit: int = 10) -> dict:
+    args: dict = {"limit": limit}
+    if file_id:
+        args["file_id"] = file_id
+    return await call_oncofiles("analyze_labs", args)
+
+
+async def compare_labs(file_id_a: str, file_id_b: str) -> dict:
+    return await call_oncofiles("compare_labs", {"file_id_a": file_id_a, "file_id_b": file_id_b})
 
 
 async def get_document(document_id: int) -> dict:
@@ -168,7 +189,6 @@ async def log_conversation(
     content: str,
     entry_type: str = "note",
     participant: str = "oncoteam",
-    session_id: str | None = None,
     tags: str | None = None,
     document_ids: str | None = None,
 ) -> dict:
@@ -178,8 +198,6 @@ async def log_conversation(
         "entry_type": entry_type,
         "participant": participant,
     }
-    if session_id:
-        args["session_id"] = session_id
     if tags:
         args["tags"] = tags
     if document_ids:

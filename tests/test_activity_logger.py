@@ -169,6 +169,20 @@ class TestSummarizeInput:
         assert "a=" in result
         assert "b=" in result
 
+    def test_view_document(self):
+        result = _summarize_input("view_document", {"file_id": "abc123"})
+        assert "abc123" in result
+
+    def test_analyze_labs(self):
+        result = _summarize_input("analyze_labs", {"file_id": "abc123", "limit": 5})
+        assert "abc123" in result
+        assert "5" in result
+
+    def test_compare_labs(self):
+        result = _summarize_input("compare_labs", {"file_id_a": "a1", "file_id_b": "b2"})
+        assert "a1" in result
+        assert "b2" in result
+
     def test_empty_inputs(self):
         assert _summarize_input("search_pubmed", {}) == ""
 
@@ -200,6 +214,18 @@ class TestSummarizeOutput:
     def test_get_patient_context(self):
         output = json.dumps({"name": "Test"})
         assert _summarize_output("get_patient_context", output) == "patient profile returned"
+
+    def test_view_document(self):
+        output = json.dumps({"text": "content"})
+        assert _summarize_output("view_document", output) == "document content returned"
+
+    def test_analyze_labs(self):
+        output = json.dumps({"summary": "normal"})
+        assert _summarize_output("analyze_labs", output) == "lab analysis returned"
+
+    def test_compare_labs(self):
+        output = json.dumps({"diff": []})
+        assert _summarize_output("compare_labs", output) == "lab comparison returned"
 
     def test_none_output(self):
         assert _summarize_output("any_tool", None) == ""
@@ -240,3 +266,13 @@ class TestLogToDiary:
         kwargs = mock_log.call_args.kwargs
         assert kwargs["entry_type"] == "note"
         assert kwargs["tags"] is None
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.activity_logger.oncofiles_client.log_conversation", new_callable=AsyncMock)
+    async def test_no_session_id_passed(self, mock_log):
+        mock_log.return_value = {"id": 1}
+
+        await log_to_diary("Title", "Content")
+
+        kwargs = mock_log.call_args.kwargs
+        assert "session_id" not in kwargs

@@ -40,9 +40,7 @@ def log_activity(fn):
             elapsed = int((time.monotonic() - start) * 1000)
             bound = _bind_args(fn, args, kwargs)
             with contextlib.suppress(Exception):
-                await _write_tool_log(
-                    fn.__name__, bound, None, elapsed, "error", str(exc)
-                )
+                await _write_tool_log(fn.__name__, bound, None, elapsed, "error", str(exc))
             raise
 
     return wrapper
@@ -93,6 +91,11 @@ def _summarize_input(tool_name: str, inputs: dict) -> str:
         "get_lab_trends": lambda d: f"limit={d.get('limit')}",
         "search_documents": lambda d: _kv_summary(d, ["text", "category"]),
         "get_patient_context": lambda d: "",
+        "view_document": lambda d: f"file_id={d.get('file_id')!r}",
+        "analyze_labs": lambda d: f"file_id={d.get('file_id')!r}, limit={d.get('limit')}",
+        "compare_labs": lambda d: (
+            f"file_id_a={d.get('file_id_a')!r}, file_id_b={d.get('file_id_b')!r}"
+        ),
         "log_research_decision": lambda d: f"decision={d.get('decision', '')[:60]!r}",
         "log_session_note": lambda d: f"note={d.get('note', '')[:60]!r}",
     }
@@ -124,8 +127,7 @@ def _summarize_output(tool_name: str, output: str | None) -> str:
         "search_pubmed": lambda d: f"{d.get('count', 0)} articles found",
         "search_clinical_trials": lambda d: f"{d.get('count', 0)} trials found",
         "daily_briefing": lambda d: (
-            f"{d.get('pubmed_articles', 0)} articles, "
-            f"{d.get('clinical_trials', 0)} trials"
+            f"{d.get('pubmed_articles', 0)} articles, {d.get('clinical_trials', 0)} trials"
         ),
         "get_lab_trends": lambda d: (
             f"{len(d.get('lab_documents', {}).get('documents', []))} lab documents"
@@ -134,6 +136,9 @@ def _summarize_output(tool_name: str, output: str | None) -> str:
             f"{len(d.get('results', {}).get('documents', []))} documents found"
         ),
         "get_patient_context": lambda d: "patient profile returned",
+        "view_document": lambda d: "document content returned",
+        "analyze_labs": lambda d: "lab analysis returned",
+        "compare_labs": lambda d: "lab comparison returned",
     }
     builder = builders.get(tool_name)
     if builder:
@@ -156,6 +161,5 @@ async def log_to_diary(
         content=content,
         entry_type=entry_type,
         participant="oncoteam",
-        session_id=get_session_id(),
         tags=",".join(tags) if tags else None,
     )

@@ -98,3 +98,17 @@ class TestSearchTrials:
 
         trials = await search_trials("nonexistent condition xyz")
         assert trials == []
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_search_with_country_filter(self):
+        route = respx.get(f"{CTGOV_BASE_URL}/studies").mock(
+            return_value=Response(200, json=CTGOV_RESPONSE)
+        )
+
+        trials = await search_trials("colorectal cancer", country="Slovakia")
+        assert len(trials) == 2
+        # Verify country param was sent
+        request = route.calls[0].request
+        assert "query.locn" in str(request.url)
+        assert "Slovakia" in str(request.url)

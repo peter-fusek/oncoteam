@@ -32,3 +32,10 @@ uv run oncoteam-mcp          # stdio mode
 - `uv run pytest` — run tests
 - `uv run ruff check --fix` — lint and auto-fix
 - `uv run ruff format` — format code
+
+## Deployment
+
+- **Railway**: `oncoteam-production.up.railway.app` (health: /health, MCP: /mcp)
+- Push to `main` auto-deploys via Railway
+- Requires oncofiles MCP running (`ONCOFILES_MCP_URL` env var)
+- 65 tests, ruff clean

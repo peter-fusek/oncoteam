@@ -1,3 +1,5 @@
+from datetime import date
+
 from oncoteam.models import PatientProfile
 from oncoteam.patient_context import (
     PATIENT,
@@ -16,6 +18,9 @@ class TestPatientContext:
     def test_patient_has_treatment(self):
         assert PATIENT.treatment_regimen == "FOLFOX"
         assert "NOU" in PATIENT.hospitals[0]
+
+    def test_patient_diagnosis_date(self):
+        assert PATIENT.diagnosis_date == date(2025, 12, 1)
 
     def test_patient_biomarkers(self):
         assert PATIENT.biomarkers["HER2"] == "negative"

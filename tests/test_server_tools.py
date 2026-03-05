@@ -16,6 +16,8 @@ import pytest
 
 from oncoteam.models import ClinicalTrial, PubMedArticle
 from oncoteam.server import (
+    analyze_labs,
+    compare_labs,
     daily_briefing,
     get_lab_trends,
     get_patient_context,
@@ -24,6 +26,7 @@ from oncoteam.server import (
     search_clinical_trials,
     search_documents,
     search_pubmed,
+    view_document,
 )
 
 # ── Mock data ──────────────────────────────────────
@@ -136,15 +139,13 @@ class TestSearchClinicalTrialsTool:
     async def test_returns_trials_json(self, mock_search, mock_store):
         mock_search.return_value = MOCK_TRIALS
 
-        result = json.loads(
-            await search_clinical_trials("colorectal cancer", "FOLFOX", 10)
-        )
+        result = json.loads(await search_clinical_trials("colorectal cancer", "FOLFOX", 10))
 
         assert result["condition"] == "colorectal cancer"
         assert result["intervention"] == "FOLFOX"
         assert result["count"] == 1
         assert result["trials"][0]["nct_id"] == "NCT00001234"
-        mock_search.assert_called_once_with("colorectal cancer", "FOLFOX", 10)
+        mock_search.assert_called_once_with("colorectal cancer", "FOLFOX", 10, None)
 
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
@@ -257,7 +258,7 @@ class TestGetLabTrendsTool:
 
         assert result["source"] == "oncofiles"
         assert len(result["lab_documents"]["documents"]) == 2
-        mock_search.assert_called_once_with(text="lab", category="labs")
+        mock_search.assert_called_once_with(text="lab", category="labs", limit=5)
 
     @pytest.mark.asyncio
     @patch(
@@ -381,3 +382,108 @@ class TestLogSessionNoteTool:
         kwargs = mock_diary.call_args.kwargs
         assert len(kwargs["title"]) == 100
         assert kwargs["content"] == long_note
+
+
+# ── view_document ──────────────────────────────────
+
+
+class TestViewDocumentTool:
+    @pytest.mark.asyncio
+    @patch("oncoteam.oncofiles_client.view_document", new_callable=AsyncMock)
+    async def test_returns_document_content(self, mock_view):
+        mock_view.return_value = {"text": "OCR content here", "images": []}
+
+        result = json.loads(await view_document("abc123"))
+
+        assert result["file_id"] == "abc123"
+        assert result["content"]["text"] == "OCR content here"
+        mock_view.assert_called_once_with("abc123")
+
+    @pytest.mark.asyncio
+    @patch(
+        "oncoteam.oncofiles_client.view_document",
+        new_callable=AsyncMock,
+        side_effect=Exception("not found"),
+    )
+    async def test_returns_error_on_failure(self, mock_view):
+        result = json.loads(await view_document("bad_id"))
+
+        assert "error" in result
+
+
+# ── analyze_labs ───────────────────────────────────
+
+
+class TestAnalyzeLabsTool:
+    @pytest.mark.asyncio
+    @patch("oncoteam.oncofiles_client.analyze_labs", new_callable=AsyncMock)
+    async def test_returns_analysis(self, mock_analyze):
+        mock_analyze.return_value = {"summary": "Normal ranges"}
+
+        result = json.loads(await analyze_labs(file_id="abc123", limit=5))
+
+        assert result["analysis"]["summary"] == "Normal ranges"
+        mock_analyze.assert_called_once_with("abc123", 5)
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.oncofiles_client.analyze_labs", new_callable=AsyncMock)
+    async def test_works_without_file_id(self, mock_analyze):
+        mock_analyze.return_value = {"summary": "All labs"}
+
+        result = json.loads(await analyze_labs())
+
+        assert "analysis" in result
+        mock_analyze.assert_called_once_with(None, 10)
+
+    @pytest.mark.asyncio
+    @patch(
+        "oncoteam.oncofiles_client.analyze_labs",
+        new_callable=AsyncMock,
+        side_effect=Exception("timeout"),
+    )
+    async def test_returns_error_on_failure(self, mock_analyze):
+        result = json.loads(await analyze_labs())
+
+        assert "error" in result
+
+
+# ── compare_labs ───────────────────────────────────
+
+
+class TestCompareLabsTool:
+    @pytest.mark.asyncio
+    @patch("oncoteam.oncofiles_client.compare_labs", new_callable=AsyncMock)
+    async def test_returns_comparison(self, mock_compare):
+        mock_compare.return_value = {"diff": ["WBC increased"]}
+
+        result = json.loads(await compare_labs("id_a", "id_b"))
+
+        assert result["comparison"]["diff"] == ["WBC increased"]
+        mock_compare.assert_called_once_with("id_a", "id_b")
+
+    @pytest.mark.asyncio
+    @patch(
+        "oncoteam.oncofiles_client.compare_labs",
+        new_callable=AsyncMock,
+        side_effect=Exception("not found"),
+    )
+    async def test_returns_error_on_failure(self, mock_compare):
+        result = json.loads(await compare_labs("id_a", "id_b"))
+
+        assert "error" in result
+
+
+# ── search_clinical_trials country filter ──────────
+
+
+class TestSearchClinicalTrialsCountryFilter:
+    @pytest.mark.asyncio
+    @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
+    @patch("oncoteam.clinicaltrials_client.search_trials", new_callable=AsyncMock)
+    async def test_passes_country_param(self, mock_search, mock_store):
+        mock_search.return_value = MOCK_TRIALS
+
+        result = json.loads(await search_clinical_trials("colorectal cancer", country="Slovakia"))
+
+        assert result["count"] == 1
+        mock_search.assert_called_once_with("colorectal cancer", None, 10, "Slovakia")
