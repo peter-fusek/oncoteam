@@ -26,6 +26,7 @@ from oncoteam.server import (
     search_clinical_trials,
     search_documents,
     search_pubmed,
+    summarize_session,
     view_document,
 )
 
@@ -99,6 +100,10 @@ class TestSearchPubmedTool:
         assert first_call.kwargs["source"] == "pubmed"
         assert first_call.kwargs["external_id"] == "12345678"
         assert first_call.kwargs["title"] == "FOLFOX in colorectal cancer"
+        # Tags should come from patient context, not hardcoded
+        tags = first_call.kwargs["tags"]
+        assert "FOLFOX" in tags
+        assert isinstance(tags, list)
 
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
@@ -382,6 +387,56 @@ class TestLogSessionNoteTool:
         kwargs = mock_diary.call_args.kwargs
         assert len(kwargs["title"]) == 100
         assert kwargs["content"] == long_note
+
+
+# ── summarize_session ──────────────────────────────
+
+
+class TestSummarizeSessionTool:
+    @pytest.mark.asyncio
+    @patch("oncoteam.server.log_to_diary", new_callable=AsyncMock)
+    async def test_logs_basic_summary(self, mock_diary):
+        result = await summarize_session("Reviewed lab results and discussed treatment")
+
+        assert result == "Session summary logged."
+        mock_diary.assert_called_once()
+        kwargs = mock_diary.call_args.kwargs
+        assert kwargs["entry_type"] == "session_summary"
+        assert "session" in kwargs["tags"]
+        assert "Reviewed lab results" in kwargs["content"]
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.server.log_to_diary", new_callable=AsyncMock)
+    async def test_includes_decisions_and_follow_ups(self, mock_diary):
+        result = await summarize_session(
+            "Treatment review",
+            decisions=["Continue FOLFOX cycle 4"],
+            follow_ups=["Schedule CT scan", "Check CEA levels"],
+        )
+
+        assert result == "Session summary logged."
+        content = mock_diary.call_args.kwargs["content"]
+        assert "Continue FOLFOX cycle 4" in content
+        assert "Schedule CT scan" in content
+        assert "Check CEA levels" in content
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.server.log_to_diary", new_callable=AsyncMock)
+    async def test_truncates_title(self, mock_diary):
+        long_summary = "A" * 200
+        await summarize_session(long_summary)
+
+        title = mock_diary.call_args.kwargs["title"]
+        # "Session: " (9 chars) + 80 chars = 89 max
+        assert len(title) <= 89
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.server.log_to_diary", new_callable=AsyncMock)
+    async def test_works_without_optional_params(self, mock_diary):
+        await summarize_session("Quick check-in")
+
+        kwargs = mock_diary.call_args.kwargs
+        assert kwargs["content"] == "Quick check-in"
 
 
 # ── view_document ──────────────────────────────────

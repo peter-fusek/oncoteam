@@ -14,6 +14,7 @@ from .models import ResearchSource
 from .patient_context import (
     PATIENT,
     RESEARCH_TERMS,
+    get_context_tags,
     get_genetic_profile,
     get_patient_profile_text,
     get_research_terms_text,
@@ -33,10 +34,14 @@ mcp = FastMCP(
         "It searches PubMed and ClinicalTrials.gov for relevant research, "
         "tracks treatment events, and provides lab trend analysis. "
         "All data is persisted through the Oncofiles MCP server.\n\n"
-        "LOGGING GUIDELINES:\n"
-        "- Use log_research_decision() when making or recommending clinical/research decisions.\n"
-        "- Use log_session_note() to record observations, context, or session summaries.\n"
-        "- All tool calls are automatically logged for audit purposes."
+        "MANDATORY LOGGING — follow these rules every session:\n"
+        "1. At the END of every conversation, call summarize_session() with a summary "
+        "of what was discussed, decided, and any follow-up actions.\n"
+        "2. Call log_research_decision() whenever you make or recommend a "
+        "clinical/research decision.\n"
+        "3. Call log_session_note() for important observations or context worth preserving.\n"
+        "4. All tool calls are automatically logged for audit purposes.\n\n"
+        "IMPORTANT: Never skip the summarize_session() call — it is the primary audit trail."
     ),
     auth=auth,
 )
@@ -80,7 +85,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
                 external_id=article.pmid,
                 title=article.title,
                 summary=article.abstract[:500] if article.abstract else "",
-                tags=["FOLFOX", "colorectal"],
+                tags=get_context_tags(),
                 raw_data=article.model_dump_json(),
             )
 
@@ -353,12 +358,42 @@ async def log_session_note(note: str, tags: list[str] | None = None) -> str:
     return "Note logged."
 
 
+@mcp.tool()
+async def summarize_session(
+    summary: str, decisions: list[str] | None = None, follow_ups: list[str] | None = None
+) -> str:
+    """Log a session summary. MUST be called at the end of every conversation.
+
+    Args:
+        summary: What was discussed and accomplished this session
+        decisions: Key decisions made (if any)
+        follow_ups: Action items or follow-up tasks identified
+
+    Returns:
+        Confirmation that the session was logged.
+    """
+    parts = [summary]
+    if decisions:
+        parts.append("\n\nDecisions:\n" + "\n".join(f"- {d}" for d in decisions))
+    if follow_ups:
+        parts.append("\n\nFollow-ups:\n" + "\n".join(f"- {f}" for f in follow_ups))
+    content = "".join(parts)
+
+    await log_to_diary(
+        title=f"Session: {summary[:80]}",
+        content=content,
+        entry_type="session_summary",
+        tags=["session"],
+    )
+    return "Session summary logged."
+
+
 # ── Health check ────────────────────────────────
 
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.2.0"})
+    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.3.0"})
 
 
 # ── Entry point ─────────────────────────────────

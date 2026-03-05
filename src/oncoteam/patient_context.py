@@ -54,6 +54,24 @@ def get_research_terms_text() -> str:
     return f"# Research Search Terms\n\nCurated PubMed queries for this case:\n\n{terms}\n"
 
 
+def get_context_tags() -> list[str]:
+    """Derive research tags from patient context."""
+    tags = []
+    if PATIENT.treatment_regimen:
+        tags.append(PATIENT.treatment_regimen)
+    if PATIENT.tumor_site:
+        tags.append(PATIENT.tumor_site.lower().replace(" ", "_"))
+    if PATIENT.diagnosis_description:
+        # Extract key terms from diagnosis
+        for term in ["colorectal", "sigmoid", "rectal", "colon"]:
+            if term in PATIENT.diagnosis_description.lower():
+                tags.append(term)
+                break
+    for marker, value in PATIENT.biomarkers.items():
+        tags.append(f"{marker}_{value}")
+    return tags
+
+
 # ── Dynamic genetic profile ────────────────────
 
 _BIOMARKER_PATTERNS: dict[str, list[re.Pattern]] = {
@@ -67,19 +85,28 @@ _BIOMARKER_PATTERNS: dict[str, list[re.Pattern]] = {
 }
 
 
+_GENETIC_SEARCH_TERMS = ["genetik", "HER2", "FISH", "NGS", "KRAS", "BRAF", "MSI", "pathology"]
+
+
 async def get_genetic_profile() -> dict[str, str]:
     """Fetch genetic/biomarker data from oncofiles documents."""
     profile = dict(PATIENT.biomarkers)
 
-    with contextlib.suppress(Exception):
-        result = await oncofiles_client.search_documents(text="", category="pathology")
-        docs = result.get("documents", []) if isinstance(result, dict) else []
+    seen_ids: set[str] = set()
+    for term in _GENETIC_SEARCH_TERMS:
+        with contextlib.suppress(Exception):
+            result = await oncofiles_client.search_documents(text=term)
+            docs = result.get("documents", []) if isinstance(result, dict) else []
 
-        for doc in docs:
-            with contextlib.suppress(Exception):
-                content = await oncofiles_client.view_document(str(doc.get("id", "")))
-                text = _extract_text(content)
-                _update_biomarkers(profile, text)
+            for doc in docs:
+                doc_id = str(doc.get("id", ""))
+                if doc_id in seen_ids:
+                    continue
+                seen_ids.add(doc_id)
+                with contextlib.suppress(Exception):
+                    content = await oncofiles_client.view_document(doc_id)
+                    text = _extract_text(content)
+                    _update_biomarkers(profile, text)
 
     return profile
 

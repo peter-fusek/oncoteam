@@ -98,6 +98,7 @@ def _summarize_input(tool_name: str, inputs: dict) -> str:
         ),
         "log_research_decision": lambda d: f"decision={d.get('decision', '')[:60]!r}",
         "log_session_note": lambda d: f"note={d.get('note', '')[:60]!r}",
+        "summarize_session": lambda d: f"summary={d.get('summary', '')[:60]!r}",
     }
     builder = builders.get(tool_name)
     if builder:

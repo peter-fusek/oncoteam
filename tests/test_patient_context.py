@@ -5,10 +5,12 @@ import pytest
 
 from oncoteam.models import PatientProfile
 from oncoteam.patient_context import (
+    _GENETIC_SEARCH_TERMS,
     PATIENT,
     RESEARCH_TERMS,
     _extract_text,
     _update_biomarkers,
+    get_context_tags,
     get_genetic_profile,
     get_patient_profile_text,
     get_research_terms_text,
@@ -78,6 +80,50 @@ class TestGeneticProfile:
             mock.view_document = AsyncMock(return_value=mock_content)
             profile = await get_genetic_profile()
         assert profile["HER2"] == "negative"
+
+    @pytest.mark.asyncio
+    async def test_genetic_profile_searches_multiple_terms(self):
+        with patch("oncoteam.patient_context.oncofiles_client") as mock:
+            mock.search_documents = AsyncMock(return_value={"documents": []})
+            await get_genetic_profile()
+        assert mock.search_documents.call_count == len(_GENETIC_SEARCH_TERMS)
+        # Verify no category filter is used
+        for call in mock.search_documents.call_args_list:
+            assert "category" not in call.kwargs
+
+    @pytest.mark.asyncio
+    async def test_genetic_profile_deduplicates_documents(self):
+        mock_docs = {"documents": [{"id": 42}]}
+        mock_content = {"ocr_text": "KRAS: wild-type"}
+        with patch("oncoteam.patient_context.oncofiles_client") as mock:
+            mock.search_documents = AsyncMock(return_value=mock_docs)
+            mock.view_document = AsyncMock(return_value=mock_content)
+            await get_genetic_profile()
+        # Doc 42 appears in every search result but should be viewed only once
+        mock.view_document.assert_called_once_with("42")
+
+
+class TestContextTags:
+    def test_includes_treatment_regimen(self):
+        tags = get_context_tags()
+        assert "FOLFOX" in tags
+
+    def test_includes_tumor_site(self):
+        tags = get_context_tags()
+        assert "sigmoid_colon" in tags
+
+    def test_includes_diagnosis_term(self):
+        tags = get_context_tags()
+        assert any(t in tags for t in ["colorectal", "colon", "rectal", "sigmoid"])
+
+    def test_includes_biomarkers(self):
+        tags = get_context_tags()
+        assert "HER2_negative" in tags
+
+    def test_returns_list(self):
+        tags = get_context_tags()
+        assert isinstance(tags, list)
+        assert len(tags) >= 3
 
 
 class TestBiomarkerExtraction:
