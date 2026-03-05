@@ -1,6 +1,6 @@
 [project]
 name = "oncoteam"
-version = "0.1.0"
+version = "0.2.0"
 description = "Persistent AI agent for cancer treatment management"
 requires-python = ">=3.12"
 dependencies = [

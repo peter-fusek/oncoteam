@@ -14,6 +14,7 @@ from .models import ResearchSource
 from .patient_context import (
     PATIENT,
     RESEARCH_TERMS,
+    get_genetic_profile,
     get_patient_profile_text,
     get_research_terms_text,
 )
@@ -241,12 +242,16 @@ async def search_documents(text: str, category: str | None = None) -> str:
 @mcp.tool()
 @log_activity
 async def get_patient_context() -> str:
-    """Return the full patient treatment profile.
+    """Return the full patient treatment profile with dynamic genetic data.
 
     Returns:
-        JSON with patient diagnosis, treatment, biomarkers, and hospitals.
+        JSON with patient diagnosis, treatment, biomarkers (enriched from oncofiles), and hospitals.
     """
-    return json.dumps(PATIENT.model_dump(), default=str)
+    data = PATIENT.model_dump()
+    with contextlib.suppress(Exception):
+        genetic = await get_genetic_profile()
+        data["biomarkers"] = genetic
+    return json.dumps(data, default=str)
 
 
 @mcp.tool()
@@ -353,7 +358,7 @@ async def log_session_note(note: str, tags: list[str] | None = None) -> str:
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.1.0"})
+    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.2.0"})
 
 
 # ── Entry point ─────────────────────────────────

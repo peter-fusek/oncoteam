@@ -1,9 +1,15 @@
 from datetime import date
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from oncoteam.models import PatientProfile
 from oncoteam.patient_context import (
     PATIENT,
     RESEARCH_TERMS,
+    _extract_text,
+    _update_biomarkers,
+    get_genetic_profile,
     get_patient_profile_text,
     get_research_terms_text,
 )
@@ -40,3 +46,53 @@ class TestPatientContext:
         text = get_research_terms_text()
         assert "Research Search Terms" in text
         assert "colorectal" in text.lower()
+
+
+class TestGeneticProfile:
+    @pytest.mark.asyncio
+    async def test_genetic_profile_returns_static_when_oncofiles_unavailable(self):
+        with patch("oncoteam.patient_context.oncofiles_client") as mock:
+            mock.search_documents = AsyncMock(side_effect=Exception("offline"))
+            profile = await get_genetic_profile()
+        assert profile == {"HER2": "negative"}
+
+    @pytest.mark.asyncio
+    async def test_genetic_profile_enriches_from_documents(self):
+        mock_docs = {"documents": [{"id": 42}]}
+        mock_content = {"ocr_text": "KRAS: wild-type\nBRAF: V600E\nMSI: MSS"}
+        with patch("oncoteam.patient_context.oncofiles_client") as mock:
+            mock.search_documents = AsyncMock(return_value=mock_docs)
+            mock.view_document = AsyncMock(return_value=mock_content)
+            profile = await get_genetic_profile()
+        assert profile["HER2"] == "negative"
+        assert profile["KRAS"] == "wild-type"
+        assert profile["BRAF"] == "v600e"
+        assert profile["MSI"] == "mss"
+
+    @pytest.mark.asyncio
+    async def test_genetic_profile_does_not_overwrite_existing(self):
+        mock_docs = {"documents": [{"id": 1}]}
+        mock_content = {"ocr_text": "HER2: positive"}
+        with patch("oncoteam.patient_context.oncofiles_client") as mock:
+            mock.search_documents = AsyncMock(return_value=mock_docs)
+            mock.view_document = AsyncMock(return_value=mock_content)
+            profile = await get_genetic_profile()
+        assert profile["HER2"] == "negative"
+
+
+class TestBiomarkerExtraction:
+    def test_extract_text_from_dict(self):
+        assert _extract_text({"ocr_text": "hello"}) == "hello"
+        assert _extract_text({"content": {"ocr_text": "nested"}}) == "nested"
+        assert _extract_text("plain") == "plain"
+
+    def test_update_biomarkers(self):
+        profile = {}
+        _update_biomarkers(profile, "KRAS: mutant, TMB: 12.3 mut/Mb")
+        assert profile["KRAS"] == "mutant"
+        assert "12.3" in profile["TMB"]
+
+    def test_update_biomarkers_skip_existing(self):
+        profile = {"KRAS": "wild-type"}
+        _update_biomarkers(profile, "KRAS: mutant")
+        assert profile["KRAS"] == "wild-type"

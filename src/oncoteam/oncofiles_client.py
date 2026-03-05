@@ -181,6 +181,37 @@ async def search_activity_log(
     return await call_oncofiles("search_activity_log", args)
 
 
+# ── Additional v0.8 wrappers ─────────────────────
+
+
+async def list_agent_states(agent_id: str = "oncoteam", limit: int = 20) -> dict:
+    return await call_oncofiles("list_agent_states", {"agent_id": agent_id, "limit": limit})
+
+
+async def get_treatment_event(event_id: int) -> dict:
+    return await call_oncofiles("get_treatment_event", {"event_id": event_id})
+
+
+async def list_research_entries(source: str | None = None, limit: int = 20) -> dict:
+    args: dict = {"limit": limit}
+    if source:
+        args["source"] = source
+    return await call_oncofiles("list_research_entries", args)
+
+
+async def get_activity_stats(
+    agent_id: str = "oncoteam",
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    args: dict = {"agent_id": agent_id}
+    if date_from:
+        args["date_from"] = date_from
+    if date_to:
+        args["date_to"] = date_to
+    return await call_oncofiles("get_activity_stats", args)
+
+
 # ── Conversation wrappers ──────────────────────
 
 
