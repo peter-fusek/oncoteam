@@ -12,3 +12,11 @@ venv/
 *.db
 *.db-wal
 backups/
+
+# Dashboard (Nuxt)
+dashboard/node_modules/
+dashboard/.nuxt/
+dashboard/.output/
+dashboard/.data/
+dashboard/.nitro/
+dashboard/.cache/
