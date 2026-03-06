@@ -2,7 +2,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   future: { compatibilityVersion: 4 },
 
-  modules: ['@nuxt/ui', '@nuxt/eslint'],
+  modules: ['@nuxt/ui', '@nuxt/eslint', 'nuxt-auth-utils'],
 
   css: ['~/assets/css/main.css'],
 
@@ -10,6 +10,16 @@ export default defineNuxtConfig({
     public: {
       oncoteamApiUrl: process.env.NUXT_PUBLIC_ONCOTEAM_API_URL || 'https://oncoteam-production.up.railway.app',
     },
+    session: {
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    },
+    oauth: {
+      google: {
+        clientId: process.env.NUXT_OAUTH_GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.NUXT_OAUTH_GOOGLE_CLIENT_SECRET || '',
+      },
+    },
+    allowedEmails: process.env.NUXT_ALLOWED_EMAILS || 'peterfusek1980@gmail.com',
     databaseUrl: process.env.DATABASE_URL || '',
   },
 

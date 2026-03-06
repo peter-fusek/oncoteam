@@ -20,58 +20,77 @@ const filtered = computed(() => {
   if (!sourceFilter.value) return research.value.entries
   return research.value.entries.filter(e => e.source === sourceFilter.value)
 })
-
-const sourceOptions = [
-  { label: 'All', value: null },
-  { label: 'PubMed', value: 'pubmed' },
-  { label: 'ClinicalTrials.gov', value: 'clinicaltrials' },
-]
 </script>
 
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Research Log</h1>
+      <div>
+        <h1 class="text-2xl font-bold text-white">Research Log</h1>
+        <p class="text-sm text-gray-400">{{ research?.total ?? 0 }} entries found</p>
+      </div>
       <div class="flex items-center gap-2">
         <UButtonGroup>
           <UButton
-            v-for="opt in sourceOptions"
-            :key="String(opt.value)"
-            :variant="sourceFilter === opt.value ? 'solid' : 'ghost'"
-            size="sm"
-            @click="sourceFilter = opt.value"
+            :variant="!sourceFilter ? 'solid' : 'ghost'"
+            size="xs"
+            color="neutral"
+            @click="sourceFilter = null"
           >
-            {{ opt.label }}
+            All
+          </UButton>
+          <UButton
+            :variant="sourceFilter === 'pubmed' ? 'solid' : 'ghost'"
+            size="xs"
+            color="neutral"
+            @click="sourceFilter = 'pubmed'"
+          >
+            PubMed
+          </UButton>
+          <UButton
+            :variant="sourceFilter === 'clinicaltrials' ? 'solid' : 'ghost'"
+            size="xs"
+            color="neutral"
+            @click="sourceFilter = 'clinicaltrials'"
+          >
+            Trials
           </UButton>
         </UButtonGroup>
-        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="sm" @click="refresh" />
+        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
       </div>
     </div>
 
-    <div v-if="filtered.length" class="space-y-3">
-      <UCard v-for="entry in filtered" :key="entry.id">
+    <div v-if="filtered.length" class="space-y-2">
+      <div
+        v-for="entry in filtered"
+        :key="entry.id"
+        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 hover:bg-gray-800/30 transition-colors"
+      >
         <div class="flex items-start gap-3">
-          <UIcon
-            :name="entry.source === 'pubmed' ? 'i-lucide-book-open' : 'i-lucide-flask-conical'"
-            class="mt-1 shrink-0"
-            :class="entry.source === 'pubmed' ? 'text-blue-500' : 'text-green-500'"
-          />
+          <span class="text-lg mt-0.5">{{ entry.source === 'pubmed' ? '📄' : '🧪' }}</span>
           <div class="min-w-0 flex-1">
-            <div class="font-medium">{{ entry.title }}</div>
-            <div class="text-sm text-muted mt-1 flex gap-3">
-              <UBadge variant="subtle" size="xs">{{ entry.source }}</UBadge>
-              <span v-if="entry.external_id" class="font-mono">{{ entry.external_id }}</span>
-              <span v-if="entry.date">{{ entry.date.split('T')[0] }}</span>
+            <div class="font-medium text-white text-sm">{{ entry.title }}</div>
+            <div class="flex items-center gap-2 mt-1.5">
+              <UBadge
+                variant="subtle"
+                size="xs"
+                :color="entry.source === 'pubmed' ? 'info' : 'success'"
+              >
+                {{ entry.source }}
+              </UBadge>
+              <span v-if="entry.external_id" class="text-xs font-mono text-gray-500">
+                {{ entry.external_id }}
+              </span>
             </div>
-            <p v-if="entry.summary" class="text-sm text-muted mt-2 line-clamp-2">
+            <p v-if="entry.summary" class="text-xs text-gray-500 mt-2 line-clamp-2">
               {{ entry.summary }}
             </p>
           </div>
         </div>
-      </UCard>
+      </div>
     </div>
 
-    <div v-else class="text-muted text-center py-12">
+    <div v-else class="text-gray-600 text-center py-16 text-sm">
       No research entries found
     </div>
   </div>

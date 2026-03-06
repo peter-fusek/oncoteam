@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
-const { getLevel, computeXpFromStats } = useGamification()
 
 const { data: status, refresh: refreshStatus } = await fetchApi<{
   status: string
@@ -16,19 +15,92 @@ const { data: stats, refresh: refreshStats } = await fetchApi<{
 const { data: activity, refresh: refreshActivity } = await fetchApi<{
   entries: Array<{ tool: string; status: string; duration_ms: number; timestamp: string }>
   total: number
-}>('/activity?limit=10')
+}>('/activity?limit=15')
 
-const totalXp = computed(() => {
-  if (!stats.value?.stats) return 0
-  return computeXpFromStats(stats.value.stats)
+// Map tools to rooms
+const rooms = computed(() => {
+  const toolStats = new Map(
+    (stats.value?.stats ?? []).map(s => [s.tool_name, s])
+  )
+
+  return [
+    {
+      name: 'Research Lab',
+      icon: '🔬',
+      color: 'from-blue-500/20 to-blue-600/10',
+      border: 'border-blue-500/30',
+      glow: 'shadow-blue-500/10',
+      tools: ['search_pubmed', 'search_clinical_trials', 'search_clinical_trials_adjacent'],
+      status: getAgentStatus(['search_pubmed', 'search_clinical_trials', 'search_clinical_trials_adjacent']),
+    },
+    {
+      name: 'Eligibility Check',
+      icon: '🎯',
+      color: 'from-amber-500/20 to-amber-600/10',
+      border: 'border-amber-500/30',
+      glow: 'shadow-amber-500/10',
+      tools: ['check_trial_eligibility', 'fetch_trial_details', 'fetch_pubmed_article'],
+      status: getAgentStatus(['check_trial_eligibility', 'fetch_trial_details', 'fetch_pubmed_article']),
+    },
+    {
+      name: 'Analytics Room',
+      icon: '📊',
+      color: 'from-purple-500/20 to-purple-600/10',
+      border: 'border-purple-500/30',
+      glow: 'shadow-purple-500/10',
+      tools: ['analyze_labs', 'compare_labs', 'get_lab_trends'],
+      status: getAgentStatus(['analyze_labs', 'compare_labs', 'get_lab_trends']),
+    },
+    {
+      name: 'Report Room',
+      icon: '📋',
+      color: 'from-green-500/20 to-green-600/10',
+      border: 'border-green-500/30',
+      glow: 'shadow-green-500/10',
+      tools: ['daily_briefing', 'summarize_session', 'review_session'],
+      status: getAgentStatus(['daily_briefing', 'summarize_session', 'review_session']),
+    },
+    {
+      name: 'Document Vault',
+      icon: '🗄️',
+      color: 'from-cyan-500/20 to-cyan-600/10',
+      border: 'border-cyan-500/30',
+      glow: 'shadow-cyan-500/10',
+      tools: ['search_documents', 'view_document', 'get_patient_context'],
+      status: getAgentStatus(['search_documents', 'view_document', 'get_patient_context']),
+    },
+    {
+      name: 'Session Log',
+      icon: '📝',
+      color: 'from-rose-500/20 to-rose-600/10',
+      border: 'border-rose-500/30',
+      glow: 'shadow-rose-500/10',
+      tools: ['log_research_decision', 'log_session_note', 'create_improvement_issue'],
+      status: getAgentStatus(['log_research_decision', 'log_session_note', 'create_improvement_issue']),
+    },
+  ].map(room => ({
+    ...room,
+    totalCalls: room.tools.reduce((sum, t) => sum + (toolStats.get(t)?.count ?? 0), 0),
+    avgMs: Math.round(
+      room.tools.reduce((sum, t) => sum + (toolStats.get(t)?.avg_duration_ms ?? 0), 0)
+      / Math.max(room.tools.filter(t => toolStats.has(t)).length, 1)
+    ),
+  }))
 })
 
-const level = computed(() => getLevel(totalXp.value))
+function getAgentStatus(tools: string[]) {
+  const recent = activity.value?.entries ?? []
+  const lastActivity = recent.find(e => tools.includes(e.tool))
+  if (!lastActivity) return 'idle'
+  const age = Date.now() - new Date(lastActivity.timestamp).getTime()
+  if (age < 5 * 60_000) return 'active'
+  if (age < 60 * 60_000) return 'recent'
+  return 'idle'
+}
 
-const totalCalls = computed(() => {
-  if (!stats.value?.stats) return 0
-  return stats.value.stats.reduce((sum, s) => sum + s.count, 0)
-})
+const totalCalls = computed(() =>
+  (stats.value?.stats ?? []).reduce((sum, s) => sum + s.count, 0)
+)
 
 async function refreshAll() {
   await Promise.all([refreshStatus(), refreshStats(), refreshActivity()])
@@ -46,104 +118,99 @@ onUnmounted(() => {
 
 <template>
   <div class="space-y-6">
+    <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Dashboard</h1>
-      <UButton icon="i-lucide-refresh-cw" variant="ghost" size="sm" @click="refreshAll" />
+      <div>
+        <h1 class="text-2xl font-bold text-white">Agent Office</h1>
+        <p class="text-sm text-gray-400">{{ totalCalls }} operations completed</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 text-xs">
+          <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span class="text-gray-400">v{{ status?.version }}</span>
+          <span class="text-gray-600 font-mono">{{ status?.session_id }}</span>
+        </div>
+        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refreshAll" />
+      </div>
     </div>
 
-    <!-- Status + XP bar -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <UCard>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-activity" class="text-green-500" />
-            <span class="font-semibold">Status</span>
-          </div>
-        </template>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between">
-            <span class="text-muted">Server</span>
-            <UBadge :color="status?.status === 'ok' ? 'success' : 'error'" variant="subtle">
-              {{ status?.status ?? 'unknown' }}
-            </UBadge>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-muted">Version</span>
-            <span>{{ status?.version }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-muted">Session</span>
-            <span class="font-mono text-xs">{{ status?.session_id }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-muted">Tools</span>
-            <span>{{ status?.tools_count }}</span>
-          </div>
-        </div>
-      </UCard>
-
-      <UCard>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-trophy" class="text-yellow-500" />
-            <span class="font-semibold">Level: {{ level.name }}</span>
-          </div>
-        </template>
-        <div class="space-y-3">
-          <div class="text-3xl font-bold text-primary">{{ totalXp }} XP</div>
-          <UProgress
-            :model-value="level.progress * 100"
-            color="primary"
-            size="md"
+    <!-- Agent Rooms Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        v-for="room in rooms"
+        :key="room.name"
+        class="group relative rounded-xl border bg-gradient-to-br p-4 transition-all hover:scale-[1.02]"
+        :class="[room.color, room.border, room.glow, 'shadow-lg']"
+      >
+        <!-- Status indicator -->
+        <div class="absolute top-3 right-3">
+          <span
+            class="inline-block w-2.5 h-2.5 rounded-full"
+            :class="{
+              'bg-green-500 animate-pulse': room.status === 'active',
+              'bg-yellow-500': room.status === 'recent',
+              'bg-gray-600': room.status === 'idle',
+            }"
           />
-          <div v-if="level.nextLevel" class="text-xs text-muted">
-            {{ level.nextMinXp! - totalXp }} XP to {{ level.nextLevel }}
-          </div>
-          <div v-else class="text-xs text-muted">Max level reached</div>
         </div>
-      </UCard>
 
-      <UCard>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-bar-chart-3" class="text-blue-500" />
-            <span class="font-semibold">Stats</span>
-          </div>
-        </template>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between">
-            <span class="text-muted">Total calls</span>
-            <span class="font-bold">{{ totalCalls }}</span>
-          </div>
-          <div v-for="s in stats?.stats?.slice(0, 4)" :key="s.tool_name" class="flex justify-between">
-            <span class="text-muted truncate mr-2">{{ s.tool_name }}</span>
-            <span>{{ s.count }}</span>
+        <!-- Room header -->
+        <div class="flex items-center gap-3 mb-3">
+          <div class="text-2xl">{{ room.icon }}</div>
+          <div>
+            <div class="font-semibold text-white text-sm">{{ room.name }}</div>
+            <div class="text-xs text-gray-400">
+              {{ room.totalCalls }} calls
+              <span v-if="room.avgMs > 0" class="text-gray-600">
+                &middot; ~{{ room.avgMs }}ms avg
+              </span>
+            </div>
           </div>
         </div>
-      </UCard>
-    </div>
 
-    <!-- Activity feed -->
-    <UCard>
-      <template #header>
-        <div class="flex items-center gap-2">
-          <UIcon name="i-lucide-scroll-text" />
-          <span class="font-semibold">Recent Activity</span>
-          <UBadge variant="subtle" size="sm">{{ activity?.total ?? 0 }}</UBadge>
-        </div>
-      </template>
-      <div v-if="activity?.entries?.length" class="divide-y divide-default">
-        <div v-for="(entry, i) in activity.entries" :key="i" class="py-2 flex items-center gap-3 text-sm">
-          <UIcon
-            :name="entry.status === 'ok' ? 'i-lucide-check-circle' : 'i-lucide-x-circle'"
-            :class="entry.status === 'ok' ? 'text-green-500' : 'text-red-500'"
-          />
-          <span class="font-mono text-xs min-w-28">{{ entry.tool }}</span>
-          <span v-if="entry.duration_ms" class="text-muted text-xs">{{ entry.duration_ms }}ms</span>
-          <span class="text-muted text-xs ml-auto">{{ entry.timestamp?.split('T')[0] }}</span>
+        <!-- Tools list -->
+        <div class="space-y-1">
+          <div
+            v-for="tool in room.tools"
+            :key="tool"
+            class="text-xs font-mono text-gray-500 flex items-center gap-1.5"
+          >
+            <span class="w-1 h-1 rounded-full bg-gray-700" />
+            {{ tool }}
+          </div>
         </div>
       </div>
-      <div v-else class="text-muted text-sm py-4 text-center">No activity yet</div>
-    </UCard>
+    </div>
+
+    <!-- Activity Feed -->
+    <div class="rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-lucide-activity" class="text-gray-400" />
+          <span class="font-semibold text-sm text-white">Activity Feed</span>
+        </div>
+        <UBadge variant="subtle" size="xs" color="neutral">{{ activity?.total ?? 0 }}</UBadge>
+      </div>
+      <div v-if="activity?.entries?.length" class="divide-y divide-gray-800/50">
+        <div
+          v-for="(entry, i) in activity.entries"
+          :key="i"
+          class="px-4 py-2 flex items-center gap-3 text-sm hover:bg-gray-800/30 transition-colors"
+        >
+          <span
+            class="w-1.5 h-1.5 rounded-full shrink-0"
+            :class="entry.status === 'ok' ? 'bg-green-500' : 'bg-red-500'"
+          />
+          <span class="font-mono text-xs text-gray-300 min-w-32">{{ entry.tool }}</span>
+          <span v-if="entry.duration_ms" class="text-gray-600 text-xs">{{ entry.duration_ms }}ms</span>
+          <span class="text-gray-600 text-xs ml-auto">
+            {{ new Date(entry.timestamp).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) }}
+          </span>
+        </div>
+      </div>
+      <div v-else class="px-4 py-8 text-center text-gray-600 text-sm">
+        No activity yet — agents are resting
+      </div>
+    </div>
   </div>
 </template>
