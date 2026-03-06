@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { user, clear } = useUserSession()
+const { showTestData } = useTestDataToggle()
 
 const navigation = [
   { label: 'Agents', icon: 'i-lucide-brain-circuit', to: '/' },
@@ -30,16 +31,22 @@ async function logout() {
       <UNavigationMenu :items="navigation" orientation="vertical" />
 
       <template #footer>
-        <div class="px-3 py-2 flex items-center justify-between">
-          <div class="flex items-center gap-2 min-w-0">
-            <UAvatar
-              v-if="user?.picture"
-              :src="user.picture"
-              size="xs"
-            />
-            <span class="text-xs text-gray-400 truncate">{{ user?.name }}</span>
+        <div class="px-3 py-2 space-y-2">
+          <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
+            <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
+            Show test data
+          </label>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 min-w-0">
+              <UAvatar
+                v-if="user?.picture"
+                :src="user.picture"
+                size="xs"
+              />
+              <span class="text-xs text-gray-400 truncate">{{ user?.name }}</span>
+            </div>
+            <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
           </div>
-          <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
         </div>
       </template>
     </UDashboardSidebar>

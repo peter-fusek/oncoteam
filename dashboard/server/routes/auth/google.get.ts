@@ -1,6 +1,10 @@
 export default defineOAuthGoogleEventHandler({
   config: {
     scope: ['openid', 'email', 'profile'],
+    authorizationParams: {
+      // Skip account chooser — auto-select the allowed Google account
+      login_hint: 'peterfusek1980@gmail.com',
+    },
   },
   async onSuccess(event, { user }) {
     const config = useRuntimeConfig()

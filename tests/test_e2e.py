@@ -64,7 +64,7 @@ class TestE2EPersistence:
 
         await oncofiles_client.add_activity_log(
             session_id=unique_id,
-            agent_id="oncoteam",
+            agent_id="oncoteam-e2e",
             tool_name="e2e_test",
             input_summary="test input",
             output_summary="test output",

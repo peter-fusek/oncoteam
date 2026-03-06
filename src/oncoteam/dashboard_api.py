@@ -11,6 +11,41 @@ from .patient_context import PATIENT
 
 VERSION = "0.6.0"
 
+# Patterns that identify test/E2E data created by automated tests
+_TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test ", "testovacia")
+_TEST_TOOL_NAMES = ("e2e_test",)
+_TEST_AGENT_IDS = ("oncoteam-e2e",)
+_TEST_TAGS = ("e2e-test",)
+
+
+def _is_test_entry(entry: dict) -> bool:
+    """Return True if the entry looks like test/E2E data."""
+    title = (entry.get("title") or "").lower()
+    if any(p in title for p in _TEST_TITLE_PATTERNS):
+        return True
+    tool = (entry.get("tool_name") or entry.get("tool") or "").lower()
+    if tool in _TEST_TOOL_NAMES:
+        return True
+    agent = (entry.get("agent_id") or "").lower()
+    if agent in _TEST_AGENT_IDS:
+        return True
+    tags = entry.get("tags")
+    if isinstance(tags, list) and any(t in _TEST_TAGS for t in tags):
+        return True
+    return isinstance(tags, str) and any(t in tags for t in _TEST_TAGS)
+
+
+def _show_test(request: Request) -> bool:
+    """Check if ?show_test=true is in query params."""
+    return request.query_params.get("show_test", "").lower() in ("true", "1", "yes")
+
+
+def _filter_test(entries: list[dict], request: Request) -> list[dict]:
+    """Filter out test entries unless ?show_test=true."""
+    if _show_test(request):
+        return entries
+    return [e for e in entries if not _is_test_entry(e)]
+
 
 def _extract_list(result: dict | list | str, key: str) -> list[dict]:
     """Extract a list from an oncofiles response.
@@ -64,7 +99,7 @@ async def api_activity(request: Request) -> JSONResponse:
         result = await oncofiles_client.search_activity_log(
             agent_id="oncoteam", limit=limit
         )
-        entries = _extract_list(result, "entries")
+        entries = _filter_test(_extract_list(result, "entries"), request)
         return _cors_json({
             "entries": [
                 {
@@ -102,7 +137,7 @@ async def api_timeline(request: Request) -> JSONResponse:
     limit = int(request.query_params.get("limit", "50"))
     try:
         result = await oncofiles_client.list_treatment_events(limit=limit)
-        events = _extract_list(result, "events")
+        events = _filter_test(_extract_list(result, "events"), request)
         return _cors_json({
             "events": [
                 {
@@ -138,7 +173,7 @@ async def api_research(request: Request) -> JSONResponse:
         result = await oncofiles_client.list_research_entries(
             source=source, limit=limit
         )
-        entries = _extract_list(result, "entries")
+        entries = _filter_test(_extract_list(result, "entries"), request)
         return _cors_json({
             "entries": [
                 {
@@ -165,7 +200,7 @@ async def api_sessions(request: Request) -> JSONResponse:
         result = await oncofiles_client.search_conversations(
             entry_type="session_summary", limit=limit
         )
-        entries = _extract_list(result, "entries")
+        entries = _filter_test(_extract_list(result, "entries"), request)
         return _cors_json({
             "sessions": [
                 {

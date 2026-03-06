@@ -10,6 +10,7 @@ import pytest
 from oncoteam.dashboard_api import (
     VERSION,
     _extract_list,
+    _is_test_entry,
     api_activity,
     api_cors_preflight,
     api_patient,
@@ -395,3 +396,128 @@ async def test_cors_preflight_returns_headers():
     assert response.headers["access-control-allow-origin"] == "*"
     assert "GET" in response.headers["access-control-allow-methods"]
     assert "OPTIONS" in response.headers["access-control-allow-methods"]
+
+
+# ── Test data filtering ──────────────────────────
+
+
+def test_is_test_entry_detects_e2e_title():
+    assert _is_test_entry({"title": "e2e-test-abc123"})
+    assert _is_test_entry({"title": "E2E test research something"})
+
+
+def test_is_test_entry_detects_testovacia():
+    assert _is_test_entry({"title": "Testovacia konzultacia"})
+
+
+def test_is_test_entry_detects_e2e_tool():
+    assert _is_test_entry({"tool_name": "e2e_test"})
+
+
+def test_is_test_entry_detects_e2e_agent():
+    assert _is_test_entry({"agent_id": "oncoteam-e2e"})
+
+
+def test_is_test_entry_detects_e2e_tags():
+    assert _is_test_entry({"tags": ["e2e-test"]})
+    assert _is_test_entry({"tags": "e2e-test,other"})
+
+
+def test_is_test_entry_passes_real_data():
+    assert not _is_test_entry({"title": "mFOLFOX6 C1"})
+    assert not _is_test_entry({"tool_name": "search_pubmed"})
+    assert not _is_test_entry({"agent_id": "oncoteam"})
+    assert not _is_test_entry({})
+
+
+MOCK_ACTIVITY_WITH_TEST = [
+    {
+        "tool_name": "search_pubmed",
+        "status": "ok",
+        "duration_ms": 120,
+        "created_at": "2026-03-06T10:00:00Z",
+        "input_summary": "",
+        "output_summary": "",
+        "error_message": None,
+    },
+    {
+        "tool_name": "e2e_test",
+        "status": "ok",
+        "duration_ms": 42,
+        "created_at": "2026-03-06T09:00:00Z",
+        "input_summary": "test",
+        "output_summary": "test",
+        "error_message": None,
+    },
+]
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_activity_filters_test_data_by_default(mock_search):
+    mock_search.return_value = MOCK_ACTIVITY_WITH_TEST
+    request = _make_request("/api/activity")
+    response = await api_activity(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 1
+    assert data["entries"][0]["tool"] == "search_pubmed"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_activity_shows_test_data_when_requested(mock_search):
+    mock_search.return_value = MOCK_ACTIVITY_WITH_TEST
+    request = _make_request("/api/activity", "show_test=true")
+    response = await api_activity(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 2
+
+
+MOCK_TIMELINE_WITH_TEST = [
+    {
+        "id": 1, "event_date": "2026-02-14", "event_type": "chemo_cycle",
+        "title": "mFOLFOX6 C1", "notes": "Real",
+    },
+    {
+        "id": 2, "event_date": "2026-03-05", "event_type": "consultation",
+        "title": "E2E test event abc", "notes": "Test",
+    },
+]
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_api_timeline_filters_test_data(mock_list):
+    mock_list.return_value = MOCK_TIMELINE_WITH_TEST
+    request = _make_request("/api/timeline")
+    response = await api_timeline(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 1
+    assert data["events"][0]["title"] == "mFOLFOX6 C1"
+
+
+MOCK_SESSIONS_WITH_TEST = [
+    {
+        "id": 5, "title": "Session: Lab review", "content": "Real session",
+        "created_at": "2026-03-06T12:00:00Z", "tags": ["session"],
+    },
+    {
+        "id": 6, "title": "e2e-test-session", "content": "Test",
+        "created_at": "2026-03-06T11:00:00Z", "tags": ["e2e-test"],
+    },
+]
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_filters_test_data(mock_search):
+    mock_search.return_value = MOCK_SESSIONS_WITH_TEST
+    request = _make_request("/api/sessions")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 1
+    assert data["sessions"][0]["title"] == "Session: Lab review"
