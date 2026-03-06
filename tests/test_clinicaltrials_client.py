@@ -6,6 +6,7 @@ from oncoteam.clinicaltrials_client import (
     ADJACENT_COUNTRIES,
     _is_crc_relevant,
     _parse_studies,
+    fetch_trial,
     search_trials,
     search_trials_adjacent,
 )
@@ -173,6 +174,78 @@ class TestSearchTrialsAdjacent:
         # Should not raise; partial results returned
         trials = await search_trials_adjacent("CRC")
         assert len(trials) >= 1
+
+
+SINGLE_STUDY_RESPONSE = {
+    "protocolSection": {
+        "identificationModule": {
+            "nctId": "NCT00001234",
+            "briefTitle": "FOLFOX Plus Immunotherapy for Colorectal Cancer",
+        },
+        "statusModule": {"overallStatus": "RECRUITING"},
+        "designModule": {"phases": ["PHASE3"]},
+        "conditionsModule": {"conditions": ["Colorectal Cancer"]},
+        "armsInterventionsModule": {
+            "interventions": [{"name": "FOLFOX"}, {"name": "Pembrolizumab"}]
+        },
+        "contactsLocationsModule": {
+            "locations": [{"facility": "National Cancer Institute"}]
+        },
+        "descriptionModule": {"briefSummary": "A phase 3 trial."},
+        "eligibilityModule": {
+            "eligibilityCriteria": "Inclusion: KRAS mutant. Exclusion: prior anti-EGFR."
+        },
+    }
+}
+
+
+class TestFetchTrial:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_fetches_single_trial(self):
+        respx.get(f"{CTGOV_BASE_URL}/studies/NCT00001234").mock(
+            return_value=Response(200, json=SINGLE_STUDY_RESPONSE)
+        )
+
+        trial = await fetch_trial("NCT00001234")
+        assert trial is not None
+        assert trial.nct_id == "NCT00001234"
+        assert trial.status == "RECRUITING"
+        assert "FOLFOX" in trial.interventions
+        assert "prior anti-EGFR" in trial.eligibility_criteria
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_parses_eligibility_criteria(self):
+        respx.get(f"{CTGOV_BASE_URL}/studies/NCT00001234").mock(
+            return_value=Response(200, json=SINGLE_STUDY_RESPONSE)
+        )
+
+        trial = await fetch_trial("NCT00001234")
+        assert trial.eligibility_criteria != ""
+        assert "KRAS mutant" in trial.eligibility_criteria
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_handles_missing_eligibility(self):
+        data = {
+            "protocolSection": {
+                "identificationModule": {"nctId": "NCT00005678", "briefTitle": "Minimal"},
+                "statusModule": {},
+                "designModule": {},
+                "conditionsModule": {},
+                "armsInterventionsModule": {},
+                "contactsLocationsModule": {},
+                "descriptionModule": {},
+            }
+        }
+        respx.get(f"{CTGOV_BASE_URL}/studies/NCT00005678").mock(
+            return_value=Response(200, json=data)
+        )
+
+        trial = await fetch_trial("NCT00005678")
+        assert trial is not None
+        assert trial.eligibility_criteria == ""
 
 
 class TestCrcRelevanceFilter:

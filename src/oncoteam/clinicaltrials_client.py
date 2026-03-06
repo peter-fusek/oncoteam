@@ -27,6 +27,46 @@ def _is_crc_relevant(trial: ClinicalTrial) -> bool:
     return not any(exc in intrs for exc in _EXCLUDE_INTERVENTIONS)
 
 
+async def fetch_trial(nct_id: str) -> ClinicalTrial | None:
+    """Fetch a single trial by NCT ID from ClinicalTrials.gov API v2."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(f"{CTGOV_BASE_URL}/studies/{nct_id}", params={"format": "json"})
+        resp.raise_for_status()
+        data = resp.json()
+
+    proto = data.get("protocolSection", {})
+    ident = proto.get("identificationModule", {})
+    status_mod = proto.get("statusModule", {})
+    design = proto.get("designModule", {})
+    conditions_mod = proto.get("conditionsModule", {})
+    interventions_mod = proto.get("armsInterventionsModule", {})
+    locations_mod = proto.get("contactsLocationsModule", {})
+    desc = proto.get("descriptionModule", {})
+    elig_mod = proto.get("eligibilityModule", {})
+
+    phases = design.get("phases", [])
+    interventions = [
+        intr.get("name", "") for intr in interventions_mod.get("interventions", [])
+        if intr.get("name")
+    ]
+    locations = [
+        loc.get("facility", "") for loc in locations_mod.get("locations", [])
+        if loc.get("facility")
+    ]
+
+    return ClinicalTrial(
+        nct_id=ident.get("nctId", nct_id),
+        title=ident.get("briefTitle", ""),
+        status=status_mod.get("overallStatus", ""),
+        phase=", ".join(phases) if phases else "",
+        conditions=conditions_mod.get("conditions", []),
+        interventions=interventions,
+        locations=locations,
+        summary=desc.get("briefSummary", ""),
+        eligibility_criteria=elig_mod.get("eligibilityCriteria", ""),
+    )
+
+
 async def search_trials(
     condition: str,
     intervention: str | None = None,

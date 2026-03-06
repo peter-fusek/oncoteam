@@ -15,6 +15,16 @@ def _base_params() -> dict:
     return params
 
 
+async def fetch_article(pmid: str) -> PubMedArticle | None:
+    """Fetch a single PubMed article by PMID via efetch."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        params = {**_base_params(), "db": "pubmed", "id": pmid}
+        resp = await client.get(f"{NCBI_BASE_URL}/efetch.fcgi", params=params)
+        resp.raise_for_status()
+        articles = _parse_efetch(resp.text)
+        return articles[0] if articles else None
+
+
 async def search_pubmed(query: str, max_results: int = 10) -> list[PubMedArticle]:
     """Search PubMed via E-utilities: esearch → efetch → parse."""
     async with httpx.AsyncClient(timeout=30) as client:

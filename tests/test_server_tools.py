@@ -17,8 +17,11 @@ import pytest
 from oncoteam.models import ClinicalTrial, PubMedArticle
 from oncoteam.server import (
     analyze_labs,
+    check_trial_eligibility,
     compare_labs,
     daily_briefing,
+    fetch_pubmed_article,
+    fetch_trial_details,
     get_lab_trends,
     get_patient_context,
     log_research_decision,
@@ -243,8 +246,8 @@ class TestDailyBriefingTool:
 
         await daily_briefing()
 
-        # 3 PubMed searches × 2 articles + 1 trial = 7 storage calls
-        assert mock_store.call_count == 7
+        # 2 unique articles (deduped across 3 searches) + 1 trial = 3 storage calls
+        assert mock_store.call_count == 3
         # All storage calls should have "daily_briefing" tag
         for call in mock_store.call_args_list:
             assert "daily_briefing" in call.kwargs["tags"]
@@ -543,3 +546,148 @@ class TestSearchClinicalTrialsCountryFilter:
 
         assert result["count"] == 1
         mock_search.assert_called_once_with("colorectal cancer", None, 10, "Slovakia")
+
+
+# ── fetch_pubmed_article ──────────────────────────
+
+
+class TestFetchPubmedArticleTool:
+    @pytest.mark.asyncio
+    @patch("oncoteam.pubmed_client.fetch_article", new_callable=AsyncMock)
+    async def test_returns_article(self, mock_fetch):
+        mock_fetch.return_value = MOCK_ARTICLES[0]
+
+        result = json.loads(await fetch_pubmed_article("12345678"))
+
+        assert result["article"]["pmid"] == "12345678"
+        assert result["article"]["title"] == "FOLFOX in colorectal cancer"
+        mock_fetch.assert_called_once_with("12345678")
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.pubmed_client.fetch_article", new_callable=AsyncMock)
+    async def test_returns_error_when_not_found(self, mock_fetch):
+        mock_fetch.return_value = None
+
+        result = json.loads(await fetch_pubmed_article("00000000"))
+
+        assert "error" in result
+        assert "00000000" in result["error"]
+
+
+# ── fetch_trial_details ──────────────────────────
+
+
+class TestFetchTrialDetailsTool:
+    @pytest.mark.asyncio
+    @patch("oncoteam.clinicaltrials_client.fetch_trial", new_callable=AsyncMock)
+    async def test_returns_trial(self, mock_fetch):
+        mock_fetch.return_value = MOCK_TRIALS[0]
+
+        result = json.loads(await fetch_trial_details("NCT00001234"))
+
+        assert result["trial"]["nct_id"] == "NCT00001234"
+        assert result["trial"]["title"] == "FOLFOX Plus Immunotherapy"
+        mock_fetch.assert_called_once_with("NCT00001234")
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.clinicaltrials_client.fetch_trial", new_callable=AsyncMock)
+    async def test_returns_error_when_not_found(self, mock_fetch):
+        mock_fetch.return_value = None
+
+        result = json.loads(await fetch_trial_details("NCT99999999"))
+
+        assert "error" in result
+
+
+# ── check_trial_eligibility ──────────────────────
+
+
+class TestCheckTrialEligibilityTool:
+    @pytest.mark.asyncio
+    @patch("oncoteam.clinicaltrials_client.fetch_trial", new_callable=AsyncMock)
+    async def test_eligible_trial(self, mock_fetch):
+        mock_fetch.return_value = ClinicalTrial(
+            nct_id="NCT00001234",
+            title="FOLFOX Trial",
+            interventions=["FOLFOX"],
+            conditions=["Colorectal Cancer"],
+        )
+
+        result = json.loads(await check_trial_eligibility("NCT00001234"))
+
+        assert result["eligibility"]["eligible"] is True
+        assert result["eligibility"]["flags"] == []
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.clinicaltrials_client.fetch_trial", new_callable=AsyncMock)
+    async def test_excluded_trial(self, mock_fetch):
+        mock_fetch.return_value = ClinicalTrial(
+            nct_id="NCT00009999",
+            title="Cetuximab Trial",
+            interventions=["Cetuximab"],
+            conditions=["Colorectal Cancer"],
+        )
+
+        result = json.loads(await check_trial_eligibility("NCT00009999"))
+
+        assert result["eligibility"]["eligible"] is False
+        assert len(result["eligibility"]["flags"]) > 0
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.clinicaltrials_client.fetch_trial", new_callable=AsyncMock)
+    async def test_returns_error_when_trial_not_found(self, mock_fetch):
+        mock_fetch.return_value = None
+
+        result = json.loads(await check_trial_eligibility("NCT99999999"))
+
+        assert "error" in result
+
+
+# ── daily_briefing deduplication ─────────────────
+
+
+class TestDailyBriefingDedup:
+    @pytest.mark.asyncio
+    @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
+    @patch("oncoteam.clinicaltrials_client.search_trials_adjacent", new_callable=AsyncMock)
+    @patch("oncoteam.pubmed_client.search_pubmed", new_callable=AsyncMock)
+    async def test_deduplicates_across_search_terms(self, mock_pubmed, mock_ct, mock_store):
+        # All 3 PubMed searches return overlapping articles
+        shared_article = PubMedArticle(
+            pmid="11111111", title="Shared Article", abstract="Shared"
+        )
+        unique_article = PubMedArticle(
+            pmid="22222222", title="Unique Article", abstract="Unique"
+        )
+        mock_pubmed.side_effect = [
+            [shared_article, unique_article],  # term 1: shared + unique
+            [shared_article],                   # term 2: shared (duplicate)
+            [shared_article],                   # term 3: shared (duplicate)
+        ]
+        mock_ct.return_value = []
+
+        result = json.loads(await daily_briefing())
+
+        # Should only have 2 unique articles, not 4
+        pubmed_results = result["results"]["pubmed"]
+        pmids = [r["pmid"] for r in pubmed_results]
+        assert pmids == ["11111111", "22222222"]
+        assert result["pubmed_articles"] == 2
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
+    @patch("oncoteam.clinicaltrials_client.search_trials_adjacent", new_callable=AsyncMock)
+    @patch("oncoteam.pubmed_client.search_pubmed", new_callable=AsyncMock)
+    async def test_dedup_reduces_storage_calls(self, mock_pubmed, mock_ct, mock_store):
+        shared = PubMedArticle(pmid="11111111", title="Shared", abstract="x")
+        mock_pubmed.return_value = [shared]  # Same article from all 3 terms
+        mock_ct.return_value = []
+
+        await daily_briefing()
+
+        # Should only store once, not 3 times
+        pubmed_stores = [
+            c for c in mock_store.call_args_list
+            if c.kwargs.get("source") == "pubmed"
+        ]
+        assert len(pubmed_stores) == 1

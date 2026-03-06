@@ -45,6 +45,7 @@ class ClinicalTrial(BaseModel):
     interventions: list[str] = Field(default_factory=list)
     locations: list[str] = Field(default_factory=list)
     summary: str = ""
+    eligibility_criteria: str = ""
 
 
 class PatientProfile(BaseModel):
@@ -78,6 +79,20 @@ class ResearchEntry(BaseModel):
     summary: str = ""
     relevance_score: float = 0.0
     tags: list[str] = Field(default_factory=list)
+
+
+class EligibilityFlag(BaseModel):
+    rule: str
+    status: str  # "excluded", "warning", "eligible"
+    reason: str
+
+
+class EligibilityResult(BaseModel):
+    nct_id: str
+    eligible: bool
+    flags: list[EligibilityFlag] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    summary: str = ""
 
 
 class TreatmentEvent(BaseModel):

@@ -3,7 +3,7 @@ import respx
 from httpx import Response
 
 from oncoteam.config import NCBI_BASE_URL
-from oncoteam.pubmed_client import _parse_efetch, _parse_esearch, search_pubmed
+from oncoteam.pubmed_client import _parse_efetch, _parse_esearch, fetch_article, search_pubmed
 
 ESEARCH_RESPONSE = """<?xml version="1.0" encoding="UTF-8"?>
 <eSearchResult>
@@ -114,3 +114,28 @@ class TestSearchPubmed:
 
         articles = await search_pubmed("nonexistent query xyz")
         assert articles == []
+
+
+class TestFetchArticle:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_fetches_single_article(self):
+        respx.get(f"{NCBI_BASE_URL}/efetch.fcgi").mock(
+            return_value=Response(200, text=EFETCH_RESPONSE)
+        )
+
+        article = await fetch_article("12345678")
+        assert article is not None
+        assert article.pmid == "12345678"
+        assert "FOLFOX" in article.title
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_returns_none_when_not_found(self):
+        empty = '<?xml version="1.0"?><PubmedArticleSet></PubmedArticleSet>'
+        respx.get(f"{NCBI_BASE_URL}/efetch.fcgi").mock(
+            return_value=Response(200, text=empty)
+        )
+
+        article = await fetch_article("00000000")
+        assert article is None

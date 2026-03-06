@@ -10,6 +10,7 @@ from starlette.responses import JSONResponse
 from . import clinicaltrials_client, oncofiles_client, pubmed_client
 from .activity_logger import log_activity, log_to_diary
 from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
+from .eligibility import check_eligibility
 from .models import ResearchSource
 from .patient_context import (
     PATIENT,
@@ -250,6 +251,62 @@ async def search_clinical_trials_adjacent(
 
 @mcp.tool()
 @log_activity
+async def fetch_pubmed_article(pmid: str) -> str:
+    """Fetch a specific PubMed article by PMID.
+
+    Args:
+        pmid: PubMed ID (e.g. "12345678")
+
+    Returns:
+        JSON with article details, or error if not found.
+    """
+    article = await pubmed_client.fetch_article(pmid)
+    if article is None:
+        return json.dumps({"error": f"Article {pmid} not found"})
+    return json.dumps({"article": article.model_dump()})
+
+
+@mcp.tool()
+@log_activity
+async def fetch_trial_details(nct_id: str) -> str:
+    """Fetch details for a specific clinical trial by NCT ID.
+
+    Args:
+        nct_id: ClinicalTrials.gov ID (e.g. "NCT00001234")
+
+    Returns:
+        JSON with trial details including eligibility criteria.
+    """
+    trial = await clinicaltrials_client.fetch_trial(nct_id)
+    if trial is None:
+        return json.dumps({"error": f"Trial {nct_id} not found"})
+    return json.dumps({"trial": trial.model_dump()})
+
+
+@mcp.tool()
+@log_activity
+async def check_trial_eligibility(nct_id: str) -> str:
+    """Check if a clinical trial is eligible for this patient based on biomarker rules.
+
+    Fetches the trial from ClinicalTrials.gov and checks against the patient's
+    molecular profile (KRAS G12S, pMMR/MSS, HER2 neg, BRAF wt, active VTE).
+
+    Args:
+        nct_id: ClinicalTrials.gov ID (e.g. "NCT00001234")
+
+    Returns:
+        JSON with eligibility result: {eligible, flags, warnings, summary}
+    """
+    trial = await clinicaltrials_client.fetch_trial(nct_id)
+    if trial is None:
+        return json.dumps({"error": f"Trial {nct_id} not found"})
+
+    result = check_eligibility(trial, PATIENT)
+    return json.dumps({"eligibility": result.model_dump()})
+
+
+@mcp.tool()
+@log_activity
 async def daily_briefing() -> str:
     """Run preset research queries for Erika's case and compile a summary.
 
@@ -259,12 +316,16 @@ async def daily_briefing() -> str:
         JSON summary of all research findings from today's briefing.
     """
     results = {"pubmed": [], "clinical_trials": []}
+    seen_pmids: set[str] = set()
 
     # PubMed searches — use top 3 terms to stay within rate limits
     for term in RESEARCH_TERMS[:3]:
         try:
             articles = await pubmed_client.search_pubmed(term, max_results=5)
             for article in articles:
+                if article.pmid in seen_pmids:
+                    continue
+                seen_pmids.add(article.pmid)
                 results["pubmed"].append(
                     {"query": term, "pmid": article.pmid, "title": article.title}
                 )
