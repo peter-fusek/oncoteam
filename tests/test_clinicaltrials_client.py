@@ -4,11 +4,13 @@ from httpx import Response
 
 from oncoteam.clinicaltrials_client import (
     ADJACENT_COUNTRIES,
+    _is_crc_relevant,
     _parse_studies,
     search_trials,
     search_trials_adjacent,
 )
 from oncoteam.config import CTGOV_BASE_URL
+from oncoteam.models import ClinicalTrial
 
 CTGOV_RESPONSE = {
     "studies": [
@@ -171,3 +173,73 @@ class TestSearchTrialsAdjacent:
         # Should not raise; partial results returned
         trials = await search_trials_adjacent("CRC")
         assert len(trials) >= 1
+
+
+class TestCrcRelevanceFilter:
+    def test_crc_trial_passes(self):
+        trial = ClinicalTrial(
+            nct_id="NCT001", title="CRC trial", conditions=["Colorectal Cancer"],
+            interventions=["FOLFOX"],
+        )
+        assert _is_crc_relevant(trial) is True
+
+    @pytest.mark.parametrize("condition", [
+        "Hepatocellular Carcinoma", "Biliary Tract Cancer", "Cholangiocarcinoma",
+        "Pancreatic Cancer", "Gastric Cancer", "Pediatric Solid Tumors",
+        "Breast Cancer", "Non-Small Cell Lung Cancer", "Prostate Cancer",
+        "Esophageal Cancer",
+    ])
+    def test_excluded_conditions(self, condition):
+        trial = ClinicalTrial(
+            nct_id="NCT002", title="Other cancer", conditions=[condition],
+            interventions=["Some Drug"],
+        )
+        assert _is_crc_relevant(trial) is False
+
+    @pytest.mark.parametrize("intervention", ["Sotorasib", "Adagrasib"])
+    def test_excluded_interventions(self, intervention):
+        trial = ClinicalTrial(
+            nct_id="NCT003", title="KRAS G12C trial",
+            conditions=["Colorectal Cancer"], interventions=[intervention],
+        )
+        assert _is_crc_relevant(trial) is False
+
+    def test_mixed_conditions_excluded(self):
+        trial = ClinicalTrial(
+            nct_id="NCT004", title="Multi-tumor",
+            conditions=["Colorectal Cancer", "Hepatocellular Carcinoma"],
+            interventions=["Drug X"],
+        )
+        assert _is_crc_relevant(trial) is False
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_search_trials_filters_results(self):
+        """search_trials should exclude non-CRC trials."""
+        studies = {
+            "studies": [
+                CTGOV_RESPONSE["studies"][0],  # CRC trial — should pass
+                {
+                    "protocolSection": {
+                        "identificationModule": {
+                            "nctId": "NCT99999",
+                            "briefTitle": "Sotorasib for KRAS G12C Lung Cancer",
+                        },
+                        "statusModule": {"overallStatus": "RECRUITING"},
+                        "designModule": {"phases": ["PHASE2"]},
+                        "conditionsModule": {"conditions": ["Non-Small Cell Lung Cancer"]},
+                        "armsInterventionsModule": {
+                            "interventions": [{"name": "Sotorasib"}]
+                        },
+                        "contactsLocationsModule": {},
+                        "descriptionModule": {},
+                    }
+                },
+            ]
+        }
+        respx.get(f"{CTGOV_BASE_URL}/studies").mock(
+            return_value=Response(200, json=studies)
+        )
+        trials = await search_trials("cancer")
+        assert len(trials) == 1
+        assert trials[0].nct_id == "NCT00001234"

@@ -10,6 +10,22 @@ from .models import ClinicalTrial
 # Adjacent countries for SK patient (ordered by proximity to Bratislava)
 ADJACENT_COUNTRIES = ["Slovakia", "Czech Republic", "Austria", "Hungary"]
 
+# CRC relevance filter — exclude non-CRC conditions and G12C-specific interventions
+_EXCLUDE_CONDITIONS = {
+    "pediatric", "hepatocellular", "biliary", "cholangiocarcinoma",
+    "pancreatic", "gastric", "esophageal", "breast", "lung", "prostate",
+}
+_EXCLUDE_INTERVENTIONS = {"sotorasib", "adagrasib"}
+
+
+def _is_crc_relevant(trial: ClinicalTrial) -> bool:
+    """Return True if trial is relevant for CRC (excludes other cancer types and G12C drugs)."""
+    conds = " ".join(trial.conditions).lower()
+    intrs = " ".join(trial.interventions).lower()
+    if any(exc in conds for exc in _EXCLUDE_CONDITIONS):
+        return False
+    return not any(exc in intrs for exc in _EXCLUDE_INTERVENTIONS)
+
 
 async def search_trials(
     condition: str,
@@ -38,7 +54,7 @@ async def search_trials(
         resp.raise_for_status()
         data = resp.json()
 
-    return _parse_studies(data)
+    return [t for t in _parse_studies(data) if _is_crc_relevant(t)]
 
 
 async def search_trials_adjacent(
@@ -67,7 +83,7 @@ async def search_trials_adjacent(
                 seen_nct.add(trial.nct_id)
                 combined.append(trial)
 
-    return combined
+    return [t for t in combined if _is_crc_relevant(t)]
 
 
 def _parse_studies(data: dict) -> list[ClinicalTrial]:
