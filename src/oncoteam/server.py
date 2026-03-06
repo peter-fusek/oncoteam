@@ -34,6 +34,62 @@ mcp = FastMCP(
         "It searches PubMed and ClinicalTrials.gov for relevant research, "
         "tracks treatment events, and provides lab trend analysis. "
         "All data is persisted through the Oncofiles MCP server.\n\n"
+        #
+        # --- BIOMARKER RULES ENGINE ---
+        #
+        "BIOMARKER RULES (NEVER violate):\n"
+        "- Patient has KRAS G12S (c.34G>A). This is NOT G12C.\n"
+        "- anti-EGFR (cetuximab, panitumumab) is PERMANENTLY CONTRAINDICATED (any RAS mutation).\n"
+        "- anti-EGFR eligible ONLY if KRAS WT AND NRAS WT AND BRAF WT — patient fails this.\n"
+        "- KRAS G12C-specific inhibitors (sotorasib, adagrasib) do NOT apply to G12S.\n"
+        "- Patient is pMMR/MSS — checkpoint inhibitor MONOTHERAPY not indicated.\n"
+        "- HER2 negative — HER2-targeted therapy not indicated.\n"
+        "- BRAF V600E wild-type — BRAF inhibitors alone not indicated.\n"
+        "- Active VJI thrombosis + Clexane — bevacizumab is HIGH RISK (discuss with oncologist).\n"
+        "- Checkpoint inhibitors ARE compatible with anticoagulation.\n\n"
+        #
+        # --- EXCLUDED THERAPIES ---
+        #
+        "NEVER SUGGEST these therapies:\n"
+        "- Anti-EGFR: cetuximab, panitumumab (KRAS G12S)\n"
+        "- Checkpoint monotherapy: pembrolizumab, nivolumab (pMMR/MSS)\n"
+        "- HER2-targeted: trastuzumab, pertuzumab, T-DXd (HER2 neg)\n"
+        "- BRAF inhibitors alone: encorafenib (BRAF wt)\n"
+        "- KRAS G12C-specific: sotorasib, adagrasib (patient has G12S)\n\n"
+        #
+        # --- DOCUMENT READING PROTOCOL ---
+        #
+        "DOCUMENT READING PROTOCOL:\n"
+        "- For pathology/genetics documents: ALWAYS call view_document() to read content.\n"
+        "- NEVER rely on metadata alone for pathology or genetics documents.\n"
+        "- After reading: extract biomarker data and note in session log.\n"
+        "- If document is unreadable: log as 'needs re-upload with OCR'.\n\n"
+        #
+        # --- LAB ANALYSIS PROTOCOL ---
+        #
+        "LAB ANALYSIS — always include:\n"
+        "1. SII (Systemic Immune-Inflammation Index) = (abs_NEUT x PLT) / abs_LYMPH\n"
+        "   - >1800 = high inflammatory burden; >30% decline after C1 = favorable\n"
+        "2. Ne/Ly ratio: >3.0 poor prognosis, <2.5 improving\n"
+        "3. CBC delta table: [Parameter | Baseline | Current | Change% | Reference | Status]\n"
+        "4. Liver enzyme pattern: hepatocellular (ALT/AST up) vs "
+        "cholestatic (GMT/ALP up) vs mixed\n"
+        "   - Relate to known hepatic mets (C78.7)\n"
+        "5. PLT + thrombosis cross-check: if PLT elevated + active VTE, FLAG immediately\n"
+        "6. Tumor markers: CEA, CA19-9 trends (need baseline pre-treatment values)\n"
+        "7. End every analysis with 'Questions for oncologist' section (2-4 specific questions)\n\n"
+        #
+        # --- CLINICAL TRIAL SEARCH ---
+        #
+        "CLINICAL TRIAL SEARCH for SK patient:\n"
+        "- Search: SK, CZ, AT (Vienna=60km), HU (Budapest=2h)\n"
+        "- Eligibility check: KRAS status, VTE active, ECOG, prior lines\n"
+        "- Monitor: HARMONi-GI3, pan-KRAS (BI-1701963, RMC-6236, JAB-3312)\n"
+        "- MSS CRC combinations: botensilimab+balstilimab, anti-TIGIT\n"
+        "- CRC-only filter: exclude pediatric/HCC/biliary trials\n\n"
+        #
+        # --- MANDATORY LOGGING ---
+        #
         "MANDATORY LOGGING — follow these rules every session:\n"
         "1. At the END of every conversation, call summarize_session() with a summary "
         "of what was discussed, decided, and any follow-up actions.\n"
@@ -147,6 +203,53 @@ async def search_clinical_trials(
 
 @mcp.tool()
 @log_activity
+async def search_clinical_trials_adjacent(
+    condition: str = "colorectal cancer",
+    intervention: str | None = None,
+    max_per_country: int = 5,
+) -> str:
+    """Search ClinicalTrials.gov across SK and adjacent countries (CZ, AT, HU).
+
+    Searches in parallel and deduplicates by NCT ID.
+
+    Args:
+        condition: Medical condition to search for
+        intervention: Optional intervention/treatment filter
+        max_per_country: Maximum results per country (default 5)
+
+    Returns:
+        JSON with deduplicated trials from all countries.
+    """
+    trials = await clinicaltrials_client.search_trials_adjacent(
+        condition,
+        intervention,
+        max_per_country,
+    )
+
+    for trial in trials:
+        with contextlib.suppress(Exception):
+            await oncofiles_client.add_research_entry(
+                source=ResearchSource.CLINICALTRIALS,
+                external_id=trial.nct_id,
+                title=trial.title,
+                summary=trial.summary[:500] if trial.summary else "",
+                tags=["adjacent_countries", *trial.conditions[:3]],
+                raw_data=trial.model_dump_json(),
+            )
+
+    return json.dumps(
+        {
+            "condition": condition,
+            "intervention": intervention,
+            "countries": clinicaltrials_client.ADJACENT_COUNTRIES,
+            "count": len(trials),
+            "trials": [t.model_dump() for t in trials],
+        }
+    )
+
+
+@mcp.tool()
+@log_activity
 async def daily_briefing() -> str:
     """Run preset research queries for Erika's case and compile a summary.
 
@@ -177,10 +280,12 @@ async def daily_briefing() -> str:
         except Exception:
             results["pubmed"].append({"query": term, "error": "search failed"})
 
-    # ClinicalTrials.gov
+    # ClinicalTrials.gov — search adjacent countries for KRAS-mutant mCRC
     try:
-        condition = f"{PATIENT.diagnosis_description} {PATIENT.treatment_regimen}"
-        trials = await clinicaltrials_client.search_trials(condition, max_results=10)
+        trials = await clinicaltrials_client.search_trials_adjacent(
+            condition="KRAS mutant metastatic colorectal cancer",
+            max_per_country=5,
+        )
         for trial in trials:
             results["clinical_trials"].append(
                 {"nct_id": trial.nct_id, "title": trial.title, "status": trial.status}
@@ -191,7 +296,7 @@ async def daily_briefing() -> str:
                     external_id=trial.nct_id,
                     title=trial.title,
                     summary=trial.summary[:500] if trial.summary else "",
-                    tags=["daily_briefing"],
+                    tags=["daily_briefing", "adjacent_countries"],
                     raw_data=trial.model_dump_json(),
                 )
     except Exception:
@@ -393,7 +498,7 @@ async def summarize_session(
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.3.0"})
+    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.4.0"})
 
 
 # ── Entry point ─────────────────────────────────

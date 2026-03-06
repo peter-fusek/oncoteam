@@ -52,11 +52,23 @@ class PatientProfile(BaseModel):
     diagnosis_code: str
     diagnosis_description: str
     tumor_site: str
-    biomarkers: dict[str, str] = Field(default_factory=dict)
+    biomarkers: dict[str, str | bool] = Field(default_factory=dict)
     treatment_regimen: str
     hospitals: list[str] = Field(default_factory=list)
     diagnosis_date: date | None = None
     notes: str = ""
+    # Extended clinical fields
+    staging: str = ""
+    histology: str = ""
+    tumor_laterality: str = ""
+    metastases: list[str] = Field(default_factory=list)
+    comorbidities: list[str] = Field(default_factory=list)
+    surgeries: list[dict] = Field(default_factory=list)
+    treating_physician: str = ""
+    admitting_physician: str = ""
+    current_cycle: int | None = None
+    ecog: str = ""
+    excluded_therapies: dict[str, str] = Field(default_factory=dict)
 
 
 class ResearchEntry(BaseModel):

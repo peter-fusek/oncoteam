@@ -10,42 +10,110 @@ from .models import PatientProfile
 PATIENT = PatientProfile(
     name="Erika Fusekova",
     diagnosis_code="C18.7",
-    diagnosis_description="Malignant neoplasm of sigmoid colon",
+    diagnosis_description="AdenoCa colon sigmoideum, G3, mCRC",
     tumor_site="Sigmoid colon",
     diagnosis_date=date(2025, 12, 1),
-    biomarkers={"HER2": "negative"},
-    treatment_regimen="FOLFOX",
+    biomarkers={
+        "KRAS": "mutant G12S (c.34G>A)",
+        "KRAS_G12C": False,
+        "NRAS": "wild-type",
+        "BRAF_V600E": "wild-type",
+        "HER2": "negative (ratio 1.3, copy number 3)",
+        "MSI": "pMMR / MSS",
+        "anti_EGFR_eligible": False,
+        "anti_EGFR_reason": "KRAS G12S mutation",
+    },
+    treatment_regimen="mFOLFOX6 90%",
     hospitals=["NOU (Narodny onkologicky ustav)", "Bory Nemocnica"],
-    notes="Colorectal cancer, FOLFOX chemotherapy protocol.",
+    notes="Left-sided mCRC. 1L mFOLFOX6 90% dose. Active VJI thrombosis on Clexane.",
+    staging="IV (liver mets, peritoneal carcinomatosis, LN, Krukenberg tumor l.dx.)",
+    histology="Adenocarcinoma Grade 3",
+    tumor_laterality="left-sided",
+    metastases=[
+        "liver (C78.7)",
+        "peritoneum (C78.6)",
+        "retroperitoneum",
+        "Krukenberg (ovary l.dx., C79.6)",
+        "mediastinal LN",
+        "hilar LN",
+        "retrocrural LN",
+        "portal LN (C77.8)",
+        "pulmonary nodules (<=5mm, monitor)",
+    ],
+    comorbidities=["VJI thrombosis (active, Clexane 0.6ml SC 2x/day)"],
+    surgeries=[
+        {
+            "date": "2026-01-18",
+            "institution": "Bory Nemocnica",
+            "type": "palliative resection",
+            "result": "AdenoCa G3",
+        }
+    ],
+    treating_physician="MUDr. Stefan Porsok, PhD., MPH — primar OKO G, NOU Bratislava",
+    admitting_physician="MUDr. Natalia Pazderova — NOU Bratislava",
+    current_cycle=2,
+    ecog="unknown — verify",
+    excluded_therapies={
+        "anti-EGFR (cetuximab, panitumumab)": "KRAS G12S mutation",
+        "checkpoint monotherapy (pembrolizumab, nivolumab)": "pMMR/MSS",
+        "HER2-targeted (trastuzumab, pertuzumab)": "HER2 negative",
+        "BRAF inhibitors (encorafenib)": "BRAF wild-type",
+        "KRAS G12C-specific (sotorasib, adagrasib)": "patient has G12S, not G12C",
+    },
 )
 
-# Curated PubMed search terms for Erika's case
+# Curated PubMed search terms for Erika's confirmed molecular profile
 RESEARCH_TERMS: list[str] = [
-    "colorectal cancer FOLFOX",
-    "sigmoid colon adenocarcinoma chemotherapy",
-    "FOLFOX oxaliplatin side effects management",
-    "colorectal cancer HER2 negative treatment",
-    "FOLFOX neurotoxicity prevention",
-    "colorectal cancer immunotherapy advances",
-    "stage III colorectal cancer adjuvant chemotherapy",
+    "KRAS G12S metastatic colorectal cancer treatment",
+    "mCRC FOLFOX first-line KRAS mutant",
+    "pan-KRAS inhibitor colorectal cancer",
+    "SOS1 inhibitor KRAS colorectal BI-1701963",
+    "MSS colorectal cancer immunotherapy combination",
+    "botensilimab balstilimab MSS CRC",
+    "bevacizumab VTE thrombosis colorectal cancer safety",
+    "FOLFOX oxaliplatin neurotoxicity prevention",
+    "mCRC left-sided KRAS mutant prognosis",
+    "ivonescimab FOLFOX colorectal HARMONi",
 ]
 
 
 def get_patient_profile_text() -> str:
     """Return formatted patient profile for MCP resource."""
     p = PATIENT
-    biomarkers = ", ".join(f"{k}: {v}" for k, v in p.biomarkers.items())
+    biomarkers = "\n".join(f"  - {k}: {v}" for k, v in p.biomarkers.items())
     hospitals = ", ".join(p.hospitals)
-    return (
-        f"# Patient Profile\n\n"
-        f"- **Name**: {p.name}\n"
-        f"- **Diagnosis**: {p.diagnosis_description} ({p.diagnosis_code})\n"
-        f"- **Tumor site**: {p.tumor_site}\n"
-        f"- **Biomarkers**: {biomarkers}\n"
-        f"- **Treatment**: {p.treatment_regimen}\n"
-        f"- **Hospitals**: {hospitals}\n"
-        f"- **Notes**: {p.notes}\n"
+    metastases = ", ".join(p.metastases) if p.metastases else "none listed"
+    comorbidities = ", ".join(p.comorbidities) if p.comorbidities else "none"
+    excluded = "\n".join(f"  - {k}: {v}" for k, v in p.excluded_therapies.items())
+
+    tumor = (
+        f"- **Tumor site**: {p.tumor_site} ({p.tumor_laterality})"
+        if p.tumor_laterality
+        else f"- **Tumor site**: {p.tumor_site}"
     )
+    treatment = (
+        f"- **Treatment**: {p.treatment_regimen} (cycle {p.current_cycle})"
+        if p.current_cycle
+        else f"- **Treatment**: {p.treatment_regimen}"
+    )
+    parts = [
+        "# Patient Profile\n",
+        f"- **Name**: {p.name}",
+        f"- **Diagnosis**: {p.diagnosis_description} ({p.diagnosis_code})",
+        f"- **Staging**: {p.staging}" if p.staging else "",
+        f"- **Histology**: {p.histology}" if p.histology else "",
+        tumor,
+        f"- **Biomarkers**:\n{biomarkers}",
+        treatment,
+        f"- **ECOG**: {p.ecog}" if p.ecog else "",
+        f"- **Metastases**: {metastases}",
+        f"- **Comorbidities**: {comorbidities}",
+        f"- **Hospitals**: {hospitals}",
+        f"- **Treating physician**: {p.treating_physician}" if p.treating_physician else "",
+        f"- **Excluded therapies**:\n{excluded}" if p.excluded_therapies else "",
+        f"- **Notes**: {p.notes}",
+    ]
+    return "\n".join(line for line in parts if line) + "\n"
 
 
 def get_research_terms_text() -> str:

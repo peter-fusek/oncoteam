@@ -24,17 +24,29 @@ class TestPatientContext:
         assert PATIENT.diagnosis_code == "C18.7"
 
     def test_patient_has_treatment(self):
-        assert PATIENT.treatment_regimen == "FOLFOX"
+        assert "FOLFOX" in PATIENT.treatment_regimen
         assert "NOU" in PATIENT.hospitals[0]
 
     def test_patient_diagnosis_date(self):
         assert PATIENT.diagnosis_date == date(2025, 12, 1)
 
     def test_patient_biomarkers(self):
-        assert PATIENT.biomarkers["HER2"] == "negative"
+        assert "negative" in PATIENT.biomarkers["HER2"]
+        assert "G12S" in PATIENT.biomarkers["KRAS"]
+        assert PATIENT.biomarkers["NRAS"] == "wild-type"
+        assert PATIENT.biomarkers["BRAF_V600E"] == "wild-type"
+        assert PATIENT.biomarkers["anti_EGFR_eligible"] is False
+
+    def test_patient_extended_fields(self):
+        assert PATIENT.staging
+        assert PATIENT.histology
+        assert PATIENT.tumor_laterality == "left-sided"
+        assert len(PATIENT.metastases) > 5
+        assert len(PATIENT.excluded_therapies) > 0
 
     def test_research_terms_not_empty(self):
         assert len(RESEARCH_TERMS) > 0
+        assert any("KRAS" in t for t in RESEARCH_TERMS)
         assert any("FOLFOX" in t for t in RESEARCH_TERMS)
 
     def test_profile_text_contains_key_info(self):
@@ -43,11 +55,14 @@ class TestPatientContext:
         assert "C18.7" in text
         assert "FOLFOX" in text
         assert "HER2" in text
+        assert "KRAS" in text
+        assert "Staging" in text
+        assert "Excluded therapies" in text
 
     def test_research_terms_text(self):
         text = get_research_terms_text()
         assert "Research Search Terms" in text
-        assert "colorectal" in text.lower()
+        assert "kras" in text.lower()
 
 
 class TestGeneticProfile:
@@ -56,30 +71,33 @@ class TestGeneticProfile:
         with patch("oncoteam.patient_context.oncofiles_client") as mock:
             mock.search_documents = AsyncMock(side_effect=Exception("offline"))
             profile = await get_genetic_profile()
-        assert profile == {"HER2": "negative"}
+        # Should have all static biomarkers from PATIENT
+        assert "G12S" in profile["KRAS"]
+        assert "negative" in profile["HER2"]
 
     @pytest.mark.asyncio
     async def test_genetic_profile_enriches_from_documents(self):
         mock_docs = {"documents": [{"id": 42}]}
-        mock_content = {"ocr_text": "KRAS: wild-type\nBRAF: V600E\nMSI: MSS"}
+        mock_content = {"ocr_text": "TMB: 8.5 mut/Mb"}
         with patch("oncoteam.patient_context.oncofiles_client") as mock:
             mock.search_documents = AsyncMock(return_value=mock_docs)
             mock.view_document = AsyncMock(return_value=mock_content)
             profile = await get_genetic_profile()
-        assert profile["HER2"] == "negative"
-        assert profile["KRAS"] == "wild-type"
-        assert profile["BRAF"] == "v600e"
-        assert profile["MSI"] == "mss"
+        # Static biomarkers preserved, new ones added
+        assert "G12S" in profile["KRAS"]
+        assert "8.5" in profile["TMB"]
 
     @pytest.mark.asyncio
     async def test_genetic_profile_does_not_overwrite_existing(self):
         mock_docs = {"documents": [{"id": 1}]}
-        mock_content = {"ocr_text": "HER2: positive"}
+        mock_content = {"ocr_text": "HER2: positive\nKRAS: wild-type"}
         with patch("oncoteam.patient_context.oncofiles_client") as mock:
             mock.search_documents = AsyncMock(return_value=mock_docs)
             mock.view_document = AsyncMock(return_value=mock_content)
             profile = await get_genetic_profile()
-        assert profile["HER2"] == "negative"
+        # Existing values must not be overwritten
+        assert "negative" in profile["HER2"]
+        assert "G12S" in profile["KRAS"]
 
     @pytest.mark.asyncio
     async def test_genetic_profile_searches_multiple_terms(self):
@@ -106,7 +124,7 @@ class TestGeneticProfile:
 class TestContextTags:
     def test_includes_treatment_regimen(self):
         tags = get_context_tags()
-        assert "FOLFOX" in tags
+        assert any("FOLFOX" in t for t in tags)
 
     def test_includes_tumor_site(self):
         tags = get_context_tags()
@@ -114,11 +132,13 @@ class TestContextTags:
 
     def test_includes_diagnosis_term(self):
         tags = get_context_tags()
+        # diagnosis_description now says "AdenoCa colon sigmoideum"
         assert any(t in tags for t in ["colorectal", "colon", "rectal", "sigmoid"])
 
     def test_includes_biomarkers(self):
         tags = get_context_tags()
-        assert "HER2_negative" in tags
+        assert any("HER2" in t for t in tags)
+        assert any("KRAS" in t for t in tags)
 
     def test_returns_list(self):
         tags = get_context_tags()

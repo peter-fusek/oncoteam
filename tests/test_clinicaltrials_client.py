@@ -2,7 +2,12 @@ import pytest
 import respx
 from httpx import Response
 
-from oncoteam.clinicaltrials_client import _parse_studies, search_trials
+from oncoteam.clinicaltrials_client import (
+    ADJACENT_COUNTRIES,
+    _parse_studies,
+    search_trials,
+    search_trials_adjacent,
+)
 from oncoteam.config import CTGOV_BASE_URL
 
 CTGOV_RESPONSE = {
@@ -112,3 +117,57 @@ class TestSearchTrials:
         request = route.calls[0].request
         assert "query.locn" in str(request.url)
         assert "Slovakia" in str(request.url)
+
+
+class TestSearchTrialsAdjacent:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_searches_all_adjacent_countries(self):
+        route = respx.get(f"{CTGOV_BASE_URL}/studies").mock(
+            return_value=Response(200, json=CTGOV_RESPONSE)
+        )
+
+        trials = await search_trials_adjacent("colorectal cancer")
+        # Should have called the API once per country
+        assert route.call_count == len(ADJACENT_COUNTRIES)
+        # Deduplication: same NCT IDs returned each time → only 2 unique
+        assert len(trials) == 2
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_deduplicates_across_countries(self):
+        # SK returns trial A, CZ returns trial A+B
+        response_a = {"studies": [CTGOV_RESPONSE["studies"][0]]}
+        response_ab = {"studies": CTGOV_RESPONSE["studies"]}
+        responses = [response_a, response_ab, {"studies": []}, {"studies": []}]
+        call_count = 0
+
+        def side_effect(request, route):
+            nonlocal call_count
+            resp = responses[min(call_count, len(responses) - 1)]
+            call_count += 1
+            return Response(200, json=resp)
+
+        respx.get(f"{CTGOV_BASE_URL}/studies").mock(side_effect=side_effect)
+
+        trials = await search_trials_adjacent("CRC")
+        nct_ids = [t.nct_id for t in trials]
+        assert len(nct_ids) == len(set(nct_ids))  # no duplicates
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_handles_partial_failures(self):
+        call_count = 0
+
+        def side_effect(request, route):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                return Response(500, text="Server Error")
+            return Response(200, json=CTGOV_RESPONSE)
+
+        respx.get(f"{CTGOV_BASE_URL}/studies").mock(side_effect=side_effect)
+
+        # Should not raise; partial results returned
+        trials = await search_trials_adjacent("CRC")
+        assert len(trials) >= 1

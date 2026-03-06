@@ -102,7 +102,7 @@ class TestSearchPubmedTool:
         assert first_call.kwargs["title"] == "FOLFOX in colorectal cancer"
         # Tags should come from patient context, not hardcoded
         tags = first_call.kwargs["tags"]
-        assert "FOLFOX" in tags
+        assert any("FOLFOX" in t for t in tags)
         assert isinstance(tags, list)
 
     @pytest.mark.asyncio
@@ -198,7 +198,7 @@ class TestSearchClinicalTrialsTool:
 class TestDailyBriefingTool:
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
-    @patch("oncoteam.clinicaltrials_client.search_trials", new_callable=AsyncMock)
+    @patch("oncoteam.clinicaltrials_client.search_trials_adjacent", new_callable=AsyncMock)
     @patch("oncoteam.pubmed_client.search_pubmed", new_callable=AsyncMock)
     async def test_compiles_full_briefing(self, mock_pubmed, mock_ct, mock_store):
         mock_pubmed.return_value = MOCK_ARTICLES
@@ -217,7 +217,7 @@ class TestDailyBriefingTool:
 
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
-    @patch("oncoteam.clinicaltrials_client.search_trials", new_callable=AsyncMock)
+    @patch("oncoteam.clinicaltrials_client.search_trials_adjacent", new_callable=AsyncMock)
     @patch("oncoteam.pubmed_client.search_pubmed", new_callable=AsyncMock)
     async def test_handles_all_searches_failing(self, mock_pubmed, mock_ct, mock_store):
         mock_pubmed.side_effect = Exception("PubMed down")
@@ -235,7 +235,7 @@ class TestDailyBriefingTool:
 
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
-    @patch("oncoteam.clinicaltrials_client.search_trials", new_callable=AsyncMock)
+    @patch("oncoteam.clinicaltrials_client.search_trials_adjacent", new_callable=AsyncMock)
     @patch("oncoteam.pubmed_client.search_pubmed", new_callable=AsyncMock)
     async def test_stores_results_in_oncofiles(self, mock_pubmed, mock_ct, mock_store):
         mock_pubmed.return_value = MOCK_ARTICLES
@@ -328,8 +328,9 @@ class TestGetPatientContextTool:
 
         assert result["name"] == "Erika Fusekova"
         assert result["diagnosis_code"] == "C18.7"
-        assert result["treatment_regimen"] == "FOLFOX"
+        assert "FOLFOX" in result["treatment_regimen"]
         assert "HER2" in result["biomarkers"]
+        assert "KRAS" in result["biomarkers"]
 
     @pytest.mark.asyncio
     async def test_includes_hospitals_and_tumor_site(self):

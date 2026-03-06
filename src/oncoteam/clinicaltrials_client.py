@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 
 from .config import CTGOV_BASE_URL
 from .models import ClinicalTrial
+
+# Adjacent countries for SK patient (ordered by proximity to Bratislava)
+ADJACENT_COUNTRIES = ["Slovakia", "Czech Republic", "Austria", "Hungary"]
 
 
 async def search_trials(
@@ -34,6 +39,35 @@ async def search_trials(
         data = resp.json()
 
     return _parse_studies(data)
+
+
+async def search_trials_adjacent(
+    condition: str,
+    intervention: str | None = None,
+    max_per_country: int = 5,
+) -> list[ClinicalTrial]:
+    """Search recruiting trials across SK and adjacent countries.
+
+    Searches Slovakia, Czech Republic, Austria, and Hungary in parallel.
+    Deduplicates by NCT ID and returns combined results.
+    """
+    tasks = [
+        search_trials(condition, intervention, max_per_country, country)
+        for country in ADJACENT_COUNTRIES
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    seen_nct: set[str] = set()
+    combined: list[ClinicalTrial] = []
+    for result in results:
+        if isinstance(result, Exception):
+            continue
+        for trial in result:
+            if trial.nct_id not in seen_nct:
+                seen_nct.add(trial.nct_id)
+                combined.append(trial)
+
+    return combined
 
 
 def _parse_studies(data: dict) -> list[ClinicalTrial]:
