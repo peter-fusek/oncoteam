@@ -6,14 +6,15 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 160 tests
+uv run pytest          # 183 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
 
 ## Project structure
 
-- `src/oncoteam/server.py` — MCP server, 18 tools, system instructions with biomarker rules + QA protocol
+- `src/oncoteam/server.py` — MCP server, 18 tools + 7 dashboard API routes, system instructions with biomarker rules + QA protocol
+- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions}
 - `src/oncoteam/activity_logger.py` — @log_activity decorator, suppressed error buffer, diary helpers
 - `src/oncoteam/eligibility.py` — biomarker-aware trial eligibility checker
 - `src/oncoteam/github_client.py` — GitHub REST API for issue creation
@@ -48,7 +49,7 @@ uv run oncoteam-mcp    # stdio mode
 - Push to `main` auto-deploys via Railway
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
-- 160 tests, ruff clean
+- 183 tests, ruff clean
 
 ## Environment variables
 
