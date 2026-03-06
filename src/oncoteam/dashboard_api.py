@@ -12,6 +12,22 @@ from .patient_context import PATIENT
 VERSION = "0.6.0"
 
 
+def _extract_list(result: dict | list | str, key: str) -> list[dict]:
+    """Extract a list from an oncofiles response.
+
+    Oncofiles tools may return a plain JSON array (list), a dict with
+    the data under `key`, or a dict with an "entries" key.
+    """
+    if isinstance(result, list):
+        return result
+    if isinstance(result, dict):
+        if key in result:
+            return result[key]
+        if "entries" in result:
+            return result["entries"]
+    return []
+
+
 def _cors_json(data: dict, status_code: int = 200) -> JSONResponse:
     """Return JSONResponse with CORS headers for dashboard access."""
     response = JSONResponse(data, status_code=status_code)
@@ -48,7 +64,7 @@ async def api_activity(request: Request) -> JSONResponse:
         result = await oncofiles_client.search_activity_log(
             agent_id="oncoteam", limit=limit
         )
-        entries = result.get("entries", []) if isinstance(result, dict) else []
+        entries = _extract_list(result, "entries")
         return _cors_json({
             "entries": [
                 {
@@ -86,7 +102,7 @@ async def api_timeline(request: Request) -> JSONResponse:
     limit = int(request.query_params.get("limit", "50"))
     try:
         result = await oncofiles_client.list_treatment_events(limit=limit)
-        events = result.get("events", []) if isinstance(result, dict) else []
+        events = _extract_list(result, "events")
         return _cors_json({
             "events": [
                 {
@@ -122,7 +138,7 @@ async def api_research(request: Request) -> JSONResponse:
         result = await oncofiles_client.list_research_entries(
             source=source, limit=limit
         )
-        entries = result.get("entries", []) if isinstance(result, dict) else []
+        entries = _extract_list(result, "entries")
         return _cors_json({
             "entries": [
                 {
@@ -149,7 +165,7 @@ async def api_sessions(request: Request) -> JSONResponse:
         result = await oncofiles_client.search_conversations(
             entry_type="session_summary", limit=limit
         )
-        entries = result.get("entries", []) if isinstance(result, dict) else []
+        entries = _extract_list(result, "entries")
         return _cors_json({
             "sessions": [
                 {

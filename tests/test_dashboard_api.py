@@ -9,6 +9,7 @@ import pytest
 
 from oncoteam.dashboard_api import (
     VERSION,
+    _extract_list,
     api_activity,
     api_cors_preflight,
     api_patient,
@@ -311,6 +312,75 @@ async def test_api_sessions_handles_error(mock_search):
     response = await api_sessions(request)
 
     assert response.status_code == 502
+
+
+# ── CORS preflight ────────────────────────────────
+
+
+# ── _extract_list helper ──────────────────────────
+
+
+def test_extract_list_from_list():
+    assert _extract_list([{"a": 1}], "entries") == [{"a": 1}]
+
+
+def test_extract_list_from_dict_with_key():
+    assert _extract_list({"events": [{"b": 2}]}, "events") == [{"b": 2}]
+
+
+def test_extract_list_from_dict_with_entries_fallback():
+    assert _extract_list({"entries": [{"c": 3}]}, "items") == [{"c": 3}]
+
+
+def test_extract_list_from_empty():
+    assert _extract_list({}, "entries") == []
+    assert _extract_list("text", "entries") == []
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_api_timeline_handles_list_response(mock_list):
+    """Oncofiles may return a plain list instead of {events: [...]}."""
+    mock_list.return_value = [
+        {
+            "id": 1,
+            "event_date": "2026-02-14",
+            "event_type": "chemo_cycle",
+            "title": "mFOLFOX6 C1",
+            "notes": "First cycle",
+        },
+    ]
+    request = _make_request("/api/timeline")
+    response = await api_timeline(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    assert data["events"][0]["title"] == "mFOLFOX6 C1"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_activity_handles_list_response(mock_search):
+    """Oncofiles may return a plain list instead of {entries: [...]}."""
+    mock_search.return_value = [
+        {
+            "tool_name": "search_pubmed",
+            "status": "ok",
+            "duration_ms": 120,
+            "created_at": "2026-03-06T10:00:00Z",
+            "input_summary": "query='KRAS'",
+            "output_summary": "3 articles",
+            "error_message": None,
+        },
+    ]
+    request = _make_request("/api/activity")
+    response = await api_activity(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    assert data["entries"][0]["tool"] == "search_pubmed"
 
 
 # ── CORS preflight ────────────────────────────────
