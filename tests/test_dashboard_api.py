@@ -1,0 +1,327 @@
+"""Tests for dashboard API endpoints (GET /api/*)."""
+
+from __future__ import annotations
+
+import json
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from oncoteam.dashboard_api import (
+    VERSION,
+    api_activity,
+    api_cors_preflight,
+    api_patient,
+    api_research,
+    api_sessions,
+    api_stats,
+    api_status,
+    api_timeline,
+)
+
+# ── Helpers ───────────────────────────────────────
+
+
+def _make_request(path: str = "/api/test", query_string: str = "") -> object:
+    """Create a minimal Starlette-like Request stub."""
+    from starlette.datastructures import QueryParams
+
+    class FakeRequest:
+        def __init__(self, query: str):
+            self.query_params = QueryParams(query)
+
+    return FakeRequest(query_string)
+
+
+# ── /api/status ───────────────────────────────────
+
+
+@pytest.mark.anyio
+async def test_api_status_returns_ok():
+    request = _make_request("/api/status")
+    response = await api_status(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "ok"
+    assert data["server"] == "oncoteam"
+    assert data["version"] == VERSION
+    assert "session_id" in data
+    assert data["tools_count"] == 18
+    assert isinstance(data["tools"], list)
+
+
+@pytest.mark.anyio
+async def test_api_status_has_cors_headers():
+    request = _make_request("/api/status")
+    response = await api_status(request)
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert "GET" in response.headers["access-control-allow-methods"]
+
+
+# ── /api/activity ─────────────────────────────────
+
+
+MOCK_ACTIVITY_ENTRIES = {
+    "entries": [
+        {
+            "tool_name": "search_pubmed",
+            "status": "ok",
+            "duration_ms": 120,
+            "created_at": "2026-03-06T10:00:00Z",
+            "input_summary": "query='KRAS'",
+            "output_summary": "3 articles",
+            "error_message": None,
+        },
+        {
+            "tool_name": "daily_briefing",
+            "status": "ok",
+            "duration_ms": 2500,
+            "created_at": "2026-03-06T09:00:00Z",
+            "input_summary": "",
+            "output_summary": "5 articles, 3 trials",
+            "error_message": None,
+        },
+    ]
+}
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_activity_returns_entries(mock_search):
+    mock_search.return_value = MOCK_ACTIVITY_ENTRIES
+    request = _make_request("/api/activity")
+    response = await api_activity(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 2
+    assert data["entries"][0]["tool"] == "search_pubmed"
+    assert data["entries"][0]["duration_ms"] == 120
+    mock_search.assert_called_once_with(agent_id="oncoteam", limit=50)
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_activity_with_limit(mock_search):
+    mock_search.return_value = {"entries": []}
+    request = _make_request("/api/activity", "limit=5")
+    response = await api_activity(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 0
+    mock_search.assert_called_once_with(agent_id="oncoteam", limit=5)
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_activity_handles_oncofiles_error(mock_search):
+    mock_search.side_effect = Exception("connection refused")
+    request = _make_request("/api/activity")
+    response = await api_activity(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 502
+    assert "error" in data
+    assert data["entries"] == []
+
+
+# ── /api/stats ────────────────────────────────────
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_activity_stats", new_callable=AsyncMock)
+async def test_api_stats_returns_data(mock_stats):
+    mock_stats.return_value = {
+        "total_calls": 42,
+        "errors": 2,
+        "tools_used": ["search_pubmed", "daily_briefing"],
+        "avg_duration_ms": 350,
+    }
+    request = _make_request("/api/stats")
+    response = await api_stats(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total_calls"] == 42
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_activity_stats", new_callable=AsyncMock)
+async def test_api_stats_handles_error(mock_stats):
+    mock_stats.side_effect = Exception("timeout")
+    request = _make_request("/api/stats")
+    response = await api_stats(request)
+
+    assert response.status_code == 502
+
+
+# ── /api/timeline ─────────────────────────────────
+
+
+MOCK_EVENTS = {
+    "events": [
+        {
+            "id": 1,
+            "event_date": "2026-02-14",
+            "event_type": "chemo_cycle",
+            "title": "mFOLFOX6 C1",
+            "notes": "First cycle",
+        },
+    ]
+}
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_api_timeline_returns_events(mock_list):
+    mock_list.return_value = MOCK_EVENTS
+    request = _make_request("/api/timeline")
+    response = await api_timeline(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    assert data["events"][0]["type"] == "chemo_cycle"
+    assert data["events"][0]["title"] == "mFOLFOX6 C1"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_api_timeline_handles_error(mock_list):
+    mock_list.side_effect = Exception("fail")
+    request = _make_request("/api/timeline")
+    response = await api_timeline(request)
+
+    assert response.status_code == 502
+
+
+# ── /api/patient ──────────────────────────────────
+
+
+@pytest.mark.anyio
+async def test_api_patient_returns_profile():
+    request = _make_request("/api/patient")
+    response = await api_patient(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["name"] == "Erika Fusekova"
+    assert data["diagnosis_code"] == "C18.7"
+    assert data["biomarkers"]["KRAS"] == "mutant G12S (c.34G>A)"
+    assert data["staging"].startswith("IV (liver mets, peritoneal carcinomatosis")
+    assert isinstance(data["diagnosis_date"], str)
+
+
+@pytest.mark.anyio
+async def test_api_patient_has_cors():
+    request = _make_request("/api/patient")
+    response = await api_patient(request)
+    assert response.headers["access-control-allow-origin"] == "*"
+
+
+# ── /api/research ─────────────────────────────────
+
+
+MOCK_RESEARCH = {
+    "entries": [
+        {
+            "id": 10,
+            "source": "pubmed",
+            "external_id": "12345678",
+            "title": "KRAS G12S study",
+            "summary": "A study...",
+            "created_at": "2026-03-06T10:00:00Z",
+        },
+    ]
+}
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+async def test_api_research_returns_entries(mock_list):
+    mock_list.return_value = MOCK_RESEARCH
+    request = _make_request("/api/research")
+    response = await api_research(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    assert data["entries"][0]["source"] == "pubmed"
+    mock_list.assert_called_once_with(source=None, limit=20)
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+async def test_api_research_with_source_filter(mock_list):
+    mock_list.return_value = {"entries": []}
+    request = _make_request("/api/research", "source=clinicaltrials&limit=5")
+    response = await api_research(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 0
+    mock_list.assert_called_once_with(source="clinicaltrials", limit=5)
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+async def test_api_research_handles_error(mock_list):
+    mock_list.side_effect = Exception("fail")
+    request = _make_request("/api/research")
+    response = await api_research(request)
+
+    assert response.status_code == 502
+
+
+# ── /api/sessions ─────────────────────────────────
+
+
+MOCK_SESSIONS = {
+    "entries": [
+        {
+            "id": 5,
+            "title": "Session: Reviewed lab results",
+            "content": "Discussed CBC trends and SII calculation.",
+            "created_at": "2026-03-06T12:00:00Z",
+            "tags": "session,sid:20260306-abc123",
+        },
+    ]
+}
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_returns_entries(mock_search):
+    mock_search.return_value = MOCK_SESSIONS
+    request = _make_request("/api/sessions")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    assert data["sessions"][0]["title"] == "Session: Reviewed lab results"
+    mock_search.assert_called_once_with(entry_type="session_summary", limit=20)
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_handles_error(mock_search):
+    mock_search.side_effect = Exception("fail")
+    request = _make_request("/api/sessions")
+    response = await api_sessions(request)
+
+    assert response.status_code == 502
+
+
+# ── CORS preflight ────────────────────────────────
+
+
+@pytest.mark.anyio
+async def test_cors_preflight_returns_headers():
+    request = _make_request("/api/status")
+    response = await api_cors_preflight(request)
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert "GET" in response.headers["access-control-allow-methods"]
+    assert "OPTIONS" in response.headers["access-control-allow-methods"]
