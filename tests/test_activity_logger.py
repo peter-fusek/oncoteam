@@ -15,10 +15,47 @@ import pytest
 from oncoteam.activity_logger import (
     _summarize_input,
     _summarize_output,
+    _suppressed_errors,
     get_session_id,
+    get_suppressed_errors,
     log_activity,
     log_to_diary,
+    record_suppressed_error,
 )
+
+# ── Suppressed error buffer ──────────────────────
+
+
+class TestSuppressedErrors:
+    @pytest.fixture(autouse=True)
+    def _clear(self):
+        _suppressed_errors.clear()
+        yield
+        _suppressed_errors.clear()
+
+    def test_record_and_get(self):
+        record_suppressed_error("search_pubmed", "store_research", ValueError("conn lost"))
+        errors = get_suppressed_errors()
+        assert len(errors) == 1
+        assert errors[0]["tool"] == "search_pubmed"
+        assert errors[0]["phase"] == "store_research"
+        assert errors[0]["error"] == "conn lost"
+        assert errors[0]["type"] == "ValueError"
+        assert "timestamp" in errors[0]
+
+    def test_get_clears_buffer(self):
+        record_suppressed_error("t", "p", RuntimeError("x"))
+        assert len(get_suppressed_errors()) == 1
+        assert len(get_suppressed_errors()) == 0
+
+    def test_multiple_errors(self):
+        record_suppressed_error("a", "p1", ValueError("e1"))
+        record_suppressed_error("b", "p2", TypeError("e2"))
+        errors = get_suppressed_errors()
+        assert len(errors) == 2
+        assert errors[0]["tool"] == "a"
+        assert errors[1]["tool"] == "b"
+
 
 # ── get_session_id ────────────────────────────────
 
@@ -87,12 +124,18 @@ class TestLogActivityDecorator:
         side_effect=Exception("logging failed"),
     )
     async def test_fire_and_forget_on_success(self, mock_log):
+        _suppressed_errors.clear()
+
         @log_activity
         async def my_tool() -> str:
             return "ok"
 
         result = await my_tool()
         assert result == "ok"
+        # Logging failure should be captured in suppressed errors
+        errors = get_suppressed_errors()
+        assert len(errors) == 1
+        assert errors[0]["phase"] == "activity_log"
 
     @pytest.mark.asyncio
     @patch(
@@ -101,12 +144,19 @@ class TestLogActivityDecorator:
         side_effect=Exception("logging failed"),
     )
     async def test_fire_and_forget_on_error(self, mock_log):
+        _suppressed_errors.clear()
+
         @log_activity
         async def failing_tool() -> str:
             raise ValueError("boom")
 
         with pytest.raises(ValueError, match="boom"):
             await failing_tool()
+
+        # Logging failure should be captured in suppressed errors
+        errors = get_suppressed_errors()
+        assert len(errors) == 1
+        assert errors[0]["phase"] == "activity_log"
 
     @pytest.mark.asyncio
     @patch("oncoteam.activity_logger._write_tool_log", new_callable=AsyncMock)
@@ -183,6 +233,29 @@ class TestSummarizeInput:
         assert "a1" in result
         assert "b2" in result
 
+    def test_fetch_pubmed_article(self):
+        result = _summarize_input("fetch_pubmed_article", {"pmid": "12345678"})
+        assert "12345678" in result
+
+    def test_fetch_trial_details(self):
+        result = _summarize_input("fetch_trial_details", {"nct_id": "NCT00001234"})
+        assert "NCT00001234" in result
+
+    def test_check_trial_eligibility(self):
+        result = _summarize_input("check_trial_eligibility", {"nct_id": "NCT99999"})
+        assert "NCT99999" in result
+
+    def test_review_session(self):
+        result = _summarize_input("review_session", {"session_id": "20260306-abc"})
+        assert "20260306-abc" in result
+
+    def test_create_improvement_issue(self):
+        result = _summarize_input(
+            "create_improvement_issue",
+            {"repo": "instarea-sk/oncoteam", "title": "Fix something"},
+        )
+        assert "instarea-sk/oncoteam" in result
+
     def test_empty_inputs(self):
         assert _summarize_input("search_pubmed", {}) == ""
 
@@ -254,7 +327,10 @@ class TestLogToDiary:
         assert kwargs["content"] == "Test content"
         assert kwargs["entry_type"] == "decision"
         assert kwargs["participant"] == "oncoteam"
-        assert kwargs["tags"] == "tag1,tag2"
+        # Now includes session ID tag
+        assert "tag1" in kwargs["tags"]
+        assert "tag2" in kwargs["tags"]
+        assert kwargs["tags"].startswith("sid:")
 
     @pytest.mark.asyncio
     @patch("oncoteam.activity_logger.oncofiles_client.log_conversation", new_callable=AsyncMock)
@@ -265,14 +341,16 @@ class TestLogToDiary:
 
         kwargs = mock_log.call_args.kwargs
         assert kwargs["entry_type"] == "note"
-        assert kwargs["tags"] is None
+        # Even with no user tags, session ID tag should be present
+        assert kwargs["tags"].startswith("sid:")
 
     @pytest.mark.asyncio
     @patch("oncoteam.activity_logger.oncofiles_client.log_conversation", new_callable=AsyncMock)
-    async def test_no_session_id_passed(self, mock_log):
+    async def test_session_id_in_tags(self, mock_log):
         mock_log.return_value = {"id": 1}
 
         await log_to_diary("Title", "Content")
 
         kwargs = mock_log.call_args.kwargs
-        assert "session_id" not in kwargs
+        sid = get_session_id()
+        assert f"sid:{sid}" in kwargs["tags"]

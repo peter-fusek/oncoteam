@@ -2,17 +2,38 @@
 
 from __future__ import annotations
 
-import contextlib
 import inspect
 import json
 import time
-from datetime import date
+from datetime import UTC, date, datetime
 from functools import wraps
 from uuid import uuid4
 
 from . import oncofiles_client
 
 _session_id: str | None = None
+
+# ── Suppressed error buffer ──────────────────────
+
+_suppressed_errors: list[dict] = []
+
+
+def record_suppressed_error(tool: str, phase: str, error: Exception) -> None:
+    """Record an error that was suppressed (not raised) for later QA review."""
+    _suppressed_errors.append({
+        "tool": tool,
+        "phase": phase,
+        "error": str(error),
+        "type": type(error).__name__,
+        "timestamp": datetime.now(UTC).isoformat(),
+    })
+
+
+def get_suppressed_errors() -> list[dict]:
+    """Return and clear the suppressed error buffer."""
+    errors = list(_suppressed_errors)
+    _suppressed_errors.clear()
+    return errors
 
 
 def get_session_id() -> str:
@@ -33,14 +54,18 @@ def log_activity(fn):
             result = await fn(*args, **kwargs)
             elapsed = int((time.monotonic() - start) * 1000)
             bound = _bind_args(fn, args, kwargs)
-            with contextlib.suppress(Exception):
+            try:
                 await _write_tool_log(fn.__name__, bound, result, elapsed, "ok")
+            except Exception as log_err:
+                record_suppressed_error(fn.__name__, "activity_log", log_err)
             return result
         except Exception as exc:
             elapsed = int((time.monotonic() - start) * 1000)
             bound = _bind_args(fn, args, kwargs)
-            with contextlib.suppress(Exception):
+            try:
                 await _write_tool_log(fn.__name__, bound, None, elapsed, "error", str(exc))
+            except Exception as log_err:
+                record_suppressed_error(fn.__name__, "activity_log", log_err)
             raise
 
     return wrapper
@@ -99,6 +124,13 @@ def _summarize_input(tool_name: str, inputs: dict) -> str:
         "log_research_decision": lambda d: f"decision={d.get('decision', '')[:60]!r}",
         "log_session_note": lambda d: f"note={d.get('note', '')[:60]!r}",
         "summarize_session": lambda d: f"summary={d.get('summary', '')[:60]!r}",
+        "fetch_pubmed_article": lambda d: f"pmid={d.get('pmid')!r}",
+        "fetch_trial_details": lambda d: f"nct_id={d.get('nct_id')!r}",
+        "check_trial_eligibility": lambda d: f"nct_id={d.get('nct_id')!r}",
+        "review_session": lambda d: f"session_id={d.get('session_id')!r}",
+        "create_improvement_issue": lambda d: (
+            f"repo={d.get('repo')!r}, title={d.get('title', '')[:40]!r}"
+        ),
     }
     builder = builders.get(tool_name)
     if builder:
@@ -140,6 +172,22 @@ def _summarize_output(tool_name: str, output: str | None) -> str:
         "view_document": lambda d: "document content returned",
         "analyze_labs": lambda d: "lab analysis returned",
         "compare_labs": lambda d: "lab comparison returned",
+        "fetch_pubmed_article": lambda d: (
+            f"article: {d['article'].get('title', '')[:60]}"
+            if "article" in d else d.get("error", "")
+        ),
+        "fetch_trial_details": lambda d: (
+            f"trial: {d['trial'].get('title', '')[:60]}"
+            if "trial" in d else d.get("error", "")
+        ),
+        "check_trial_eligibility": lambda d: (
+            f"eligible={d.get('eligibility', {}).get('eligible', '?')}"
+        ),
+        "review_session": lambda d: (
+            f"{d.get('stats', {}).get('total_calls', 0)} calls, "
+            f"{d.get('stats', {}).get('errors', 0)} errors"
+        ),
+        "create_improvement_issue": lambda d: f"#{d.get('number', '?')} created",
     }
     builder = builders.get(tool_name)
     if builder:
@@ -157,10 +205,12 @@ async def log_to_diary(
     tags: list[str] | None = None,
 ) -> None:
     """Write to conversation_entries via existing log_conversation tool."""
+    session_tag = f"sid:{get_session_id()}"
+    all_tags = [session_tag, *(tags or [])]
     await oncofiles_client.log_conversation(
         title=title,
         content=content,
         entry_type=entry_type,
         participant="oncoteam",
-        tags=",".join(tags) if tags else None,
+        tags=",".join(all_tags),
     )

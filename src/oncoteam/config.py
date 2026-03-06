@@ -23,3 +23,6 @@ MCP_TRANSPORT: str = os.environ.get("MCP_TRANSPORT", "stdio")
 MCP_HOST: str = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT: int = int(os.environ.get("MCP_PORT", os.environ.get("PORT", "8000")))
 MCP_BEARER_TOKEN: str = os.environ.get("MCP_BEARER_TOKEN", "")
+
+# GitHub API
+GITHUB_TOKEN: str = os.environ.get("GITHUB_TOKEN", "")

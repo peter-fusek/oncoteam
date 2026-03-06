@@ -1,14 +1,19 @@
 from __future__ import annotations
 
-import contextlib
 import json
 
 from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from . import clinicaltrials_client, oncofiles_client, pubmed_client
-from .activity_logger import log_activity, log_to_diary
+from . import clinicaltrials_client, github_client, oncofiles_client, pubmed_client
+from .activity_logger import (
+    get_session_id,
+    get_suppressed_errors,
+    log_activity,
+    log_to_diary,
+    record_suppressed_error,
+)
 from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .eligibility import check_eligibility
 from .models import ResearchSource
@@ -98,7 +103,17 @@ mcp = FastMCP(
         "clinical/research decision.\n"
         "3. Call log_session_note() for important observations or context worth preserving.\n"
         "4. All tool calls are automatically logged for audit purposes.\n\n"
-        "IMPORTANT: Never skip the summarize_session() call — it is the primary audit trail."
+        "IMPORTANT: Never skip the summarize_session() call — it is the primary audit trail.\n\n"
+        #
+        # --- QA REVIEW PROTOCOL ---
+        #
+        "QA REVIEW PROTOCOL:\n"
+        "After every session (before summarize_session), or when asked to review:\n"
+        "1. Call review_session() to get the full timeline and error data.\n"
+        "2. Analyze: errors, suppressed errors, slow tools, failed storage, missing data.\n"
+        "3. For actionable findings, call create_improvement_issue() with the right repo.\n"
+        "4. Log the QA summary via log_session_note(tags=['qa_review']).\n"
+        "5. Then call summarize_session() as usual."
     ),
     auth=auth,
 )
@@ -136,7 +151,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
 
     # Store each article in oncofiles (don't fail search if storage fails)
     for article in articles:
-        with contextlib.suppress(Exception):
+        try:
             await oncofiles_client.add_research_entry(
                 source=ResearchSource.PUBMED,
                 external_id=article.pmid,
@@ -145,6 +160,8 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
                 tags=get_context_tags(),
                 raw_data=article.model_dump_json(),
             )
+        except Exception as e:
+            record_suppressed_error("search_pubmed", "store_research", e)
 
     return json.dumps(
         {
@@ -182,7 +199,7 @@ async def search_clinical_trials(
     )
 
     for trial in trials:
-        with contextlib.suppress(Exception):
+        try:
             await oncofiles_client.add_research_entry(
                 source=ResearchSource.CLINICALTRIALS,
                 external_id=trial.nct_id,
@@ -191,6 +208,8 @@ async def search_clinical_trials(
                 tags=trial.conditions[:5],
                 raw_data=trial.model_dump_json(),
             )
+        except Exception as e:
+            record_suppressed_error("search_clinical_trials", "store_research", e)
 
     return json.dumps(
         {
@@ -228,7 +247,7 @@ async def search_clinical_trials_adjacent(
     )
 
     for trial in trials:
-        with contextlib.suppress(Exception):
+        try:
             await oncofiles_client.add_research_entry(
                 source=ResearchSource.CLINICALTRIALS,
                 external_id=trial.nct_id,
@@ -237,6 +256,8 @@ async def search_clinical_trials_adjacent(
                 tags=["adjacent_countries", *trial.conditions[:3]],
                 raw_data=trial.model_dump_json(),
             )
+        except Exception as e:
+            record_suppressed_error("search_clinical_trials_adjacent", "store_research", e)
 
     return json.dumps(
         {
@@ -329,7 +350,7 @@ async def daily_briefing() -> str:
                 results["pubmed"].append(
                     {"query": term, "pmid": article.pmid, "title": article.title}
                 )
-                with contextlib.suppress(Exception):
+                try:
                     await oncofiles_client.add_research_entry(
                         source=ResearchSource.PUBMED,
                         external_id=article.pmid,
@@ -338,6 +359,8 @@ async def daily_briefing() -> str:
                         tags=["daily_briefing"],
                         raw_data=article.model_dump_json(),
                     )
+                except Exception as e:
+                    record_suppressed_error("daily_briefing", "store_pubmed", e)
         except Exception:
             results["pubmed"].append({"query": term, "error": "search failed"})
 
@@ -351,7 +374,7 @@ async def daily_briefing() -> str:
             results["clinical_trials"].append(
                 {"nct_id": trial.nct_id, "title": trial.title, "status": trial.status}
             )
-            with contextlib.suppress(Exception):
+            try:
                 await oncofiles_client.add_research_entry(
                     source=ResearchSource.CLINICALTRIALS,
                     external_id=trial.nct_id,
@@ -360,6 +383,8 @@ async def daily_briefing() -> str:
                     tags=["daily_briefing", "adjacent_countries"],
                     raw_data=trial.model_dump_json(),
                 )
+            except Exception as e:
+                record_suppressed_error("daily_briefing", "store_trial", e)
     except Exception:
         results["clinical_trials"].append({"error": "search failed"})
 
@@ -419,9 +444,11 @@ async def get_patient_context() -> str:
         JSON with patient diagnosis, treatment, biomarkers (enriched from oncofiles), and hospitals.
     """
     data = PATIENT.model_dump()
-    with contextlib.suppress(Exception):
+    try:
         genetic = await get_genetic_profile()
         data["biomarkers"] = genetic
+    except Exception as e:
+        record_suppressed_error("get_patient_context", "genetic_profile", e)
     return json.dumps(data, default=str)
 
 
@@ -554,12 +581,122 @@ async def summarize_session(
     return "Session summary logged."
 
 
+# ── QA Tools ────────────────────────────────────
+
+
+@mcp.tool()
+@log_activity
+async def review_session(session_id: str | None = None) -> str:
+    """Review a session: reconstruct timeline, surface errors, compute stats.
+
+    Args:
+        session_id: Session to review (default: current session).
+
+    Returns:
+        JSON with timeline, stats, errors, suppressed_errors, and session_summary.
+    """
+    sid = session_id or get_session_id()
+
+    # Fetch activity log for this session
+    activity = {}
+    try:
+        activity = await oncofiles_client.search_activity_log(session_id=sid)
+    except Exception as e:
+        record_suppressed_error("review_session", "fetch_activity", e)
+
+    # Fetch session conversations
+    conversations = {}
+    try:
+        conversations = await oncofiles_client.search_conversations(tags=f"sid:{sid}")
+    except Exception as e:
+        record_suppressed_error("review_session", "fetch_conversations", e)
+
+    # Get suppressed errors from in-memory buffer
+    suppressed = get_suppressed_errors()
+
+    # Build timeline and stats
+    entries = activity.get("entries", []) if isinstance(activity, dict) else []
+    timeline = [
+        {
+            "tool": e.get("tool_name"),
+            "status": e.get("status"),
+            "duration_ms": e.get("duration_ms"),
+            "input": e.get("input_summary"),
+            "output": e.get("output_summary"),
+            "error": e.get("error_message"),
+            "timestamp": e.get("created_at"),
+        }
+        for e in entries
+    ]
+
+    error_entries = [e for e in entries if e.get("status") == "error"]
+    durations = [e.get("duration_ms", 0) for e in entries if e.get("duration_ms")]
+    tools_used = list({e.get("tool_name") for e in entries if e.get("tool_name")})
+
+    stats = {
+        "session_id": sid,
+        "total_calls": len(entries),
+        "errors": len(error_entries),
+        "suppressed_errors": len(suppressed),
+        "avg_duration_ms": int(sum(durations) / len(durations)) if durations else 0,
+        "tools_used": tools_used,
+    }
+
+    # Extract session summary from conversations if available
+    conv_entries = conversations.get("entries", []) if isinstance(conversations, dict) else []
+    session_summary = None
+    for ce in conv_entries:
+        if ce.get("entry_type") == "session_summary":
+            session_summary = ce.get("content")
+            break
+
+    return json.dumps({
+        "timeline": timeline,
+        "stats": stats,
+        "errors": [
+            {
+                "tool": e.get("tool_name"),
+                "error": e.get("error_message"),
+                "timestamp": e.get("created_at"),
+            }
+            for e in error_entries
+        ],
+        "suppressed_errors": suppressed,
+        "session_summary": session_summary,
+    })
+
+
+@mcp.tool()
+@log_activity
+async def create_improvement_issue(
+    repo: str, title: str, body: str, labels: list[str] | None = None
+) -> str:
+    """Create a GitHub issue for a usage-driven improvement idea.
+
+    Args:
+        repo: GitHub repo ("instarea-sk/oncoteam" or "instarea-sk/oncofiles")
+        title: Issue title (concise)
+        body: Markdown body with context
+        labels: GitHub labels (default: ["enhancement"])
+
+    Returns:
+        JSON with issue number and URL.
+    """
+    result = await github_client.create_issue(
+        repo=repo,
+        title=title,
+        body=body,
+        labels=labels or ["enhancement"],
+    )
+    return json.dumps(result)
+
+
 # ── Health check ────────────────────────────────
 
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.4.0"})
+    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.6.0"})
 
 
 # ── Entry point ─────────────────────────────────
