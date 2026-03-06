@@ -421,7 +421,9 @@ async def get_lab_trends(limit: int = 10) -> str:
     """
     try:
         result = await oncofiles_client.search_documents(text="lab", category="labs", limit=limit)
-        return json.dumps({"source": "oncofiles", "lab_documents": result})
+        docs = result.get("documents", []) if isinstance(result, dict) else result
+        lab_data = {"documents": docs, "total": len(docs)}
+        return json.dumps({"source": "oncofiles", "lab_documents": lab_data})
     except Exception as e:
         return json.dumps({"error": str(e), "hint": "Oncofiles MCP may not be available"})
 
@@ -440,7 +442,9 @@ async def search_documents(text: str, category: str | None = None) -> str:
     """
     try:
         result = await oncofiles_client.search_documents(text, category)
-        return json.dumps({"query": text, "category": category, "results": result})
+        docs = result.get("documents", []) if isinstance(result, dict) else result
+        results = {"documents": docs, "total": len(docs)}
+        return json.dumps({"query": text, "category": category, "results": results})
     except Exception as e:
         return json.dumps({"error": str(e)})
 
