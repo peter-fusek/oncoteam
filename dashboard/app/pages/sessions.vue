@@ -10,6 +10,7 @@ const { data: sessions, refresh } = await fetchApi<{
     tags: string[] | null
   }>
   total: number
+  error?: string
 }>('/sessions?limit=50')
 
 const drilldown = useDrilldown()
@@ -24,6 +25,8 @@ const drilldown = useDrilldown()
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
+
+    <ApiErrorBanner :error="sessions?.error" />
 
     <div v-if="sessions?.sessions?.length" class="space-y-3">
       <div
@@ -49,7 +52,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else class="text-gray-600 text-center py-16 text-sm">
+    <div v-else-if="!sessions?.error" class="text-gray-600 text-center py-16 text-sm">
       No session summaries yet
     </div>
   </div>

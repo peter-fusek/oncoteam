@@ -21,6 +21,7 @@ from .dashboard_api import (
     api_briefings,
     api_cors_preflight,
     api_detail,
+    api_diagnostics,
     api_labs,
     api_patient,
     api_protocol,
@@ -738,6 +739,7 @@ _API_ROUTES = [
     ("/api/briefings", api_briefings),
     ("/api/toxicity", api_toxicity),
     ("/api/labs", api_labs),
+    ("/api/diagnostics", api_diagnostics),
 ]
 
 _POST_ROUTES = {"/api/toxicity", "/api/labs"}

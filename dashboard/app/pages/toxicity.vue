@@ -9,6 +9,7 @@ const { data: toxicity, refresh } = await fetchApi<{
     metadata: Record<string, number>
   }>
   total: number
+  error?: string
 }>('/toxicity')
 
 const grades = [0, 1, 2, 3, 4]
@@ -105,6 +106,8 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
+
+    <ApiErrorBanner :error="toxicity?.error" />
 
     <!-- Log Form -->
     <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
@@ -231,7 +234,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       </div>
     </div>
 
-    <div v-else class="text-gray-600 text-center py-8 text-sm">
+    <div v-else-if="!toxicity?.error" class="text-gray-600 text-center py-8 text-sm">
       No toxicity entries yet — log your first entry above
     </div>
   </div>

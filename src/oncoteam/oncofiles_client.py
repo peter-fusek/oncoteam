@@ -5,11 +5,14 @@ import json
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 
-from .config import ONCOFILES_MCP_URL
+from .config import ONCOFILES_MCP_TOKEN, ONCOFILES_MCP_URL
 
 
 def _get_transport() -> StreamableHttpTransport:
-    return StreamableHttpTransport(ONCOFILES_MCP_URL)
+    # ONCOFILES_MCP_TOKEN: passed as bearer token string to StreamableHttpTransport
+    # Requires oncofiles to accept StaticTokenVerifier alongside or instead of OAuth
+    auth = ONCOFILES_MCP_TOKEN if ONCOFILES_MCP_TOKEN else None
+    return StreamableHttpTransport(ONCOFILES_MCP_URL, auth=auth)
 
 
 async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:

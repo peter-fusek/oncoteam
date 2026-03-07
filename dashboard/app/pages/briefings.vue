@@ -10,6 +10,7 @@ const { data: briefings, refresh } = await fetchApi<{
     tags: string[] | string
   }>
   total: number
+  error?: string
 }>('/briefings')
 
 const { data: autonomous } = await fetchApi<{
@@ -64,6 +65,8 @@ const allQuestions = computed(() => {
       </div>
     </div>
 
+    <ApiErrorBanner :error="briefings?.error" />
+
     <!-- Questions for Oncologist (aggregated) -->
     <div v-if="allQuestions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
       <div class="flex items-center gap-2 mb-3">
@@ -106,7 +109,7 @@ const allQuestions = computed(() => {
       />
     </div>
 
-    <div v-else class="text-gray-600 text-center py-16 text-sm">
+    <div v-else-if="!briefings?.error" class="text-gray-600 text-center py-16 text-sm">
       No briefings yet — autonomous agent hasn't produced any outputs
     </div>
   </div>

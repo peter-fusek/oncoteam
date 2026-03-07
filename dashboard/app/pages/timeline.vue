@@ -10,6 +10,7 @@ const { data: timeline, refresh } = await fetchApi<{
     notes: string
   }>
   total: number
+  error?: string
 }>('/timeline')
 
 const { data: protocol } = await fetchApi<{
@@ -92,6 +93,8 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
+    <ApiErrorBanner :error="timeline?.error" />
+
     <div v-if="timeline?.events?.length" class="relative pl-6">
       <!-- Vertical line -->
       <div class="absolute left-2 top-2 bottom-2 w-px bg-gray-800" />
@@ -134,7 +137,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else class="text-gray-600 text-center py-16 text-sm">
+    <div v-else-if="!timeline?.error" class="text-gray-600 text-center py-16 text-sm">
       No treatment events
     </div>
   </div>

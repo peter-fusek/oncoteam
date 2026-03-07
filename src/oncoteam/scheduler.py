@@ -19,9 +19,11 @@ def _create_scheduler():
     from .autonomous_tasks import (
         run_daily_research,
         run_file_scan,
+        run_lab_sync,
         run_mtb_preparation,
         run_pre_cycle_check,
         run_response_assessment,
+        run_toxicity_extraction,
         run_trial_monitor,
         run_tumor_marker_review,
         run_weekly_briefing,
@@ -50,6 +52,16 @@ def _create_scheduler():
 
     # File scan (new oncofiles documents): every 2 hours
     scheduler.add_job(run_file_scan, IntervalTrigger(hours=2), id="file_scan")
+
+    # === Data pipeline schedule ===
+
+    # Lab sync: every 6 hours (extract lab values from documents)
+    scheduler.add_job(run_lab_sync, IntervalTrigger(hours=6), id="lab_sync")
+
+    # Toxicity extraction: daily at 08:00 UTC
+    scheduler.add_job(
+        run_toxicity_extraction, CronTrigger(hour=8, minute=0), id="toxicity_extraction"
+    )
 
     # === Reporting schedule ===
 

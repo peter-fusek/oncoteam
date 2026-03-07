@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import time
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from . import oncofiles_client
-from .activity_logger import get_session_id, record_suppressed_error
+from .activity_logger import get_session_id, get_suppressed_errors, record_suppressed_error
 from .clinical_protocol import (
     DOSE_MODIFICATION_RULES,
     LAB_SAFETY_THRESHOLDS,
@@ -20,7 +21,7 @@ from .clinical_protocol import (
     TREATMENT_MILESTONES,
     WATCHED_TRIALS,
 )
-from .config import AUTONOMOUS_ENABLED
+from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
 from .patient_context import PATIENT
 
 VERSION = "0.7.0"
@@ -75,6 +76,15 @@ def _extract_list(result: dict | list | str, key: str) -> list[dict]:
         if "entries" in result:
             return result["entries"]
     return []
+
+
+def _build_external_url(source: str, external_id: str) -> str | None:
+    """Build external URL for PubMed/ClinicalTrials.gov entries."""
+    if source == "pubmed" and external_id:
+        return f"https://pubmed.ncbi.nlm.nih.gov/{external_id}/"
+    if source == "clinicaltrials" and external_id:
+        return f"https://clinicaltrials.gov/study/{external_id}"
+    return None
 
 
 def _cors_json(data: dict, status_code: int = 200) -> JSONResponse:
@@ -212,6 +222,9 @@ async def api_research(request: Request) -> JSONResponse:
                         "title": e.get("title"),
                         "summary": e.get("summary"),
                         "date": e.get("created_at"),
+                        "external_url": _build_external_url(
+                            e.get("source", ""), e.get("external_id", "")
+                        ),
                     }
                     for e in entries
                 ],
@@ -317,6 +330,16 @@ async def api_autonomous(request: Request) -> JSONResponse:
                     "id": "mtb_preparation",
                     "schedule": "Friday 14:00 UTC",
                     "description": "Tumor board preparation",
+                },
+                {
+                    "id": "lab_sync",
+                    "schedule": "every 6 hours",
+                    "description": "Extract lab values from documents",
+                },
+                {
+                    "id": "toxicity_extraction",
+                    "schedule": "daily 08:00 UTC",
+                    "description": "Extract toxicity from visit reports",
                 },
             ]
             data["jobs"] = jobs
@@ -478,6 +501,31 @@ async def api_labs(request: Request) -> JSONResponse:
         result = await oncofiles_client.list_treatment_events(event_type="lab_result", limit=limit)
         events = _filter_test(_extract_list(result, "events"), request)
 
+        # Fallback: if no structured lab_result events, try analyze_labs
+        if not events:
+            try:
+                analysis = await oncofiles_client.analyze_labs(limit=limit)
+                if isinstance(analysis, dict):
+                    # analyze_labs may return structured results we can display
+                    lab_sets = analysis.get("lab_results", analysis.get("results", []))
+                    if isinstance(lab_sets, list):
+                        for lab in lab_sets:
+                            if isinstance(lab, dict) and lab.get("date"):
+                                events.append(
+                                    {
+                                        "event_date": lab["date"],
+                                        "metadata": {
+                                            k: v
+                                            for k, v in lab.items()
+                                            if k not in ("date", "id", "document_id")
+                                        },
+                                        "notes": lab.get("notes", "From document analysis"),
+                                        "id": lab.get("id"),
+                                    }
+                                )
+            except Exception as fallback_err:
+                record_suppressed_error("api_labs", "analyze_labs_fallback", fallback_err)
+
         # Extract values and check against safety thresholds
         entries = []
         for e in events:
@@ -635,6 +683,36 @@ async def api_detail(request: Request) -> JSONResponse:
     except Exception as e:
         record_suppressed_error("api_detail", f"{detail_type}/{detail_id}", e)
         return _cors_json({"error": str(e)}, status_code=502)
+
+
+async def api_diagnostics(request: Request) -> JSONResponse:
+    """GET /api/diagnostics — probe oncofiles connectivity and report health."""
+    checks: list[dict] = []
+    probes = [
+        ("treatment_events", oncofiles_client.list_treatment_events, {"limit": 1}, "events"),
+        ("research_entries", oncofiles_client.list_research_entries, {"limit": 1}, "entries"),
+        ("conversations", oncofiles_client.search_conversations, {"limit": 1}, "entries"),
+        ("activity_log", oncofiles_client.search_activity_log, {"limit": 1}, "entries"),
+    ]
+    for name, fn, kwargs, key in probes:
+        try:
+            t0 = time.time()
+            result = await fn(**kwargs)
+            ms = int((time.time() - t0) * 1000)
+            count = len(_extract_list(result, key))
+            checks.append({"name": name, "ok": True, "ms": ms, "sample_count": count})
+        except Exception as e:
+            checks.append({"name": name, "ok": False, "error": str(e)})
+
+    return _cors_json(
+        {
+            "healthy": all(c["ok"] for c in checks),
+            "checks": checks,
+            "oncofiles_url": (ONCOFILES_MCP_URL[:30] + "...") if ONCOFILES_MCP_URL else "NOT SET",
+            "autonomous_enabled": AUTONOMOUS_ENABLED,
+            "suppressed_errors": get_suppressed_errors()[-10:],
+        }
+    )
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

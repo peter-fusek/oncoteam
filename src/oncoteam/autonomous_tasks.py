@@ -260,6 +260,46 @@ Structure the briefing with clear sections:
     return result
 
 
+async def run_lab_sync() -> dict:
+    """Extract lab values from oncofiles documents and create lab_result treatment events."""
+    prompt = """\
+Extract structured lab data from uploaded documents and store as treatment events.
+
+Instructions:
+1. Search documents for lab results (search "lab", "krvny obraz", "biochemia")
+2. For each lab result document found, extract key values:
+   - ANC, PLT, creatinine, ALT, AST, bilirubin, CEA, CA 19-9
+3. Use get_treatment_timeline to check if a lab_result event already exists for that date
+4. If not, create one via store_briefing noting which values were extracted
+5. Store a briefing summarizing what was synced
+
+Focus on creating structured data from unstructured lab documents.
+"""
+    result = await run_autonomous_task(prompt, max_turns=8, task_name="lab_sync")
+    await _log_task("lab_sync", result)
+    return result
+
+
+async def run_toxicity_extraction() -> dict:
+    """Extract toxicity grades from doctor visit notes/reports."""
+    prompt = """\
+Search for doctor visit notes and extract NCI-CTCAE toxicity assessments.
+
+Instructions:
+1. Search documents for visit reports, discharge summaries, consultation notes
+   (search "konzultacia", "vizita", "prepustenie", "kontrola")
+2. For each document with toxicity data, extract grades for:
+   - Peripheral neuropathy, diarrhea, mucositis, fatigue, HFS, nausea/vomiting
+3. Note ECOG and weight if mentioned
+4. Store a briefing summarizing extracted toxicity data with dates
+
+This creates the baseline toxicity history from existing medical documents.
+"""
+    result = await run_autonomous_task(prompt, max_turns=8, task_name="toxicity_extraction")
+    await _log_task("toxicity_extraction", result)
+    return result
+
+
 async def run_mtb_preparation() -> dict:
     """Prepare tumor board (MTB) presentation summary."""
     prompt = """\

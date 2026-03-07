@@ -222,3 +222,78 @@ async def test_api_labs_post_requires_date():
     request = FakeRequest("POST", body=body)
     response = await api_labs(request)
     assert response.status_code == 400
+
+
+# ── Labs analyze_labs fallback ─────────────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.analyze_labs",
+    new_callable=AsyncMock,
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_fallback_to_analyze_labs(mock_list, mock_analyze):
+    """When no lab_result events exist, fallback to analyze_labs."""
+    mock_list.return_value = []  # Empty — no structured events
+    mock_analyze.return_value = {
+        "lab_results": [
+            {"date": "2026-02-20", "ANC": 3200, "PLT": 200000, "notes": "Pre-chemo"},
+            {"date": "2026-03-05", "ANC": 1800, "PLT": 120000},
+        ]
+    }
+
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 2
+    assert data["entries"][0]["date"] == "2026-02-20"
+    assert data["entries"][0]["values"]["ANC"] == 3200
+    mock_analyze.assert_called_once()
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.analyze_labs",
+    new_callable=AsyncMock,
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_fallback_skipped_when_events_exist(mock_list, mock_analyze):
+    """Fallback should not be called when structured events exist."""
+    mock_list.return_value = MOCK_LAB_EVENTS
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 2
+    mock_analyze.assert_not_called()
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.analyze_labs",
+    new_callable=AsyncMock,
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_fallback_error_handled(mock_list, mock_analyze):
+    """If analyze_labs also fails, return empty gracefully."""
+    mock_list.return_value = []
+    mock_analyze.side_effect = Exception("oncofiles unreachable")
+
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 0

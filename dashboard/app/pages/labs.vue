@@ -10,6 +10,7 @@ const { data: labs, refresh } = await fetchApi<{
     alerts: Array<{ param: string; value: number; threshold: number; action: string }>
   }>
   total: number
+  error?: string
 }>('/labs')
 
 const { data: protocol } = await fetchApi<{
@@ -114,6 +115,8 @@ async function submitLab() {
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
       </div>
     </div>
+
+    <ApiErrorBanner :error="labs?.error" />
 
     <!-- Alerts Banner -->
     <div v-if="allAlerts.length" class="rounded-xl border border-red-500/30 bg-red-500/5 p-4">

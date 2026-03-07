@@ -9,8 +9,10 @@ const { data: research, refresh } = await fetchApi<{
     title: string
     summary: string
     date: string | null
+    external_url: string | null
   }>
   total: number
+  error?: string
 }>('/research?limit=50')
 
 const sourceFilter = ref<string | null>(null)
@@ -62,6 +64,8 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
+    <ApiErrorBanner :error="research?.error" />
+
     <div v-if="filtered.length" class="space-y-2">
       <div
         v-for="entry in filtered"
@@ -84,6 +88,15 @@ const drilldown = useDrilldown()
               <span v-if="entry.external_id" class="text-xs font-mono text-gray-500">
                 {{ entry.external_id }}
               </span>
+              <a
+                v-if="entry.external_url"
+                :href="entry.external_url"
+                target="_blank"
+                class="text-xs text-teal-500 hover:text-teal-400"
+                @click.stop
+              >
+                View source ↗
+              </a>
             </div>
             <p v-if="entry.summary" class="text-xs text-gray-500 mt-2 line-clamp-2">
               {{ entry.summary }}
@@ -93,7 +106,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else class="text-gray-600 text-center py-16 text-sm">
+    <div v-else-if="!research?.error" class="text-gray-600 text-center py-16 text-sm">
       No research entries found
     </div>
   </div>

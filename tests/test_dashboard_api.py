@@ -9,6 +9,7 @@ import pytest
 
 from oncoteam.dashboard_api import (
     VERSION,
+    _build_external_url,
     _extract_list,
     _is_test_entry,
     api_activity,
@@ -336,6 +337,25 @@ def test_extract_list_from_dict_with_entries_fallback():
 def test_extract_list_from_empty():
     assert _extract_list({}, "entries") == []
     assert _extract_list("text", "entries") == []
+
+
+# ── _build_external_url helper ───────────────────
+
+
+def test_build_external_url_pubmed():
+    assert _build_external_url("pubmed", "12345678") == "https://pubmed.ncbi.nlm.nih.gov/12345678/"
+
+
+def test_build_external_url_clinicaltrials():
+    assert (
+        _build_external_url("clinicaltrials", "NCT00001234")
+        == "https://clinicaltrials.gov/study/NCT00001234"
+    )
+
+
+def test_build_external_url_no_source():
+    assert _build_external_url("", "12345678") is None
+    assert _build_external_url("pubmed", "") is None
 
 
 @pytest.mark.anyio

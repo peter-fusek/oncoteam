@@ -22,7 +22,7 @@ class TestSchedulerLifespan:
             async with autonomous_lifespan(None) as ctx:
                 scheduler = ctx["scheduler"]
                 jobs = scheduler.get_jobs()
-                assert len(jobs) == 8
+                assert len(jobs) == 10
 
                 job_ids = {j.id for j in jobs}
                 assert "pre_cycle_check" in job_ids
@@ -33,6 +33,8 @@ class TestSchedulerLifespan:
                 assert "file_scan" in job_ids
                 assert "tumor_marker_review" in job_ids
                 assert "response_assessment" in job_ids
+                assert "lab_sync" in job_ids
+                assert "toxicity_extraction" in job_ids
 
     @pytest.mark.asyncio
     async def test_scheduler_shuts_down(self):
