@@ -64,6 +64,8 @@ function getMetIcon(met: string): string {
   }
   return 'i-lucide-map-pin'
 }
+
+const drilldown = useDrilldown()
 </script>
 
 <template>
@@ -100,6 +102,7 @@ function getMetIcon(met: string): string {
           :name="b.name"
           :value="b.value"
           :implication="b.implication"
+          @drilldown="drilldown.open({ type: 'biomarker', id: b.name, label: b.name })"
         />
       </div>
     </div>

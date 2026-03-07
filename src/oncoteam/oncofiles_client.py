@@ -212,6 +212,14 @@ async def get_activity_stats(
     return await call_oncofiles("get_activity_stats", args)
 
 
+async def get_research_entry(entry_id: int) -> dict:
+    return await call_oncofiles("get_research_entry", {"entry_id": entry_id})
+
+
+async def get_conversation(entry_id: int) -> dict:
+    return await call_oncofiles("get_conversation", {"entry_id": entry_id})
+
+
 # ── Conversation wrappers ──────────────────────
 
 

@@ -20,6 +20,7 @@ from .dashboard_api import (
     api_autonomous,
     api_briefings,
     api_cors_preflight,
+    api_detail,
     api_labs,
     api_patient,
     api_protocol,
@@ -746,6 +747,10 @@ for _path, _handler in _API_ROUTES:
     if _path in _POST_ROUTES:
         mcp.custom_route(_path, methods=["POST"])(_handler)
     mcp.custom_route(_path, methods=["OPTIONS"])(api_cors_preflight)
+
+# Parameterized detail route (can't go in the loop above)
+mcp.custom_route("/api/detail/{type}/{id}", methods=["GET"])(api_detail)
+mcp.custom_route("/api/detail/{type}/{id}", methods=["OPTIONS"])(api_cors_preflight)
 
 
 # ── Entry point ─────────────────────────────────

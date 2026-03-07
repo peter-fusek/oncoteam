@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 
 from starlette.requests import Request
@@ -517,6 +518,123 @@ async def api_labs(request: Request) -> JSONResponse:
     except Exception as e:
         record_suppressed_error("api_labs", "fetch", e)
         return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
+
+
+async def api_detail(request: Request) -> JSONResponse:
+    """GET /api/detail/{type}/{id} — fetch full detail for any data element."""
+    detail_type = request.path_params.get("type", "")
+    detail_id = request.path_params.get("id", "")
+
+    try:
+        data: dict = {}
+        source: dict = {"oncofiles_id": None, "gdrive_file_id": None, "gdrive_url": None}
+        related: list[dict] = []
+
+        if detail_type == "treatment_event":
+            raw = await oncofiles_client.get_treatment_event(int(detail_id))
+            data = raw if isinstance(raw, dict) else {"raw": raw}
+            source["oncofiles_id"] = int(detail_id)
+            # Parse metadata if string
+            meta = data.get("metadata", {})
+            if isinstance(meta, str):
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
+                    data["metadata"] = json.loads(meta)
+
+        elif detail_type == "research":
+            try:
+                raw = await oncofiles_client.get_research_entry(int(detail_id))
+                data = raw if isinstance(raw, dict) else {"raw": raw}
+            except Exception:
+                # Fallback: fetch list and filter
+                result = await oncofiles_client.list_research_entries(limit=100)
+                entries = _extract_list(result, "entries")
+                match = [e for e in entries if e.get("id") == int(detail_id)]
+                data = match[0] if match else {"error": "not found"}
+            source["oncofiles_id"] = int(detail_id)
+            # Build external link
+            ext_id = data.get("external_id", "")
+            src = data.get("source", "")
+            if src == "pubmed" and ext_id:
+                data["external_url"] = f"https://pubmed.ncbi.nlm.nih.gov/{ext_id}/"
+            elif src == "clinicaltrials" and ext_id:
+                data["external_url"] = f"https://clinicaltrials.gov/study/{ext_id}"
+
+        elif detail_type == "conversation":
+            try:
+                raw = await oncofiles_client.get_conversation(int(detail_id))
+                data = raw if isinstance(raw, dict) else {"raw": raw}
+            except Exception:
+                result = await oncofiles_client.search_conversations(limit=100)
+                entries = _extract_list(result, "entries")
+                match = [e for e in entries if e.get("id") == int(detail_id)]
+                data = match[0] if match else {"error": "not found"}
+            source["oncofiles_id"] = int(detail_id)
+
+        elif detail_type == "document":
+            raw = await oncofiles_client.get_document(int(detail_id))
+            data = raw if isinstance(raw, dict) else {"raw": raw}
+            source["oncofiles_id"] = int(detail_id)
+            gdrive_id = data.get("gdrive_file_id") or data.get("google_drive_id")
+            if gdrive_id:
+                source["gdrive_file_id"] = gdrive_id
+                source["gdrive_url"] = f"https://drive.google.com/file/d/{gdrive_id}/view"
+
+        elif detail_type == "biomarker":
+            # Static from patient context
+            patient_data = PATIENT.model_dump()
+            biomarkers = patient_data.get("biomarkers", {})
+            value = biomarkers.get(detail_id, biomarkers.get(detail_id.replace(" ", "_")))
+            data = {
+                "name": detail_id,
+                "value": str(value) if value is not None else "unknown",
+                "biomarkers": biomarkers,
+                "excluded_therapies": patient_data.get("excluded_therapies", {}),
+                "diagnosis": patient_data.get("diagnosis_description"),
+                "staging": patient_data.get("staging"),
+            }
+
+        elif detail_type == "protocol_section":
+            sections = {
+                "lab_thresholds": LAB_SAFETY_THRESHOLDS,
+                "dose_modifications": DOSE_MODIFICATION_RULES,
+                "milestones": TREATMENT_MILESTONES,
+                "monitoring_schedule": MONITORING_SCHEDULE,
+                "safety_flags": SAFETY_FLAGS,
+                "second_line_options": SECOND_LINE_OPTIONS,
+                "watched_trials": WATCHED_TRIALS,
+            }
+            data = {"section": detail_id, "data": sections.get(detail_id, {})}
+
+        elif detail_type == "activity":
+            # Fetch from activity log by searching recent entries
+            result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=200)
+            entries = _extract_list(result, "entries")
+            match = [e for e in entries if str(e.get("id")) == str(detail_id)]
+            data = match[0] if match else {"error": "not found"}
+            source["oncofiles_id"] = data.get("id")
+
+        elif detail_type == "patient":
+            patient_data = PATIENT.model_dump()
+            if patient_data.get("diagnosis_date"):
+                patient_data["diagnosis_date"] = str(patient_data["diagnosis_date"])
+            data = patient_data
+
+        else:
+            return _cors_json({"error": f"Unknown detail type: {detail_type}"}, status_code=400)
+
+        return _cors_json(
+            {
+                "type": detail_type,
+                "id": detail_id,
+                "data": data,
+                "source": source,
+                "related": related,
+            }
+        )
+
+    except Exception as e:
+        record_suppressed_error("api_detail", f"{detail_type}/{detail_id}", e)
+        return _cors_json({"error": str(e)}, status_code=502)
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

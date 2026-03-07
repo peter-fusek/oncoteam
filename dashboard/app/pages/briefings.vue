@@ -35,6 +35,8 @@ function extractQuestions(content: string): string[] {
   return questions
 }
 
+const drilldown = useDrilldown()
+
 const allQuestions = computed(() => {
   if (!briefings.value?.briefings) return []
   return briefings.value.briefings
@@ -100,6 +102,7 @@ const allQuestions = computed(() => {
         :content="b.content"
         :date="b.date"
         :tags="b.tags"
+        @drilldown="drilldown.open({ type: 'conversation', id: b.id, label: b.title })"
       />
     </div>
 

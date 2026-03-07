@@ -134,6 +134,8 @@ function getAgentStatus(tools: string[]) {
   return 'idle'
 }
 
+const drilldown = useDrilldown()
+
 const totalCalls = computed(() =>
   (stats.value?.stats ?? []).reduce((sum, s) => sum + s.count, 0)
 )

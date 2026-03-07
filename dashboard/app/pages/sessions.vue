@@ -11,6 +11,8 @@ const { data: sessions, refresh } = await fetchApi<{
   }>
   total: number
 }>('/sessions?limit=50')
+
+const drilldown = useDrilldown()
 </script>
 
 <template>
@@ -27,7 +29,8 @@ const { data: sessions, refresh } = await fetchApi<{
       <div
         v-for="session in sessions.sessions"
         :key="session.id"
-        class="rounded-lg border border-gray-800 bg-gray-900/50 overflow-hidden"
+        class="rounded-lg border border-gray-800 bg-gray-900/50 overflow-hidden cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+        @click="drilldown.open({ type: 'conversation', id: session.id, label: session.title })"
       >
         <div class="px-4 py-3 border-b border-gray-800/50 flex items-center justify-between">
           <span class="font-medium text-white text-sm">{{ session.title }}</span>

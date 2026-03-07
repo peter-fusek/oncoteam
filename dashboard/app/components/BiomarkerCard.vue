@@ -5,6 +5,8 @@ const props = defineProps<{
   implication?: string
 }>()
 
+defineEmits<{ drilldown: [] }>()
+
 const status = computed(() => {
   const v = props.value.toLowerCase()
   if (v.includes('mutant') || v.includes('positive')) return 'mutant'
@@ -23,7 +25,11 @@ const colors = computed(() => {
 </script>
 
 <template>
-  <div class="rounded-lg border p-3" :class="[colors.bg, colors.border]">
+  <div
+    class="rounded-lg border p-3 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+    :class="[colors.bg, colors.border]"
+    @click="$emit('drilldown')"
+  >
     <div class="flex items-center justify-between mb-1">
       <span class="font-semibold text-sm text-white">{{ name }}</span>
       <span class="w-2 h-2 rounded-full" :class="colors.dot" />

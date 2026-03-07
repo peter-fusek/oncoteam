@@ -68,6 +68,8 @@ const criticalFlags = computed(() => {
 })
 
 // Print-friendly
+const drilldown = useDrilldown()
+
 function printPrep() {
   window.print()
 }
@@ -170,7 +172,12 @@ function printPrep() {
     <!-- Recent Research -->
     <div v-if="recentResearch.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
       <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Recent Research</h2>
-      <div v-for="r in recentResearch" :key="r.id" class="py-1 text-sm">
+      <div
+        v-for="r in recentResearch"
+        :key="r.id"
+        class="py-1 text-sm cursor-pointer hover:bg-gray-800/30 rounded px-1 transition-colors print:cursor-default"
+        @click="drilldown.open({ type: 'research', id: r.id, label: r.title })"
+      >
         <div class="text-white print:text-black">{{ r.title }}</div>
         <div class="text-xs text-gray-500">{{ r.source }} &middot; {{ r.date }}</div>
       </div>

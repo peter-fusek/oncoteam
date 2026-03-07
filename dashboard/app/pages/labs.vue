@@ -48,6 +48,8 @@ function hasData(key: string): boolean {
 }
 
 // All alerts across entries
+const drilldown = useDrilldown()
+
 const allAlerts = computed(() => {
   if (!labs.value?.entries) return []
   return labs.value.entries
@@ -205,7 +207,12 @@ async function submitLab() {
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-800/50">
-            <tr v-for="entry in labs.entries" :key="entry.id" class="text-gray-300">
+            <tr
+              v-for="entry in labs.entries"
+              :key="entry.id"
+              class="text-gray-300 cursor-pointer hover:bg-gray-800/30 transition-colors"
+              @click="drilldown.open({ type: 'treatment_event', id: entry.id, label: `Labs ${entry.date}` })"
+            >
               <td class="px-4 py-2 font-mono text-white">{{ entry.date }}</td>
               <td v-for="p in labParams" :key="p.key" class="px-3 py-2">
                 <span

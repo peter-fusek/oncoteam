@@ -20,6 +20,8 @@ const filtered = computed(() => {
   if (!sourceFilter.value) return research.value.entries
   return research.value.entries.filter(e => e.source === sourceFilter.value)
 })
+
+const drilldown = useDrilldown()
 </script>
 
 <template>
@@ -64,7 +66,8 @@ const filtered = computed(() => {
       <div
         v-for="entry in filtered"
         :key="entry.id"
-        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 hover:bg-gray-800/30 transition-colors"
+        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 hover:bg-gray-800/30 transition-colors cursor-pointer hover:ring-1 hover:ring-teal-500/30"
+        @click="drilldown.open({ type: 'research', id: entry.id, label: entry.title })"
       >
         <div class="flex items-start gap-3">
           <span class="text-lg mt-0.5">{{ entry.source === 'pubmed' ? '📄' : '🧪' }}</span>

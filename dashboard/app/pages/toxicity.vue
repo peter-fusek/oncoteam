@@ -80,6 +80,8 @@ const toxicityFields = [
   { key: 'nausea', label: 'Nausea/Vomiting', icon: 'i-lucide-frown' },
 ]
 
+const drilldown = useDrilldown()
+
 function getMaxGrade(entry: { metadata: Record<string, number> }): number {
   return Math.max(
     ...[
@@ -200,7 +202,8 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       <div
         v-for="entry in toxicity.entries"
         :key="entry.id"
-        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4"
+        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+        @click="drilldown.open({ type: 'treatment_event', id: entry.id, label: `Toxicity ${entry.date}` })"
       >
         <div class="flex items-center justify-between mb-2">
           <span class="text-sm font-medium text-white">{{ entry.date }}</span>

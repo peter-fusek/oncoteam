@@ -6,6 +6,8 @@ defineProps<{
   tags?: string[] | string
 }>()
 
+defineEmits<{ drilldown: [] }>()
+
 const expanded = ref(false)
 
 function formatTags(tags: string[] | string | undefined): string[] {
@@ -34,6 +36,13 @@ function formatTags(tags: string[] | string | undefined): string[] {
     </button>
     <div v-if="expanded" class="px-4 pb-4 border-t border-gray-800">
       <div class="prose prose-sm prose-invert max-w-none mt-3 text-sm text-gray-300 whitespace-pre-wrap">{{ content }}</div>
+      <button
+        class="mt-3 text-xs text-teal-500 hover:text-teal-400 flex items-center gap-1"
+        @click.stop="$emit('drilldown')"
+      >
+        <UIcon name="i-lucide-arrow-right" class="w-3 h-3" />
+        View full details
+      </button>
     </div>
   </div>
 </template>

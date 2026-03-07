@@ -50,6 +50,8 @@ function getMilestonesForEvent(title: string) {
   if (!cycle) return []
   return protocol.value.milestones.filter(m => m.cycle === cycle || m.cycle === cycle + 1)
 }
+
+const drilldown = useDrilldown()
 </script>
 
 <template>
@@ -98,7 +100,10 @@ function getMilestonesForEvent(title: string) {
         <!-- Dot -->
         <div class="absolute -left-4 top-3 w-3 h-3 rounded-full border-2" :class="dotColor(event.type)" />
 
-        <div class="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
+        <div
+          class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+          @click="drilldown.open({ type: 'treatment_event', id: event.id, label: event.title })"
+        >
           <div class="flex items-start gap-3">
             <span class="text-lg">{{ typeEmoji[event.type] ?? '📅' }}</span>
             <div class="flex-1 min-w-0">
