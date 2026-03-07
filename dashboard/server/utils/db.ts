@@ -14,7 +14,8 @@ export function useDb() {
     throw new Error('DATABASE_URL is not configured')
   }
 
-  const client = postgres(databaseUrl)
+  const isExternal = databaseUrl.includes('.render.com')
+  const client = postgres(databaseUrl, isExternal ? { ssl: 'require' } : {})
   _db = drizzle(client, { schema })
   return _db
 }
