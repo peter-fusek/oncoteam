@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from . import oncofiles_client
 from .activity_logger import get_session_id, record_suppressed_error
+from .config import AUTONOMOUS_ENABLED
 from .patient_context import PATIENT
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 # Patterns that identify test/E2E data created by automated tests
 _TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test ", "testovacia")
@@ -217,6 +220,86 @@ async def api_sessions(request: Request) -> JSONResponse:
     except Exception as e:
         record_suppressed_error("api_sessions", "fetch", e)
         return _cors_json({"error": str(e), "sessions": [], "total": 0}, status_code=502)
+
+
+async def api_autonomous(request: Request) -> JSONResponse:
+    """GET /api/autonomous — autonomous agent status and manual trigger."""
+    from .autonomous import get_daily_cost
+
+    # Manual trigger via ?trigger=<task_name>
+    trigger = request.query_params.get("trigger")
+    if trigger:
+        from . import autonomous_tasks
+
+        task_fn = getattr(autonomous_tasks, f"run_{trigger}", None)
+        if task_fn is None:
+            return _cors_json(
+                {"error": f"Unknown task: {trigger}"}, status_code=400
+            )
+        # Run in background, return immediately
+        asyncio.create_task(task_fn())
+        return _cors_json({"triggered": trigger, "status": "started"})
+
+    # Default: return scheduler status
+    data: dict = {
+        "enabled": AUTONOMOUS_ENABLED,
+        "daily_cost": round(get_daily_cost(), 4),
+    }
+
+    if AUTONOMOUS_ENABLED:
+        try:
+
+            # Try to get scheduler state from any running instance
+            # Jobs are registered at startup, we report their config
+            jobs = [
+                {
+                    "id": "pre_cycle_check",
+                    "schedule": "every 13 days",
+                    "description": "Pre-cycle FOLFOX safety check",
+                },
+                {
+                    "id": "tumor_marker_review",
+                    "schedule": "every 4 weeks",
+                    "description": "CEA/CA 19-9 trend analysis",
+                },
+                {
+                    "id": "response_assessment",
+                    "schedule": "every 8 weeks",
+                    "description": "RECIST response evaluation",
+                },
+                {
+                    "id": "daily_research",
+                    "schedule": "daily 07:00 UTC",
+                    "description": "PubMed research scan",
+                },
+                {
+                    "id": "trial_monitor",
+                    "schedule": "every 6 hours",
+                    "description": "Clinical trial monitoring",
+                },
+                {
+                    "id": "file_scan",
+                    "schedule": "every 2 hours",
+                    "description": "New document scan",
+                },
+                {
+                    "id": "weekly_briefing",
+                    "schedule": "Monday 06:00 UTC",
+                    "description": "Weekly physician briefing",
+                },
+                {
+                    "id": "mtb_preparation",
+                    "schedule": "Friday 14:00 UTC",
+                    "description": "Tumor board preparation",
+                },
+            ]
+            data["jobs"] = jobs
+            data["job_count"] = len(jobs)
+        except Exception:
+            data["jobs"] = []
+            data["job_count"] = 0
+
+    return _cors_json(data)
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

@@ -26,3 +26,13 @@ MCP_BEARER_TOKEN: str = os.environ.get("MCP_BEARER_TOKEN", "")
 
 # GitHub API
 GITHUB_TOKEN: str = os.environ.get("GITHUB_TOKEN", "")
+
+# Autonomous agent
+ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
+AUTONOMOUS_ENABLED: bool = os.environ.get("AUTONOMOUS_ENABLED", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+AUTONOMOUS_MODEL: str = os.environ.get("AUTONOMOUS_MODEL", "claude-sonnet-4-6")
+AUTONOMOUS_COST_LIMIT: float = float(os.environ.get("AUTONOMOUS_COST_LIMIT", "1.0"))

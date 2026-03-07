@@ -17,6 +17,13 @@ const { data: activity, refresh: refreshActivity } = await fetchApi<{
   total: number
 }>('/activity?limit=15')
 
+const { data: autonomous, refresh: refreshAutonomous } = await fetchApi<{
+  enabled: boolean
+  daily_cost: number
+  jobs?: Array<{ id: string; schedule: string; description: string }>
+  job_count?: number
+}>('/autonomous')
+
 // Map tools to rooms
 const rooms = computed(() => {
   const toolStats = new Map(
@@ -31,6 +38,7 @@ const rooms = computed(() => {
       border: 'border-blue-500/30',
       glow: 'shadow-blue-500/10',
       tools: ['search_pubmed', 'search_clinical_trials', 'search_clinical_trials_adjacent'],
+      autonomousJobs: ['daily_research', 'trial_monitor'],
       status: getAgentStatus(['search_pubmed', 'search_clinical_trials', 'search_clinical_trials_adjacent']),
     },
     {
@@ -40,7 +48,18 @@ const rooms = computed(() => {
       border: 'border-amber-500/30',
       glow: 'shadow-amber-500/10',
       tools: ['check_trial_eligibility', 'fetch_trial_details', 'fetch_pubmed_article'],
+      autonomousJobs: [],
       status: getAgentStatus(['check_trial_eligibility', 'fetch_trial_details', 'fetch_pubmed_article']),
+    },
+    {
+      name: 'Clinical Protocol',
+      icon: '🏥',
+      color: 'from-red-500/20 to-red-600/10',
+      border: 'border-red-500/30',
+      glow: 'shadow-red-500/10',
+      tools: ['pre_cycle_check', 'tumor_marker_review', 'response_assessment'],
+      autonomousJobs: ['pre_cycle_check', 'tumor_marker_review', 'response_assessment'],
+      status: getAgentStatus(['pre_cycle_check', 'tumor_marker_review', 'response_assessment']),
     },
     {
       name: 'Analytics Room',
@@ -49,6 +68,7 @@ const rooms = computed(() => {
       border: 'border-purple-500/30',
       glow: 'shadow-purple-500/10',
       tools: ['analyze_labs', 'compare_labs', 'get_lab_trends'],
+      autonomousJobs: [],
       status: getAgentStatus(['analyze_labs', 'compare_labs', 'get_lab_trends']),
     },
     {
@@ -58,6 +78,7 @@ const rooms = computed(() => {
       border: 'border-green-500/30',
       glow: 'shadow-green-500/10',
       tools: ['daily_briefing', 'summarize_session', 'review_session'],
+      autonomousJobs: ['weekly_briefing', 'mtb_preparation'],
       status: getAgentStatus(['daily_briefing', 'summarize_session', 'review_session']),
     },
     {
@@ -67,6 +88,7 @@ const rooms = computed(() => {
       border: 'border-cyan-500/30',
       glow: 'shadow-cyan-500/10',
       tools: ['search_documents', 'view_document', 'get_patient_context'],
+      autonomousJobs: ['file_scan'],
       status: getAgentStatus(['search_documents', 'view_document', 'get_patient_context']),
     },
     {
@@ -76,6 +98,7 @@ const rooms = computed(() => {
       border: 'border-rose-500/30',
       glow: 'shadow-rose-500/10',
       tools: ['log_research_decision', 'log_session_note', 'create_improvement_issue'],
+      autonomousJobs: [],
       status: getAgentStatus(['log_research_decision', 'log_session_note', 'create_improvement_issue']),
     },
   ].map(room => ({
@@ -103,7 +126,7 @@ const totalCalls = computed(() =>
 )
 
 async function refreshAll() {
-  await Promise.all([refreshStatus(), refreshStats(), refreshActivity()])
+  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous()])
 }
 
 // Auto-refresh every 30 seconds
@@ -134,6 +157,36 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- Autonomous Agent Status -->
+    <div v-if="autonomous" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">🤖</span>
+          <span class="font-semibold text-sm text-white">Autonomous Agent</span>
+          <UBadge
+            :color="autonomous.enabled ? 'success' : 'neutral'"
+            variant="subtle"
+            size="xs"
+          >
+            {{ autonomous.enabled ? 'Active' : 'Disabled' }}
+          </UBadge>
+        </div>
+        <span v-if="autonomous.daily_cost > 0" class="text-xs text-gray-400">
+          ${{ autonomous.daily_cost.toFixed(4) }} today
+        </span>
+      </div>
+      <div v-if="autonomous.jobs?.length" class="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div
+          v-for="job in autonomous.jobs"
+          :key="job.id"
+          class="rounded-lg bg-gray-800/50 px-3 py-2"
+        >
+          <div class="text-xs font-mono text-gray-300">{{ job.id }}</div>
+          <div class="text-xs text-gray-500">{{ job.schedule }}</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Agent Rooms Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
@@ -143,7 +196,14 @@ onUnmounted(() => {
         :class="[room.color, room.border, room.glow, 'shadow-lg']"
       >
         <!-- Status indicator -->
-        <div class="absolute top-3 right-3">
+        <div class="absolute top-3 right-3 flex items-center gap-1.5">
+          <span
+            v-if="room.autonomousJobs.length > 0"
+            class="text-[10px] text-gray-500"
+            title="Has autonomous scheduled tasks"
+          >
+            🤖
+          </span>
           <span
             class="inline-block w-2.5 h-2.5 rounded-full"
             :class="{

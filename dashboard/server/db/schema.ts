@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, text, timestamp, real } from 'drizzle-orm/pg-core'
+import { integer, pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core'
 
 export const gamificationStats = pgTable('gamification_stats', {
   id: serial('id').primaryKey(),
@@ -21,5 +21,14 @@ export const xpLog = pgTable('xp_log', {
   id: serial('id').primaryKey(),
   toolName: text('tool_name').notNull(),
   xpEarned: integer('xp_earned').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const xpEvents = pgTable('xp_events', {
+  id: serial('id').primaryKey(),
+  agentId: text('agent_id').notNull().default('oncoteam'),
+  xpAmount: integer('xp_amount').notNull(),
+  sourceTool: text('source_tool').notNull(),
+  sourceActivityId: text('source_activity_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })

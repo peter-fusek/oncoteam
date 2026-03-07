@@ -17,6 +17,7 @@ from .activity_logger import (
 from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .dashboard_api import (
     api_activity,
+    api_autonomous,
     api_cors_preflight,
     api_patient,
     api_research,
@@ -35,6 +36,7 @@ from .patient_context import (
     get_patient_profile_text,
     get_research_terms_text,
 )
+from .scheduler import autonomous_lifespan
 
 # ── Auth ────────────────────────────────────────
 auth = None
@@ -45,6 +47,7 @@ if MCP_BEARER_TOKEN:
 
 mcp = FastMCP(
     "Oncoteam",
+    lifespan=autonomous_lifespan,
     instructions=(
         "Oncoteam is a persistent AI agent for cancer treatment management. "
         "It searches PubMed and ClinicalTrials.gov for relevant research, "
@@ -710,7 +713,7 @@ async def create_improvement_issue(
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.6.0"})
+    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.7.0"})
 
 
 # ── Dashboard API routes ────────────────────────
@@ -723,6 +726,7 @@ _API_ROUTES = [
     ("/api/patient", api_patient),
     ("/api/research", api_research),
     ("/api/sessions", api_sessions),
+    ("/api/autonomous", api_autonomous),
 ]
 
 for _path, _handler in _API_ROUTES:
