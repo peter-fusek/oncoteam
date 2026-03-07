@@ -19,7 +19,10 @@ class TestCreateIssue:
         route = respx.post("https://api.github.com/repos/instarea-sk/oncoteam/issues").mock(
             return_value=httpx.Response(
                 201,
-                json={"number": 42, "html_url": "https://github.com/instarea-sk/oncoteam/issues/42"},
+                json={
+                    "number": 42,
+                    "html_url": "https://github.com/instarea-sk/oncoteam/issues/42",
+                },
             )
         )
 
@@ -34,6 +37,7 @@ class TestCreateIssue:
         assert route.called
         request = route.calls[0].request
         import json as _json
+
         payload = _json.loads(request.content)
         assert payload["title"] == "Test issue"
         assert payload["labels"] == ["enhancement"]

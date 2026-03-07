@@ -188,9 +188,7 @@ SINGLE_STUDY_RESPONSE = {
         "armsInterventionsModule": {
             "interventions": [{"name": "FOLFOX"}, {"name": "Pembrolizumab"}]
         },
-        "contactsLocationsModule": {
-            "locations": [{"facility": "National Cancer Institute"}]
-        },
+        "contactsLocationsModule": {"locations": [{"facility": "National Cancer Institute"}]},
         "descriptionModule": {"briefSummary": "A phase 3 trial."},
         "eligibilityModule": {
             "eligibilityCriteria": "Inclusion: KRAS mutant. Exclusion: prior anti-EGFR."
@@ -251,20 +249,33 @@ class TestFetchTrial:
 class TestCrcRelevanceFilter:
     def test_crc_trial_passes(self):
         trial = ClinicalTrial(
-            nct_id="NCT001", title="CRC trial", conditions=["Colorectal Cancer"],
+            nct_id="NCT001",
+            title="CRC trial",
+            conditions=["Colorectal Cancer"],
             interventions=["FOLFOX"],
         )
         assert _is_crc_relevant(trial) is True
 
-    @pytest.mark.parametrize("condition", [
-        "Hepatocellular Carcinoma", "Biliary Tract Cancer", "Cholangiocarcinoma",
-        "Pancreatic Cancer", "Gastric Cancer", "Pediatric Solid Tumors",
-        "Breast Cancer", "Non-Small Cell Lung Cancer", "Prostate Cancer",
-        "Esophageal Cancer",
-    ])
+    @pytest.mark.parametrize(
+        "condition",
+        [
+            "Hepatocellular Carcinoma",
+            "Biliary Tract Cancer",
+            "Cholangiocarcinoma",
+            "Pancreatic Cancer",
+            "Gastric Cancer",
+            "Pediatric Solid Tumors",
+            "Breast Cancer",
+            "Non-Small Cell Lung Cancer",
+            "Prostate Cancer",
+            "Esophageal Cancer",
+        ],
+    )
     def test_excluded_conditions(self, condition):
         trial = ClinicalTrial(
-            nct_id="NCT002", title="Other cancer", conditions=[condition],
+            nct_id="NCT002",
+            title="Other cancer",
+            conditions=[condition],
             interventions=["Some Drug"],
         )
         assert _is_crc_relevant(trial) is False
@@ -272,14 +283,17 @@ class TestCrcRelevanceFilter:
     @pytest.mark.parametrize("intervention", ["Sotorasib", "Adagrasib"])
     def test_excluded_interventions(self, intervention):
         trial = ClinicalTrial(
-            nct_id="NCT003", title="KRAS G12C trial",
-            conditions=["Colorectal Cancer"], interventions=[intervention],
+            nct_id="NCT003",
+            title="KRAS G12C trial",
+            conditions=["Colorectal Cancer"],
+            interventions=[intervention],
         )
         assert _is_crc_relevant(trial) is False
 
     def test_mixed_conditions_excluded(self):
         trial = ClinicalTrial(
-            nct_id="NCT004", title="Multi-tumor",
+            nct_id="NCT004",
+            title="Multi-tumor",
             conditions=["Colorectal Cancer", "Hepatocellular Carcinoma"],
             interventions=["Drug X"],
         )
@@ -301,18 +315,14 @@ class TestCrcRelevanceFilter:
                         "statusModule": {"overallStatus": "RECRUITING"},
                         "designModule": {"phases": ["PHASE2"]},
                         "conditionsModule": {"conditions": ["Non-Small Cell Lung Cancer"]},
-                        "armsInterventionsModule": {
-                            "interventions": [{"name": "Sotorasib"}]
-                        },
+                        "armsInterventionsModule": {"interventions": [{"name": "Sotorasib"}]},
                         "contactsLocationsModule": {},
                         "descriptionModule": {},
                     }
                 },
             ]
         }
-        respx.get(f"{CTGOV_BASE_URL}/studies").mock(
-            return_value=Response(200, json=studies)
-        )
+        respx.get(f"{CTGOV_BASE_URL}/studies").mock(return_value=Response(200, json=studies))
         trials = await search_trials("cancer")
         assert len(trials) == 1
         assert trials[0].nct_id == "NCT00001234"

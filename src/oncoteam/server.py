@@ -669,20 +669,22 @@ async def review_session(session_id: str | None = None) -> str:
             session_summary = ce.get("content")
             break
 
-    return json.dumps({
-        "timeline": timeline,
-        "stats": stats,
-        "errors": [
-            {
-                "tool": e.get("tool_name"),
-                "error": e.get("error_message"),
-                "timestamp": e.get("created_at"),
-            }
-            for e in error_entries
-        ],
-        "suppressed_errors": suppressed,
-        "session_summary": session_summary,
-    })
+    return json.dumps(
+        {
+            "timeline": timeline,
+            "stats": stats,
+            "errors": [
+                {
+                    "tool": e.get("tool_name"),
+                    "error": e.get("error_message"),
+                    "timestamp": e.get("created_at"),
+                }
+                for e in error_entries
+            ],
+            "suppressed_errors": suppressed,
+            "session_summary": session_summary,
+        }
+    )
 
 
 @mcp.tool()

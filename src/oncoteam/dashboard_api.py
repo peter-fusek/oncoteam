@@ -87,46 +87,60 @@ def _cors_json(data: dict, status_code: int = 200) -> JSONResponse:
 async def api_status(request: Request) -> JSONResponse:
     """GET /api/status — server status and config."""
     tools = [
-        "search_pubmed", "search_clinical_trials", "search_clinical_trials_adjacent",
-        "fetch_pubmed_article", "fetch_trial_details", "check_trial_eligibility",
-        "daily_briefing", "get_lab_trends", "search_documents", "get_patient_context",
-        "view_document", "analyze_labs", "compare_labs", "log_research_decision",
-        "log_session_note", "summarize_session", "review_session",
+        "search_pubmed",
+        "search_clinical_trials",
+        "search_clinical_trials_adjacent",
+        "fetch_pubmed_article",
+        "fetch_trial_details",
+        "check_trial_eligibility",
+        "daily_briefing",
+        "get_lab_trends",
+        "search_documents",
+        "get_patient_context",
+        "view_document",
+        "analyze_labs",
+        "compare_labs",
+        "log_research_decision",
+        "log_session_note",
+        "summarize_session",
+        "review_session",
         "create_improvement_issue",
     ]
-    return _cors_json({
-        "status": "ok",
-        "server": "oncoteam",
-        "version": VERSION,
-        "session_id": get_session_id(),
-        "tools_count": len(tools),
-        "tools": tools,
-    })
+    return _cors_json(
+        {
+            "status": "ok",
+            "server": "oncoteam",
+            "version": VERSION,
+            "session_id": get_session_id(),
+            "tools_count": len(tools),
+            "tools": tools,
+        }
+    )
 
 
 async def api_activity(request: Request) -> JSONResponse:
     """GET /api/activity — recent activity log entries."""
     limit = int(request.query_params.get("limit", "50"))
     try:
-        result = await oncofiles_client.search_activity_log(
-            agent_id="oncoteam", limit=limit
-        )
+        result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=limit)
         entries = _filter_test(_extract_list(result, "entries"), request)
-        return _cors_json({
-            "entries": [
-                {
-                    "tool": e.get("tool_name"),
-                    "status": e.get("status"),
-                    "duration_ms": e.get("duration_ms"),
-                    "timestamp": e.get("created_at"),
-                    "input": e.get("input_summary"),
-                    "output": e.get("output_summary"),
-                    "error": e.get("error_message"),
-                }
-                for e in entries
-            ],
-            "total": len(entries),
-        })
+        return _cors_json(
+            {
+                "entries": [
+                    {
+                        "tool": e.get("tool_name"),
+                        "status": e.get("status"),
+                        "duration_ms": e.get("duration_ms"),
+                        "timestamp": e.get("created_at"),
+                        "input": e.get("input_summary"),
+                        "output": e.get("output_summary"),
+                        "error": e.get("error_message"),
+                    }
+                    for e in entries
+                ],
+                "total": len(entries),
+            }
+        )
     except Exception as e:
         record_suppressed_error("api_activity", "fetch", e)
         return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
@@ -150,19 +164,21 @@ async def api_timeline(request: Request) -> JSONResponse:
     try:
         result = await oncofiles_client.list_treatment_events(limit=limit)
         events = _filter_test(_extract_list(result, "events"), request)
-        return _cors_json({
-            "events": [
-                {
-                    "id": e.get("id"),
-                    "date": e.get("event_date"),
-                    "type": e.get("event_type"),
-                    "title": e.get("title"),
-                    "notes": e.get("notes"),
-                }
-                for e in events
-            ],
-            "total": len(events),
-        })
+        return _cors_json(
+            {
+                "events": [
+                    {
+                        "id": e.get("id"),
+                        "date": e.get("event_date"),
+                        "type": e.get("event_type"),
+                        "title": e.get("title"),
+                        "notes": e.get("notes"),
+                    }
+                    for e in events
+                ],
+                "total": len(events),
+            }
+        )
     except Exception as e:
         record_suppressed_error("api_timeline", "fetch", e)
         return _cors_json({"error": str(e), "events": [], "total": 0}, status_code=502)
@@ -182,24 +198,24 @@ async def api_research(request: Request) -> JSONResponse:
     limit = int(request.query_params.get("limit", "20"))
     source = request.query_params.get("source")
     try:
-        result = await oncofiles_client.list_research_entries(
-            source=source, limit=limit
-        )
+        result = await oncofiles_client.list_research_entries(source=source, limit=limit)
         entries = _filter_test(_extract_list(result, "entries"), request)
-        return _cors_json({
-            "entries": [
-                {
-                    "id": e.get("id"),
-                    "source": e.get("source"),
-                    "external_id": e.get("external_id"),
-                    "title": e.get("title"),
-                    "summary": e.get("summary"),
-                    "date": e.get("created_at"),
-                }
-                for e in entries
-            ],
-            "total": len(entries),
-        })
+        return _cors_json(
+            {
+                "entries": [
+                    {
+                        "id": e.get("id"),
+                        "source": e.get("source"),
+                        "external_id": e.get("external_id"),
+                        "title": e.get("title"),
+                        "summary": e.get("summary"),
+                        "date": e.get("created_at"),
+                    }
+                    for e in entries
+                ],
+                "total": len(entries),
+            }
+        )
     except Exception as e:
         record_suppressed_error("api_research", "fetch", e)
         return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
@@ -213,19 +229,21 @@ async def api_sessions(request: Request) -> JSONResponse:
             entry_type="session_summary", limit=limit
         )
         entries = _filter_test(_extract_list(result, "entries"), request)
-        return _cors_json({
-            "sessions": [
-                {
-                    "id": e.get("id"),
-                    "title": e.get("title"),
-                    "content": e.get("content"),
-                    "date": e.get("created_at"),
-                    "tags": e.get("tags"),
-                }
-                for e in entries
-            ],
-            "total": len(entries),
-        })
+        return _cors_json(
+            {
+                "sessions": [
+                    {
+                        "id": e.get("id"),
+                        "title": e.get("title"),
+                        "content": e.get("content"),
+                        "date": e.get("created_at"),
+                        "tags": e.get("tags"),
+                    }
+                    for e in entries
+                ],
+                "total": len(entries),
+            }
+        )
     except Exception as e:
         record_suppressed_error("api_sessions", "fetch", e)
         return _cors_json({"error": str(e), "sessions": [], "total": 0}, status_code=502)
@@ -242,9 +260,7 @@ async def api_autonomous(request: Request) -> JSONResponse:
 
         task_fn = getattr(autonomous_tasks, f"run_{trigger}", None)
         if task_fn is None:
-            return _cors_json(
-                {"error": f"Unknown task: {trigger}"}, status_code=400
-            )
+            return _cors_json({"error": f"Unknown task: {trigger}"}, status_code=400)
         # Run in background, return immediately
         asyncio.create_task(task_fn())
         return _cors_json({"triggered": trigger, "status": "started"})
@@ -257,7 +273,6 @@ async def api_autonomous(request: Request) -> JSONResponse:
 
     if AUTONOMOUS_ENABLED:
         try:
-
             # Try to get scheduler state from any running instance
             # Jobs are registered at startup, we report their config
             jobs = [
@@ -313,16 +328,18 @@ async def api_autonomous(request: Request) -> JSONResponse:
 
 async def api_protocol(request: Request) -> JSONResponse:
     """GET /api/protocol — clinical protocol data (thresholds, milestones, dose mods)."""
-    return _cors_json({
-        "lab_thresholds": LAB_SAFETY_THRESHOLDS,
-        "dose_modifications": DOSE_MODIFICATION_RULES,
-        "milestones": TREATMENT_MILESTONES,
-        "monitoring_schedule": MONITORING_SCHEDULE,
-        "safety_flags": SAFETY_FLAGS,
-        "second_line_options": SECOND_LINE_OPTIONS,
-        "watched_trials": WATCHED_TRIALS,
-        "current_cycle": PATIENT.current_cycle,
-    })
+    return _cors_json(
+        {
+            "lab_thresholds": LAB_SAFETY_THRESHOLDS,
+            "dose_modifications": DOSE_MODIFICATION_RULES,
+            "milestones": TREATMENT_MILESTONES,
+            "monitoring_schedule": MONITORING_SCHEDULE,
+            "safety_flags": SAFETY_FLAGS,
+            "second_line_options": SECOND_LINE_OPTIONS,
+            "watched_trials": WATCHED_TRIALS,
+            "current_cycle": PATIENT.current_cycle,
+        }
+    )
 
 
 async def api_briefings(request: Request) -> JSONResponse:
@@ -334,19 +351,21 @@ async def api_briefings(request: Request) -> JSONResponse:
             limit=limit,
         )
         entries = _filter_test(_extract_list(result, "entries"), request)
-        return _cors_json({
-            "briefings": [
-                {
-                    "id": e.get("id"),
-                    "title": e.get("title"),
-                    "content": e.get("content"),
-                    "date": e.get("created_at"),
-                    "tags": e.get("tags"),
-                }
-                for e in entries
-            ],
-            "total": len(entries),
-        })
+        return _cors_json(
+            {
+                "briefings": [
+                    {
+                        "id": e.get("id"),
+                        "title": e.get("title"),
+                        "content": e.get("content"),
+                        "date": e.get("created_at"),
+                        "tags": e.get("tags"),
+                    }
+                    for e in entries
+                ],
+                "total": len(entries),
+            }
+        )
     except Exception as e:
         record_suppressed_error("api_briefings", "fetch", e)
         return _cors_json({"error": str(e), "briefings": [], "total": 0}, status_code=502)

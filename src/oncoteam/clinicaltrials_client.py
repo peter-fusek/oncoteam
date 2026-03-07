@@ -12,8 +12,16 @@ ADJACENT_COUNTRIES = ["Slovakia", "Czech Republic", "Austria", "Hungary"]
 
 # CRC relevance filter — exclude non-CRC conditions and G12C-specific interventions
 _EXCLUDE_CONDITIONS = {
-    "pediatric", "hepatocellular", "biliary", "cholangiocarcinoma",
-    "pancreatic", "gastric", "esophageal", "breast", "lung", "prostate",
+    "pediatric",
+    "hepatocellular",
+    "biliary",
+    "cholangiocarcinoma",
+    "pancreatic",
+    "gastric",
+    "esophageal",
+    "breast",
+    "lung",
+    "prostate",
 }
 _EXCLUDE_INTERVENTIONS = {"sotorasib", "adagrasib"}
 
@@ -46,12 +54,12 @@ async def fetch_trial(nct_id: str) -> ClinicalTrial | None:
 
     phases = design.get("phases", [])
     interventions = [
-        intr.get("name", "") for intr in interventions_mod.get("interventions", [])
+        intr.get("name", "")
+        for intr in interventions_mod.get("interventions", [])
         if intr.get("name")
     ]
     locations = [
-        loc.get("facility", "") for loc in locations_mod.get("locations", [])
-        if loc.get("facility")
+        loc.get("facility", "") for loc in locations_mod.get("locations", []) if loc.get("facility")
     ]
 
     return ClinicalTrial(

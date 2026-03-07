@@ -131,8 +131,12 @@ class TestPreCycleChecklist:
 class TestProtocolData:
     def test_monitoring_schedule_complete(self):
         expected = [
-            "pre_cycle_labs", "tumor_markers", "response_imaging",
-            "neuropathy_grade", "vte_check", "ecog_assessment",
+            "pre_cycle_labs",
+            "tumor_markers",
+            "response_imaging",
+            "neuropathy_grade",
+            "vte_check",
+            "ecog_assessment",
         ]
         for key in expected:
             assert key in MONITORING_SCHEDULE

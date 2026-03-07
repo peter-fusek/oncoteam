@@ -8,22 +8,15 @@ from __future__ import annotations
 
 # FOLFOX dose modification rules (NCCN)
 DOSE_MODIFICATION_RULES: dict[str, str] = {
-    "neuropathy_grade_2": (
-        "Reduce oxaliplatin to 75%. Continue 5-FU/LV full dose."
-    ),
+    "neuropathy_grade_2": ("Reduce oxaliplatin to 75%. Continue 5-FU/LV full dose."),
     "neuropathy_grade_3": (
-        "HOLD oxaliplatin. Continue 5-FU/LV (de Gramont). "
-        "Resume at 50% if resolves to grade 1."
+        "HOLD oxaliplatin. Continue 5-FU/LV (de Gramont). Resume at 50% if resolves to grade 1."
     ),
     "neuropathy_grade_4": "DISCONTINUE oxaliplatin permanently.",
     "plt_below_75k": "Hold FOLFOX. Recheck in 1 week.",
     "anc_below_1500": "Hold FOLFOX. Consider G-CSF if recurrent.",
-    "alt_ast_above_5x": (
-        "Hold FOLFOX. Evaluate hepatic progression vs toxicity."
-    ),
-    "diarrhea_grade_3": (
-        "Hold 5-FU. Resume at 80% when resolved to grade 1."
-    ),
+    "alt_ast_above_5x": ("Hold FOLFOX. Evaluate hepatic progression vs toxicity."),
+    "diarrhea_grade_3": ("Hold 5-FU. Resume at 80% when resolved to grade 1."),
 }
 
 # Pre-cycle lab safety thresholds
@@ -67,9 +60,7 @@ TREATMENT_MILESTONES: list[dict[str, str | int]] = [
     {
         "cycle": 12,
         "action": "end_of_first_line",
-        "description": (
-            "Evaluate 1L completion, maintenance strategy, 2L trial screening"
-        ),
+        "description": ("Evaluate 1L completion, maintenance strategy, 2L trial screening"),
     },
 ]
 

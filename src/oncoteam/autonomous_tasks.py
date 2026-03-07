@@ -39,8 +39,7 @@ async def _log_task(task_name: str, result: dict) -> None:
             tool_name=task_name,
             input_summary=f"autonomous task: {task_name}",
             output_summary=(
-                f"{len(result.get('tool_calls', []))} tool calls, "
-                f"${result.get('cost', 0):.4f}"
+                f"{len(result.get('tool_calls', []))} tool calls, ${result.get('cost', 0):.4f}"
             ),
             duration_ms=result.get("duration_ms", 0),
             status="error" if result.get("error") else "ok",
@@ -58,9 +57,10 @@ async def run_pre_cycle_check() -> dict:
     """Pre-cycle safety check before each FOLFOX infusion."""
     cycle = PATIENT.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
-    milestone_text = "\n".join(
-        f"- Cycle {m['cycle']}: {m['description']}" for m in milestones
-    ) or "None upcoming"
+    milestone_text = (
+        "\n".join(f"- Cycle {m['cycle']}: {m['description']}" for m in milestones)
+        or "None upcoming"
+    )
     checklist = format_pre_cycle_checklist(cycle, milestones=milestone_text)
 
     prompt = f"""\
@@ -80,12 +80,15 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
 """
     result = await run_autonomous_task(prompt, max_turns=10, task_name="pre_cycle_check")
     await _log_task("pre_cycle_check", result)
-    await _set_state("last_pre_cycle_check", {
-        "cycle": cycle,
-        "timestamp": datetime.now(UTC).isoformat(),
-        "tool_calls": len(result.get("tool_calls", [])),
-        "cost": result.get("cost", 0),
-    })
+    await _set_state(
+        "last_pre_cycle_check",
+        {
+            "cycle": cycle,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "tool_calls": len(result.get("tool_calls", [])),
+            "cost": result.get("cost", 0),
+        },
+    )
     return result
 
 
@@ -154,11 +157,14 @@ novel targets, clinical trial results.
 """
     result = await run_autonomous_task(prompt, max_turns=12, task_name="daily_research")
     await _log_task("daily_research", result)
-    await _set_state("last_daily_research", {
-        "timestamp": datetime.now(UTC).isoformat(),
-        "tool_calls": len(result.get("tool_calls", [])),
-        "cost": result.get("cost", 0),
-    })
+    await _set_state(
+        "last_daily_research",
+        {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "tool_calls": len(result.get("tool_calls", [])),
+            "cost": result.get("cost", 0),
+        },
+    )
     return result
 
 
@@ -191,7 +197,7 @@ async def run_file_scan() -> dict:
     last_scan = state.get("value", {}).get("timestamp", "") if isinstance(state, dict) else ""
 
     prompt = f"""\
-Scan for new document uploads since last check ({last_scan or 'first run'}).
+Scan for new document uploads since last check ({last_scan or "first run"}).
 
 Instructions:
 1. Search documents for recent pathology, genetics, and lab reports
@@ -204,9 +210,12 @@ Search categories: "pathology", "genetics", "labs", "imaging"
 """
     result = await run_autonomous_task(prompt, max_turns=8, task_name="file_scan")
     await _log_task("file_scan", result)
-    await _set_state("last_file_scan", {
-        "timestamp": datetime.now(UTC).isoformat(),
-    })
+    await _set_state(
+        "last_file_scan",
+        {
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+    )
     return result
 
 
@@ -217,9 +226,10 @@ async def run_weekly_briefing() -> dict:
     """Compile weekly briefing: research, trials, labs, treatment progress."""
     cycle = PATIENT.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
-    milestone_text = "\n".join(
-        f"- Cycle {m['cycle']}: {m['description']}" for m in milestones
-    ) or "None upcoming"
+    milestone_text = (
+        "\n".join(f"- Cycle {m['cycle']}: {m['description']}" for m in milestones)
+        or "None upcoming"
+    )
 
     prompt = f"""\
 Compile the weekly briefing for physician review.

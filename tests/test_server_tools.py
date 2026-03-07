@@ -653,16 +653,12 @@ class TestDailyBriefingDedup:
     @patch("oncoteam.pubmed_client.search_pubmed", new_callable=AsyncMock)
     async def test_deduplicates_across_search_terms(self, mock_pubmed, mock_ct, mock_store):
         # All 3 PubMed searches return overlapping articles
-        shared_article = PubMedArticle(
-            pmid="11111111", title="Shared Article", abstract="Shared"
-        )
-        unique_article = PubMedArticle(
-            pmid="22222222", title="Unique Article", abstract="Unique"
-        )
+        shared_article = PubMedArticle(pmid="11111111", title="Shared Article", abstract="Shared")
+        unique_article = PubMedArticle(pmid="22222222", title="Unique Article", abstract="Unique")
         mock_pubmed.side_effect = [
             [shared_article, unique_article],  # term 1: shared + unique
-            [shared_article],                   # term 2: shared (duplicate)
-            [shared_article],                   # term 3: shared (duplicate)
+            [shared_article],  # term 2: shared (duplicate)
+            [shared_article],  # term 3: shared (duplicate)
         ]
         mock_ct.return_value = []
 
@@ -686,8 +682,5 @@ class TestDailyBriefingDedup:
         await daily_briefing()
 
         # Should only store once, not 3 times
-        pubmed_stores = [
-            c for c in mock_store.call_args_list
-            if c.kwargs.get("source") == "pubmed"
-        ]
+        pubmed_stores = [c for c in mock_store.call_args_list if c.kwargs.get("source") == "pubmed"]
         assert len(pubmed_stores) == 1

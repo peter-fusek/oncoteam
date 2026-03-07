@@ -227,9 +227,7 @@ async def execute_tool(name: str, inputs: dict) -> str:
             return json.dumps(docs)
 
         if name == "get_treatment_timeline":
-            result = await oncofiles_client.list_treatment_events(
-                limit=inputs.get("limit", 20)
-            )
+            result = await oncofiles_client.list_treatment_events(limit=inputs.get("limit", 20))
             events = result.get("events", []) if isinstance(result, dict) else result
             return json.dumps(events)
 
@@ -247,9 +245,7 @@ async def execute_tool(name: str, inputs: dict) -> str:
             return json.dumps(result)
 
         if name == "set_agent_state":
-            result = await oncofiles_client.set_agent_state(
-                inputs["key"], inputs["value"]
-            )
+            result = await oncofiles_client.set_agent_state(inputs["key"], inputs["value"])
             return json.dumps(result)
 
         return json.dumps({"error": f"Unknown tool: {name}"})
@@ -355,11 +351,13 @@ async def run_autonomous_task(
                 logger.info("Tool call: %s(%s)", block.name, json.dumps(block.input)[:200])
                 result["tool_calls"].append({"tool": block.name, "input": block.input})
                 tool_output = await execute_tool(block.name, block.input)
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": tool_output,
-                })
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": tool_output,
+                    }
+                )
         messages.append({"role": "user", "content": tool_results})
 
         # Check cost limit mid-run

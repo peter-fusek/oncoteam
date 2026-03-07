@@ -20,13 +20,15 @@ _suppressed_errors: list[dict] = []
 
 def record_suppressed_error(tool: str, phase: str, error: Exception) -> None:
     """Record an error that was suppressed (not raised) for later QA review."""
-    _suppressed_errors.append({
-        "tool": tool,
-        "phase": phase,
-        "error": str(error),
-        "type": type(error).__name__,
-        "timestamp": datetime.now(UTC).isoformat(),
-    })
+    _suppressed_errors.append(
+        {
+            "tool": tool,
+            "phase": phase,
+            "error": str(error),
+            "type": type(error).__name__,
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    )
 
 
 def get_suppressed_errors() -> list[dict]:
@@ -174,11 +176,11 @@ def _summarize_output(tool_name: str, output: str | None) -> str:
         "compare_labs": lambda d: "lab comparison returned",
         "fetch_pubmed_article": lambda d: (
             f"article: {d['article'].get('title', '')[:60]}"
-            if "article" in d else d.get("error", "")
+            if "article" in d
+            else d.get("error", "")
         ),
         "fetch_trial_details": lambda d: (
-            f"trial: {d['trial'].get('title', '')[:60]}"
-            if "trial" in d else d.get("error", "")
+            f"trial: {d['trial'].get('title', '')[:60]}" if "trial" in d else d.get("error", "")
         ),
         "check_trial_eligibility": lambda d: (
             f"eligible={d.get('eligibility', {}).get('eligible', '?')}"

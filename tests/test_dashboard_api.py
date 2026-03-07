@@ -477,12 +477,18 @@ async def test_api_activity_shows_test_data_when_requested(mock_search):
 
 MOCK_TIMELINE_WITH_TEST = [
     {
-        "id": 1, "event_date": "2026-02-14", "event_type": "chemo_cycle",
-        "title": "mFOLFOX6 C1", "notes": "Real",
+        "id": 1,
+        "event_date": "2026-02-14",
+        "event_type": "chemo_cycle",
+        "title": "mFOLFOX6 C1",
+        "notes": "Real",
     },
     {
-        "id": 2, "event_date": "2026-03-05", "event_type": "consultation",
-        "title": "E2E test event abc", "notes": "Test",
+        "id": 2,
+        "event_date": "2026-03-05",
+        "event_type": "consultation",
+        "title": "E2E test event abc",
+        "notes": "Test",
     },
 ]
 
@@ -501,12 +507,18 @@ async def test_api_timeline_filters_test_data(mock_list):
 
 MOCK_SESSIONS_WITH_TEST = [
     {
-        "id": 5, "title": "Session: Lab review", "content": "Real session",
-        "created_at": "2026-03-06T12:00:00Z", "tags": ["session"],
+        "id": 5,
+        "title": "Session: Lab review",
+        "content": "Real session",
+        "created_at": "2026-03-06T12:00:00Z",
+        "tags": ["session"],
     },
     {
-        "id": 6, "title": "e2e-test-session", "content": "Test",
-        "created_at": "2026-03-06T11:00:00Z", "tags": ["e2e-test"],
+        "id": 6,
+        "title": "e2e-test-session",
+        "content": "Test",
+        "created_at": "2026-03-06T11:00:00Z",
+        "tags": ["e2e-test"],
     },
 ]
 

@@ -133,9 +133,7 @@ class TestFetchArticle:
     @pytest.mark.asyncio
     async def test_returns_none_when_not_found(self):
         empty = '<?xml version="1.0"?><PubmedArticleSet></PubmedArticleSet>'
-        respx.get(f"{NCBI_BASE_URL}/efetch.fcgi").mock(
-            return_value=Response(200, text=empty)
-        )
+        respx.get(f"{NCBI_BASE_URL}/efetch.fcgi").mock(return_value=Response(200, text=empty))
 
         article = await fetch_article("00000000")
         assert article is None

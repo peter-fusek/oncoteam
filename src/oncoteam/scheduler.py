@@ -32,36 +32,24 @@ def _create_scheduler():
     # === Clinical protocol schedule ===
 
     # Pre-cycle check: every 13 days (1 day before each 14-day FOLFOX cycle)
-    scheduler.add_job(
-        run_pre_cycle_check, IntervalTrigger(days=13), id="pre_cycle_check"
-    )
+    scheduler.add_job(run_pre_cycle_check, IntervalTrigger(days=13), id="pre_cycle_check")
 
     # Tumor marker review: every 4 weeks
-    scheduler.add_job(
-        run_tumor_marker_review, IntervalTrigger(weeks=4), id="tumor_marker_review"
-    )
+    scheduler.add_job(run_tumor_marker_review, IntervalTrigger(weeks=4), id="tumor_marker_review")
 
     # Response assessment prep: every 8 weeks
-    scheduler.add_job(
-        run_response_assessment, IntervalTrigger(weeks=8), id="response_assessment"
-    )
+    scheduler.add_job(run_response_assessment, IntervalTrigger(weeks=8), id="response_assessment")
 
     # === Research schedule ===
 
     # Daily research scan: 7:00 UTC (8:00 CET)
-    scheduler.add_job(
-        run_daily_research, CronTrigger(hour=7, minute=0), id="daily_research"
-    )
+    scheduler.add_job(run_daily_research, CronTrigger(hour=7, minute=0), id="daily_research")
 
     # Trial monitor: every 6 hours
-    scheduler.add_job(
-        run_trial_monitor, IntervalTrigger(hours=6), id="trial_monitor"
-    )
+    scheduler.add_job(run_trial_monitor, IntervalTrigger(hours=6), id="trial_monitor")
 
     # File scan (new oncofiles documents): every 2 hours
-    scheduler.add_job(
-        run_file_scan, IntervalTrigger(hours=2), id="file_scan"
-    )
+    scheduler.add_job(run_file_scan, IntervalTrigger(hours=2), id="file_scan")
 
     # === Reporting schedule ===
 
