@@ -30,6 +30,13 @@ const { data: gamification, refresh: refreshGamification } = useFetch<{
   streakDays: number
 }>('/api/gamification')
 
+const { data: labData, refresh: refreshLabs } = await fetchApi<{
+  entries: Array<{
+    date: string
+    alerts: Array<{ param: string; value: number; threshold: number; action: string }>
+  }>
+}>('/labs?limit=3')
+
 // Map tools to rooms
 const rooms = computed(() => {
   const toolStats = new Map(
@@ -131,8 +138,15 @@ const totalCalls = computed(() =>
   (stats.value?.stats ?? []).reduce((sum, s) => sum + s.count, 0)
 )
 
+const recentAlerts = computed(() => {
+  if (!labData.value?.entries) return []
+  return labData.value.entries
+    .filter(e => e.alerts?.length)
+    .flatMap(e => e.alerts.map(a => ({ ...a, date: e.date })))
+})
+
 async function refreshAll() {
-  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshGamification()])
+  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshGamification(), refreshLabs()])
 }
 
 // Auto-refresh every 30 seconds
@@ -168,6 +182,9 @@ onUnmounted(() => {
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refreshAll" />
       </div>
     </div>
+
+    <!-- Emergency Alerts -->
+    <EmergencyAlert v-if="recentAlerts.length" :alerts="recentAlerts" />
 
     <!-- Autonomous Agent Status -->
     <div v-if="autonomous" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">

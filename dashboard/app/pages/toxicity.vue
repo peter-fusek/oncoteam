@@ -1,0 +1,235 @@
+<script setup lang="ts">
+const { fetchApi, apiUrl } = useOncoteamApi()
+
+const { data: toxicity, refresh } = await fetchApi<{
+  entries: Array<{
+    id: number
+    date: string
+    notes: string
+    metadata: Record<string, number>
+  }>
+  total: number
+}>('/toxicity')
+
+const grades = [0, 1, 2, 3, 4]
+const gradeLabels: Record<number, string> = {
+  0: 'None',
+  1: 'Mild',
+  2: 'Moderate',
+  3: 'Severe',
+  4: 'Life-threatening',
+}
+const gradeColors: Record<number, string> = {
+  0: 'text-green-500',
+  1: 'text-yellow-500',
+  2: 'text-orange-500',
+  3: 'text-red-500',
+  4: 'text-red-700',
+}
+
+const form = reactive({
+  date: new Date().toISOString().slice(0, 10),
+  neuropathy: 0,
+  diarrhea: 0,
+  mucositis: 0,
+  fatigue: 0,
+  hand_foot: 0,
+  nausea: 0,
+  weight_kg: null as number | null,
+  ecog: null as number | null,
+  notes: '',
+})
+
+const submitting = ref(false)
+const submitMsg = ref('')
+
+async function submitLog() {
+  submitting.value = true
+  submitMsg.value = ''
+  try {
+    await $fetch(apiUrl('/toxicity'), {
+      method: 'POST',
+      body: form,
+    })
+    submitMsg.value = 'Saved'
+    // Reset form
+    form.neuropathy = 0
+    form.diarrhea = 0
+    form.mucositis = 0
+    form.fatigue = 0
+    form.hand_foot = 0
+    form.nausea = 0
+    form.weight_kg = null
+    form.ecog = null
+    form.notes = ''
+    form.date = new Date().toISOString().slice(0, 10)
+    await refresh()
+  } catch (e: any) {
+    submitMsg.value = `Error: ${e.message || e}`
+  } finally {
+    submitting.value = false
+  }
+}
+
+const toxicityFields = [
+  { key: 'neuropathy', label: 'Peripheral Neuropathy', icon: 'i-lucide-hand' },
+  { key: 'diarrhea', label: 'Diarrhea', icon: 'i-lucide-droplets' },
+  { key: 'mucositis', label: 'Mucositis', icon: 'i-lucide-circle-dot' },
+  { key: 'fatigue', label: 'Fatigue', icon: 'i-lucide-battery-low' },
+  { key: 'hand_foot', label: 'Hand-Foot Syndrome', icon: 'i-lucide-footprints' },
+  { key: 'nausea', label: 'Nausea/Vomiting', icon: 'i-lucide-frown' },
+]
+
+function getMaxGrade(entry: { metadata: Record<string, number> }): number {
+  return Math.max(
+    ...[
+      entry.metadata?.neuropathy ?? 0,
+      entry.metadata?.diarrhea ?? 0,
+      entry.metadata?.mucositis ?? 0,
+      entry.metadata?.fatigue ?? 0,
+      entry.metadata?.hand_foot ?? 0,
+      entry.metadata?.nausea ?? 0,
+    ]
+  )
+}
+</script>
+
+<template>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Toxicity Log</h1>
+        <p class="text-sm text-gray-400">NCI-CTCAE grading between cycles</p>
+      </div>
+      <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
+    </div>
+
+    <!-- Log Form -->
+    <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+      <h2 class="text-sm font-semibold text-white mb-4">New Toxicity Entry</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Date</label>
+          <input
+            v-model="form.date"
+            type="date"
+            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+          />
+        </div>
+      </div>
+
+      <!-- Toxicity Grade Selectors -->
+      <div class="space-y-3 mb-4">
+        <div v-for="field in toxicityFields" :key="field.key" class="flex items-center gap-3">
+          <div class="flex items-center gap-2 w-48 shrink-0">
+            <UIcon :name="field.icon" class="text-gray-500" />
+            <span class="text-sm text-gray-300">{{ field.label }}</span>
+          </div>
+          <div class="flex gap-1">
+            <button
+              v-for="g in grades"
+              :key="g"
+              class="w-8 h-8 rounded-lg text-xs font-medium transition-all border"
+              :class="(form as any)[field.key] === g
+                ? 'bg-gray-700 border-teal-500 text-white'
+                : 'bg-gray-800/50 border-gray-700 text-gray-500 hover:border-gray-600'"
+              @click="(form as any)[field.key] = g"
+            >
+              {{ g }}
+            </button>
+          </div>
+          <span class="text-xs ml-2" :class="gradeColors[(form as any)[field.key]]">
+            {{ gradeLabels[(form as any)[field.key]] }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Weight & ECOG -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Weight (kg)</label>
+          <input
+            v-model.number="form.weight_kg"
+            type="number"
+            step="0.1"
+            placeholder="e.g. 65"
+            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+          />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">ECOG</label>
+          <select
+            v-model.number="form.ecog"
+            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+          >
+            <option :value="null">-</option>
+            <option :value="0">0 - Fully active</option>
+            <option :value="1">1 - Restricted</option>
+            <option :value="2">2 - Ambulatory</option>
+            <option :value="3">3 - Limited self-care</option>
+            <option :value="4">4 - Disabled</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="mb-4">
+        <label class="text-xs text-gray-400 block mb-1">Notes</label>
+        <textarea
+          v-model="form.notes"
+          rows="2"
+          placeholder="Additional observations..."
+          class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+        />
+      </div>
+
+      <div class="flex items-center gap-3">
+        <UButton :loading="submitting" color="primary" size="sm" @click="submitLog">
+          Save Entry
+        </UButton>
+        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
+          {{ submitMsg }}
+        </span>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div v-if="toxicity?.entries?.length" class="space-y-2">
+      <h2 class="text-sm font-semibold text-white">History</h2>
+      <div
+        v-for="entry in toxicity.entries"
+        :key="entry.id"
+        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4"
+      >
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-white">{{ entry.date }}</span>
+          <UBadge
+            :color="getMaxGrade(entry) >= 3 ? 'error' : getMaxGrade(entry) >= 2 ? 'warning' : 'success'"
+            variant="subtle"
+            size="xs"
+          >
+            Max grade {{ getMaxGrade(entry) }}
+          </UBadge>
+        </div>
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+          <div v-for="field in toxicityFields" :key="field.key">
+            <span class="text-gray-500">{{ field.label.split(' ')[0] }}</span>
+            <span class="ml-1 font-medium" :class="gradeColors[entry.metadata?.[field.key] ?? 0]">
+              {{ entry.metadata?.[field.key] ?? 0 }}
+            </span>
+          </div>
+        </div>
+        <div v-if="entry.metadata?.weight_kg" class="text-xs text-gray-500 mt-1">
+          Weight: {{ entry.metadata.weight_kg }} kg
+          <span v-if="entry.metadata?.ecog != null">&middot; ECOG: {{ entry.metadata.ecog }}</span>
+        </div>
+        <p v-if="entry.notes" class="text-xs text-gray-400 mt-1">{{ entry.notes }}</p>
+      </div>
+    </div>
+
+    <div v-else class="text-gray-600 text-center py-8 text-sm">
+      No toxicity entries yet — log your first entry above
+    </div>
+  </div>
+</template>

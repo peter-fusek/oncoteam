@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -79,7 +80,7 @@ def _cors_json(data: dict, status_code: int = 200) -> JSONResponse:
     """Return JSONResponse with CORS headers for dashboard access."""
     response = JSONResponse(data, status_code=status_code)
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
@@ -369,6 +370,153 @@ async def api_briefings(request: Request) -> JSONResponse:
     except Exception as e:
         record_suppressed_error("api_briefings", "fetch", e)
         return _cors_json({"error": str(e), "briefings": [], "total": 0}, status_code=502)
+
+
+async def api_toxicity(request: Request) -> JSONResponse:
+    """GET/POST /api/toxicity — toxicity log entries.
+
+    GET: list toxicity logs (treatment events with event_type=toxicity_log).
+    POST: create a new toxicity log entry.
+    """
+    if request.method == "POST":
+        try:
+            body = json.loads(await request.body())
+        except (json.JSONDecodeError, Exception):
+            return _cors_json({"error": "Invalid JSON body"}, status_code=400)
+
+        required = ["date"]
+        if not all(body.get(k) for k in required):
+            return _cors_json({"error": "date is required"}, status_code=400)
+
+        metadata = {
+            k: body[k]
+            for k in (
+                "neuropathy",
+                "diarrhea",
+                "mucositis",
+                "fatigue",
+                "hand_foot",
+                "nausea",
+                "weight_kg",
+                "ecog",
+            )
+            if k in body
+        }
+
+        try:
+            result = await oncofiles_client.add_treatment_event(
+                event_date=body["date"],
+                event_type="toxicity_log",
+                title=f"Toxicity log {body['date']}",
+                notes=body.get("notes", ""),
+                metadata=metadata,
+            )
+            return _cors_json({"created": True, "result": result})
+        except Exception as e:
+            record_suppressed_error("api_toxicity", "create", e)
+            return _cors_json({"error": str(e)}, status_code=502)
+
+    # GET: list toxicity logs
+    limit = int(request.query_params.get("limit", "50"))
+    try:
+        result = await oncofiles_client.list_treatment_events(
+            event_type="toxicity_log", limit=limit
+        )
+        events = _filter_test(_extract_list(result, "events"), request)
+        return _cors_json(
+            {
+                "entries": [
+                    {
+                        "id": e.get("id"),
+                        "date": e.get("event_date"),
+                        "notes": e.get("notes"),
+                        "metadata": e.get("metadata", {}),
+                    }
+                    for e in events
+                ],
+                "total": len(events),
+            }
+        )
+    except Exception as e:
+        record_suppressed_error("api_toxicity", "fetch", e)
+        return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
+
+
+async def api_labs(request: Request) -> JSONResponse:
+    """GET/POST /api/labs — structured lab results.
+
+    GET: list lab results (treatment events with event_type=lab_result).
+    POST: create a new lab result entry.
+    """
+    if request.method == "POST":
+        try:
+            body = json.loads(await request.body())
+        except (json.JSONDecodeError, Exception):
+            return _cors_json({"error": "Invalid JSON body"}, status_code=400)
+
+        if not body.get("date"):
+            return _cors_json({"error": "date is required"}, status_code=400)
+
+        values = body.get("values", {})
+        try:
+            result = await oncofiles_client.add_treatment_event(
+                event_date=body["date"],
+                event_type="lab_result",
+                title=f"Lab results {body['date']}",
+                notes=body.get("notes", ""),
+                metadata=values,
+            )
+            return _cors_json({"created": True, "result": result})
+        except Exception as e:
+            record_suppressed_error("api_labs", "create", e)
+            return _cors_json({"error": str(e)}, status_code=502)
+
+    # GET: list lab results
+    limit = int(request.query_params.get("limit", "50"))
+    try:
+        result = await oncofiles_client.list_treatment_events(event_type="lab_result", limit=limit)
+        events = _filter_test(_extract_list(result, "events"), request)
+
+        # Extract values and check against safety thresholds
+        entries = []
+        for e in events:
+            meta = e.get("metadata", {})
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except (json.JSONDecodeError, TypeError):
+                    meta = {}
+            alerts = []
+            for param, threshold in LAB_SAFETY_THRESHOLDS.items():
+                if param in meta:
+                    val = meta[param]
+                    if (
+                        isinstance(val, (int, float))
+                        and "min" in threshold
+                        and val < threshold["min"]
+                    ):
+                        alerts.append(
+                            {
+                                "param": param,
+                                "value": val,
+                                "threshold": threshold["min"],
+                                "action": threshold["action"],
+                            }
+                        )
+            entries.append(
+                {
+                    "id": e.get("id"),
+                    "date": e.get("event_date"),
+                    "values": meta,
+                    "notes": e.get("notes"),
+                    "alerts": alerts,
+                }
+            )
+
+        return _cors_json({"entries": entries, "total": len(entries)})
+    except Exception as e:
+        record_suppressed_error("api_labs", "fetch", e)
+        return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

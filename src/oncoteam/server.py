@@ -20,6 +20,7 @@ from .dashboard_api import (
     api_autonomous,
     api_briefings,
     api_cors_preflight,
+    api_labs,
     api_patient,
     api_protocol,
     api_research,
@@ -27,6 +28,7 @@ from .dashboard_api import (
     api_stats,
     api_status,
     api_timeline,
+    api_toxicity,
 )
 from .eligibility import check_eligibility
 from .models import ResearchSource
@@ -733,10 +735,16 @@ _API_ROUTES = [
     ("/api/autonomous", api_autonomous),
     ("/api/protocol", api_protocol),
     ("/api/briefings", api_briefings),
+    ("/api/toxicity", api_toxicity),
+    ("/api/labs", api_labs),
 ]
+
+_POST_ROUTES = {"/api/toxicity", "/api/labs"}
 
 for _path, _handler in _API_ROUTES:
     mcp.custom_route(_path, methods=["GET"])(_handler)
+    if _path in _POST_ROUTES:
+        mcp.custom_route(_path, methods=["POST"])(_handler)
     mcp.custom_route(_path, methods=["OPTIONS"])(api_cors_preflight)
 
 
