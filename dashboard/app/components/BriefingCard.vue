@@ -1,0 +1,39 @@
+<script setup lang="ts">
+defineProps<{
+  title: string
+  content: string
+  date: string
+  tags?: string[] | string
+}>()
+
+const expanded = ref(false)
+
+function formatTags(tags: string[] | string | undefined): string[] {
+  if (!tags) return []
+  if (typeof tags === 'string') return tags.split(',').map(t => t.trim())
+  return tags
+}
+</script>
+
+<template>
+  <div class="rounded-lg border border-gray-800 bg-gray-900/50 overflow-hidden">
+    <button
+      class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-800/30 transition-colors"
+      @click="expanded = !expanded"
+    >
+      <div class="min-w-0 flex-1">
+        <div class="text-sm font-medium text-white truncate">{{ title }}</div>
+        <div class="text-xs text-gray-500 mt-0.5">
+          {{ new Date(date).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 ml-3 shrink-0">
+        <UBadge v-for="tag in formatTags(tags)" :key="tag" variant="subtle" size="xs" color="neutral">{{ tag }}</UBadge>
+        <UIcon :name="expanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="text-gray-500" />
+      </div>
+    </button>
+    <div v-if="expanded" class="px-4 pb-4 border-t border-gray-800">
+      <div class="prose prose-sm prose-invert max-w-none mt-3 text-sm text-gray-300 whitespace-pre-wrap">{{ content }}</div>
+    </div>
+  </div>
+</template>

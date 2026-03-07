@@ -18,8 +18,10 @@ from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .dashboard_api import (
     api_activity,
     api_autonomous,
+    api_briefings,
     api_cors_preflight,
     api_patient,
+    api_protocol,
     api_research,
     api_sessions,
     api_stats,
@@ -727,6 +729,8 @@ _API_ROUTES = [
     ("/api/research", api_research),
     ("/api/sessions", api_sessions),
     ("/api/autonomous", api_autonomous),
+    ("/api/protocol", api_protocol),
+    ("/api/briefings", api_briefings),
 ]
 
 for _path, _handler in _API_ROUTES:

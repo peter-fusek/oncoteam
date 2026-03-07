@@ -4,6 +4,9 @@ const { showTestData } = useTestDataToggle()
 
 const navigation = [
   { label: 'Agents', icon: 'i-lucide-brain-circuit', to: '/' },
+  { label: 'Patient', icon: 'i-lucide-user-round', to: '/patient' },
+  { label: 'Protocol', icon: 'i-lucide-clipboard-check', to: '/protocol' },
+  { label: 'Briefings', icon: 'i-lucide-bot', to: '/briefings' },
   { label: 'Research', icon: 'i-lucide-microscope', to: '/research' },
   { label: 'Timeline', icon: 'i-lucide-calendar-clock', to: '/timeline' },
   { label: 'Sessions', icon: 'i-lucide-messages-square', to: '/sessions' },

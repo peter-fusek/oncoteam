@@ -12,6 +12,11 @@ const { data: timeline, refresh } = await fetchApi<{
   total: number
 }>('/timeline')
 
+const { data: protocol } = await fetchApi<{
+  milestones: Array<{ cycle: number; action: string; description: string }>
+  current_cycle: number
+}>('/protocol')
+
 const typeEmoji: Record<string, string> = {
   chemo_cycle: '💊',
   chemo: '💊',
@@ -19,6 +24,31 @@ const typeEmoji: Record<string, string> = {
   consultation: '🩺',
   surgery: '🔪',
   scan: '📡',
+}
+
+function dotColor(type: string) {
+  switch (type) {
+    case 'chemo_cycle':
+    case 'chemo': return 'border-blue-500 bg-blue-500/20'
+    case 'lab_work': return 'border-green-500 bg-green-500/20'
+    case 'surgery': return 'border-red-500 bg-red-500/20'
+    case 'consultation': return 'border-purple-500 bg-purple-500/20'
+    case 'scan': return 'border-cyan-500 bg-cyan-500/20'
+    default: return 'border-gray-700 bg-gray-900'
+  }
+}
+
+// Extract cycle number from title
+function getCycleNumber(title: string): number | null {
+  const match = title.match(/C(\d+)/i)
+  return match ? parseInt(match[1]) : null
+}
+
+function getMilestonesForEvent(title: string) {
+  if (!protocol.value?.milestones) return []
+  const cycle = getCycleNumber(title)
+  if (!cycle) return []
+  return protocol.value.milestones.filter(m => m.cycle === cycle || m.cycle === cycle + 1)
 }
 </script>
 
@@ -29,7 +59,35 @@ const typeEmoji: Record<string, string> = {
         <h1 class="text-2xl font-bold text-white">Treatment Timeline</h1>
         <p class="text-sm text-gray-400">{{ timeline?.total ?? 0 }} events</p>
       </div>
-      <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
+      <div class="flex items-center gap-2">
+        <UBadge v-if="protocol?.current_cycle" variant="subtle" color="info" size="xs">
+          Current: Cycle {{ protocol.current_cycle }}
+        </UBadge>
+        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
+      </div>
+    </div>
+
+    <!-- Milestone Summary -->
+    <div v-if="protocol?.milestones" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <UIcon name="i-lucide-milestone" class="text-amber-500" />
+        <span class="text-sm font-semibold text-white">Treatment Milestones</span>
+      </div>
+      <div class="flex gap-4 overflow-x-auto pb-2">
+        <div
+          v-for="m in protocol.milestones"
+          :key="m.action"
+          class="shrink-0 rounded-lg px-3 py-2 text-xs border"
+          :class="m.cycle < protocol.current_cycle
+            ? 'border-green-500/30 bg-green-500/5 text-green-400'
+            : m.cycle <= protocol.current_cycle + 1
+              ? 'border-amber-500/30 bg-amber-500/5 text-amber-400'
+              : 'border-gray-800 bg-gray-800/30 text-gray-500'"
+        >
+          <div class="font-medium">C{{ m.cycle }}</div>
+          <div class="text-[10px] mt-0.5 max-w-32 truncate">{{ m.description }}</div>
+        </div>
+      </div>
     </div>
 
     <div v-if="timeline?.events?.length" class="relative pl-6">
@@ -38,7 +96,7 @@ const typeEmoji: Record<string, string> = {
 
       <div v-for="event in timeline.events" :key="event.id" class="relative pb-6 last:pb-0">
         <!-- Dot -->
-        <div class="absolute -left-4 top-3 w-3 h-3 rounded-full border-2 border-gray-700 bg-gray-900" />
+        <div class="absolute -left-4 top-3 w-3 h-3 rounded-full border-2" :class="dotColor(event.type)" />
 
         <div class="rounded-lg border border-gray-800 bg-gray-900/50 p-4">
           <div class="flex items-start gap-3">
@@ -47,9 +105,24 @@ const typeEmoji: Record<string, string> = {
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-white text-sm">{{ event.title }}</span>
                 <UBadge variant="subtle" size="xs" color="neutral">{{ event.type }}</UBadge>
+                <UBadge v-if="getCycleNumber(event.title)" variant="subtle" size="xs" color="info">
+                  Cycle {{ getCycleNumber(event.title) }}
+                </UBadge>
               </div>
               <div class="text-xs text-gray-500 mt-1">{{ event.date }}</div>
               <p v-if="event.notes" class="text-xs text-gray-400 mt-2">{{ event.notes }}</p>
+
+              <!-- Milestone callouts -->
+              <div v-if="getMilestonesForEvent(event.title).length" class="mt-2 space-y-1">
+                <div
+                  v-for="m in getMilestonesForEvent(event.title)"
+                  :key="m.action"
+                  class="flex items-center gap-1.5 text-xs text-amber-400"
+                >
+                  <UIcon name="i-lucide-milestone" class="w-3 h-3" />
+                  <span>{{ m.description }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

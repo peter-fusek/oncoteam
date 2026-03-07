@@ -24,6 +24,12 @@ const { data: autonomous, refresh: refreshAutonomous } = await fetchApi<{
   job_count?: number
 }>('/autonomous')
 
+const { data: gamification, refresh: refreshGamification } = useFetch<{
+  totalXp: number
+  level: string
+  streakDays: number
+}>('/api/gamification')
+
 // Map tools to rooms
 const rooms = computed(() => {
   const toolStats = new Map(
@@ -126,7 +132,7 @@ const totalCalls = computed(() =>
 )
 
 async function refreshAll() {
-  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous()])
+  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshGamification()])
 }
 
 // Auto-refresh every 30 seconds
@@ -148,6 +154,12 @@ onUnmounted(() => {
         <p class="text-sm text-gray-400">{{ totalCalls }} operations completed</p>
       </div>
       <div class="flex items-center gap-3">
+        <XpProgressBar
+          v-if="gamification"
+          :total-xp="gamification.totalXp"
+          :level="gamification.level"
+          :streak-days="gamification.streakDays"
+        />
         <div class="flex items-center gap-2 text-xs">
           <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           <span class="text-gray-400">v{{ status?.version }}</span>

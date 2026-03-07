@@ -9,6 +9,15 @@ from starlette.responses import JSONResponse
 
 from . import oncofiles_client
 from .activity_logger import get_session_id, record_suppressed_error
+from .clinical_protocol import (
+    DOSE_MODIFICATION_RULES,
+    LAB_SAFETY_THRESHOLDS,
+    MONITORING_SCHEDULE,
+    SAFETY_FLAGS,
+    SECOND_LINE_OPTIONS,
+    TREATMENT_MILESTONES,
+    WATCHED_TRIALS,
+)
 from .config import AUTONOMOUS_ENABLED
 from .patient_context import PATIENT
 
@@ -300,6 +309,47 @@ async def api_autonomous(request: Request) -> JSONResponse:
             data["job_count"] = 0
 
     return _cors_json(data)
+
+
+async def api_protocol(request: Request) -> JSONResponse:
+    """GET /api/protocol — clinical protocol data (thresholds, milestones, dose mods)."""
+    return _cors_json({
+        "lab_thresholds": LAB_SAFETY_THRESHOLDS,
+        "dose_modifications": DOSE_MODIFICATION_RULES,
+        "milestones": TREATMENT_MILESTONES,
+        "monitoring_schedule": MONITORING_SCHEDULE,
+        "safety_flags": SAFETY_FLAGS,
+        "second_line_options": SECOND_LINE_OPTIONS,
+        "watched_trials": WATCHED_TRIALS,
+        "current_cycle": PATIENT.current_cycle,
+    })
+
+
+async def api_briefings(request: Request) -> JSONResponse:
+    """GET /api/briefings — autonomous briefings from oncofiles diary."""
+    limit = int(request.query_params.get("limit", "20"))
+    try:
+        result = await oncofiles_client.search_conversations(
+            entry_type="autonomous_briefing",
+            limit=limit,
+        )
+        entries = _filter_test(_extract_list(result, "entries"), request)
+        return _cors_json({
+            "briefings": [
+                {
+                    "id": e.get("id"),
+                    "title": e.get("title"),
+                    "content": e.get("content"),
+                    "date": e.get("created_at"),
+                    "tags": e.get("tags"),
+                }
+                for e in entries
+            ],
+            "total": len(entries),
+        })
+    except Exception as e:
+        record_suppressed_error("api_briefings", "fetch", e)
+        return _cors_json({"error": str(e), "briefings": [], "total": 0}, status_code=502)
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:
