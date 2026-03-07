@@ -43,6 +43,7 @@ function isObject(val: unknown): val is Record<string, unknown> {
     :ui="{ width: 'max-w-lg' }"
     @update:open="(val: boolean) => { if (!val) close() }"
   >
+    <template #body>
     <!-- Breadcrumb -->
     <div v-if="stack.length > 1" class="flex items-center gap-1 text-xs text-gray-500 overflow-x-auto px-4 pb-2">
       <template v-for="(item, i) in stack" :key="i">
@@ -172,5 +173,6 @@ function isObject(val: unknown): val is Record<string, unknown> {
         </a>
       </div>
     </div>
+    </template>
   </USlideover>
 </template>
