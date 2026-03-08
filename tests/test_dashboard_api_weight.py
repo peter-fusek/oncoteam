@@ -154,7 +154,8 @@ async def test_api_weight_7pct_loss_gets_dietitian_referral(mock_list):
     data = json.loads(response.body)
 
     assert len(data["alerts"]) == 1
-    assert "konzultácia s nutricionistom" in data["alerts"][0]["action"]
+    assert "Dietitian referral" in data["alerts"][0]["action"]
+    assert data["alerts"][0]["severity"] == "warning"
 
 
 @pytest.mark.anyio
@@ -181,7 +182,8 @@ async def test_api_weight_10pct_loss_gets_enteral_nutrition(mock_list):
     data = json.loads(response.body)
 
     assert len(data["alerts"]) == 1
-    assert "konzultácia s nutricionistom" in data["alerts"][0]["action"]
+    assert "enteral nutrition" in data["alerts"][0]["action"]
+    assert data["alerts"][0]["severity"] == "critical"
 
 
 @pytest.mark.anyio
@@ -196,10 +198,9 @@ async def test_api_weight_includes_nutrition_escalation(mock_list):
     response = await api_weight(request)
     data = json.loads(response.body)
 
-    # Response includes baseline, entries, alerts, total — no nutrition_escalation key
-    assert "baseline_weight_kg" in data
-    assert "alerts" in data
-    assert data["alerts"] == []
+    assert "nutrition_escalation" in data
+    assert len(data["nutrition_escalation"]) == 4
+    assert data["nutrition_escalation"][0]["loss_pct"] == 5
 
 
 @pytest.mark.anyio
