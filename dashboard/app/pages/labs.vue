@@ -8,7 +8,9 @@ const { data: labs, refresh } = await fetchApi<{
     values: Record<string, number>
     notes: string
     alerts: Array<{ param: string; value: number; threshold: number; action: string }>
+    value_statuses: Record<string, 'low' | 'high' | 'normal'>
   }>
+  reference_ranges: Record<string, { min: number; max: number; unit: string; note?: string }>
   total: number
   error?: string
 }>('/labs')
@@ -46,6 +48,18 @@ function getThreshold(key: string): number | undefined {
 
 function hasData(key: string): boolean {
   return sortedEntries.value.some(e => e.values?.[key] != null)
+}
+
+function statusColor(status?: string): string {
+  if (status === 'low') return 'text-amber-400 font-semibold'
+  if (status === 'high') return 'text-amber-400 font-semibold'
+  return ''
+}
+
+function refRangeText(key: string): string {
+  const ref = labs.value?.reference_ranges?.[key]
+  if (!ref) return ''
+  return `${ref.min.toLocaleString()}–${ref.max.toLocaleString()}`
 }
 
 // All alerts across entries
@@ -205,7 +219,10 @@ async function submitLab() {
           <thead>
             <tr class="text-left text-gray-500 border-b border-gray-800">
               <th class="px-4 py-2">Date</th>
-              <th v-for="p in labParams" :key="p.key" class="px-3 py-2">{{ p.label }}</th>
+              <th v-for="p in labParams" :key="p.key" class="px-3 py-2">
+                <div>{{ p.label }}</div>
+                <div v-if="refRangeText(p.key)" class="text-[10px] text-gray-600 font-normal">{{ refRangeText(p.key) }}</div>
+              </th>
               <th class="px-3 py-2">Notes</th>
             </tr>
           </thead>
@@ -220,7 +237,8 @@ async function submitLab() {
               <td v-for="p in labParams" :key="p.key" class="px-3 py-2">
                 <span
                   v-if="entry.values?.[p.key] != null"
-                  :class="entry.alerts?.some((a: any) => a.param === p.key) ? 'text-red-400 font-semibold' : ''"
+                  :class="entry.alerts?.some((a: any) => a.param === p.key) ? 'text-red-400 font-semibold' : statusColor(entry.value_statuses?.[p.key])"
+                  :title="entry.value_statuses?.[p.key] === 'low' ? 'Below reference range' : entry.value_statuses?.[p.key] === 'high' ? 'Above reference range' : ''"
                 >
                   {{ typeof entry.values[p.key] === 'number' ? entry.values[p.key].toLocaleString() : entry.values[p.key] }}
                 </span>

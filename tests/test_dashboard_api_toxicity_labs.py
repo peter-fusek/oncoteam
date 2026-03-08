@@ -227,6 +227,71 @@ async def test_api_labs_post_requires_date():
 # ── Labs analyze_labs fallback ─────────────────
 
 
+# ── /api/labs reference ranges ──────────────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_includes_reference_ranges(mock_list):
+    mock_list.return_value = MOCK_LAB_EVENTS
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    assert "reference_ranges" in data
+    assert "ANC" in data["reference_ranges"]
+    assert data["reference_ranges"]["ANC"]["min"] == 1800
+    assert data["reference_ranges"]["ANC"]["max"] == 7700
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_value_statuses(mock_list):
+    """Values outside reference range get status field."""
+    mock_list.return_value = MOCK_LAB_EVENTS
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    # First entry: ANC=2100 (normal 1800-7700), PLT=180000 (normal), CEA=12.5 (high >5.0)
+    statuses = data["entries"][0]["value_statuses"]
+    assert statuses["ANC"] == "normal"
+    assert statuses["PLT"] == "normal"
+    assert statuses["CEA"] == "high"
+    assert statuses["CA_19_9"] == "high"  # 45.0 > 37.0
+
+    # Second entry: ANC=800 (low <1800), PLT=60000 (low <150000)
+    statuses2 = data["entries"][1]["value_statuses"]
+    assert statuses2["ANC"] == "low"
+    assert statuses2["PLT"] == "low"
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_reference_ranges_match_protocol(mock_list):
+    """Reference ranges in response should match clinical_protocol data."""
+    from oncoteam.clinical_protocol import LAB_REFERENCE_RANGES
+
+    mock_list.return_value = []
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    assert data["reference_ranges"] == LAB_REFERENCE_RANGES
+
+
+# ── Labs analyze_labs fallback ─────────────────
+
+
 @pytest.mark.anyio
 @patch(
     "oncoteam.dashboard_api.oncofiles_client.analyze_labs",

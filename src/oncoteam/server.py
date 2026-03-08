@@ -20,6 +20,7 @@ from .dashboard_api import (
     api_autonomous,
     api_briefings,
     api_cors_preflight,
+    api_cumulative_dose,
     api_detail,
     api_diagnostics,
     api_family_update,
@@ -724,7 +725,7 @@ async def create_improvement_issue(
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.8.0"})
+    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.9.0"})
 
 
 # ── Dashboard API routes ────────────────────────
@@ -746,6 +747,7 @@ _API_ROUTES = [
     ("/api/medications", api_medications),
     ("/api/weight", api_weight),
     ("/api/family-update", api_family_update),
+    ("/api/cumulative-dose", api_cumulative_dose),
 ]
 
 _POST_ROUTES = {"/api/toxicity", "/api/labs", "/api/medications", "/api/family-update"}

@@ -19,6 +19,11 @@ const { data: meds, refresh } = await fetchApi<{
     active: boolean
     notes: string
   }>
+  adherence: {
+    last_7_days: Array<{ date: string; medications: Record<string, boolean> }>
+    compliance_pct: number | null
+    missed: Array<{ date: string; medication: string }>
+  }
   total: number
   error?: string
 }>('/medications')
@@ -32,6 +37,42 @@ const form = reactive({
   time_of_day: '',
   notes: '',
 })
+
+// Adherence check-in
+const checkin = reactive<Record<string, boolean>>({})
+const checkinSubmitting = ref(false)
+const checkinMsg = ref('')
+
+// Initialize check-in toggles from default medications
+watchEffect(() => {
+  if (meds.value?.default_medications) {
+    for (const med of meds.value.default_medications) {
+      if (!(med.name in checkin)) {
+        checkin[med.name] = false
+      }
+    }
+  }
+})
+
+async function submitCheckin() {
+  checkinSubmitting.value = true
+  checkinMsg.value = ''
+  try {
+    await $fetch(apiUrl('/medications'), {
+      method: 'POST',
+      body: {
+        date: new Date().toISOString().slice(0, 10),
+        medications: { ...checkin },
+      },
+    })
+    checkinMsg.value = 'Saved'
+    await refresh()
+  } catch (e: any) {
+    checkinMsg.value = `Error: ${e.message || e}`
+  } finally {
+    checkinSubmitting.value = false
+  }
+}
 
 const submitting = ref(false)
 const submitMsg = ref('')
@@ -79,6 +120,65 @@ const drilldown = useDrilldown()
     </div>
 
     <ApiErrorBanner :error="meds?.error" />
+
+    <!-- Today's Check-in -->
+    <div class="rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-white">Today's Check-in</h2>
+        <UBadge v-if="meds?.adherence?.compliance_pct != null" variant="subtle" size="xs" :color="meds.adherence.compliance_pct >= 90 ? 'success' : meds.adherence.compliance_pct >= 70 ? 'warning' : 'error'">
+          {{ meds.adherence.compliance_pct }}% compliance
+        </UBadge>
+      </div>
+      <div class="flex flex-wrap gap-3 mb-3">
+        <button
+          v-for="med in meds?.default_medications"
+          :key="med.name"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all"
+          :class="checkin[med.name] ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600'"
+          @click="checkin[med.name] = !checkin[med.name]"
+        >
+          <UIcon :name="checkin[med.name] ? 'i-lucide-check-circle' : 'i-lucide-circle'" />
+          {{ med.name }}
+        </button>
+      </div>
+      <div class="flex items-center gap-3">
+        <UButton :loading="checkinSubmitting" color="primary" size="xs" @click="submitCheckin">Log Today</UButton>
+        <span v-if="checkinMsg" class="text-xs" :class="checkinMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'">{{ checkinMsg }}</span>
+      </div>
+    </div>
+
+    <!-- 7-Day Adherence Grid -->
+    <div v-if="meds?.adherence?.last_7_days?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+      <h2 class="text-xs font-semibold text-gray-400 mb-3">7-Day Adherence</h2>
+      <div class="overflow-x-auto">
+        <div class="flex gap-2">
+          <div
+            v-for="day in meds.adherence.last_7_days"
+            :key="day.date"
+            class="flex flex-col items-center gap-1 min-w-[60px]"
+          >
+            <span class="text-[10px] text-gray-500">{{ day.date.slice(5) }}</span>
+            <div
+              v-for="(taken, medName) in day.medications"
+              :key="medName"
+              class="w-5 h-5 rounded-sm flex items-center justify-center text-[10px]"
+              :class="taken ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'"
+              :title="`${medName}: ${taken ? 'Taken' : 'Missed'}`"
+            >
+              {{ taken ? '✓' : '✗' }}
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-1 mt-2">
+          <div v-for="med in meds.default_medications" :key="med.name" class="text-[10px] text-gray-600">
+            {{ med.name }}
+          </div>
+        </div>
+      </div>
+      <div v-if="meds.adherence.missed?.length" class="mt-2 text-xs text-red-400">
+        Missed: {{ meds.adherence.missed.map(m => `${m.medication} (${m.date.slice(5)})`).join(', ') }}
+      </div>
+    </div>
 
     <!-- Default Medications (regimen) -->
     <div v-if="meds?.default_medications?.length">

@@ -72,6 +72,19 @@ async def test_api_protocol_milestones_structure():
 
 
 @pytest.mark.anyio
+async def test_api_protocol_includes_cycle_delay_rules():
+    request = _make_request()
+    response = await api_protocol(request)
+    data = json.loads(response.body)
+
+    assert "cycle_delay_rules" in data
+    assert isinstance(data["cycle_delay_rules"], list)
+    assert len(data["cycle_delay_rules"]) == 9
+    assert "condition" in data["cycle_delay_rules"][0]
+    assert "action" in data["cycle_delay_rules"][0]
+
+
+@pytest.mark.anyio
 async def test_api_protocol_safety_flags_structure():
     request = _make_request()
     response = await api_protocol(request)

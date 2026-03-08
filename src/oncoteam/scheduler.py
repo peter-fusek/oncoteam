@@ -21,6 +21,7 @@ def _create_scheduler():
         run_family_update,
         run_file_scan,
         run_lab_sync,
+        run_medication_adherence_check,
         run_mtb_preparation,
         run_pre_cycle_check,
         run_response_assessment,
@@ -83,6 +84,13 @@ def _create_scheduler():
     # Family update: Sunday 18:00 UTC (weekly family summary in Slovak)
     scheduler.add_job(
         run_family_update, CronTrigger(day_of_week="sun", hour=18), id="family_update"
+    )
+
+    # Medication adherence check: daily 20:00 UTC
+    scheduler.add_job(
+        run_medication_adherence_check,
+        CronTrigger(hour=20, minute=0),
+        id="medication_adherence_check",
     )
 
     return scheduler

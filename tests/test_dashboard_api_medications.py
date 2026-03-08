@@ -45,7 +45,7 @@ MOCK_MEDICATION_EVENTS = [
     new_callable=AsyncMock,
 )
 async def test_api_medications_get_returns_entries(mock_list):
-    mock_list.return_value = MOCK_MEDICATION_EVENTS
+    mock_list.side_effect = [MOCK_MEDICATION_EVENTS, []]  # medication_log + adherence
     request = FakeRequest("GET")
     response = await api_medications(request)
     data = json.loads(response.body)
@@ -54,7 +54,6 @@ async def test_api_medications_get_returns_entries(mock_list):
     assert data["total"] == 1
     assert data["medications"][0]["name"] == "Clexane"
     assert data["medications"][0]["dose"] == "0.6ml SC"
-    mock_list.assert_called_once_with(event_type="medication_log", limit=50)
 
 
 @pytest.mark.anyio
@@ -63,7 +62,7 @@ async def test_api_medications_get_returns_entries(mock_list):
     new_callable=AsyncMock,
 )
 async def test_api_medications_get_includes_defaults(mock_list):
-    mock_list.return_value = []
+    mock_list.side_effect = [[], []]  # medication_log + adherence
     request = FakeRequest("GET")
     response = await api_medications(request)
     data = json.loads(response.body)
@@ -84,9 +83,11 @@ async def test_api_medications_get_handles_error(mock_list):
     mock_list.side_effect = Exception("fail")
     request = FakeRequest("GET")
     response = await api_medications(request)
-    assert response.status_code == 502
+    # return_exceptions=True means gather catches the error, returns empty lists
+    assert response.status_code == 200
     data = json.loads(response.body)
     assert len(data["default_medications"]) == 4
+    assert data["medications"] == []
 
 
 @pytest.mark.anyio
@@ -124,5 +125,77 @@ async def test_api_medications_post_requires_date_and_name():
 @pytest.mark.anyio
 async def test_api_medications_post_rejects_invalid_json():
     request = FakeRequest("POST", body=b"not json")
+    response = await api_medications(request)
+    assert response.status_code == 400
+
+
+# ── Medication adherence ──────────────────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.add_treatment_event",
+    new_callable=AsyncMock,
+)
+async def test_api_medications_adherence_post_creates_event(mock_add):
+    mock_add.return_value = {"id": 100}
+    body = json.dumps(
+        {
+            "date": "2026-03-08",
+            "medications": {"Clexane": True, "Ondansetron": False},
+        }
+    ).encode()
+    request = FakeRequest("POST", body=body)
+    response = await api_medications(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["created"] is True
+    assert data["event_type"] == "medication_adherence"
+    call_kwargs = mock_add.call_args[1]
+    assert call_kwargs["event_type"] == "medication_adherence"
+    assert call_kwargs["metadata"]["medications"]["Clexane"] is True
+    assert call_kwargs["metadata"]["medications"]["Ondansetron"] is False
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_medications_get_includes_adherence(mock_list):
+    """GET should include adherence data with compliance calculation."""
+    mock_list.side_effect = [
+        MOCK_MEDICATION_EVENTS,  # medication_log
+        [  # medication_adherence
+            {
+                "id": 50,
+                "event_date": "2026-03-07",
+                "event_type": "medication_adherence",
+                "metadata": {"medications": {"Clexane": True, "Ondansetron": True}},
+            },
+            {
+                "id": 51,
+                "event_date": "2026-03-06",
+                "event_type": "medication_adherence",
+                "metadata": {"medications": {"Clexane": True, "Ondansetron": False}},
+            },
+        ],
+    ]
+    request = FakeRequest("GET")
+    response = await api_medications(request)
+    data = json.loads(response.body)
+
+    assert "adherence" in data
+    assert len(data["adherence"]["last_7_days"]) == 2
+    assert data["adherence"]["compliance_pct"] == 75.0  # 3/4 = 75%
+    assert len(data["adherence"]["missed"]) == 1
+    assert data["adherence"]["missed"][0]["medication"] == "Ondansetron"
+
+
+@pytest.mark.anyio
+async def test_api_medications_adherence_post_requires_date():
+    body = json.dumps({"medications": {"Clexane": True}}).encode()
+    request = FakeRequest("POST", body=body)
     response = await api_medications(request)
     assert response.status_code == 400

@@ -9,14 +9,29 @@ const { data: protocol, refresh } = await fetchApi<{
   safety_flags: Record<string, { rule: string; source: string }>
   second_line_options: Array<{ regimen: string; evidence: string; note: string }>
   watched_trials: string[]
+  cycle_delay_rules: Array<{ condition: string; action: string }>
   current_cycle: number
 }>('/protocol')
+
+const { data: cumDose } = await fetchApi<{
+  drug: string
+  cumulative_mg_m2: number
+  cycles_counted: number
+  dose_per_cycle: number
+  thresholds_reached: Array<{ at: number; action: string; severity: string }>
+  next_threshold: { at: number; action: string; severity: string } | null
+  pct_to_next: number
+  all_thresholds: Array<{ at: number; action: string; severity: string }>
+  max_recommended: number
+}>('/cumulative-dose')
 
 const activeTab = ref('checklist')
 const tabs = [
   { key: 'checklist', label: 'Pre-Cycle Checklist', icon: 'i-lucide-clipboard-check' },
   { key: 'labs', label: 'Lab Thresholds', icon: 'i-lucide-test-tube-diagonal' },
   { key: 'dosemods', label: 'Dose Modifications', icon: 'i-lucide-pill' },
+  { key: 'cumdose', label: 'Cumulative Dose', icon: 'i-lucide-activity' },
+  { key: 'delays', label: 'Cycle Delays', icon: 'i-lucide-timer' },
   { key: 'milestones', label: 'Milestones', icon: 'i-lucide-milestone' },
   { key: 'monitoring', label: 'Monitoring', icon: 'i-lucide-calendar' },
   { key: '2l', label: '2L Options', icon: 'i-lucide-arrow-right-circle' },
@@ -69,6 +84,78 @@ const tabs = [
           :toxicity="toxicity"
           :action="action"
         />
+      </div>
+
+      <!-- Cumulative Dose -->
+      <div v-if="activeTab === 'cumdose' && cumDose" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+        <h2 class="text-sm font-semibold text-white mb-4">Cumulative Oxaliplatin Dose</h2>
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-sm text-gray-300">
+              {{ cumDose.cumulative_mg_m2 }} {{ cumDose.unit }}
+              <span class="text-gray-500">({{ cumDose.cycles_counted }} cycles × {{ cumDose.dose_per_cycle }})</span>
+            </span>
+            <span class="text-sm text-gray-400">Max: {{ cumDose.max_recommended }} {{ cumDose.unit }}</span>
+          </div>
+          <!-- Progress bar -->
+          <div class="relative h-4 rounded-full bg-gray-800 overflow-hidden">
+            <div
+              class="h-full rounded-full transition-all"
+              :class="cumDose.pct_to_next >= 100 ? 'bg-red-500' : cumDose.thresholds_reached.length >= 2 ? 'bg-amber-500' : 'bg-teal-500'"
+              :style="{ width: `${Math.min((cumDose.cumulative_mg_m2 / cumDose.max_recommended) * 100, 100)}%` }"
+            />
+            <!-- Threshold markers -->
+            <div
+              v-for="t in cumDose.all_thresholds"
+              :key="t.at"
+              class="absolute top-0 bottom-0 w-px"
+              :class="t.severity === 'critical' ? 'bg-red-500/60' : 'bg-amber-500/60'"
+              :style="{ left: `${(t.at / cumDose.max_recommended) * 100}%` }"
+            />
+          </div>
+        </div>
+        <!-- Threshold list -->
+        <div class="space-y-2">
+          <div
+            v-for="t in cumDose.all_thresholds"
+            :key="t.at"
+            class="flex items-center gap-3 text-sm py-1"
+            :class="cumDose.cumulative_mg_m2 >= t.at ? 'text-white' : 'text-gray-500'"
+          >
+            <UIcon
+              :name="cumDose.cumulative_mg_m2 >= t.at ? 'i-lucide-check-circle' : 'i-lucide-circle'"
+              :class="t.severity === 'critical' ? 'text-red-500' : 'text-amber-500'"
+            />
+            <span class="font-mono text-xs w-20">{{ t.at }} {{ cumDose.unit }}</span>
+            <span>{{ t.action }}</span>
+          </div>
+        </div>
+        <div v-if="cumDose.next_threshold" class="mt-3 text-xs text-gray-400">
+          Next threshold at {{ cumDose.next_threshold.at }} {{ cumDose.unit }}
+          ({{ cumDose.pct_to_next }}% reached)
+        </div>
+      </div>
+
+      <!-- Cycle Delay Rules -->
+      <div v-if="activeTab === 'delays'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+        <h2 class="text-sm font-semibold text-white mb-4">Cycle Delay Rules</h2>
+        <div class="space-y-1">
+          <div
+            v-for="(rule, i) in protocol.cycle_delay_rules"
+            :key="i"
+            class="flex items-start gap-3 py-2 border-b border-gray-800/50 last:border-0"
+          >
+            <UIcon
+              name="i-lucide-clock"
+              :class="rule.action.toLowerCase().includes('hold') || rule.action.toLowerCase().includes('mandatory') ? 'text-red-500' : 'text-amber-500'"
+              class="mt-0.5 shrink-0"
+            />
+            <div>
+              <div class="text-sm text-white">{{ rule.condition }}</div>
+              <div class="text-xs text-gray-400">{{ rule.action }}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Milestones -->

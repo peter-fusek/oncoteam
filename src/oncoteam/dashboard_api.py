@@ -13,9 +13,13 @@ from starlette.responses import JSONResponse
 from . import oncofiles_client
 from .activity_logger import get_session_id, get_suppressed_errors, record_suppressed_error
 from .clinical_protocol import (
+    CUMULATIVE_DOSE_THRESHOLDS,
+    CYCLE_DELAY_RULES,
     DOSE_MODIFICATION_RULES,
+    LAB_REFERENCE_RANGES,
     LAB_SAFETY_THRESHOLDS,
     MONITORING_SCHEDULE,
+    NUTRITION_ESCALATION,
     SAFETY_FLAGS,
     SECOND_LINE_OPTIONS,
     TREATMENT_MILESTONES,
@@ -24,7 +28,7 @@ from .clinical_protocol import (
 from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
 from .patient_context import PATIENT
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 
 # Patterns that identify test/E2E data created by automated tests
 _TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test ", "testovacia")
@@ -351,6 +355,11 @@ async def api_autonomous(request: Request) -> JSONResponse:
                     "schedule": "Sunday 18:00 UTC",
                     "description": "Weekly family update in Slovak",
                 },
+                {
+                    "id": "medication_adherence_check",
+                    "schedule": "daily 20:00 UTC",
+                    "description": "Check daily medication adherence (Clexane critical)",
+                },
             ]
             data["jobs"] = jobs
             data["job_count"] = len(jobs)
@@ -372,6 +381,7 @@ async def api_protocol(request: Request) -> JSONResponse:
             "safety_flags": SAFETY_FLAGS,
             "second_line_options": SECOND_LINE_OPTIONS,
             "watched_trials": WATCHED_TRIALS,
+            "cycle_delay_rules": CYCLE_DELAY_RULES,
             "current_cycle": PATIENT.current_cycle,
         }
     )
@@ -538,7 +548,7 @@ async def api_labs(request: Request) -> JSONResponse:
             except Exception as fallback_err:
                 record_suppressed_error("api_labs", "analyze_labs_fallback", fallback_err)
 
-        # Extract values and check against safety thresholds
+        # Extract values and check against safety thresholds + reference ranges
         entries = []
         for e in events:
             meta = e.get("metadata", {})
@@ -548,6 +558,7 @@ async def api_labs(request: Request) -> JSONResponse:
                 except (json.JSONDecodeError, TypeError):
                     meta = {}
             alerts = []
+            value_statuses = {}
             for param, threshold in LAB_SAFETY_THRESHOLDS.items():
                 if param in meta:
                     val = meta[param]
@@ -564,6 +575,19 @@ async def api_labs(request: Request) -> JSONResponse:
                                 "action": threshold["action"],
                             }
                         )
+            # Determine status for each value against reference ranges
+            for param, val in meta.items():
+                if not isinstance(val, (int, float)):
+                    continue
+                ref = LAB_REFERENCE_RANGES.get(param)
+                if ref is None:
+                    continue
+                if val < ref["min"]:
+                    value_statuses[param] = "low"
+                elif val > ref["max"]:
+                    value_statuses[param] = "high"
+                else:
+                    value_statuses[param] = "normal"
             entries.append(
                 {
                     "id": e.get("id"),
@@ -571,10 +595,17 @@ async def api_labs(request: Request) -> JSONResponse:
                     "values": meta,
                     "notes": e.get("notes"),
                     "alerts": alerts,
+                    "value_statuses": value_statuses,
                 }
             )
 
-        return _cors_json({"entries": entries, "total": len(entries)})
+        return _cors_json(
+            {
+                "entries": entries,
+                "total": len(entries),
+                "reference_ranges": LAB_REFERENCE_RANGES,
+            }
+        )
     except Exception as e:
         record_suppressed_error("api_labs", "fetch", e)
         return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
@@ -783,6 +814,26 @@ async def api_medications(request: Request) -> JSONResponse:
         except (json.JSONDecodeError, Exception):
             return _cors_json({"error": "Invalid JSON body"}, status_code=400)
 
+        # Adherence check-in: {date, medications: {name: taken_bool}}
+        if "medications" in body and isinstance(body["medications"], dict):
+            if not body.get("date"):
+                return _cors_json({"error": "date is required"}, status_code=400)
+            try:
+                result = await oncofiles_client.add_treatment_event(
+                    event_date=body["date"],
+                    event_type="medication_adherence",
+                    title=f"Adherence {body['date']}",
+                    notes=body.get("notes", ""),
+                    metadata={"medications": body["medications"]},
+                )
+                return _cors_json(
+                    {"created": True, "event_type": "medication_adherence", "result": result}
+                )
+            except Exception as e:
+                record_suppressed_error("api_medications", "create_adherence", e)
+                return _cors_json({"error": str(e)}, status_code=502)
+
+        # Regular medication log
         if not body.get("date") or not body.get("name"):
             return _cors_json({"error": "date and name are required"}, status_code=400)
 
@@ -803,13 +854,21 @@ async def api_medications(request: Request) -> JSONResponse:
             record_suppressed_error("api_medications", "create", e)
             return _cors_json({"error": str(e)}, status_code=502)
 
-    # GET: list medication logs
+    # GET: list medication logs + adherence data
     limit = int(request.query_params.get("limit", "50"))
     try:
-        result = await oncofiles_client.list_treatment_events(
-            event_type="medication_log", limit=limit
+        med_result, adh_result = await asyncio.gather(
+            oncofiles_client.list_treatment_events(event_type="medication_log", limit=limit),
+            oncofiles_client.list_treatment_events(event_type="medication_adherence", limit=7),
+            return_exceptions=True,
         )
-        events = _filter_test(_extract_list(result, "events"), request)
+
+        # Process medication logs
+        events = (
+            _filter_test(_extract_list(med_result, "events"), request)
+            if not isinstance(med_result, Exception)
+            else []
+        )
         medications = []
         for e in events:
             meta = e.get("metadata", {})
@@ -828,10 +887,40 @@ async def api_medications(request: Request) -> JSONResponse:
                     "notes": e.get("notes") or meta.get("notes"),
                 }
             )
+
+        # Process adherence data
+        adherence_entries = (
+            _extract_list(adh_result, "events") if not isinstance(adh_result, Exception) else []
+        )
+        last_7_days = []
+        missed = []
+        total_checks = 0
+        taken_count = 0
+        for ae in adherence_entries:
+            meta = ae.get("metadata", {})
+            if isinstance(meta, str):
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
+                    meta = json.loads(meta)
+            meds = meta.get("medications", {})
+            date = ae.get("event_date", "")
+            last_7_days.append({"date": date, "medications": meds})
+            for med_name, taken in meds.items():
+                total_checks += 1
+                if taken:
+                    taken_count += 1
+                else:
+                    missed.append({"date": date, "medication": med_name})
+        compliance_pct = round((taken_count / total_checks) * 100, 1) if total_checks > 0 else None
+
         return _cors_json(
             {
                 "medications": medications,
                 "default_medications": _DEFAULT_MEDICATIONS,
+                "adherence": {
+                    "last_7_days": last_7_days,
+                    "compliance_pct": compliance_pct,
+                    "missed": missed,
+                },
                 "total": len(medications),
             }
         )
@@ -842,6 +931,7 @@ async def api_medications(request: Request) -> JSONResponse:
                 "error": str(e),
                 "medications": [],
                 "default_medications": _DEFAULT_MEDICATIONS,
+                "adherence": {"last_7_days": [], "compliance_pct": None, "missed": []},
                 "total": 0,
             },
             status_code=502,
@@ -915,12 +1005,22 @@ async def api_weight(request: Request) -> JSONResponse:
             if alert:
                 loss_pct = round(abs(pct_change), 1)
                 loss_kg = round(baseline - weight, 1)
+                # Find the matching nutrition escalation action
+                escalation_action = None
+                escalation_severity = "warning"
+                for rule in reversed(NUTRITION_ESCALATION):
+                    if loss_pct >= rule["loss_pct"]:
+                        escalation_action = rule["action"]
+                        escalation_severity = rule["severity"]
+                        break
                 alerts.append(
                     {
                         "date": date,
                         "weight_kg": weight,
                         "loss_pct": loss_pct,
-                        "action": f"Úbytok hmotnosti o {loss_kg} kg — konzultácia s nutricionistom",
+                        "action": escalation_action
+                        or f"Úbytok hmotnosti o {loss_kg} kg — konzultácia s nutricionistom",
+                        "severity": escalation_severity,
                     }
                 )
 
@@ -930,6 +1030,7 @@ async def api_weight(request: Request) -> JSONResponse:
                 "baseline_weight_kg": baseline,
                 "total": len(entries),
                 "alerts": alerts,
+                "nutrition_escalation": NUTRITION_ESCALATION,
             }
         )
     except Exception as e:
@@ -941,9 +1042,38 @@ async def api_weight(request: Request) -> JSONResponse:
                 "baseline_weight_kg": baseline,
                 "total": 0,
                 "alerts": [],
+                "nutrition_escalation": NUTRITION_ESCALATION,
             },
             status_code=502,
         )
+
+
+async def api_cumulative_dose(request: Request) -> JSONResponse:
+    """GET /api/cumulative-dose — cumulative oxaliplatin dose tracking."""
+    cycle = PATIENT.current_cycle or 2
+    oxa = CUMULATIVE_DOSE_THRESHOLDS["oxaliplatin"]
+    dose_per_cycle = oxa["dose_per_cycle"]
+    cumulative = cycle * dose_per_cycle
+
+    thresholds_reached = [t for t in oxa["thresholds"] if cumulative >= t["at"]]
+    thresholds_upcoming = [t for t in oxa["thresholds"] if cumulative < t["at"]]
+    next_threshold = thresholds_upcoming[0] if thresholds_upcoming else None
+    pct_to_next = round((cumulative / next_threshold["at"]) * 100, 1) if next_threshold else 100.0
+
+    return _cors_json(
+        {
+            "drug": "oxaliplatin",
+            "unit": oxa["unit"],
+            "dose_per_cycle": dose_per_cycle,
+            "cycles_counted": cycle,
+            "cumulative_mg_m2": cumulative,
+            "thresholds_reached": thresholds_reached,
+            "next_threshold": next_threshold,
+            "pct_to_next": pct_to_next,
+            "all_thresholds": oxa["thresholds"],
+            "max_recommended": oxa["thresholds"][-1]["at"],
+        }
+    )
 
 
 # ── Family update translation helpers ─────────

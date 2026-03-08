@@ -349,6 +349,25 @@ Vyhni sa zbytočným odborným detailom.
     return result
 
 
+async def run_medication_adherence_check() -> dict:
+    """Check if today's medication adherence was logged. Flag missing Clexane."""
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    prompt = f"""\
+Check medication adherence for today ({today}).
+
+Instructions:
+1. Use get_treatment_timeline to find today's medication_adherence events
+2. If no adherence logged for today, create a reminder briefing
+3. Specifically flag if Clexane (anticoagulant) adherence is missing — critical for VTE
+4. Store a briefing noting adherence status
+
+This is a safety check: Clexane non-compliance with active VJI thrombosis is dangerous.
+"""
+    result = await run_autonomous_task(prompt, max_turns=6, task_name="medication_adherence_check")
+    await _log_task("medication_adherence_check", result)
+    return result
+
+
 async def run_mtb_preparation() -> dict:
     """Prepare tumor board (MTB) presentation summary."""
     prompt = """\

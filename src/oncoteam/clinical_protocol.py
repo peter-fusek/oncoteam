@@ -121,6 +121,80 @@ SECOND_LINE_OPTIONS: list[dict[str, str]] = [
     },
 ]
 
+# Lab reference ranges (normal adult ranges)
+LAB_REFERENCE_RANGES: dict[str, dict] = {
+    "ANC": {"min": 1800, "max": 7700, "unit": "/uL"},
+    "PLT": {"min": 150000, "max": 400000, "unit": "/uL"},
+    "hemoglobin": {"min": 12.0, "max": 16.0, "unit": "g/dL", "note": "female"},
+    "creatinine": {"min": 0.6, "max": 1.1, "unit": "mg/dL", "note": "female"},
+    "ALT": {"min": 0, "max": 35, "unit": "U/L"},
+    "AST": {"min": 0, "max": 35, "unit": "U/L"},
+    "bilirubin": {"min": 0.1, "max": 1.2, "unit": "mg/dL"},
+    "CEA": {"min": 0, "max": 5.0, "unit": "ng/mL", "note": "non-smoker ULN"},
+    "CA_19_9": {"min": 0, "max": 37.0, "unit": "U/mL"},
+}
+
+# Cumulative oxaliplatin dose thresholds (ESMO/NCCN)
+CUMULATIVE_DOSE_THRESHOLDS: dict[str, dict] = {
+    "oxaliplatin": {
+        "unit": "mg/m²",
+        "dose_per_cycle": 85,  # standard mFOLFOX6: 85 mg/m² q2w
+        "thresholds": [
+            {"at": 400, "action": "Formal neuropathy assessment (NCI-CTC)", "severity": "warning"},
+            {"at": 550, "action": "Strongly consider oxaliplatin holiday", "severity": "warning"},
+            {
+                "at": 680,
+                "action": "High risk persistent neuropathy — discuss stop",
+                "severity": "critical",
+            },
+            {
+                "at": 850,
+                "action": "Maximum recommended — STOP oxaliplatin",
+                "severity": "critical",
+            },
+        ],
+    },
+}
+
+# Cycle delay rules (ESMO/NCCN)
+CYCLE_DELAY_RULES: list[dict[str, str]] = [
+    {"condition": "ANC 1000–1499", "action": "Delay 7 days, recheck. G-CSF if recurrent."},
+    {"condition": "ANC < 1000", "action": "Delay until >= 1500. G-CSF mandatory."},
+    {"condition": "PLT 50000–74999", "action": "Delay 7 days. Check anticoagulation dose."},
+    {"condition": "PLT < 50000", "action": "Hold chemo + reduce Clexane. Hematology consult."},
+    {"condition": "ALT/AST 3–5x ULN", "action": "Delay 3–7 days. Evaluate hepatic progression."},
+    {"condition": "Creatinine 1.5–2x ULN", "action": "Delay 7 days. Hydration. Recheck."},
+    {"condition": "Diarrhea grade 2 unresolved", "action": "Delay until grade ≤ 1."},
+    {
+        "condition": "Neuropathy grade 2 worsening",
+        "action": "Consider oxaliplatin dose reduction to 75%.",
+    },
+    {
+        "condition": "Febrile neutropenia",
+        "action": "Hold until resolved + ANC ≥ 1500. G-CSF prophylaxis future cycles.",
+    },
+]
+
+# Nutrition escalation thresholds (weight loss from baseline)
+NUTRITION_ESCALATION: list[dict] = [
+    {"loss_pct": 5, "action": "Flag for nutritional assessment", "severity": "warning"},
+    {
+        "loss_pct": 7,
+        "action": "Dietitian referral — oral nutritional supplements",
+        "severity": "warning",
+    },
+    {
+        "loss_pct": 10,
+        "action": "Nutritional support team — consider enteral nutrition",
+        "severity": "critical",
+    },
+    {
+        "loss_pct": 15,
+        "action": "Malnutrition alert — multidisciplinary assessment",
+        "severity": "critical",
+    },
+]
+
 # Drug interaction safety flags
 SAFETY_FLAGS: dict[str, dict[str, str]] = {
     "anti_egfr_kras_mutant": {

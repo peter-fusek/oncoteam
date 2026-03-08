@@ -20,7 +20,8 @@ const { data: weightData } = await fetchApi<{
     alert: boolean
   }>
   baseline_weight_kg: number
-  alerts: Array<{ date: string; weight_kg: number; loss_pct: number; action: string }>
+  alerts: Array<{ date: string; weight_kg: number; loss_pct: number; action: string; severity: string }>
+  nutrition_escalation: Array<{ loss_pct: number; action: string; severity: string }>
   total: number
 }>('/weight')
 
@@ -289,11 +290,14 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       <!-- Weight alert banner -->
       <div
         v-if="weightData.alerts?.length"
-        class="rounded-lg border border-red-500/30 bg-red-500/5 p-3"
+        class="rounded-lg border p-3"
+        :class="weightData.alerts.some(a => a.severity === 'critical') ? 'border-red-500/30 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5'"
       >
-        <div v-for="(alert, i) in weightData.alerts" :key="i" class="flex items-center gap-2 text-sm text-red-400">
-          <UIcon name="i-lucide-triangle-alert" class="shrink-0" />
-          <span>{{ alert.action }}</span>
+        <div v-for="(alert, i) in weightData.alerts" :key="i" class="flex items-center gap-2 text-sm">
+          <UIcon name="i-lucide-triangle-alert" :class="alert.severity === 'critical' ? 'text-red-500' : 'text-amber-500'" class="shrink-0" />
+          <span :class="alert.severity === 'critical' ? 'text-red-400' : 'text-amber-400'">
+            -{{ alert.loss_pct }}% — {{ alert.action }}
+          </span>
         </div>
       </div>
 
@@ -311,6 +315,27 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
         </div>
         <div class="text-xs text-gray-500 mt-2">
           Baseline: {{ weightData.baseline_weight_kg }} kg &middot; Alert threshold: -5%
+        </div>
+      </div>
+
+      <!-- Nutrition Escalation Table -->
+      <div v-if="weightData.nutrition_escalation?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+        <h3 class="text-xs font-semibold text-gray-400 mb-2">Nutrition Escalation Thresholds</h3>
+        <div class="space-y-1">
+          <div
+            v-for="rule in weightData.nutrition_escalation"
+            :key="rule.loss_pct"
+            class="flex items-center gap-3 text-xs py-1"
+          >
+            <UBadge
+              :color="rule.severity === 'critical' ? 'error' : 'warning'"
+              variant="subtle"
+              size="xs"
+            >
+              -{{ rule.loss_pct }}%
+            </UBadge>
+            <span class="text-gray-300">{{ rule.action }}</span>
+          </div>
         </div>
       </div>
     </div>

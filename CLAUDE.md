@@ -6,16 +6,16 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 295 tests
+uv run pytest          # 309 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
 
 ## Project structure
 
-- `src/oncoteam/server.py` — MCP server, 18 tools + 17 dashboard API routes (4 POST, 1 parameterized), system instructions with biomarker rules + QA protocol
-- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,medications,weight,family-update,detail/{type}/{id}}
-- `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, dose mods, milestones, safety flags, 2L options
+- `src/oncoteam/server.py` — MCP server, 18 tools + 18 dashboard API routes (4 POST, 1 parameterized), system instructions with biomarker rules + QA protocol
+- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,medications,weight,family-update,cumulative-dose,detail/{type}/{id}}
+- `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
 - `src/oncoteam/activity_logger.py` — @log_activity decorator, suppressed error buffer, diary helpers
 - `src/oncoteam/eligibility.py` — biomarker-aware trial eligibility checker
@@ -51,7 +51,7 @@ uv run oncoteam-mcp    # stdio mode
 - Push to `main` auto-deploys via Railway
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
-- 295 tests, ruff clean
+- 309 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
