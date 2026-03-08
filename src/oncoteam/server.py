@@ -22,7 +22,9 @@ from .dashboard_api import (
     api_cors_preflight,
     api_detail,
     api_diagnostics,
+    api_family_update,
     api_labs,
+    api_medications,
     api_patient,
     api_protocol,
     api_research,
@@ -31,6 +33,7 @@ from .dashboard_api import (
     api_status,
     api_timeline,
     api_toxicity,
+    api_weight,
 )
 from .eligibility import check_eligibility
 from .models import ResearchSource
@@ -721,7 +724,7 @@ async def create_improvement_issue(
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.7.0"})
+    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.8.0"})
 
 
 # ── Dashboard API routes ────────────────────────
@@ -740,9 +743,12 @@ _API_ROUTES = [
     ("/api/toxicity", api_toxicity),
     ("/api/labs", api_labs),
     ("/api/diagnostics", api_diagnostics),
+    ("/api/medications", api_medications),
+    ("/api/weight", api_weight),
+    ("/api/family-update", api_family_update),
 ]
 
-_POST_ROUTES = {"/api/toxicity", "/api/labs"}
+_POST_ROUTES = {"/api/toxicity", "/api/labs", "/api/medications", "/api/family-update"}
 
 for _path, _handler in _API_ROUTES:
     mcp.custom_route(_path, methods=["GET"])(_handler)

@@ -12,6 +12,18 @@ const { data: toxicity, refresh } = await fetchApi<{
   error?: string
 }>('/toxicity')
 
+const { data: weightData } = await fetchApi<{
+  entries: Array<{
+    date: string
+    weight_kg: number
+    pct_change: number
+    alert: boolean
+  }>
+  baseline_weight_kg: number
+  alerts: Array<{ date: string; weight_kg: number; loss_pct: number; action: string }>
+  total: number
+}>('/weight')
+
 const grades = [0, 1, 2, 3, 4]
 const gradeLabels: Record<number, string> = {
   0: 'None',
@@ -38,6 +50,8 @@ const form = reactive({
   nausea: 0,
   weight_kg: null as number | null,
   ecog: null as number | null,
+  appetite: null as number | null,
+  oral_intake: null as number | null,
   notes: '',
 })
 
@@ -62,6 +76,8 @@ async function submitLog() {
     form.nausea = 0
     form.weight_kg = null
     form.ecog = null
+    form.appetite = null
+    form.oral_intake = null
     form.notes = ''
     form.date = new Date().toISOString().slice(0, 10)
     await refresh()
@@ -150,7 +166,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
         </div>
       </div>
 
-      <!-- Weight & ECOG -->
+      <!-- Weight, ECOG & Nutrition -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div>
           <label class="text-xs text-gray-400 block mb-1">Weight (kg)</label>
@@ -175,6 +191,34 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
             <option :value="3">3 - Limited self-care</option>
             <option :value="4">4 - Disabled</option>
           </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Appetite (0-4)</label>
+          <div class="flex gap-1">
+            <button
+              v-for="g in grades"
+              :key="g"
+              class="w-8 h-8 rounded-lg text-xs font-medium transition-all border"
+              :class="form.appetite === g
+                ? 'bg-gray-700 border-teal-500 text-white'
+                : 'bg-gray-800/50 border-gray-700 text-gray-500 hover:border-gray-600'"
+              @click="form.appetite = g"
+            >
+              {{ g }}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Oral Intake (%)</label>
+          <input
+            v-model.number="form.oral_intake"
+            type="number"
+            min="0"
+            max="100"
+            step="10"
+            placeholder="e.g. 80"
+            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+          />
         </div>
       </div>
 
@@ -236,6 +280,39 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
 
     <div v-else-if="!toxicity?.error" class="text-gray-600 text-center py-8 text-sm">
       No toxicity entries yet — log your first entry above
+    </div>
+
+    <!-- Weight Trend -->
+    <div v-if="weightData?.entries?.length" class="space-y-2">
+      <h2 class="text-sm font-semibold text-white">Weight Trend</h2>
+
+      <!-- Weight alert banner -->
+      <div
+        v-if="weightData.alerts?.length"
+        class="rounded-lg border border-red-500/30 bg-red-500/5 p-3"
+      >
+        <div v-for="(alert, i) in weightData.alerts" :key="i" class="flex items-center gap-2 text-sm text-red-400">
+          <UIcon name="i-lucide-triangle-alert" class="shrink-0" />
+          <span>{{ alert.action }}</span>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div v-for="entry in weightData.entries" :key="entry.date">
+            <span class="text-gray-500">{{ entry.date }}</span>
+            <span class="ml-2 font-medium" :class="entry.alert ? 'text-red-400' : 'text-white'">
+              {{ entry.weight_kg }} kg
+            </span>
+            <span class="text-xs ml-1" :class="entry.pct_change < 0 ? 'text-amber-400' : 'text-green-400'">
+              {{ entry.pct_change > 0 ? '+' : '' }}{{ entry.pct_change }}%
+            </span>
+          </div>
+        </div>
+        <div class="text-xs text-gray-500 mt-2">
+          Baseline: {{ weightData.baseline_weight_kg }} kg &middot; Alert threshold: -5%
+        </div>
+      </div>
     </div>
   </div>
 </template>

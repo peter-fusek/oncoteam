@@ -18,6 +18,7 @@ def _create_scheduler():
 
     from .autonomous_tasks import (
         run_daily_research,
+        run_family_update,
         run_file_scan,
         run_lab_sync,
         run_mtb_preparation,
@@ -27,6 +28,7 @@ def _create_scheduler():
         run_trial_monitor,
         run_tumor_marker_review,
         run_weekly_briefing,
+        run_weight_extraction,
     )
 
     scheduler = AsyncIOScheduler()
@@ -63,6 +65,9 @@ def _create_scheduler():
         run_toxicity_extraction, CronTrigger(hour=8, minute=0), id="toxicity_extraction"
     )
 
+    # Weight extraction: daily at 09:00 UTC
+    scheduler.add_job(run_weight_extraction, CronTrigger(hour=9, minute=0), id="weight_extraction")
+
     # === Reporting schedule ===
 
     # Weekly briefing: Monday 6:00 UTC (7:00 CET)
@@ -73,6 +78,11 @@ def _create_scheduler():
     # MTB preparation: Friday 14:00 UTC (prepare for Monday MTB)
     scheduler.add_job(
         run_mtb_preparation, CronTrigger(day_of_week="fri", hour=14), id="mtb_preparation"
+    )
+
+    # Family update: Sunday 18:00 UTC (weekly family summary in Slovak)
+    scheduler.add_job(
+        run_family_update, CronTrigger(day_of_week="sun", hour=18), id="family_update"
     )
 
     return scheduler

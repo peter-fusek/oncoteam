@@ -7,12 +7,14 @@ const navigation = [
   { label: 'Patient', icon: 'i-lucide-user-round', to: '/patient' },
   { label: 'Protocol', icon: 'i-lucide-clipboard-check', to: '/protocol' },
   { label: 'Toxicity', icon: 'i-lucide-thermometer', to: '/toxicity' },
+  { label: 'Medications', icon: 'i-lucide-pill', to: '/medications' },
   { label: 'Labs', icon: 'i-lucide-test-tube-diagonal', to: '/labs' },
   { label: 'Briefings', icon: 'i-lucide-bot', to: '/briefings' },
   { label: 'Prep', icon: 'i-lucide-file-check', to: '/prep' },
   { label: 'Research', icon: 'i-lucide-microscope', to: '/research' },
   { label: 'Timeline', icon: 'i-lucide-calendar-clock', to: '/timeline' },
   { label: 'Sessions', icon: 'i-lucide-messages-square', to: '/sessions' },
+  { label: 'Family Update', icon: 'i-lucide-heart-handshake', to: '/family-update' },
 ]
 
 async function logout() {

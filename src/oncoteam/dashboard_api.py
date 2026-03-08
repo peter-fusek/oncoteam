@@ -24,7 +24,7 @@ from .clinical_protocol import (
 from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
 from .patient_context import PATIENT
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 
 # Patterns that identify test/E2E data created by automated tests
 _TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test ", "testovacia")
@@ -341,6 +341,16 @@ async def api_autonomous(request: Request) -> JSONResponse:
                     "schedule": "daily 08:00 UTC",
                     "description": "Extract toxicity from visit reports",
                 },
+                {
+                    "id": "weight_extraction",
+                    "schedule": "daily 09:00 UTC",
+                    "description": "Extract weight/BMI from visit notes",
+                },
+                {
+                    "id": "family_update",
+                    "schedule": "Sunday 18:00 UTC",
+                    "description": "Weekly family update in Slovak",
+                },
             ]
             data["jobs"] = jobs
             data["job_count"] = len(jobs)
@@ -423,6 +433,8 @@ async def api_toxicity(request: Request) -> JSONResponse:
                 "nausea",
                 "weight_kg",
                 "ecog",
+                "appetite",
+                "oral_intake",
             )
             if k in body
         }
@@ -661,6 +673,16 @@ async def api_detail(request: Request) -> JSONResponse:
             data = match[0] if match else {"error": "not found"}
             source["oncofiles_id"] = data.get("id")
 
+        elif detail_type == "medication":
+            # Fetch medication log entry (treatment event)
+            raw = await oncofiles_client.get_treatment_event(int(detail_id))
+            data = raw if isinstance(raw, dict) else {"raw": raw}
+            source["oncofiles_id"] = int(detail_id)
+            meta = data.get("metadata", {})
+            if isinstance(meta, str):
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
+                    data["metadata"] = json.loads(meta)
+
         elif detail_type == "patient":
             patient_data = PATIENT.model_dump()
             if patient_data.get("diagnosis_date"):
@@ -713,6 +735,448 @@ async def api_diagnostics(request: Request) -> JSONResponse:
             "suppressed_errors": get_suppressed_errors()[-10:],
         }
     )
+
+
+# ── Default medications (FOLFOX regimen) ──────
+
+_DEFAULT_MEDICATIONS = [
+    {
+        "name": "Clexane",
+        "dose": "0.6ml SC",
+        "frequency": "2x/day",
+        "active": True,
+        "notes": "Anticoagulant — critical, active VJI thrombosis",
+    },
+    {
+        "name": "Ondansetron",
+        "dose": "8mg",
+        "frequency": "as needed",
+        "active": True,
+        "notes": "Anti-emetic",
+    },
+    {
+        "name": "Dexamethasone",
+        "dose": "per protocol",
+        "frequency": "with chemo",
+        "active": True,
+        "notes": "Anti-emetic, given with chemotherapy",
+    },
+    {
+        "name": "Aprepitant",
+        "dose": "125/80mg",
+        "frequency": "D1-3 of cycle",
+        "active": True,
+        "notes": "Anti-emetic, days 1-3 of each cycle",
+    },
+]
+
+
+async def api_medications(request: Request) -> JSONResponse:
+    """GET/POST /api/medications — medication tracker.
+
+    GET: list medication log entries + default regimen medications.
+    POST: create a new medication log entry.
+    """
+    if request.method == "POST":
+        try:
+            body = json.loads(await request.body())
+        except (json.JSONDecodeError, Exception):
+            return _cors_json({"error": "Invalid JSON body"}, status_code=400)
+
+        if not body.get("date") or not body.get("name"):
+            return _cors_json({"error": "date and name are required"}, status_code=400)
+
+        metadata = {
+            k: body[k] for k in ("dose", "frequency", "time_of_day", "active", "notes") if k in body
+        }
+
+        try:
+            result = await oncofiles_client.add_treatment_event(
+                event_date=body["date"],
+                event_type="medication_log",
+                title=f"{body['name']} {body['date']}",
+                notes=body.get("notes", ""),
+                metadata={"name": body["name"], **metadata},
+            )
+            return _cors_json({"created": True, "result": result})
+        except Exception as e:
+            record_suppressed_error("api_medications", "create", e)
+            return _cors_json({"error": str(e)}, status_code=502)
+
+    # GET: list medication logs
+    limit = int(request.query_params.get("limit", "50"))
+    try:
+        result = await oncofiles_client.list_treatment_events(
+            event_type="medication_log", limit=limit
+        )
+        events = _filter_test(_extract_list(result, "events"), request)
+        medications = []
+        for e in events:
+            meta = e.get("metadata", {})
+            if isinstance(meta, str):
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
+                    meta = json.loads(meta)
+            medications.append(
+                {
+                    "id": e.get("id"),
+                    "date": e.get("event_date"),
+                    "name": meta.get("name", e.get("title", "")),
+                    "dose": meta.get("dose"),
+                    "frequency": meta.get("frequency"),
+                    "time_of_day": meta.get("time_of_day"),
+                    "active": meta.get("active", True),
+                    "notes": e.get("notes") or meta.get("notes"),
+                }
+            )
+        return _cors_json(
+            {
+                "medications": medications,
+                "default_medications": _DEFAULT_MEDICATIONS,
+                "total": len(medications),
+            }
+        )
+    except Exception as e:
+        record_suppressed_error("api_medications", "fetch", e)
+        return _cors_json(
+            {
+                "error": str(e),
+                "medications": [],
+                "default_medications": _DEFAULT_MEDICATIONS,
+                "total": 0,
+            },
+            status_code=502,
+        )
+
+
+async def api_weight(request: Request) -> JSONResponse:
+    """GET /api/weight — weight/nutrition trend data.
+
+    Aggregates weight from weight_measurement and toxicity_log events.
+    Calculates % change from baseline and flags >5% loss.
+    """
+    limit = int(request.query_params.get("limit", "50"))
+    baseline = PATIENT.baseline_weight_kg or 72.0
+
+    try:
+        # Fetch both weight_measurement and toxicity_log events in parallel
+        weight_result, toxicity_result = await asyncio.gather(
+            oncofiles_client.list_treatment_events(event_type="weight_measurement", limit=limit),
+            oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=limit),
+            return_exceptions=True,
+        )
+
+        entries_by_date: dict[str, dict] = {}
+
+        # Process weight_measurement events
+        if not isinstance(weight_result, Exception):
+            for e in _extract_list(weight_result, "events"):
+                meta = e.get("metadata", {})
+                if isinstance(meta, str):
+                    with contextlib.suppress(json.JSONDecodeError, TypeError):
+                        meta = json.loads(meta)
+                date = e.get("event_date", "")
+                weight = meta.get("weight_kg")
+                if date and weight is not None:
+                    entries_by_date[date] = {
+                        "date": date,
+                        "weight_kg": weight,
+                        "appetite": meta.get("appetite"),
+                        "oral_intake": meta.get("oral_intake"),
+                    }
+
+        # Process toxicity_log events (may also have weight_kg)
+        if not isinstance(toxicity_result, Exception):
+            for e in _extract_list(toxicity_result, "events"):
+                meta = e.get("metadata", {})
+                if isinstance(meta, str):
+                    with contextlib.suppress(json.JSONDecodeError, TypeError):
+                        meta = json.loads(meta)
+                date = e.get("event_date", "")
+                weight = meta.get("weight_kg")
+                if date and weight is not None and date not in entries_by_date:
+                    entries_by_date[date] = {
+                        "date": date,
+                        "weight_kg": weight,
+                        "appetite": meta.get("appetite"),
+                        "oral_intake": meta.get("oral_intake"),
+                    }
+
+        # Calculate % change and alerts
+        entries = []
+        alerts = []
+        for date in sorted(entries_by_date.keys()):
+            entry = entries_by_date[date]
+            weight = entry["weight_kg"]
+            pct_change = round(((weight - baseline) / baseline) * 100, 1)
+            alert = abs(pct_change) >= 5 and pct_change < 0
+            entry["pct_change"] = pct_change
+            entry["alert"] = alert
+            entries.append(entry)
+            if alert:
+                loss_pct = round(abs(pct_change), 1)
+                loss_kg = round(baseline - weight, 1)
+                alerts.append(
+                    {
+                        "date": date,
+                        "weight_kg": weight,
+                        "loss_pct": loss_pct,
+                        "action": f"Úbytok hmotnosti o {loss_kg} kg — konzultácia s nutricionistom",
+                    }
+                )
+
+        return _cors_json(
+            {
+                "entries": entries,
+                "baseline_weight_kg": baseline,
+                "total": len(entries),
+                "alerts": alerts,
+            }
+        )
+    except Exception as e:
+        record_suppressed_error("api_weight", "fetch", e)
+        return _cors_json(
+            {
+                "error": str(e),
+                "entries": [],
+                "baseline_weight_kg": baseline,
+                "total": 0,
+                "alerts": [],
+            },
+            status_code=502,
+        )
+
+
+# ── Family update translation helpers ─────────
+
+
+def _translate_for_family(
+    labs: dict | None,
+    toxicity: dict | None,
+    milestones: list[dict],
+    weight_data: dict | None,
+    lang: str = "sk",
+) -> str:
+    """Translate clinical data to plain language for family members."""
+    parts: list[str] = []
+    cycle = PATIENT.current_cycle or 2
+
+    if lang == "sk":
+        parts.append(f"Liečba prebieha — cyklus {cycle} z chemoterapie mFOLFOX6.\n")
+
+        # Labs
+        if labs and isinstance(labs, dict):
+            anc = labs.get("ANC")
+            if anc is not None:
+                if anc >= 1500:
+                    parts.append("Krvné hodnoty sú v bezpečnom rozsahu pre ďalšiu liečbu.")
+                else:
+                    parts.append(
+                        f"Krvné hodnoty (ANC {anc}) sú nižšie — onkológ rozhodne o ďalšom postupe."
+                    )
+
+        # Toxicity
+        if toxicity and isinstance(toxicity, dict):
+            neuro = toxicity.get("neuropathy", 0)
+            if neuro and neuro >= 1:
+                parts.append(
+                    "Mierne brnenie v prstoch rúk/nôh (bežný vedľajší účinok, sleduje sa)."
+                )
+            fatigue = toxicity.get("fatigue", 0)
+            if fatigue and fatigue >= 2:
+                parts.append(
+                    "Zvýšená únava — zvláda väčšinu bežných denných aktivít, "
+                    "ale rýchlejšie sa unaví."
+                )
+
+        # Weight
+        if weight_data:
+            alerts = weight_data.get("alerts", [])
+            if alerts:
+                latest = alerts[-1]
+                loss_kg = round(
+                    (weight_data.get("baseline_weight_kg", 72) - latest["weight_kg"]),
+                    1,
+                )
+                parts.append(f"Úbytok hmotnosti o {loss_kg} kg, konzultácia s nutricionistom.")
+            else:
+                parts.append("Hmotnosť je stabilná.")
+
+        # Milestones
+        if milestones:
+            for m in milestones[:2]:
+                desc = m.get("description", "")
+                if "CT" in desc or "imaging" in desc.lower():
+                    parts.append(f"CT vyšetrenie naplánované okolo cyklu {m.get('cycle', '?')}.")
+                else:
+                    parts.append(f"Míľnik: {desc} (cyklus {m.get('cycle', '?')}).")
+
+    else:
+        # English
+        parts.append(f"Treatment is ongoing — cycle {cycle} of mFOLFOX6 chemotherapy.\n")
+
+        if labs and isinstance(labs, dict):
+            anc = labs.get("ANC")
+            if anc is not None:
+                if anc >= 1500:
+                    parts.append("Blood counts are in a safe range for the next treatment.")
+                else:
+                    parts.append(
+                        f"Blood counts (ANC {anc}) are lower than ideal — "
+                        "the oncologist will decide on next steps."
+                    )
+
+        if toxicity and isinstance(toxicity, dict):
+            neuro = toxicity.get("neuropathy", 0)
+            if neuro and neuro >= 1:
+                parts.append("Mild tingling in fingers/toes (common side effect, being monitored).")
+            fatigue = toxicity.get("fatigue", 0)
+            if fatigue and fatigue >= 2:
+                parts.append(
+                    "Increased fatigue — able to manage most daily activities "
+                    "but tires more quickly."
+                )
+
+        if weight_data:
+            alerts = weight_data.get("alerts", [])
+            if alerts:
+                latest = alerts[-1]
+                parts.append(
+                    f"Weight loss of {latest['loss_pct']}% — "
+                    "nutritional support consultation recommended."
+                )
+            else:
+                parts.append("Weight is stable.")
+
+        if milestones:
+            for m in milestones[:2]:
+                desc = m.get("description", "")
+                parts.append(f"Upcoming: {desc} (cycle {m.get('cycle', '?')}).")
+
+    return "\n".join(parts)
+
+
+async def api_family_update(request: Request) -> JSONResponse:
+    """GET/POST /api/family-update — weekly family update in plain language.
+
+    GET: list past family updates. Accepts ?lang=sk or ?lang=en.
+    POST: generate and store a new family update.
+    """
+    lang = request.query_params.get("lang", "sk")
+    if lang not in ("sk", "en"):
+        lang = "sk"
+
+    if request.method == "POST":
+        try:
+            # Accept optional lang override from body
+            body = {}
+            raw = await request.body()
+            if raw:
+                with contextlib.suppress(json.JSONDecodeError):
+                    body = json.loads(raw)
+            post_lang = body.get("lang", lang)
+            if post_lang not in ("sk", "en"):
+                post_lang = "sk"
+
+            # Fetch latest data in parallel
+            labs_data, toxicity_data, weight_data = None, None, None
+            results = await asyncio.gather(
+                oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
+                oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=1),
+                oncofiles_client.list_treatment_events(event_type="weight_measurement", limit=5),
+                return_exceptions=True,
+            )
+
+            if not isinstance(results[0], Exception):
+                events = _extract_list(results[0], "events")
+                if events:
+                    meta = events[0].get("metadata", {})
+                    if isinstance(meta, str):
+                        with contextlib.suppress(json.JSONDecodeError, TypeError):
+                            meta = json.loads(meta)
+                    labs_data = meta
+
+            if not isinstance(results[1], Exception):
+                events = _extract_list(results[1], "events")
+                if events:
+                    meta = events[0].get("metadata", {})
+                    if isinstance(meta, str):
+                        with contextlib.suppress(json.JSONDecodeError, TypeError):
+                            meta = json.loads(meta)
+                    toxicity_data = meta
+
+            # Build simple weight_data for translation
+            baseline = PATIENT.baseline_weight_kg or 72.0
+            weight_info: dict = {"baseline_weight_kg": baseline, "alerts": []}
+            if not isinstance(results[2], Exception):
+                for e in _extract_list(results[2], "events"):
+                    meta = e.get("metadata", {})
+                    if isinstance(meta, str):
+                        with contextlib.suppress(json.JSONDecodeError, TypeError):
+                            meta = json.loads(meta)
+                    w = meta.get("weight_kg")
+                    if w is not None:
+                        pct = ((w - baseline) / baseline) * 100
+                        if pct <= -5:
+                            weight_info["alerts"].append(
+                                {
+                                    "weight_kg": w,
+                                    "loss_pct": round(abs(pct), 1),
+                                }
+                            )
+            weight_data = weight_info
+
+            # Get milestones
+            from .clinical_protocol import TREATMENT_MILESTONES
+
+            cycle = PATIENT.current_cycle or 2
+            milestones = [m for m in TREATMENT_MILESTONES if m.get("cycle", 0) >= cycle]
+
+            content = _translate_for_family(
+                labs=labs_data,
+                toxicity=toxicity_data,
+                milestones=milestones,
+                weight_data=weight_data,
+                lang=post_lang,
+            )
+
+            # Store as conversation
+            title = "Týždenná správa pre rodinu" if post_lang == "sk" else "Weekly Family Update"
+            try:
+                await oncofiles_client.log_conversation(
+                    title=title,
+                    content=content,
+                    entry_type="family_update",
+                    tags=[f"lang:{post_lang}"],
+                )
+            except Exception as store_err:
+                record_suppressed_error("api_family_update", "store", store_err)
+
+            return _cors_json({"created": True, "content": content, "lang": post_lang})
+        except Exception as e:
+            record_suppressed_error("api_family_update", "generate", e)
+            return _cors_json({"error": str(e)}, status_code=502)
+
+    # GET: list past family updates
+    limit = int(request.query_params.get("limit", "20"))
+    try:
+        result = await oncofiles_client.search_conversations(
+            entry_type="family_update", limit=limit
+        )
+        entries = _filter_test(_extract_list(result, "entries"), request)
+        updates = [
+            {
+                "id": e.get("id"),
+                "title": e.get("title"),
+                "content": e.get("content"),
+                "date": e.get("created_at"),
+                "tags": e.get("tags"),
+            }
+            for e in entries
+        ]
+        return _cors_json({"updates": updates, "total": len(updates)})
+    except Exception as e:
+        record_suppressed_error("api_family_update", "fetch", e)
+        return _cors_json({"error": str(e), "updates": [], "total": 0}, status_code=502)
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

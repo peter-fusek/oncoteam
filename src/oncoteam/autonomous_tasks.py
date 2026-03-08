@@ -300,6 +300,55 @@ This creates the baseline toxicity history from existing medical documents.
     return result
 
 
+async def run_weight_extraction() -> dict:
+    """Extract weight/BMI from doctor visit notes and store as weight_measurement events."""
+    prompt = """\
+Search for doctor visit notes and extract weight/BMI data.
+
+Instructions:
+1. Search documents for visit reports, consultation notes, discharge summaries
+   (search "hmotnosť", "váha", "BMI", "hmotnost", "vizita", "kontrola")
+2. For each document with weight data, extract:
+   - Weight in kg
+   - BMI if mentioned
+   - Date of measurement
+3. Check if a weight_measurement event already exists for that date
+4. If not, store as a treatment event with event_type="weight_measurement"
+5. Store a briefing summarizing what was extracted
+
+Focus on creating structured weight history from existing medical documents.
+"""
+    result = await run_autonomous_task(prompt, max_turns=8, task_name="weight_extraction")
+    await _log_task("weight_extraction", result)
+    return result
+
+
+async def run_family_update() -> dict:
+    """Generate weekly family update in Slovak from current clinical data."""
+    cycle = PATIENT.current_cycle or 2
+    prompt = f"""\
+Napíš týždennú správu pre rodinu pacientky v slovenčine.
+
+Pokyny:
+1. Získaj najnovšie laboratórne výsledky (search "lab", "krvny obraz")
+2. Získaj najnovšie údaje o toxicite
+3. Zhrň aktuálny stav liečby (cyklus {cycle}, mFOLFOX6)
+4. Preložíš do jednoduchej, zrozumiteľnej slovenčiny:
+   - ANC v norme → "Krvné hodnoty sú v bezpečnom rozsahu"
+   - Neuropatia → "Mierne brnenie v prstoch"
+   - ECOG 1 → "Zvláda väčšinu bežných aktivít, ale rýchlejšie sa unaví"
+   - Hmotnosť stabilná → "Hmotnosť je stabilná"
+5. Ulož ako konverzáciu s entry_type="family_update" a tag "lang:sk"
+
+Píš v slovenčine, jednoducho a zrozumiteľne pre laikov.
+Používaj správnu slovenskú lekársku terminológiu (onkológ, chemoterapia, cyklus).
+Vyhni sa zbytočným odborným detailom.
+"""
+    result = await run_autonomous_task(prompt, max_turns=10, task_name="family_update")
+    await _log_task("family_update", result)
+    return result
+
+
 async def run_mtb_preparation() -> dict:
     """Prepare tumor board (MTB) presentation summary."""
     prompt = """\

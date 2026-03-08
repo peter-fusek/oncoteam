@@ -67,6 +67,7 @@ class PatientProfile(BaseModel):
     surgeries: list[dict] = Field(default_factory=list)
     treating_physician: str = ""
     admitting_physician: str = ""
+    baseline_weight_kg: float | None = None
     current_cycle: int | None = None
     ecog: str = ""
     excluded_therapies: dict[str, str] = Field(default_factory=dict)
