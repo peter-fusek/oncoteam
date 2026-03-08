@@ -135,8 +135,81 @@ async def test_api_weight_flags_5pct_loss(mock_list):
     "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
     new_callable=AsyncMock,
 )
+async def test_api_weight_7pct_loss_gets_dietitian_referral(mock_list):
+    """7% loss should get dietitian referral action."""
+    # 72 baseline -> 66.96 = -7.0%
+    mock_list.side_effect = [
+        [
+            {
+                "id": 1,
+                "event_date": "2026-03-01",
+                "event_type": "weight_measurement",
+                "metadata": {"weight_kg": 66.96},
+            }
+        ],
+        [],
+    ]
+    request = FakeRequest("GET")
+    response = await api_weight(request)
+    data = json.loads(response.body)
+
+    assert len(data["alerts"]) == 1
+    assert "Dietitian referral" in data["alerts"][0]["action"]
+    assert data["alerts"][0]["severity"] == "warning"
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_weight_10pct_loss_gets_enteral_nutrition(mock_list):
+    """10% loss should get enteral nutrition action."""
+    # 72 baseline -> 64.8 = -10.0%
+    mock_list.side_effect = [
+        [
+            {
+                "id": 1,
+                "event_date": "2026-03-01",
+                "event_type": "weight_measurement",
+                "metadata": {"weight_kg": 64.8},
+            }
+        ],
+        [],
+    ]
+    request = FakeRequest("GET")
+    response = await api_weight(request)
+    data = json.loads(response.body)
+
+    assert len(data["alerts"]) == 1
+    assert "enteral nutrition" in data["alerts"][0]["action"]
+    assert data["alerts"][0]["severity"] == "critical"
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_weight_includes_nutrition_escalation(mock_list):
+    """Weight response should include nutrition_escalation rules."""
+    mock_list.side_effect = [[], []]
+    request = FakeRequest("GET")
+    response = await api_weight(request)
+    data = json.loads(response.body)
+
+    assert "nutrition_escalation" in data
+    assert len(data["nutrition_escalation"]) == 4
+    assert data["nutrition_escalation"][0]["loss_pct"] == 5
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
 async def test_api_weight_handles_error(mock_list):
-    """When both gather calls fail, entries should be empty (exceptions caught via return_exceptions)."""
+    """When both gather calls fail, entries should be empty."""
     mock_list.side_effect = Exception("fail")
     request = FakeRequest("GET")
     response = await api_weight(request)
