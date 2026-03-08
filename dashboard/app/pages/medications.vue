@@ -108,8 +108,8 @@ const drilldown = useDrilldown()
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Medications</h1>
-        <p class="text-sm text-gray-400">Active medications and adherence tracking</p>
+        <h1 class="text-2xl font-bold text-white">{{ $t('medications.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ $t('medications.subtitle') }}</p>
       </div>
       <div class="flex gap-2">
         <UButton icon="i-lucide-plus" size="xs" color="primary" @click="showForm = !showForm">
@@ -124,7 +124,7 @@ const drilldown = useDrilldown()
     <!-- Today's Check-in -->
     <div class="rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold text-white">Today's Check-in</h2>
+        <h2 class="text-sm font-semibold text-white">{{ $t('medications.todayCheckin') }}</h2>
         <UBadge v-if="meds?.adherence?.compliance_pct != null" variant="subtle" size="xs" :color="meds.adherence.compliance_pct >= 90 ? 'success' : meds.adherence.compliance_pct >= 70 ? 'warning' : 'error'">
           {{ meds.adherence.compliance_pct }}% compliance
         </UBadge>
@@ -142,14 +142,14 @@ const drilldown = useDrilldown()
         </button>
       </div>
       <div class="flex items-center gap-3">
-        <UButton :loading="checkinSubmitting" color="primary" size="xs" @click="submitCheckin">Log Today</UButton>
+        <UButton :loading="checkinSubmitting" color="primary" size="xs" @click="submitCheckin">{{ $t('medications.logToday') }}</UButton>
         <span v-if="checkinMsg" class="text-xs" :class="checkinMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'">{{ checkinMsg }}</span>
       </div>
     </div>
 
     <!-- 7-Day Adherence Grid -->
     <div v-if="meds?.adherence?.last_7_days?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <h2 class="text-xs font-semibold text-gray-400 mb-3">7-Day Adherence</h2>
+      <h2 class="text-xs font-semibold text-gray-400 mb-3">{{ $t('medications.adherence7Day') }}</h2>
       <div class="overflow-x-auto">
         <div class="flex gap-2">
           <div
@@ -182,7 +182,7 @@ const drilldown = useDrilldown()
 
     <!-- Default Medications (regimen) -->
     <div v-if="meds?.default_medications?.length">
-      <h2 class="text-sm font-semibold text-white mb-3">Active Regimen</h2>
+      <h2 class="text-sm font-semibold text-white mb-3">{{ $t('medications.activeRegimen') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div
           v-for="med in meds.default_medications"
@@ -204,7 +204,7 @@ const drilldown = useDrilldown()
 
     <!-- Add Medication Form -->
     <div v-if="showForm" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-      <h2 class="text-sm font-semibold text-white mb-4">New Medication Entry</h2>
+      <h2 class="text-sm font-semibold text-white mb-4">{{ $t('medications.newMedEntry') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label class="text-xs text-gray-400 block mb-1">Date</label>
@@ -284,7 +284,7 @@ const drilldown = useDrilldown()
 
     <!-- Medication History -->
     <div v-if="meds?.medications?.length" class="space-y-2">
-      <h2 class="text-sm font-semibold text-white">History</h2>
+      <h2 class="text-sm font-semibold text-white">{{ $t('common.history') }}</h2>
       <div
         v-for="med in meds.medications"
         :key="med.id"
@@ -305,7 +305,7 @@ const drilldown = useDrilldown()
     </div>
 
     <div v-else-if="!meds?.error" class="text-gray-600 text-center py-8 text-sm">
-      No medication entries yet — use the Add button above
+      {{ $t('medications.noEntries') }}
     </div>
   </div>
 </template>

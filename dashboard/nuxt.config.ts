@@ -2,7 +2,22 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   future: { compatibilityVersion: 4 },
 
-  modules: ['@nuxt/ui', '@nuxt/eslint', 'nuxt-auth-utils'],
+  modules: ['@nuxt/ui', '@nuxt/eslint', 'nuxt-auth-utils', '@nuxtjs/i18n'],
+
+  i18n: {
+    locales: [
+      { code: 'en', name: 'English', file: 'en.json' },
+      { code: 'sk', name: 'Slovenčina', file: 'sk.json' },
+    ],
+    defaultLocale: 'sk',
+    langDir: '../app/locales',
+    strategy: 'no_prefix',
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_locale',
+      fallbackLocale: 'sk',
+    },
+  },
 
   css: ['~/assets/css/main.css'],
 

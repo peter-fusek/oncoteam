@@ -1,0 +1,241 @@
+{
+  "app": {
+    "name": "Oncoteam"
+  },
+  "nav": {
+    "agents": "Agents",
+    "patient": "Patient",
+    "protocol": "Protocol",
+    "toxicity": "Toxicity",
+    "medications": "Medications",
+    "labs": "Labs",
+    "briefings": "Briefings",
+    "prep": "Prep",
+    "research": "Research",
+    "timeline": "Timeline",
+    "sessions": "Sessions",
+    "familyUpdate": "Family Update"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "add": "Add",
+    "refresh": "Refresh",
+    "generate": "Generate",
+    "print": "Print",
+    "copy": "Copy",
+    "date": "Date",
+    "notes": "Notes",
+    "history": "History",
+    "active": "Active",
+    "loading": "Loading...",
+    "error": "Error",
+    "saved": "Saved",
+    "noData": "No data available",
+    "showTestData": "Show test data"
+  },
+  "agents": {
+    "title": "Agent Dashboard",
+    "subtitle": "Treatment management system status",
+    "status": "System Status",
+    "version": "Version",
+    "tools": "Tools",
+    "uptime": "Uptime",
+    "activity": "Recent Activity",
+    "noActivity": "No activity logged yet",
+    "stats": "Statistics",
+    "autonomous": "Autonomous Tasks",
+    "nextRun": "Next run",
+    "lastRun": "Last run",
+    "noTasks": "No autonomous tasks configured",
+    "streak": "streak",
+    "level": "Level"
+  },
+  "patient": {
+    "title": "Patient Profile",
+    "subtitle": "Clinical context and biomarker data",
+    "diagnosis": "Diagnosis",
+    "biomarkers": "Biomarkers",
+    "treatment": "Current Treatment",
+    "safetyFlags": "Safety Flags",
+    "noProfile": "Patient profile not available"
+  },
+  "protocol": {
+    "title": "Clinical Protocol",
+    "subtitle": "mFOLFOX6 treatment protocol and guidelines",
+    "tabs": {
+      "checklist": "Pre-Cycle Checklist",
+      "labs": "Lab Thresholds",
+      "dosemods": "Dose Modifications",
+      "cumdose": "Cumulative Dose",
+      "delays": "Cycle Delays",
+      "milestones": "Milestones",
+      "monitoring": "Monitoring",
+      "secondLine": "2L Options",
+      "trials": "Watched Trials"
+    },
+    "labThresholds": "Pre-Cycle Lab Safety Thresholds",
+    "doseTitle": "Cumulative Oxaliplatin Dose",
+    "doseMax": "Max",
+    "doseNextThreshold": "Next threshold at {at} {unit} ({pct}% reached)",
+    "delayRules": "Cycle Delay Rules",
+    "milestonesTitle": "Treatment Milestones",
+    "monitoringTitle": "Monitoring Schedule"
+  },
+  "toxicity": {
+    "title": "Toxicity Log",
+    "subtitle": "NCI-CTCAE grading between cycles",
+    "newEntry": "New Toxicity Entry",
+    "saveEntry": "Save Entry",
+    "fields": {
+      "neuropathy": "Peripheral Neuropathy",
+      "diarrhea": "Diarrhea",
+      "mucositis": "Mucositis",
+      "fatigue": "Fatigue",
+      "handFoot": "Hand-Foot Syndrome",
+      "nausea": "Nausea/Vomiting"
+    },
+    "grades": {
+      "0": "None",
+      "1": "Mild",
+      "2": "Moderate",
+      "3": "Severe",
+      "4": "Life-threatening"
+    },
+    "maxGrade": "Max grade {grade}",
+    "weight": "Weight (kg)",
+    "ecog": "ECOG",
+    "appetite": "Appetite (0-4)",
+    "oralIntake": "Oral Intake (%)",
+    "ecogLevels": {
+      "0": "0 - Fully active",
+      "1": "1 - Restricted",
+      "2": "2 - Ambulatory",
+      "3": "3 - Limited self-care",
+      "4": "4 - Disabled"
+    },
+    "noEntries": "No toxicity entries yet — log your first entry above",
+    "weightTrend": "Weight Trend",
+    "baseline": "Baseline",
+    "alertThreshold": "Alert threshold: -5%",
+    "nutritionEscalation": "Nutrition Escalation Thresholds"
+  },
+  "medications": {
+    "title": "Medications",
+    "subtitle": "Active medications and adherence tracking",
+    "todayCheckin": "Today's Check-in",
+    "compliance": "{pct}% compliance",
+    "logToday": "Log Today",
+    "adherence7Day": "7-Day Adherence",
+    "taken": "Taken",
+    "missed": "Missed",
+    "activeRegimen": "Active Regimen",
+    "dose": "Dose",
+    "frequency": "Frequency",
+    "newMedEntry": "New Medication Entry",
+    "medName": "Medication Name",
+    "timeOfDay": "Time of Day",
+    "frequencies": {
+      "1xDay": "1x/day",
+      "2xDay": "2x/day",
+      "3xDay": "3x/day",
+      "asNeeded": "As needed",
+      "withChemo": "With chemo"
+    },
+    "times": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "bedtime": "Bedtime"
+    },
+    "noEntries": "No medication entries yet — use the Add button above"
+  },
+  "labs": {
+    "title": "Lab Trends",
+    "subtitle": "{count} lab result sets",
+    "addLabs": "Add Labs",
+    "enterResults": "Enter Lab Results",
+    "safetyAlerts": "Safety Alerts",
+    "resultsTable": "Lab Results Table",
+    "noData": "No lab data yet — click \"Add Labs\" to enter results"
+  },
+  "briefings": {
+    "title": "Agent Briefings",
+    "subtitle": "AI-generated clinical briefings",
+    "noBriefings": "No briefings yet"
+  },
+  "prep": {
+    "title": "Appointment Prep",
+    "subtitle": "Pre-appointment preparation checklists",
+    "noPrep": "No prep data available"
+  },
+  "research": {
+    "title": "Research",
+    "subtitle": "PubMed and clinical trial findings",
+    "noResearch": "No research findings yet"
+  },
+  "timeline": {
+    "title": "Treatment Timeline",
+    "subtitle": "Chronological view of all treatment events",
+    "noEvents": "No timeline events yet"
+  },
+  "sessions": {
+    "title": "Chat Sessions",
+    "subtitle": "Agent conversation history",
+    "noSessions": "No sessions logged yet"
+  },
+  "familyUpdate": {
+    "title": "Family Update",
+    "subtitle": "Plain-language summary for family members",
+    "contentLang": "Content language",
+    "newUpdate": "New Update",
+    "previousUpdates": "Previous Updates",
+    "printTitle": "Oncoteam — Family Update",
+    "noUpdates": "No updates yet — click Generate"
+  },
+  "components": {
+    "apiError": "Unable to load data. The backend may be temporarily unavailable.",
+    "emergency": {
+      "title": "CRITICAL — Contact Oncologist",
+      "callNow": "Call oncology emergency line immediately"
+    },
+    "drilldown": {
+      "details": "Details",
+      "treatmentEvent": "Treatment Event",
+      "medication": "Medication",
+      "session": "Session",
+      "research": "Research",
+      "loading": "Loading details...",
+      "notFound": "Not found"
+    },
+    "xp": {
+      "level": "Level {level}",
+      "streak": "{days}d streak",
+      "xpToNext": "{xp} XP to next level"
+    },
+    "milestone": {
+      "cycle": "Cycle {n}",
+      "current": "Current",
+      "completed": "Completed",
+      "upcoming": "Upcoming"
+    },
+    "labThreshold": {
+      "parameter": "Parameter",
+      "threshold": "Threshold",
+      "action": "Action"
+    },
+    "checklist": {
+      "title": "Pre-Cycle {cycle} Checklist",
+      "items": {
+        "cbc": "CBC with differential",
+        "lft": "LFT (ALT, AST, bilirubin)",
+        "renal": "Renal function (creatinine)",
+        "vitals": "Vitals + weight",
+        "toxicity": "Toxicity assessment (CTCAE)",
+        "neuropathy": "Neuropathy check",
+        "consent": "Patient consent confirmed",
+        "antiemetics": "Anti-emetics prescribed"
+      }
+    }
+  }
+}

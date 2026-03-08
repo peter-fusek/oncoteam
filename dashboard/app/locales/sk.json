@@ -1,0 +1,241 @@
+{
+  "app": {
+    "name": "Oncoteam"
+  },
+  "nav": {
+    "agents": "Agenti",
+    "patient": "Pacient",
+    "protocol": "Protokol",
+    "toxicity": "Toxicita",
+    "medications": "Lieky",
+    "labs": "Laboratórium",
+    "briefings": "Briefingy",
+    "prep": "Príprava",
+    "research": "Výskum",
+    "timeline": "Časová os",
+    "sessions": "Sedenia",
+    "familyUpdate": "Správa pre rodinu"
+  },
+  "common": {
+    "save": "Uložiť",
+    "cancel": "Zrušiť",
+    "add": "Pridať",
+    "refresh": "Obnoviť",
+    "generate": "Generovať",
+    "print": "Tlačiť",
+    "copy": "Kopírovať",
+    "date": "Dátum",
+    "notes": "Poznámky",
+    "history": "História",
+    "active": "Aktívne",
+    "loading": "Načítavam...",
+    "error": "Chyba",
+    "saved": "Uložené",
+    "noData": "Žiadne údaje",
+    "showTestData": "Zobraziť testovacie údaje"
+  },
+  "agents": {
+    "title": "Prehľad agentov",
+    "subtitle": "Stav systému riadenia liečby",
+    "status": "Stav systému",
+    "version": "Verzia",
+    "tools": "Nástroje",
+    "uptime": "Dostupnosť",
+    "activity": "Posledná aktivita",
+    "noActivity": "Zatiaľ žiadna aktivita",
+    "stats": "Štatistiky",
+    "autonomous": "Autonómne úlohy",
+    "nextRun": "Ďalšie spustenie",
+    "lastRun": "Posledné spustenie",
+    "noTasks": "Žiadne autonómne úlohy",
+    "streak": "séria",
+    "level": "Úroveň"
+  },
+  "patient": {
+    "title": "Profil pacienta",
+    "subtitle": "Klinický kontext a biomarkery",
+    "diagnosis": "Diagnóza",
+    "biomarkers": "Biomarkery",
+    "treatment": "Aktuálna liečba",
+    "safetyFlags": "Bezpečnostné upozornenia",
+    "noProfile": "Profil pacienta nie je dostupný"
+  },
+  "protocol": {
+    "title": "Klinický protokol",
+    "subtitle": "Liečebný protokol mFOLFOX6 a usmernenia",
+    "tabs": {
+      "checklist": "Pred-cyklový checklist",
+      "labs": "Laborat. prahy",
+      "dosemods": "Úpravy dávky",
+      "cumdose": "Kumulatívna dávka",
+      "delays": "Odklady cyklu",
+      "milestones": "Míľniky",
+      "monitoring": "Monitorovanie",
+      "secondLine": "2. línia",
+      "trials": "Sledované štúdie"
+    },
+    "labThresholds": "Bezpečnostné laboratórne prahy pred cyklom",
+    "doseTitle": "Kumulatívna dávka oxaliplatiny",
+    "doseMax": "Max",
+    "doseNextThreshold": "Ďalší prah pri {at} {unit} ({pct}% dosiahnuté)",
+    "delayRules": "Pravidlá odkladu cyklu",
+    "milestonesTitle": "Míľniky liečby",
+    "monitoringTitle": "Plán monitorovania"
+  },
+  "toxicity": {
+    "title": "Záznam toxicity",
+    "subtitle": "Hodnotenie NCI-CTCAE medzi cyklami",
+    "newEntry": "Nový záznam toxicity",
+    "saveEntry": "Uložiť záznam",
+    "fields": {
+      "neuropathy": "Periférna neuropatia",
+      "diarrhea": "Hnačka",
+      "mucositis": "Mukozitída",
+      "fatigue": "Únava",
+      "handFoot": "Hand-Foot syndróm",
+      "nausea": "Nauzea/Vracanie"
+    },
+    "grades": {
+      "0": "Žiadna",
+      "1": "Mierna",
+      "2": "Stredná",
+      "3": "Ťažká",
+      "4": "Život ohrozujúca"
+    },
+    "maxGrade": "Max stupeň {grade}",
+    "weight": "Hmotnosť (kg)",
+    "ecog": "ECOG",
+    "appetite": "Chuť do jedla (0-4)",
+    "oralIntake": "Perorálny príjem (%)",
+    "ecogLevels": {
+      "0": "0 - Plne aktívny",
+      "1": "1 - Obmedzený",
+      "2": "2 - Ambulantný",
+      "3": "3 - Obmedzená sebaobsluha",
+      "4": "4 - Invalidný"
+    },
+    "noEntries": "Zatiaľ žiadne záznamy — zadajte prvý záznam vyššie",
+    "weightTrend": "Trend hmotnosti",
+    "baseline": "Východisková",
+    "alertThreshold": "Prah upozornenia: -5%",
+    "nutritionEscalation": "Prahy nutričnej eskalácie"
+  },
+  "medications": {
+    "title": "Lieky",
+    "subtitle": "Aktívne lieky a sledovanie adherencie",
+    "todayCheckin": "Dnešný check-in",
+    "compliance": "{pct}% adherencia",
+    "logToday": "Zaznamenať dnes",
+    "adherence7Day": "7-dňová adherencia",
+    "taken": "Užité",
+    "missed": "Vynechané",
+    "activeRegimen": "Aktívny režim",
+    "dose": "Dávka",
+    "frequency": "Frekvencia",
+    "newMedEntry": "Nový záznam lieku",
+    "medName": "Názov lieku",
+    "timeOfDay": "Čas dňa",
+    "frequencies": {
+      "1xDay": "1x/deň",
+      "2xDay": "2x/deň",
+      "3xDay": "3x/deň",
+      "asNeeded": "Podľa potreby",
+      "withChemo": "S chemo"
+    },
+    "times": {
+      "morning": "Ráno",
+      "afternoon": "Popoludní",
+      "evening": "Večer",
+      "bedtime": "Pred spaním"
+    },
+    "noEntries": "Zatiaľ žiadne záznamy — použite tlačidlo Pridať"
+  },
+  "labs": {
+    "title": "Laboratórne trendy",
+    "subtitle": "{count} setov výsledkov",
+    "addLabs": "Pridať výsledky",
+    "enterResults": "Zadať laboratórne výsledky",
+    "safetyAlerts": "Bezpečnostné upozornenia",
+    "resultsTable": "Tabuľka výsledkov",
+    "noData": "Zatiaľ žiadne laboratórne údaje — kliknite na Pridať výsledky"
+  },
+  "briefings": {
+    "title": "Briefingy agentov",
+    "subtitle": "AI-generované klinické briefingy",
+    "noBriefings": "Zatiaľ žiadne briefingy"
+  },
+  "prep": {
+    "title": "Príprava na vyšetrenie",
+    "subtitle": "Checklisty pred vyšetrením",
+    "noPrep": "Žiadne údaje o príprave"
+  },
+  "research": {
+    "title": "Výskum",
+    "subtitle": "Výsledky z PubMed a klinických štúdií",
+    "noResearch": "Zatiaľ žiadne výsledky výskumu"
+  },
+  "timeline": {
+    "title": "Časová os liečby",
+    "subtitle": "Chronologický prehľad všetkých liečebných udalostí",
+    "noEvents": "Zatiaľ žiadne udalosti"
+  },
+  "sessions": {
+    "title": "Sedenia",
+    "subtitle": "História konverzácií s agentom",
+    "noSessions": "Zatiaľ žiadne sedenia"
+  },
+  "familyUpdate": {
+    "title": "Správa pre rodinu",
+    "subtitle": "Zrozumiteľný súhrn pre členov rodiny",
+    "contentLang": "Jazyk správy",
+    "newUpdate": "Nová správa",
+    "previousUpdates": "Predchádzajúce správy",
+    "printTitle": "Oncoteam — Správa pre rodinu",
+    "noUpdates": "Zatiaľ žiadne správy — kliknite na Generovať"
+  },
+  "components": {
+    "apiError": "Nepodarilo sa načítať údaje. Backend môže byť dočasne nedostupný.",
+    "emergency": {
+      "title": "KRITICKÉ — Kontaktujte onkológa",
+      "callNow": "Okamžite zavolajte na onkologickú pohotovosť"
+    },
+    "drilldown": {
+      "details": "Detaily",
+      "treatmentEvent": "Liečebná udalosť",
+      "medication": "Liek",
+      "session": "Sedenie",
+      "research": "Výskum",
+      "loading": "Načítavam detaily...",
+      "notFound": "Nenájdené"
+    },
+    "xp": {
+      "level": "Úroveň {level}",
+      "streak": "{days}d séria",
+      "xpToNext": "{xp} XP do ďalšej úrovne"
+    },
+    "milestone": {
+      "cycle": "Cyklus {n}",
+      "current": "Aktuálny",
+      "completed": "Dokončený",
+      "upcoming": "Nadchádzajúci"
+    },
+    "labThreshold": {
+      "parameter": "Parameter",
+      "threshold": "Prah",
+      "action": "Akcia"
+    },
+    "checklist": {
+      "title": "Checklist pred cyklom {cycle}",
+      "items": {
+        "cbc": "Krvný obraz s diferenciálom",
+        "lft": "Pečeňové testy (ALT, AST, bilirubín)",
+        "renal": "Obličkové funkcie (kreatinín)",
+        "vitals": "Vitálne funkcie + hmotnosť",
+        "toxicity": "Hodnotenie toxicity (CTCAE)",
+        "neuropathy": "Kontrola neuropatie",
+        "consent": "Informovaný súhlas potvrdený",
+        "antiemetics": "Antiemetiká predpísané"
+      }
+    }
+  }
+}

@@ -25,26 +25,28 @@ const { data: cumDose } = await fetchApi<{
   max_recommended: number
 }>('/cumulative-dose')
 
+const { t } = useI18n()
+
 const activeTab = ref('checklist')
-const tabs = [
-  { key: 'checklist', label: 'Pre-Cycle Checklist', icon: 'i-lucide-clipboard-check' },
-  { key: 'labs', label: 'Lab Thresholds', icon: 'i-lucide-test-tube-diagonal' },
-  { key: 'dosemods', label: 'Dose Modifications', icon: 'i-lucide-pill' },
-  { key: 'cumdose', label: 'Cumulative Dose', icon: 'i-lucide-activity' },
-  { key: 'delays', label: 'Cycle Delays', icon: 'i-lucide-timer' },
-  { key: 'milestones', label: 'Milestones', icon: 'i-lucide-milestone' },
-  { key: 'monitoring', label: 'Monitoring', icon: 'i-lucide-calendar' },
-  { key: '2l', label: '2L Options', icon: 'i-lucide-arrow-right-circle' },
-  { key: 'trials', label: 'Watched Trials', icon: 'i-lucide-eye' },
-]
+const tabs = computed(() => [
+  { key: 'checklist', label: t('protocol.tabs.checklist'), icon: 'i-lucide-clipboard-check' },
+  { key: 'labs', label: t('protocol.tabs.labs'), icon: 'i-lucide-test-tube-diagonal' },
+  { key: 'dosemods', label: t('protocol.tabs.dosemods'), icon: 'i-lucide-pill' },
+  { key: 'cumdose', label: t('protocol.tabs.cumdose'), icon: 'i-lucide-activity' },
+  { key: 'delays', label: t('protocol.tabs.delays'), icon: 'i-lucide-timer' },
+  { key: 'milestones', label: t('protocol.tabs.milestones'), icon: 'i-lucide-milestone' },
+  { key: 'monitoring', label: t('protocol.tabs.monitoring'), icon: 'i-lucide-calendar' },
+  { key: '2l', label: t('protocol.tabs.secondLine'), icon: 'i-lucide-arrow-right-circle' },
+  { key: 'trials', label: t('protocol.tabs.trials'), icon: 'i-lucide-eye' },
+])
 </script>
 
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Clinical Protocol</h1>
-        <p class="text-sm text-gray-400">mFOLFOX6 treatment protocol and guidelines</p>
+        <h1 class="text-2xl font-bold text-white">{{ $t('protocol.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ $t('protocol.subtitle') }}</p>
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
@@ -72,7 +74,7 @@ const tabs = [
 
       <!-- Lab Thresholds -->
       <div v-if="activeTab === 'labs'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">Pre-Cycle Lab Safety Thresholds</h2>
+        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.labThresholds') }}</h2>
         <LabThresholdTable :thresholds="protocol.lab_thresholds" />
       </div>
 
@@ -88,14 +90,14 @@ const tabs = [
 
       <!-- Cumulative Dose -->
       <div v-if="activeTab === 'cumdose' && cumDose" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">Cumulative Oxaliplatin Dose</h2>
+        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.doseTitle') }}</h2>
         <div class="mb-4">
           <div class="flex items-center justify-between mb-1">
             <span class="text-sm text-gray-300">
               {{ cumDose.cumulative_mg_m2 }} {{ cumDose.unit }}
               <span class="text-gray-500">({{ cumDose.cycles_counted }} cycles × {{ cumDose.dose_per_cycle }})</span>
             </span>
-            <span class="text-sm text-gray-400">Max: {{ cumDose.max_recommended }} {{ cumDose.unit }}</span>
+            <span class="text-sm text-gray-400">{{ $t('protocol.doseMax') }}: {{ cumDose.max_recommended }} {{ cumDose.unit }}</span>
           </div>
           <!-- Progress bar -->
           <div class="relative h-4 rounded-full bg-gray-800 overflow-hidden">
@@ -138,7 +140,7 @@ const tabs = [
 
       <!-- Cycle Delay Rules -->
       <div v-if="activeTab === 'delays'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">Cycle Delay Rules</h2>
+        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.delayRules') }}</h2>
         <div class="space-y-1">
           <div
             v-for="(rule, i) in protocol.cycle_delay_rules"
@@ -160,13 +162,13 @@ const tabs = [
 
       <!-- Milestones -->
       <div v-if="activeTab === 'milestones'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">Treatment Milestones</h2>
+        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.milestonesTitle') }}</h2>
         <MilestoneTracker :milestones="protocol.milestones" :current-cycle="protocol.current_cycle" />
       </div>
 
       <!-- Monitoring Schedule -->
       <div v-if="activeTab === 'monitoring'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">Monitoring Schedule</h2>
+        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.monitoringTitle') }}</h2>
         <div class="space-y-2">
           <div
             v-for="(schedule, item) in protocol.monitoring_schedule"

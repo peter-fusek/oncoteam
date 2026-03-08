@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@nuxt/ui": "^3.0.0",
+    "@nuxtjs/i18n": "^10.2.3",
     "@tailwindcss/vite": "^4.2.1",
     "chart.js": "^4.5.1",
     "nuxt": "^4.0.0",

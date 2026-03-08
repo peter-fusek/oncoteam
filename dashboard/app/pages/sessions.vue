@@ -20,8 +20,8 @@ const drilldown = useDrilldown()
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Session History</h1>
-        <p class="text-sm text-gray-400">{{ sessions?.total ?? 0 }} sessions logged</p>
+        <h1 class="text-2xl font-bold text-white">{{ $t('sessions.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ sessions?.total ?? 0 }} sessions</p>
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
@@ -53,7 +53,7 @@ const drilldown = useDrilldown()
     </div>
 
     <div v-else-if="!sessions?.error" class="text-gray-600 text-center py-16 text-sm">
-      No session summaries yet
+      {{ $t('sessions.noSessions') }}
     </div>
   </div>
 </template>

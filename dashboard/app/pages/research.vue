@@ -30,8 +30,8 @@ const drilldown = useDrilldown()
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Research Log</h1>
-        <p class="text-sm text-gray-400">{{ research?.total ?? 0 }} entries found</p>
+        <h1 class="text-2xl font-bold text-white">{{ $t('research.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ research?.total ?? 0 }} entries</p>
       </div>
       <div class="flex items-center gap-2">
         <UButtonGroup>
@@ -107,7 +107,7 @@ const drilldown = useDrilldown()
     </div>
 
     <div v-else-if="!research?.error" class="text-gray-600 text-center py-16 text-sm">
-      No research entries found
+      {{ $t('research.noResearch') }}
     </div>
   </div>
 </template>

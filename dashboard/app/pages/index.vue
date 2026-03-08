@@ -166,7 +166,7 @@ onUnmounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Agent Office</h1>
+        <h1 class="text-2xl font-bold text-white">{{ $t('agents.title') }}</h1>
         <p class="text-sm text-gray-400">{{ totalCalls }} operations completed</p>
       </div>
       <div class="flex items-center gap-3">
@@ -193,7 +193,7 @@ onUnmounted(() => {
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
           <span class="text-lg">🤖</span>
-          <span class="font-semibold text-sm text-white">Autonomous Agent</span>
+          <span class="font-semibold text-sm text-white">{{ $t('agents.autonomous') }}</span>
           <UBadge
             :color="autonomous.enabled ? 'success' : 'neutral'"
             variant="subtle"
@@ -278,7 +278,7 @@ onUnmounted(() => {
       <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <UIcon name="i-lucide-activity" class="text-gray-400" />
-          <span class="font-semibold text-sm text-white">Activity Feed</span>
+          <span class="font-semibold text-sm text-white">{{ $t('agents.activity') }}</span>
         </div>
         <UBadge variant="subtle" size="xs" color="neutral">{{ activity?.total ?? 0 }}</UBadge>
       </div>
@@ -300,7 +300,7 @@ onUnmounted(() => {
         </div>
       </div>
       <div v-else class="px-4 py-8 text-center text-gray-600 text-sm">
-        No activity yet — agents are resting
+        {{ $t('agents.noActivity') }}
       </div>
     </div>
   </div>

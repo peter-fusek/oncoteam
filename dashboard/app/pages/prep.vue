@@ -79,11 +79,11 @@ function printPrep() {
   <div class="space-y-6 print:space-y-4 print:text-black">
     <div class="flex items-center justify-between print:hidden">
       <div>
-        <h1 class="text-2xl font-bold text-white">Pre-Appointment Prep</h1>
-        <p class="text-sm text-gray-400">Summary for oncologist visit</p>
+        <h1 class="text-2xl font-bold text-white">{{ $t('prep.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ $t('prep.subtitle') }}</p>
       </div>
       <UButton icon="i-lucide-printer" variant="outline" size="xs" color="neutral" @click="printPrep">
-        Print
+        {{ $t('common.print') }}
       </UButton>
     </div>
 

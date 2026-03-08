@@ -1,21 +1,26 @@
 <script setup lang="ts">
 const { user, clear } = useUserSession()
 const { showTestData } = useTestDataToggle()
+const { t, locale, locales } = useI18n()
 
-const navigation = [
-  { label: 'Agents', icon: 'i-lucide-brain-circuit', to: '/' },
-  { label: 'Patient', icon: 'i-lucide-user-round', to: '/patient' },
-  { label: 'Protocol', icon: 'i-lucide-clipboard-check', to: '/protocol' },
-  { label: 'Toxicity', icon: 'i-lucide-thermometer', to: '/toxicity' },
-  { label: 'Medications', icon: 'i-lucide-pill', to: '/medications' },
-  { label: 'Labs', icon: 'i-lucide-test-tube-diagonal', to: '/labs' },
-  { label: 'Briefings', icon: 'i-lucide-bot', to: '/briefings' },
-  { label: 'Prep', icon: 'i-lucide-file-check', to: '/prep' },
-  { label: 'Research', icon: 'i-lucide-microscope', to: '/research' },
-  { label: 'Timeline', icon: 'i-lucide-calendar-clock', to: '/timeline' },
-  { label: 'Sessions', icon: 'i-lucide-messages-square', to: '/sessions' },
-  { label: 'Family Update', icon: 'i-lucide-heart-handshake', to: '/family-update' },
-]
+const navigation = computed(() => [
+  { label: t('nav.agents'), icon: 'i-lucide-brain-circuit', to: '/' },
+  { label: t('nav.patient'), icon: 'i-lucide-user-round', to: '/patient' },
+  { label: t('nav.protocol'), icon: 'i-lucide-clipboard-check', to: '/protocol' },
+  { label: t('nav.toxicity'), icon: 'i-lucide-thermometer', to: '/toxicity' },
+  { label: t('nav.medications'), icon: 'i-lucide-pill', to: '/medications' },
+  { label: t('nav.labs'), icon: 'i-lucide-test-tube-diagonal', to: '/labs' },
+  { label: t('nav.briefings'), icon: 'i-lucide-bot', to: '/briefings' },
+  { label: t('nav.prep'), icon: 'i-lucide-file-check', to: '/prep' },
+  { label: t('nav.research'), icon: 'i-lucide-microscope', to: '/research' },
+  { label: t('nav.timeline'), icon: 'i-lucide-calendar-clock', to: '/timeline' },
+  { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
+  { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
+])
+
+function toggleLocale() {
+  locale.value = locale.value === 'sk' ? 'en' : 'sk'
+}
 
 async function logout() {
   await $fetch('/auth/logout', { method: 'POST' })
@@ -40,10 +45,18 @@ async function logout() {
 
       <template #footer>
         <div class="px-3 py-2 space-y-2">
-          <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
-            <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
-            Show test data
-          </label>
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
+              <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
+              {{ $t('common.showTestData') }}
+            </label>
+            <button
+              class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+              @click="toggleLocale"
+            >
+              {{ locale === 'sk' ? 'EN' : 'SK' }}
+            </button>
+          </div>
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2 min-w-0">
               <UAvatar

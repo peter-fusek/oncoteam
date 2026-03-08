@@ -49,8 +49,8 @@ const allQuestions = computed(() => {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Autonomous Briefings</h1>
-        <p class="text-sm text-gray-400">{{ briefings?.total ?? 0 }} briefings from autonomous agent</p>
+        <h1 class="text-2xl font-bold text-white">{{ $t('briefings.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ briefings?.total ?? 0 }} briefings</p>
       </div>
       <div class="flex items-center gap-3">
         <div v-if="autonomous" class="flex items-center gap-2 text-xs">
@@ -110,7 +110,7 @@ const allQuestions = computed(() => {
     </div>
 
     <div v-else-if="!briefings?.error" class="text-gray-600 text-center py-16 text-sm">
-      No briefings yet — autonomous agent hasn't produced any outputs
+      {{ $t('briefings.noBriefings') }}
     </div>
   </div>
 </template>

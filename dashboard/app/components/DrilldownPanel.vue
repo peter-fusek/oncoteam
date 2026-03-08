@@ -1,16 +1,18 @@
 <script setup lang="ts">
 const { isOpen, stack, current, detail, loading, error, push, pop, popTo, close } = useDrilldown()
 
-const typeLabels: Record<string, string> = {
-  treatment_event: 'Treatment Event',
-  research: 'Research Entry',
-  conversation: 'Conversation',
+const { t } = useI18n()
+
+const typeLabels = computed<Record<string, string>>(() => ({
+  treatment_event: t('components.drilldown.treatmentEvent'),
+  research: t('research.title'),
+  conversation: t('sessions.title'),
   document: 'Document',
-  biomarker: 'Biomarker',
-  protocol_section: 'Protocol',
-  activity: 'Activity',
-  patient: 'Patient',
-}
+  biomarker: t('patient.biomarkers'),
+  protocol_section: t('nav.protocol'),
+  activity: t('agents.activity'),
+  patient: t('nav.patient'),
+}))
 
 const typeIcons: Record<string, string> = {
   treatment_event: '📅',
@@ -39,7 +41,7 @@ function isObject(val: unknown): val is Record<string, unknown> {
     v-model:open="isOpen"
     side="right"
     :title="`${typeIcons[current?.type ?? ''] ?? '📌'} ${current?.label ?? ''}`"
-    :description="typeLabels[current?.type ?? ''] ?? current?.type"
+    :description="typeLabels[current?.type ?? ''] ?? current?.type ?? ''"
     :ui="{ width: 'max-w-lg' }"
     @update:open="(val: boolean) => { if (!val) close() }"
   >

@@ -53,8 +53,8 @@ const drilldown = useDrilldown()
   <div class="space-y-6 print:space-y-4 print:text-black">
     <div class="flex items-center justify-between print:hidden">
       <div>
-        <h1 class="text-2xl font-bold text-white">Family Update</h1>
-        <p class="text-sm text-gray-400">Plain-language summary for family members</p>
+        <h1 class="text-2xl font-bold text-white">{{ $t('familyUpdate.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ $t('familyUpdate.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2">
         <!-- Language toggle -->
@@ -81,10 +81,10 @@ const drilldown = useDrilldown()
           size="xs"
           @click="generateUpdate"
         >
-          Generate
+          {{ $t('common.generate') }}
         </UButton>
         <UButton icon="i-lucide-printer" variant="outline" size="xs" color="neutral" @click="printUpdate">
-          Print
+          {{ $t('common.print') }}
         </UButton>
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
       </div>
@@ -94,7 +94,7 @@ const drilldown = useDrilldown()
 
     <!-- Print header -->
     <div class="hidden print:block">
-      <h1 class="text-xl font-bold">Oncoteam — {{ lang === 'sk' ? 'Správa pre rodinu' : 'Family Update' }}</h1>
+      <h1 class="text-xl font-bold">{{ $t('familyUpdate.printTitle') }}</h1>
       <p class="text-sm text-gray-500">{{ new Date().toLocaleDateString('sk-SK') }}</p>
     </div>
 
@@ -102,7 +102,7 @@ const drilldown = useDrilldown()
     <div v-if="latestGenerated" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-5 print:border-gray-300 print:bg-white">
       <div class="flex items-center justify-between mb-3 print:hidden">
         <h2 class="text-sm font-semibold text-white">
-          {{ lang === 'sk' ? 'Nová správa' : 'New Update' }}
+          {{ $t('familyUpdate.newUpdate') }}
         </h2>
         <UButton
           icon="i-lucide-copy"
@@ -126,7 +126,7 @@ const drilldown = useDrilldown()
     <!-- Past updates -->
     <div v-if="updates?.updates?.length" class="space-y-3">
       <h2 class="text-sm font-semibold text-white print:text-black">
-        {{ lang === 'sk' ? 'Predchádzajúce správy' : 'Previous Updates' }}
+        {{ $t('familyUpdate.previousUpdates') }}
       </h2>
       <div
         v-for="update in updates.updates"
@@ -161,7 +161,7 @@ const drilldown = useDrilldown()
     </div>
 
     <div v-else-if="!updates?.error && !latestGenerated" class="text-gray-600 text-center py-8 text-sm">
-      {{ lang === 'sk' ? 'Zatiaľ žiadne správy — klikni na Generovať' : 'No updates yet — click Generate' }}
+      {{ $t('familyUpdate.noUpdates') }}
     </div>
   </div>
 </template>

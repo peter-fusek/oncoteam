@@ -59,7 +59,7 @@ const drilldown = useDrilldown()
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Treatment Timeline</h1>
+        <h1 class="text-2xl font-bold text-white">{{ $t('timeline.title') }}</h1>
         <p class="text-sm text-gray-400">{{ timeline?.total ?? 0 }} events</p>
       </div>
       <div class="flex items-center gap-2">
@@ -138,7 +138,7 @@ const drilldown = useDrilldown()
     </div>
 
     <div v-else-if="!timeline?.error" class="text-gray-600 text-center py-16 text-sm">
-      No treatment events
+      {{ $t('timeline.noEvents') }}
     </div>
   </div>
 </template>

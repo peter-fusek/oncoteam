@@ -34,7 +34,7 @@ function isCritical(param: string, value: number): boolean {
       <span class="font-bold text-sm"
         :class="alerts.some(a => isCritical(a.param, a.value)) ? 'text-red-400' : 'text-amber-400'"
       >
-        {{ alerts.some(a => isCritical(a.param, a.value)) ? 'CRITICAL — Contact Oncologist' : 'Safety Alert' }}
+        {{ alerts.some(a => isCritical(a.param, a.value)) ? $t('components.emergency.title') : $t('labs.safetyAlerts') }}
       </span>
     </div>
     <div class="space-y-1">

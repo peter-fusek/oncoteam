@@ -113,8 +113,8 @@ async function submitLab() {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">Lab Trends</h1>
-        <p class="text-sm text-gray-400">{{ labs?.total ?? 0 }} lab result sets</p>
+        <h1 class="text-2xl font-bold text-white">{{ $t('labs.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ $t('labs.subtitle', { count: labs?.total ?? 0 }) }}</p>
       </div>
       <div class="flex items-center gap-2">
         <UButton
@@ -124,7 +124,7 @@ async function submitLab() {
           :color="showForm ? 'neutral' : 'primary'"
           @click="showForm = !showForm"
         >
-          {{ showForm ? 'Cancel' : 'Add Labs' }}
+          {{ showForm ? $t('common.cancel') : $t('labs.addLabs') }}
         </UButton>
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
       </div>
@@ -136,7 +136,7 @@ async function submitLab() {
     <div v-if="allAlerts.length" class="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
       <div class="flex items-center gap-2 mb-2">
         <UIcon name="i-lucide-triangle-alert" class="text-red-500" />
-        <span class="text-sm font-semibold text-white">Safety Alerts</span>
+        <span class="text-sm font-semibold text-white">{{ $t('labs.safetyAlerts') }}</span>
       </div>
       <div class="space-y-1">
         <div v-for="(alert, i) in allAlerts" :key="i" class="text-xs text-red-400 flex items-center gap-2">
@@ -151,7 +151,7 @@ async function submitLab() {
 
     <!-- Entry Form -->
     <div v-if="showForm" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-      <h2 class="text-sm font-semibold text-white mb-4">Enter Lab Results</h2>
+      <h2 class="text-sm font-semibold text-white mb-4">{{ $t('labs.enterResults') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div>
           <label class="text-xs text-gray-400 block mb-1">Date</label>
@@ -205,14 +205,14 @@ async function submitLab() {
         />
       </div>
       <div v-if="!labParams.some(p => hasData(p.key))" class="text-gray-600 text-center py-16 text-sm">
-        No lab data yet — click "Add Labs" to enter results
+        {{ $t('labs.noData') }}
       </div>
     </ClientOnly>
 
     <!-- Raw Data Table -->
     <div v-if="labs?.entries?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden">
       <div class="px-4 py-3 border-b border-gray-800">
-        <span class="text-sm font-semibold text-white">Lab Results Table</span>
+        <span class="text-sm font-semibold text-white">{{ $t('labs.resultsTable') }}</span>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-xs">
