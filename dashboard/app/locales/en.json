@@ -301,9 +301,13 @@
       "chemo_cycle": "Chemotherapy",
       "chemo": "Chemotherapy",
       "lab_work": "Lab Work",
+      "lab_result": "Lab Result",
       "consultation": "Consultation",
       "surgery": "Surgery",
-      "scan": "Scan"
+      "scan": "Scan",
+      "molecular_pathology": "Molecular Pathology",
+      "pathology": "Pathology",
+      "imaging": "Imaging"
     }
   },
   "sessions": {

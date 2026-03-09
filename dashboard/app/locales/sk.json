@@ -301,9 +301,13 @@
       "chemo_cycle": "Chemoterapia",
       "chemo": "Chemoterapia",
       "lab_work": "Laboratórium",
+      "lab_result": "Výsledok labov",
       "consultation": "Konzultácia",
       "surgery": "Operácia",
-      "scan": "Vyšetrenie"
+      "scan": "Vyšetrenie",
+      "molecular_pathology": "Molekulárna patológia",
+      "pathology": "Patológia",
+      "imaging": "Zobrazovanie"
     }
   },
   "sessions": {
