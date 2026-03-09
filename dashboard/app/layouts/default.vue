@@ -1,7 +1,8 @@
 <script setup lang="ts">
 const { user, clear } = useUserSession()
 const { showTestData } = useTestDataToggle()
-const { t, locale, locales } = useI18n()
+const { t, locale } = useI18n()
+const { setLocale } = useI18n()
 
 const navigation = computed(() => [
   { label: t('nav.agents'), icon: 'i-lucide-brain-circuit', to: '/' },
@@ -18,8 +19,8 @@ const navigation = computed(() => [
   { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
 ])
 
-function toggleLocale() {
-  locale.value = locale.value === 'sk' ? 'en' : 'sk'
+async function toggleLocale() {
+  await setLocale(locale.value === 'sk' ? 'en' : 'sk')
 }
 
 async function logout() {
