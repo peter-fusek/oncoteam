@@ -16,8 +16,11 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   let roleMap: Record<string, { roles?: string[]; phone?: string }> = {}
   try {
-    roleMap = JSON.parse(config.roleMap || '{}')
-  } catch {
+    // Nuxt may auto-parse JSON env vars into objects
+    const raw = config.roleMap
+    roleMap = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw as typeof roleMap) || {}
+  } catch (e) {
+    console.warn('[session-patch] Failed to parse roleMap:', e)
     roleMap = {}
   }
 

@@ -9,9 +9,9 @@ function normalizePhone(phone: string): string {
   return phone.replace(/[\s\-()]/g, '')
 }
 
-function extractPhoneAllowlist(roleMapJson: string): Set<string> {
+function extractPhoneAllowlist(roleMapRaw: string | Record<string, { phone?: string }>): Set<string> {
   try {
-    const roleMap = JSON.parse(roleMapJson || '{}')
+    const roleMap = typeof roleMapRaw === 'string' ? JSON.parse(roleMapRaw || '{}') : roleMapRaw || {}
     const phones = new Set<string>()
     for (const config of Object.values(roleMap) as Array<{ phone?: string }>) {
       if (config.phone) phones.add(normalizePhone(config.phone))

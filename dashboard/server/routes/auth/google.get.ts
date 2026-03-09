@@ -12,7 +12,8 @@ export default defineOAuthGoogleEventHandler({
 
     let roleMap: Record<string, { roles?: string[]; phone?: string }> = {}
     try {
-      roleMap = JSON.parse(config.roleMap || '{}')
+      const raw = config.roleMap
+      roleMap = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw as typeof roleMap) || {}
     } catch {
       roleMap = {}
     }
