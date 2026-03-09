@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi, apiUrl } = useOncoteamApi()
+const { formatDate } = useFormatDate()
 
 const { data: labs, refresh } = await fetchApi<{
   entries: Array<{
@@ -154,7 +155,7 @@ async function submitLab() {
       <h2 class="text-sm font-semibold text-white mb-4">{{ $t('labs.enterResults') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Date</label>
+          <label class="text-xs text-gray-400 block mb-1">{{ $t('common.date') }}</label>
           <input
             v-model="form.date"
             type="date"
@@ -173,16 +174,16 @@ async function submitLab() {
         </div>
       </div>
       <div class="mb-4">
-        <label class="text-xs text-gray-400 block mb-1">Notes</label>
+        <label class="text-xs text-gray-400 block mb-1">{{ $t('common.notes') }}</label>
         <input
           v-model="form.notes"
           type="text"
-          placeholder="Optional notes"
+          :placeholder="$t('labs.placeholderNotes')"
           class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
         />
       </div>
       <div class="flex items-center gap-3">
-        <UButton :loading="submitting" color="primary" size="sm" @click="submitLab">Save</UButton>
+        <UButton :loading="submitting" color="primary" size="sm" @click="submitLab">{{ $t('common.save') }}</UButton>
         <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
           {{ submitMsg }}
         </span>
@@ -218,12 +219,12 @@ async function submitLab() {
         <table class="w-full text-xs">
           <thead>
             <tr class="text-left text-gray-500 border-b border-gray-800">
-              <th class="px-4 py-2">Date</th>
+              <th class="px-4 py-2">{{ $t('common.date') }}</th>
               <th v-for="p in labParams" :key="p.key" class="px-3 py-2">
                 <div>{{ p.label }}</div>
                 <div v-if="refRangeText(p.key)" class="text-[10px] text-gray-600 font-normal">{{ refRangeText(p.key) }}</div>
               </th>
-              <th class="px-3 py-2">Notes</th>
+              <th class="px-3 py-2">{{ $t('common.notes') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-800/50">
@@ -233,7 +234,7 @@ async function submitLab() {
               class="text-gray-300 cursor-pointer hover:bg-gray-800/30 transition-colors"
               @click="drilldown.open({ type: 'treatment_event', id: entry.id, label: `Labs ${entry.date}` })"
             >
-              <td class="px-4 py-2 font-mono text-white">{{ entry.date }}</td>
+              <td class="px-4 py-2 font-mono text-white">{{ formatDate(entry.date) }}</td>
               <td v-for="p in labParams" :key="p.key" class="px-3 py-2">
                 <span
                   v-if="entry.values?.[p.key] != null"

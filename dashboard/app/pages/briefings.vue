@@ -50,15 +50,15 @@ const allQuestions = computed(() => {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('briefings.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ briefings?.total ?? 0 }} briefings</p>
+        <p class="text-sm text-gray-400">{{ $t('briefings.count', { count: briefings?.total ?? 0 }) }}</p>
       </div>
       <div class="flex items-center gap-3">
         <div v-if="autonomous" class="flex items-center gap-2 text-xs">
           <UBadge :color="autonomous.enabled ? 'success' : 'neutral'" variant="subtle" size="xs">
-            {{ autonomous.enabled ? 'Active' : 'Disabled' }}
+            {{ autonomous.enabled ? $t('common.active') : $t('common.disabled') }}
           </UBadge>
           <span v-if="autonomous.daily_cost > 0" class="text-gray-500">
-            ${{ autonomous.daily_cost.toFixed(4) }} today
+            {{ $t('agents.costToday', { cost: autonomous.daily_cost.toFixed(4) }) }}
           </span>
         </div>
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
@@ -71,7 +71,7 @@ const allQuestions = computed(() => {
     <div v-if="allQuestions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
       <div class="flex items-center gap-2 mb-3">
         <UIcon name="i-lucide-message-circle-question" class="text-teal-500" />
-        <h2 class="text-sm font-semibold text-white">Questions for Oncologist</h2>
+        <h2 class="text-sm font-semibold text-white">{{ $t('briefings.questionsForOncologist') }}</h2>
       </div>
       <div class="space-y-2">
         <div v-for="(q, i) in allQuestions" :key="i" class="flex items-start gap-2">
@@ -86,7 +86,7 @@ const allQuestions = computed(() => {
 
     <!-- Task Schedule -->
     <div v-if="autonomous?.jobs?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <h2 class="text-sm font-semibold text-white mb-3">Scheduled Tasks</h2>
+      <h2 class="text-sm font-semibold text-white mb-3">{{ $t('agents.scheduledTasks') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div v-for="job in autonomous.jobs" :key="job.id" class="rounded-lg bg-gray-800/50 px-3 py-2">
           <div class="text-xs font-mono text-gray-300">{{ job.id }}</div>

@@ -31,7 +31,7 @@ const drilldown = useDrilldown()
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('research.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ research?.total ?? 0 }} entries</p>
+        <p class="text-sm text-gray-400">{{ $t('research.count', { count: research?.total ?? 0 }) }}</p>
       </div>
       <div class="flex items-center gap-2">
         <UButtonGroup>
@@ -41,7 +41,7 @@ const drilldown = useDrilldown()
             color="neutral"
             @click="sourceFilter = null"
           >
-            All
+            {{ $t('research.filterAll') }}
           </UButton>
           <UButton
             :variant="sourceFilter === 'pubmed' ? 'solid' : 'ghost'"
@@ -57,7 +57,7 @@ const drilldown = useDrilldown()
             color="neutral"
             @click="sourceFilter = 'clinicaltrials'"
           >
-            Trials
+            {{ $t('research.filterTrials') }}
           </UButton>
         </UButtonGroup>
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
@@ -95,7 +95,7 @@ const drilldown = useDrilldown()
                 class="text-xs text-teal-500 hover:text-teal-400"
                 @click.stop
               >
-                View source ↗
+                {{ $t('common.viewSource') }} ↗
               </a>
             </div>
             <p v-if="entry.summary" class="text-xs text-gray-500 mt-2 line-clamp-2">

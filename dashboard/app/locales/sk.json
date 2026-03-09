@@ -28,11 +28,14 @@
     "notes": "Poznámky",
     "history": "História",
     "active": "Aktívne",
+    "disabled": "Neaktívne",
     "loading": "Načítavam...",
     "error": "Chyba",
     "saved": "Uložené",
     "noData": "Žiadne údaje",
-    "showTestData": "Zobraziť testovacie údaje"
+    "showTestData": "Zobraziť testovacie údaje",
+    "back": "Späť",
+    "viewSource": "Zobraziť zdroj"
   },
   "agents": {
     "title": "Prehľad agentov",
@@ -49,7 +52,21 @@
     "lastRun": "Posledné spustenie",
     "noTasks": "Žiadne autonómne úlohy",
     "streak": "séria",
-    "level": "Úroveň"
+    "level": "Úroveň",
+    "rooms": {
+      "researchLab": "Výskumné laboratórium",
+      "eligibilityCheck": "Kontrola oprávnenosti",
+      "clinicalProtocol": "Klinický protokol",
+      "analyticsRoom": "Analytická miestnosť",
+      "reportRoom": "Miestnosť správ",
+      "documentVault": "Archív dokumentov",
+      "sessionLog": "Záznam sedení"
+    },
+    "operationsCompleted": "{count} operácií vykonaných",
+    "calls": "{count} volaní",
+    "avgMs": "~{ms}ms priemer",
+    "costToday": "${cost} dnes",
+    "scheduledTasks": "Naplánované úlohy"
   },
   "patient": {
     "title": "Profil pacienta",
@@ -58,7 +75,19 @@
     "biomarkers": "Biomarkery",
     "treatment": "Aktuálna liečba",
     "safetyFlags": "Bezpečnostné upozornenia",
-    "noProfile": "Profil pacienta nie je dostupný"
+    "noProfile": "Profil pacienta nie je dostupný",
+    "stage": "Štádium {stage}",
+    "sided": "{side}-strana",
+    "cycle": "Cyklus {n}",
+    "ecogLabel": "ECOG: {val}",
+    "genomicProfile": "Genomický profil",
+    "excludedTherapies": "Vylúčené terapie",
+    "metastases": "Metastázy",
+    "hospitals": "Nemocnice",
+    "physicians": "Lekári",
+    "treating": "Ošetrujúci:",
+    "admitting": "Prijímajúci:",
+    "notesComorbidities": "Poznámky a komorbidity"
   },
   "protocol": {
     "title": "Klinický protokol",
@@ -92,7 +121,7 @@
       "diarrhea": "Hnačka",
       "mucositis": "Mukozitída",
       "fatigue": "Únava",
-      "handFoot": "Hand-Foot syndróm",
+      "handFoot": "Syndróm ruka-noha",
       "nausea": "Nauzea/Vracanie"
     },
     "grades": {
@@ -101,6 +130,13 @@
       "2": "Stredná",
       "3": "Ťažká",
       "4": "Život ohrozujúca"
+    },
+    "patientGrades": {
+      "0": "Neprítomné",
+      "1": "Trochu",
+      "2": "Znateľné",
+      "3": "Dosť zlé",
+      "4": "Veľmi zlé"
     },
     "maxGrade": "Max stupeň {grade}",
     "weight": "Hmotnosť (kg)",
@@ -118,7 +154,9 @@
     "weightTrend": "Trend hmotnosti",
     "baseline": "Východisková",
     "alertThreshold": "Prah upozornenia: -5%",
-    "nutritionEscalation": "Prahy nutričnej eskalácie"
+    "nutritionEscalation": "Prahy nutričnej eskalácie",
+    "placeholderWeight": "napr. 65",
+    "placeholderNotes": "Ďalšie pozorovania..."
   },
   "medications": {
     "title": "Lieky",
@@ -157,32 +195,58 @@
     "enterResults": "Zadať laboratórne výsledky",
     "safetyAlerts": "Bezpečnostné upozornenia",
     "resultsTable": "Tabuľka výsledkov",
-    "noData": "Zatiaľ žiadne laboratórne údaje — kliknite na Pridať výsledky"
+    "noData": "Zatiaľ žiadne laboratórne údaje — kliknite na Pridať výsledky",
+    "placeholderNotes": "Nepovinné poznámky"
   },
   "briefings": {
     "title": "Briefingy agentov",
     "subtitle": "AI-generované klinické briefingy",
-    "noBriefings": "Zatiaľ žiadne briefingy"
+    "noBriefings": "Zatiaľ žiadne briefingy",
+    "count": "{count} briefingov",
+    "questionsForOncologist": "Otázky pre onkológa"
   },
   "prep": {
     "title": "Príprava na vyšetrenie",
     "subtitle": "Checklisty pred vyšetrením",
-    "noPrep": "Žiadne údaje o príprave"
+    "noPrep": "Žiadne údaje o príprave",
+    "printHeader": "Oncoteam — Súhrn pred vyšetrením",
+    "sectionPatient": "Pacient",
+    "labelName": "Meno:",
+    "labelDiagnosis": "Diagnóza:",
+    "labelRegimen": "Režim:",
+    "labelCycle": "Cyklus:",
+    "labelStaging": "Štádium:",
+    "criticalSafetyFlags": "Kritické bezpečnostné upozornenia",
+    "labAlerts": "Laboratórne upozornenia",
+    "latestLabs": "Posledné laboratóriá ({date})",
+    "latestToxicity": "Posledná toxicita ({date})",
+    "questionsForOncologist": "Otázky pre onkológa",
+    "upcomingMilestones": "Nadchádzajúce míľniky",
+    "recentResearch": "Posledný výskum",
+    "excludedTherapiesBiomarker": "Vylúčené terapie (na základe biomarkerov)"
   },
   "research": {
     "title": "Výskum",
     "subtitle": "Výsledky z PubMed a klinických štúdií",
-    "noResearch": "Zatiaľ žiadne výsledky výskumu"
+    "noResearch": "Zatiaľ žiadne výsledky výskumu",
+    "count": "{count} záznamov",
+    "filterAll": "Všetky",
+    "filterTrials": "Štúdie"
   },
   "timeline": {
     "title": "Časová os liečby",
     "subtitle": "Chronologický prehľad všetkých liečebných udalostí",
-    "noEvents": "Zatiaľ žiadne udalosti"
+    "noEvents": "Zatiaľ žiadne udalosti",
+    "count": "{count} udalostí",
+    "currentCycle": "Aktuálny: Cyklus {n}",
+    "treatmentMilestones": "Míľniky liečby",
+    "cycleBadge": "Cyklus {n}"
   },
   "sessions": {
     "title": "Sedenia",
     "subtitle": "História konverzácií s agentom",
-    "noSessions": "Zatiaľ žiadne sedenia"
+    "noSessions": "Zatiaľ žiadne sedenia",
+    "count": "{count} sedení"
   },
   "familyUpdate": {
     "title": "Správa pre rodinu",
@@ -208,7 +272,9 @@
     "apiError": "Nepodarilo sa načítať údaje. Backend môže byť dočasne nedostupný.",
     "emergency": {
       "title": "KRITICKÉ — Kontaktujte onkológa",
-      "callNow": "Okamžite zavolajte na onkologickú pohotovosť"
+      "callNow": "Okamžite zavolajte na onkologickú pohotovosť",
+      "critical": "KRITICKÉ",
+      "immediateAttention": "ANC < 500 alebo PLT < 25 000 vyžaduje okamžitú lekársku pomoc. Nepodávajte chemoterapiu."
     },
     "drilldown": {
       "details": "Detaily",
@@ -217,26 +283,75 @@
       "session": "Sedenie",
       "research": "Výskum",
       "loading": "Načítavam detaily...",
-      "notFound": "Nenájdené"
+      "notFound": "Nenájdené",
+      "back": "Späť",
+      "viewOnPubMed": "Zobraziť na PubMed",
+      "viewOnClinicalTrials": "Zobraziť na ClinicalTrials.gov",
+      "related": "Súvisiace",
+      "document": "Dokument"
     },
     "xp": {
       "level": "Úroveň {level}",
       "streak": "{days}d séria",
-      "xpToNext": "{xp} XP do ďalšej úrovne"
+      "xpToNext": "{xp} XP do ďalšej úrovne",
+      "toNext": "{xp} do {level}",
+      "levels": {
+        "intern": "Stážista",
+        "resident": "Rezident",
+        "fellow": "Odborník",
+        "attending": "Atendujúci",
+        "chief": "Primár",
+        "director": "Riaditeľ",
+        "distinguished": "Excelentný"
+      }
     },
     "milestone": {
       "cycle": "Cyklus {n}",
       "current": "Aktuálny",
       "completed": "Dokončený",
-      "upcoming": "Nadchádzajúci"
+      "upcoming": "Nadchádzajúci",
+      "done": "Hotový",
+      "future": "Budúci"
     },
     "labThreshold": {
       "parameter": "Parameter",
       "threshold": "Prah",
-      "action": "Akcia"
+      "action": "Akcia",
+      "note": "Poznámka"
     },
     "checklist": {
       "title": "Checklist pred cyklom {cycle}",
+      "sections": {
+        "labSafety": "Laboratórna bezpečnosť",
+        "toxicityAssessment": "Hodnotenie toxicity (NCI-CTC)",
+        "vteMonitoring": "Monitorovanie VTE (žilovej trombózy)",
+        "generalAssessment": "Všeobecné hodnotenie"
+      },
+      "labItems": {
+        "anc": "ANC >= 1 500/uL",
+        "plt": "PLT >= 75 000/uL (tiež skontrolovať >= 50 000 pre plnú dávku Clexane)",
+        "creatinine": "Kreatinín <= 1,5x HHN (horná hranica normy)",
+        "altAst": "ALT/AST <= 5x HHN (prah pri pečeňových metastázach)",
+        "bilirubin": "Bilirubín <= 1,5x HHN"
+      },
+      "toxItems": {
+        "neuropathy": "Stupeň periférnej neuropatie",
+        "diarrhea": "Stupeň hnačky",
+        "mucositis": "Stupeň mukozitídy",
+        "fatigue": "Stupeň únavy",
+        "handFoot": "Stupeň syndrómu ruka-noha",
+        "nausea": "Stupeň nauzey/vracania"
+      },
+      "vteItems": {
+        "pltClexane": "PLT dostatočné pre pokračovanie Clexane",
+        "noDvt": "Žiadne nové príznaky DVT/PE (opuch nôh, dýchavica, bolesť hrudníka)",
+        "clexaneCompliance": "Potvrdená adherencia Clexane"
+      },
+      "generalItems": {
+        "ecog": "ECOG výkonnostný stav",
+        "weight": "Hmotnosť + zmena oproti východiskovej",
+        "nutritional": "Nutričný stav adekvátny"
+      },
       "items": {
         "cbc": "Krvný obraz s diferenciálom",
         "lft": "Pečeňové testy (ALT, AST, bilirubín)",

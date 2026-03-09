@@ -7,7 +7,7 @@ const typeLabels = computed<Record<string, string>>(() => ({
   treatment_event: t('components.drilldown.treatmentEvent'),
   research: t('research.title'),
   conversation: t('sessions.title'),
-  document: 'Document',
+  document: t('components.drilldown.document'),
   biomarker: t('patient.biomarkers'),
   protocol_section: t('nav.protocol'),
   activity: t('agents.activity'),
@@ -64,7 +64,7 @@ function isObject(val: unknown): val is Record<string, unknown> {
     <div v-if="stack.length > 1" class="px-4 pb-2">
       <button class="text-xs text-gray-500 hover:text-white flex items-center gap-1" @click="pop">
         <UIcon name="i-lucide-arrow-left" class="w-3 h-3" />
-        Back
+        {{ t('components.drilldown.back') }}
       </button>
     </div>
 
@@ -91,7 +91,7 @@ function isObject(val: unknown): val is Record<string, unknown> {
         class="flex items-center gap-2 text-sm text-teal-400 hover:text-teal-300"
       >
         <UIcon name="i-lucide-external-link" />
-        <span>View on {{ detail.data.source === 'pubmed' ? 'PubMed' : 'ClinicalTrials.gov' }}</span>
+        <span>{{ detail.data.source === 'pubmed' ? t('components.drilldown.viewOnPubMed') : t('components.drilldown.viewOnClinicalTrials') }}</span>
       </a>
 
       <!-- Render data fields -->
@@ -143,7 +143,7 @@ function isObject(val: unknown): val is Record<string, unknown> {
 
       <!-- Related items -->
       <div v-if="detail.related?.length" class="pt-3 border-t border-gray-800">
-        <div class="text-xs text-gray-500 mb-2">Related</div>
+        <div class="text-xs text-gray-500 mb-2">{{ t('components.drilldown.related') }}</div>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="rel in detail.related"

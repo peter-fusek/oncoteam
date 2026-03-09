@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
+const { formatDate } = useFormatDate()
 
 const { data: sessions, refresh } = await fetchApi<{
   sessions: Array<{
@@ -21,7 +22,7 @@ const drilldown = useDrilldown()
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('sessions.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ sessions?.total ?? 0 }} sessions</p>
+        <p class="text-sm text-gray-400">{{ $t('sessions.count', { count: sessions?.total ?? 0 }) }}</p>
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
@@ -38,7 +39,7 @@ const drilldown = useDrilldown()
         <div class="px-4 py-3 border-b border-gray-800/50 flex items-center justify-between">
           <span class="font-medium text-white text-sm">{{ session.title }}</span>
           <span v-if="session.date" class="text-xs text-gray-500">
-            {{ session.date.split('T')[0] }}
+            {{ formatDate(session.date.split('T')[0]) }}
           </span>
         </div>
         <div class="px-4 py-3">

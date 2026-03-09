@@ -3,7 +3,7 @@ const { user, clear } = useUserSession()
 const { showTestData } = useTestDataToggle()
 const { t, locale } = useI18n()
 const { setLocale } = useI18n()
-const { activeRole, roles, hasMultipleRoles, canAccess } = useUserRole()
+const { activeRole, roles, hasMultipleRoles, canAccess, landingPage } = useUserRole()
 
 const mobileMenuOpen = ref(false)
 const route = useRoute()
@@ -37,11 +37,21 @@ const allNavItems = computed(() => [
 const navigation = computed(() => allNavItems.value.filter(item => canAccess(item.to)))
 
 const roleSwitcherOpen = ref(false)
+const roleSwitcherRef = ref<HTMLElement | null>(null)
+
+// Click-outside handler for role switcher dropdown
+function onClickOutside(e: MouseEvent) {
+  if (roleSwitcherOpen.value && roleSwitcherRef.value && !roleSwitcherRef.value.contains(e.target as Node)) {
+    roleSwitcherOpen.value = false
+  }
+}
+onMounted(() => document.addEventListener('click', onClickOutside, true))
+onUnmounted(() => document.removeEventListener('click', onClickOutside, true))
 
 async function switchRole(role: string) {
   roleSwitcherOpen.value = false
   await $fetch('/api/role/switch', { method: 'POST', body: { role } })
-  window.location.reload()
+  await navigateTo(landingPage.value, { external: true })
 }
 
 async function toggleLocale() {
@@ -69,7 +79,7 @@ async function logout() {
 
       <!-- Role switcher -->
       <div v-if="hasMultipleRoles" class="px-3 pb-2">
-        <div class="relative">
+        <div ref="roleSwitcherRef" class="relative">
           <button
             class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors"
             :class="ROLE_COLORS[activeRole]"

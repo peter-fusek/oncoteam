@@ -51,13 +51,13 @@ function isCritical(param: string, value: number): boolean {
           variant="subtle"
           size="xs"
         >
-          {{ isCritical(alert.param, alert.value) ? 'CRITICAL' : alert.action }}
+          {{ isCritical(alert.param, alert.value) ? $t('components.emergency.critical') : alert.action }}
         </UBadge>
         <span v-if="alert.date" class="text-xs text-gray-600 ml-auto">{{ alert.date }}</span>
       </div>
     </div>
     <div v-if="alerts.some(a => isCritical(a.param, a.value))" class="mt-2 text-xs text-red-400">
-      ANC &lt; 500 or PLT &lt; 25,000 requires immediate medical attention. Do not administer chemotherapy.
+      {{ $t('components.emergency.immediateAttention') }}
     </div>
   </div>
 </template>

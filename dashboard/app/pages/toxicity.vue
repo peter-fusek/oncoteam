@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const { fetchApi, apiUrl } = useOncoteamApi()
 const { activeRole } = useUserRole()
+const { t } = useI18n()
+const { formatDate } = useFormatDate()
 
 const { data: toxicity, refresh } = await fetchApi<{
   entries: Array<{
@@ -27,21 +29,10 @@ const { data: weightData } = await fetchApi<{
 }>('/weight')
 
 const grades = [0, 1, 2, 3, 4]
-const clinicalGradeLabels: Record<number, string> = {
-  0: 'None',
-  1: 'Mild',
-  2: 'Moderate',
-  3: 'Severe',
-  4: 'Life-threatening',
-}
-const patientGradeLabels: Record<number, string> = {
-  0: 'Not present',
-  1: 'A little',
-  2: 'Noticeable',
-  3: 'Quite bad',
-  4: 'Very bad',
-}
-const gradeLabels = computed(() => activeRole.value === 'patient' ? patientGradeLabels : clinicalGradeLabels)
+const gradeLabels = computed(() => {
+  const prefix = activeRole.value === 'patient' ? 'toxicity.patientGrades' : 'toxicity.grades'
+  return Object.fromEntries(grades.map(g => [g, t(`${prefix}.${g}`)]))
+})
 const gradeColors: Record<number, string> = {
   0: 'text-green-500',
   1: 'text-yellow-500',
@@ -98,14 +89,14 @@ async function submitLog() {
   }
 }
 
-const toxicityFields = [
-  { key: 'neuropathy', label: 'Peripheral Neuropathy', icon: 'i-lucide-hand' },
-  { key: 'diarrhea', label: 'Diarrhea', icon: 'i-lucide-droplets' },
-  { key: 'mucositis', label: 'Mucositis', icon: 'i-lucide-circle-dot' },
-  { key: 'fatigue', label: 'Fatigue', icon: 'i-lucide-battery-low' },
-  { key: 'hand_foot', label: 'Hand-Foot Syndrome', icon: 'i-lucide-footprints' },
-  { key: 'nausea', label: 'Nausea/Vomiting', icon: 'i-lucide-frown' },
-]
+const toxicityFields = computed(() => [
+  { key: 'neuropathy', label: t('toxicity.fields.neuropathy'), icon: 'i-lucide-hand' },
+  { key: 'diarrhea', label: t('toxicity.fields.diarrhea'), icon: 'i-lucide-droplets' },
+  { key: 'mucositis', label: t('toxicity.fields.mucositis'), icon: 'i-lucide-circle-dot' },
+  { key: 'fatigue', label: t('toxicity.fields.fatigue'), icon: 'i-lucide-battery-low' },
+  { key: 'hand_foot', label: t('toxicity.fields.handFoot'), icon: 'i-lucide-footprints' },
+  { key: 'nausea', label: t('toxicity.fields.nausea'), icon: 'i-lucide-frown' },
+])
 
 const drilldown = useDrilldown()
 
@@ -141,7 +132,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Date</label>
+          <label class="text-xs text-gray-400 block mb-1">{{ $t('common.date') }}</label>
           <input
             v-model="form.date"
             type="date"
@@ -180,31 +171,31 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       <!-- Weight, ECOG & Nutrition -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Weight (kg)</label>
+          <label class="text-xs text-gray-400 block mb-1">{{ $t('toxicity.weight') }}</label>
           <input
             v-model.number="form.weight_kg"
             type="number"
             step="0.1"
-            placeholder="e.g. 65"
+            :placeholder="$t('toxicity.placeholderWeight')"
             class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">ECOG</label>
+          <label class="text-xs text-gray-400 block mb-1">{{ $t('toxicity.ecog') }}</label>
           <select
             v-model.number="form.ecog"
             class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
           >
             <option :value="null">-</option>
-            <option :value="0">0 - Fully active</option>
-            <option :value="1">1 - Restricted</option>
-            <option :value="2">2 - Ambulatory</option>
-            <option :value="3">3 - Limited self-care</option>
-            <option :value="4">4 - Disabled</option>
+            <option :value="0">{{ $t('toxicity.ecogLevels.0') }}</option>
+            <option :value="1">{{ $t('toxicity.ecogLevels.1') }}</option>
+            <option :value="2">{{ $t('toxicity.ecogLevels.2') }}</option>
+            <option :value="3">{{ $t('toxicity.ecogLevels.3') }}</option>
+            <option :value="4">{{ $t('toxicity.ecogLevels.4') }}</option>
           </select>
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Appetite (0-4)</label>
+          <label class="text-xs text-gray-400 block mb-1">{{ $t('toxicity.appetite') }}</label>
           <div class="flex gap-1">
             <button
               v-for="g in grades"
@@ -220,7 +211,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           </div>
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">Oral Intake (%)</label>
+          <label class="text-xs text-gray-400 block mb-1">{{ $t('toxicity.oralIntake') }}</label>
           <input
             v-model.number="form.oral_intake"
             type="number"
@@ -235,11 +226,11 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
 
       <!-- Notes -->
       <div class="mb-4">
-        <label class="text-xs text-gray-400 block mb-1">Notes</label>
+        <label class="text-xs text-gray-400 block mb-1">{{ $t('common.notes') }}</label>
         <textarea
           v-model="form.notes"
           rows="2"
-          placeholder="Additional observations..."
+          :placeholder="$t('toxicity.placeholderNotes')"
           class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
         />
       </div>
@@ -264,13 +255,13 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
         @click="drilldown.open({ type: 'treatment_event', id: entry.id, label: `Toxicity ${entry.date}` })"
       >
         <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-white">{{ entry.date }}</span>
+          <span class="text-sm font-medium text-white">{{ formatDate(entry.date) }}</span>
           <UBadge
             :color="getMaxGrade(entry) >= 3 ? 'error' : getMaxGrade(entry) >= 2 ? 'warning' : 'success'"
             variant="subtle"
             size="xs"
           >
-            Max grade {{ getMaxGrade(entry) }}
+            {{ $t('toxicity.maxGrade', { grade: getMaxGrade(entry) }) }}
           </UBadge>
         </div>
         <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
@@ -282,8 +273,8 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           </div>
         </div>
         <div v-if="entry.metadata?.weight_kg" class="text-xs text-gray-500 mt-1">
-          Weight: {{ entry.metadata.weight_kg }} kg
-          <span v-if="entry.metadata?.ecog != null">&middot; ECOG: {{ entry.metadata.ecog }}</span>
+          {{ $t('toxicity.weight') }}: {{ entry.metadata.weight_kg }} kg
+          <span v-if="entry.metadata?.ecog != null">&middot; {{ $t('toxicity.ecog') }}: {{ entry.metadata.ecog }}</span>
         </div>
         <p v-if="entry.notes" class="text-xs text-gray-400 mt-1">{{ entry.notes }}</p>
       </div>
@@ -314,7 +305,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div v-for="entry in weightData.entries" :key="entry.date">
-            <span class="text-gray-500">{{ entry.date }}</span>
+            <span class="text-gray-500">{{ formatDate(entry.date) }}</span>
             <span class="ml-2 font-medium" :class="entry.alert ? 'text-red-400' : 'text-white'">
               {{ entry.weight_kg }} kg
             </span>
@@ -324,7 +315,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           </div>
         </div>
         <div class="text-xs text-gray-500 mt-2">
-          Baseline: {{ weightData.baseline_weight_kg }} kg &middot; Alert threshold: -5%
+          {{ $t('toxicity.baseline') }}: {{ weightData.baseline_weight_kg }} kg &middot; {{ $t('toxicity.alertThreshold') }}
         </div>
       </div>
 

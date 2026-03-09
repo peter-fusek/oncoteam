@@ -9,10 +9,10 @@ defineProps<{
     <table class="w-full text-sm">
       <thead>
         <tr class="text-left text-xs text-gray-500 border-b border-gray-800">
-          <th class="pb-2 pr-4">Parameter</th>
-          <th class="pb-2 pr-4">Threshold</th>
-          <th class="pb-2 pr-4">Note</th>
-          <th class="pb-2">Action</th>
+          <th class="pb-2 pr-4">{{ $t('components.labThreshold.parameter') }}</th>
+          <th class="pb-2 pr-4">{{ $t('components.labThreshold.threshold') }}</th>
+          <th class="pb-2 pr-4">{{ $t('components.labThreshold.note') }}</th>
+          <th class="pb-2">{{ $t('components.labThreshold.action') }}</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-800/50">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
+const { t } = useI18n()
 
 const { data: status, refresh: refreshStatus } = await fetchApi<{
   status: string
@@ -45,7 +46,7 @@ const rooms = computed(() => {
 
   return [
     {
-      name: 'Research Lab',
+      name: t('agents.rooms.researchLab'),
       icon: '🔬',
       color: 'from-blue-500/20 to-blue-600/10',
       border: 'border-blue-500/30',
@@ -55,7 +56,7 @@ const rooms = computed(() => {
       status: getAgentStatus(['search_pubmed', 'search_clinical_trials', 'search_clinical_trials_adjacent']),
     },
     {
-      name: 'Eligibility Check',
+      name: t('agents.rooms.eligibilityCheck'),
       icon: '🎯',
       color: 'from-amber-500/20 to-amber-600/10',
       border: 'border-amber-500/30',
@@ -65,7 +66,7 @@ const rooms = computed(() => {
       status: getAgentStatus(['check_trial_eligibility', 'fetch_trial_details', 'fetch_pubmed_article']),
     },
     {
-      name: 'Clinical Protocol',
+      name: t('agents.rooms.clinicalProtocol'),
       icon: '🏥',
       color: 'from-red-500/20 to-red-600/10',
       border: 'border-red-500/30',
@@ -75,7 +76,7 @@ const rooms = computed(() => {
       status: getAgentStatus(['pre_cycle_check', 'tumor_marker_review', 'response_assessment']),
     },
     {
-      name: 'Analytics Room',
+      name: t('agents.rooms.analyticsRoom'),
       icon: '📊',
       color: 'from-purple-500/20 to-purple-600/10',
       border: 'border-purple-500/30',
@@ -85,7 +86,7 @@ const rooms = computed(() => {
       status: getAgentStatus(['analyze_labs', 'compare_labs', 'get_lab_trends']),
     },
     {
-      name: 'Report Room',
+      name: t('agents.rooms.reportRoom'),
       icon: '📋',
       color: 'from-green-500/20 to-green-600/10',
       border: 'border-green-500/30',
@@ -95,7 +96,7 @@ const rooms = computed(() => {
       status: getAgentStatus(['daily_briefing', 'summarize_session', 'review_session']),
     },
     {
-      name: 'Document Vault',
+      name: t('agents.rooms.documentVault'),
       icon: '🗄️',
       color: 'from-cyan-500/20 to-cyan-600/10',
       border: 'border-cyan-500/30',
@@ -105,7 +106,7 @@ const rooms = computed(() => {
       status: getAgentStatus(['search_documents', 'view_document', 'get_patient_context']),
     },
     {
-      name: 'Session Log',
+      name: t('agents.rooms.sessionLog'),
       icon: '📝',
       color: 'from-rose-500/20 to-rose-600/10',
       border: 'border-rose-500/30',
@@ -167,7 +168,7 @@ onUnmounted(() => {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('agents.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ totalCalls }} operations completed</p>
+        <p class="text-sm text-gray-400">{{ $t('agents.operationsCompleted', { count: totalCalls }) }}</p>
       </div>
       <div class="flex items-center gap-3">
         <XpProgressBar
@@ -199,11 +200,11 @@ onUnmounted(() => {
             variant="subtle"
             size="xs"
           >
-            {{ autonomous.enabled ? 'Active' : 'Disabled' }}
+            {{ autonomous.enabled ? $t('common.active') : $t('common.disabled') }}
           </UBadge>
         </div>
         <span v-if="autonomous.daily_cost > 0" class="text-xs text-gray-400">
-          ${{ autonomous.daily_cost.toFixed(4) }} today
+          {{ $t('agents.costToday', { cost: autonomous.daily_cost.toFixed(4) }) }}
         </span>
       </div>
       <div v-if="autonomous.jobs?.length" class="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -251,9 +252,9 @@ onUnmounted(() => {
           <div>
             <div class="font-semibold text-white text-sm">{{ room.name }}</div>
             <div class="text-xs text-gray-400">
-              {{ room.totalCalls }} calls
+              {{ $t('agents.calls', { count: room.totalCalls }) }}
               <span v-if="room.avgMs > 0" class="text-gray-600">
-                &middot; ~{{ room.avgMs }}ms avg
+                &middot; {{ $t('agents.avgMs', { ms: room.avgMs }) }}
               </span>
             </div>
           </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
+const { formatDate } = useFormatDate()
 
 const { data: timeline, refresh } = await fetchApi<{
   events: Array<{
@@ -60,11 +61,11 @@ const drilldown = useDrilldown()
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('timeline.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ timeline?.total ?? 0 }} events</p>
+        <p class="text-sm text-gray-400">{{ $t('timeline.count', { count: timeline?.total ?? 0 }) }}</p>
       </div>
       <div class="flex items-center gap-2">
         <UBadge v-if="protocol?.current_cycle" variant="subtle" color="info" size="xs">
-          Current: Cycle {{ protocol.current_cycle }}
+          {{ $t('timeline.currentCycle', { n: protocol.current_cycle }) }}
         </UBadge>
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
       </div>
@@ -74,7 +75,7 @@ const drilldown = useDrilldown()
     <div v-if="protocol?.milestones" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
       <div class="flex items-center gap-2 mb-3">
         <UIcon name="i-lucide-milestone" class="text-amber-500" />
-        <span class="text-sm font-semibold text-white">Treatment Milestones</span>
+        <span class="text-sm font-semibold text-white">{{ $t('timeline.treatmentMilestones') }}</span>
       </div>
       <div class="flex gap-4 overflow-x-auto pb-2">
         <div
@@ -114,10 +115,10 @@ const drilldown = useDrilldown()
                 <span class="font-medium text-white text-sm">{{ event.title }}</span>
                 <UBadge variant="subtle" size="xs" color="neutral">{{ event.type }}</UBadge>
                 <UBadge v-if="getCycleNumber(event.title)" variant="subtle" size="xs" color="info">
-                  Cycle {{ getCycleNumber(event.title) }}
+                  {{ $t('timeline.cycleBadge', { n: getCycleNumber(event.title) }) }}
                 </UBadge>
               </div>
-              <div class="text-xs text-gray-500 mt-1">{{ event.date }}</div>
+              <div class="text-xs text-gray-500 mt-1">{{ formatDate(event.date) }}</div>
               <p v-if="event.notes" class="text-xs text-gray-400 mt-2">{{ event.notes }}</p>
 
               <!-- Milestone callouts -->

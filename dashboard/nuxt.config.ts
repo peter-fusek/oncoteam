@@ -39,7 +39,7 @@ export default defineNuxtConfig({
     databaseUrl: process.env.DATABASE_URL || '',
   },
 
-  devtools: { enabled: true },
+  devtools: { enabled: process.dev },
 
   colorMode: {
     preference: 'dark',

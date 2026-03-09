@@ -3,52 +3,54 @@ defineProps<{
   currentCycle: number
 }>()
 
-const sections = [
+const { t } = useI18n()
+
+const sections = computed(() => [
   {
-    title: 'Laboratory Safety',
+    title: t('components.checklist.sections.labSafety'),
     items: [
-      'ANC >= 1,500/uL',
-      'PLT >= 75,000/uL (also check >= 50,000 for full-dose Clexane)',
-      'Creatinine <= 1.5x ULN',
-      'ALT/AST <= 5x ULN (liver mets threshold)',
-      'Bilirubin <= 1.5x ULN',
+      t('components.checklist.labItems.anc'),
+      t('components.checklist.labItems.plt'),
+      t('components.checklist.labItems.creatinine'),
+      t('components.checklist.labItems.altAst'),
+      t('components.checklist.labItems.bilirubin'),
     ],
   },
   {
-    title: 'Toxicity Assessment (NCI-CTC)',
+    title: t('components.checklist.sections.toxicityAssessment'),
     items: [
-      'Peripheral neuropathy grade',
-      'Diarrhea grade',
-      'Mucositis grade',
-      'Fatigue grade',
-      'Hand-foot syndrome grade',
-      'Nausea/vomiting grade',
+      t('components.checklist.toxItems.neuropathy'),
+      t('components.checklist.toxItems.diarrhea'),
+      t('components.checklist.toxItems.mucositis'),
+      t('components.checklist.toxItems.fatigue'),
+      t('components.checklist.toxItems.handFoot'),
+      t('components.checklist.toxItems.nausea'),
     ],
   },
   {
-    title: 'VTE Monitoring',
+    title: t('components.checklist.sections.vteMonitoring'),
     items: [
-      'PLT adequate for Clexane continuation',
-      'No new DVT/PE symptoms (leg swelling, dyspnea, chest pain)',
-      'Clexane compliance confirmed',
+      t('components.checklist.vteItems.pltClexane'),
+      t('components.checklist.vteItems.noDvt'),
+      t('components.checklist.vteItems.clexaneCompliance'),
     ],
   },
   {
-    title: 'General Assessment',
+    title: t('components.checklist.sections.generalAssessment'),
     items: [
-      'ECOG performance status',
-      'Weight + change from baseline',
-      'Nutritional status adequate',
+      t('components.checklist.generalItems.ecog'),
+      t('components.checklist.generalItems.weight'),
+      t('components.checklist.generalItems.nutritional'),
     ],
   },
-]
+])
 
 const checked = ref<Record<string, boolean>>({})
 </script>
 
 <template>
   <div class="space-y-4">
-    <h3 class="text-sm font-semibold text-white">Pre-Cycle {{ currentCycle }} Checklist - mFOLFOX6</h3>
+    <h3 class="text-sm font-semibold text-white">{{ $t('components.checklist.title', { cycle: currentCycle }) }} - mFOLFOX6</h3>
     <div v-for="section in sections" :key="section.title" class="space-y-2">
       <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">{{ section.title }}</div>
       <div v-for="item in section.items" :key="item" class="flex items-center gap-2">

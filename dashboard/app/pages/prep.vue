@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
+const { formatDate } = useFormatDate()
 
 // Fetch all data in parallel for the prep summary
 const [
@@ -89,26 +90,26 @@ function printPrep() {
 
     <!-- Print header -->
     <div class="hidden print:block">
-      <h1 class="text-xl font-bold">Oncoteam - Pre-Appointment Summary</h1>
+      <h1 class="text-xl font-bold">{{ $t('prep.printHeader') }}</h1>
       <p class="text-sm text-gray-500">{{ new Date().toLocaleDateString('sk-SK') }}</p>
     </div>
 
     <!-- Patient Summary -->
     <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Patient</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.sectionPatient') }}</h2>
       <div class="grid grid-cols-2 gap-2 text-sm print:text-black">
-        <div><span class="text-gray-500">Name:</span> <span class="text-white print:text-black">{{ patient?.name }}</span></div>
-        <div><span class="text-gray-500">Diagnosis:</span> <span class="text-white print:text-black">{{ patient?.diagnosis_description }}</span></div>
-        <div><span class="text-gray-500">Regimen:</span> <span class="text-white print:text-black">{{ patient?.treatment_regimen }}</span></div>
-        <div><span class="text-gray-500">Cycle:</span> <span class="text-white print:text-black">{{ patient?.current_cycle }}</span></div>
-        <div><span class="text-gray-500">Staging:</span> <span class="text-white print:text-black">{{ patient?.staging }}</span></div>
+        <div><span class="text-gray-500">{{ $t('prep.labelName') }}</span> <span class="text-white print:text-black">{{ patient?.name }}</span></div>
+        <div><span class="text-gray-500">{{ $t('prep.labelDiagnosis') }}</span> <span class="text-white print:text-black">{{ patient?.diagnosis_description }}</span></div>
+        <div><span class="text-gray-500">{{ $t('prep.labelRegimen') }}</span> <span class="text-white print:text-black">{{ patient?.treatment_regimen }}</span></div>
+        <div><span class="text-gray-500">{{ $t('prep.labelCycle') }}</span> <span class="text-white print:text-black">{{ patient?.current_cycle }}</span></div>
+        <div><span class="text-gray-500">{{ $t('prep.labelStaging') }}</span> <span class="text-white print:text-black">{{ patient?.staging }}</span></div>
         <div><span class="text-gray-500">KRAS:</span> <span class="text-red-400 print:text-red-600">{{ patient?.biomarkers?.KRAS }}</span></div>
       </div>
     </div>
 
     <!-- Critical Safety Flags -->
     <div v-if="criticalFlags.length" class="rounded-xl border border-red-500/30 bg-red-500/5 p-4 print:border-red-300 print:bg-red-50">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Critical Safety Flags</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.criticalSafetyFlags') }}</h2>
       <div v-for="flag in criticalFlags" :key="flag.id" class="flex items-start gap-2 py-1 text-sm">
         <UIcon name="i-lucide-triangle-alert" class="text-red-500 shrink-0 mt-0.5 print:hidden" />
         <div>
@@ -120,7 +121,7 @@ function printPrep() {
 
     <!-- Lab Alerts -->
     <div v-if="labAlerts.length" class="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 print:border-amber-300 print:bg-amber-50">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Lab Alerts</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.labAlerts') }}</h2>
       <div v-for="(alert, i) in labAlerts" :key="i" class="text-sm text-amber-400 print:text-amber-600 py-0.5">
         {{ alert.date }}: <span class="font-mono">{{ alert.param }}</span> = {{ alert.value.toLocaleString() }}
         (min: {{ alert.threshold.toLocaleString() }}) — {{ alert.action }}
@@ -129,7 +130,7 @@ function printPrep() {
 
     <!-- Latest Labs -->
     <div v-if="latestLabs" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Latest Labs ({{ latestLabs.date }})</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.latestLabs', { date: formatDate(latestLabs.date) }) }}</h2>
       <div class="grid grid-cols-3 md:grid-cols-4 gap-2 text-sm">
         <div v-for="(val, key) in latestLabs.values" :key="key">
           <span class="text-gray-500 font-mono">{{ key }}:</span>
@@ -140,7 +141,7 @@ function printPrep() {
 
     <!-- Latest Toxicity -->
     <div v-if="latestToxicity" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Latest Toxicity ({{ latestToxicity.date }})</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.latestToxicity', { date: formatDate(latestToxicity.date) }) }}</h2>
       <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-sm">
         <div v-for="(val, key) in latestToxicity.metadata" :key="key">
           <span class="text-gray-500">{{ String(key).replace(/_/g, ' ') }}:</span>
@@ -154,7 +155,7 @@ function printPrep() {
 
     <!-- Questions for Oncologist -->
     <div v-if="questions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4 print:border-teal-300 print:bg-teal-50">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Questions for Oncologist</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.questionsForOncologist') }}</h2>
       <ol class="space-y-1 text-sm text-gray-300 print:text-black list-decimal list-inside">
         <li v-for="(q, i) in questions" :key="i">{{ q }}</li>
       </ol>
@@ -162,7 +163,7 @@ function printPrep() {
 
     <!-- Upcoming Milestones -->
     <div v-if="upcomingMilestones.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Upcoming Milestones</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.upcomingMilestones') }}</h2>
       <div v-for="m in upcomingMilestones" :key="m.action" class="flex items-center gap-2 py-1 text-sm">
         <UBadge variant="subtle" size="xs" color="warning">C{{ m.cycle }}</UBadge>
         <span class="text-gray-300 print:text-black">{{ m.description }}</span>
@@ -171,7 +172,7 @@ function printPrep() {
 
     <!-- Recent Research -->
     <div v-if="recentResearch.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Recent Research</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.recentResearch') }}</h2>
       <div
         v-for="r in recentResearch"
         :key="r.id"
@@ -185,7 +186,7 @@ function printPrep() {
 
     <!-- Excluded Therapies Reminder -->
     <div v-if="patient?.excluded_therapies" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
-      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">Excluded Therapies (Biomarker-Based)</h2>
+      <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.excludedTherapiesBiomarker') }}</h2>
       <div v-for="(reason, therapy) in patient.excluded_therapies" :key="therapy" class="text-sm text-gray-400 print:text-gray-600 py-0.5">
         <span class="text-red-400 print:text-red-600">{{ therapy }}</span> — {{ reason }}
       </div>

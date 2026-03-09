@@ -28,11 +28,14 @@
     "notes": "Notes",
     "history": "History",
     "active": "Active",
+    "disabled": "Disabled",
     "loading": "Loading...",
     "error": "Error",
     "saved": "Saved",
     "noData": "No data available",
-    "showTestData": "Show test data"
+    "showTestData": "Show test data",
+    "back": "Back",
+    "viewSource": "View source"
   },
   "agents": {
     "title": "Agent Dashboard",
@@ -49,7 +52,21 @@
     "lastRun": "Last run",
     "noTasks": "No autonomous tasks configured",
     "streak": "streak",
-    "level": "Level"
+    "level": "Level",
+    "rooms": {
+      "researchLab": "Research Lab",
+      "eligibilityCheck": "Eligibility Check",
+      "clinicalProtocol": "Clinical Protocol",
+      "analyticsRoom": "Analytics Room",
+      "reportRoom": "Report Room",
+      "documentVault": "Document Vault",
+      "sessionLog": "Session Log"
+    },
+    "operationsCompleted": "{count} operations completed",
+    "calls": "{count} calls",
+    "avgMs": "~{ms}ms avg",
+    "costToday": "${cost} today",
+    "scheduledTasks": "Scheduled Tasks"
   },
   "patient": {
     "title": "Patient Profile",
@@ -58,7 +75,19 @@
     "biomarkers": "Biomarkers",
     "treatment": "Current Treatment",
     "safetyFlags": "Safety Flags",
-    "noProfile": "Patient profile not available"
+    "noProfile": "Patient profile not available",
+    "stage": "Stage {stage}",
+    "sided": "{side}-sided",
+    "cycle": "Cycle {n}",
+    "ecogLabel": "ECOG: {val}",
+    "genomicProfile": "Genomic Profile",
+    "excludedTherapies": "Excluded Therapies",
+    "metastases": "Metastases",
+    "hospitals": "Hospitals",
+    "physicians": "Physicians",
+    "treating": "Treating:",
+    "admitting": "Admitting:",
+    "notesComorbidities": "Notes & Comorbidities"
   },
   "protocol": {
     "title": "Clinical Protocol",
@@ -102,6 +131,13 @@
       "3": "Severe",
       "4": "Life-threatening"
     },
+    "patientGrades": {
+      "0": "Not present",
+      "1": "A little",
+      "2": "Noticeable",
+      "3": "Quite bad",
+      "4": "Very bad"
+    },
     "maxGrade": "Max grade {grade}",
     "weight": "Weight (kg)",
     "ecog": "ECOG",
@@ -118,7 +154,9 @@
     "weightTrend": "Weight Trend",
     "baseline": "Baseline",
     "alertThreshold": "Alert threshold: -5%",
-    "nutritionEscalation": "Nutrition Escalation Thresholds"
+    "nutritionEscalation": "Nutrition Escalation Thresholds",
+    "placeholderWeight": "e.g. 65",
+    "placeholderNotes": "Additional observations..."
   },
   "medications": {
     "title": "Medications",
@@ -157,32 +195,58 @@
     "enterResults": "Enter Lab Results",
     "safetyAlerts": "Safety Alerts",
     "resultsTable": "Lab Results Table",
-    "noData": "No lab data yet — click \"Add Labs\" to enter results"
+    "noData": "No lab data yet — click \"Add Labs\" to enter results",
+    "placeholderNotes": "Optional notes"
   },
   "briefings": {
     "title": "Agent Briefings",
     "subtitle": "AI-generated clinical briefings",
-    "noBriefings": "No briefings yet"
+    "noBriefings": "No briefings yet",
+    "count": "{count} briefings",
+    "questionsForOncologist": "Questions for Oncologist"
   },
   "prep": {
     "title": "Appointment Prep",
     "subtitle": "Pre-appointment preparation checklists",
-    "noPrep": "No prep data available"
+    "noPrep": "No prep data available",
+    "printHeader": "Oncoteam — Pre-Appointment Summary",
+    "sectionPatient": "Patient",
+    "labelName": "Name:",
+    "labelDiagnosis": "Diagnosis:",
+    "labelRegimen": "Regimen:",
+    "labelCycle": "Cycle:",
+    "labelStaging": "Staging:",
+    "criticalSafetyFlags": "Critical Safety Flags",
+    "labAlerts": "Lab Alerts",
+    "latestLabs": "Latest Labs ({date})",
+    "latestToxicity": "Latest Toxicity ({date})",
+    "questionsForOncologist": "Questions for Oncologist",
+    "upcomingMilestones": "Upcoming Milestones",
+    "recentResearch": "Recent Research",
+    "excludedTherapiesBiomarker": "Excluded Therapies (Biomarker-Based)"
   },
   "research": {
     "title": "Research",
     "subtitle": "PubMed and clinical trial findings",
-    "noResearch": "No research findings yet"
+    "noResearch": "No research findings yet",
+    "count": "{count} entries",
+    "filterAll": "All",
+    "filterTrials": "Trials"
   },
   "timeline": {
     "title": "Treatment Timeline",
     "subtitle": "Chronological view of all treatment events",
-    "noEvents": "No timeline events yet"
+    "noEvents": "No timeline events yet",
+    "count": "{count} events",
+    "currentCycle": "Current: Cycle {n}",
+    "treatmentMilestones": "Treatment Milestones",
+    "cycleBadge": "Cycle {n}"
   },
   "sessions": {
     "title": "Chat Sessions",
     "subtitle": "Agent conversation history",
-    "noSessions": "No sessions logged yet"
+    "noSessions": "No sessions logged yet",
+    "count": "{count} sessions"
   },
   "familyUpdate": {
     "title": "Family Update",
@@ -208,7 +272,9 @@
     "apiError": "Unable to load data. The backend may be temporarily unavailable.",
     "emergency": {
       "title": "CRITICAL — Contact Oncologist",
-      "callNow": "Call oncology emergency line immediately"
+      "callNow": "Call oncology emergency line immediately",
+      "critical": "CRITICAL",
+      "immediateAttention": "ANC < 500 or PLT < 25,000 requires immediate medical attention. Do not administer chemotherapy."
     },
     "drilldown": {
       "details": "Details",
@@ -217,26 +283,75 @@
       "session": "Session",
       "research": "Research",
       "loading": "Loading details...",
-      "notFound": "Not found"
+      "notFound": "Not found",
+      "back": "Back",
+      "viewOnPubMed": "View on PubMed",
+      "viewOnClinicalTrials": "View on ClinicalTrials.gov",
+      "related": "Related",
+      "document": "Document"
     },
     "xp": {
       "level": "Level {level}",
       "streak": "{days}d streak",
-      "xpToNext": "{xp} XP to next level"
+      "xpToNext": "{xp} XP to next level",
+      "toNext": "{xp} to {level}",
+      "levels": {
+        "intern": "Intern",
+        "resident": "Resident",
+        "fellow": "Fellow",
+        "attending": "Attending",
+        "chief": "Chief",
+        "director": "Director",
+        "distinguished": "Distinguished"
+      }
     },
     "milestone": {
       "cycle": "Cycle {n}",
       "current": "Current",
       "completed": "Completed",
-      "upcoming": "Upcoming"
+      "upcoming": "Upcoming",
+      "done": "Done",
+      "future": "Future"
     },
     "labThreshold": {
       "parameter": "Parameter",
       "threshold": "Threshold",
-      "action": "Action"
+      "action": "Action",
+      "note": "Note"
     },
     "checklist": {
       "title": "Pre-Cycle {cycle} Checklist",
+      "sections": {
+        "labSafety": "Laboratory Safety",
+        "toxicityAssessment": "Toxicity Assessment (NCI-CTC)",
+        "vteMonitoring": "VTE Monitoring",
+        "generalAssessment": "General Assessment"
+      },
+      "labItems": {
+        "anc": "ANC >= 1,500/uL",
+        "plt": "PLT >= 75,000/uL (also check >= 50,000 for full-dose Clexane)",
+        "creatinine": "Creatinine <= 1.5x ULN",
+        "altAst": "ALT/AST <= 5x ULN (liver mets threshold)",
+        "bilirubin": "Bilirubin <= 1.5x ULN"
+      },
+      "toxItems": {
+        "neuropathy": "Peripheral neuropathy grade",
+        "diarrhea": "Diarrhea grade",
+        "mucositis": "Mucositis grade",
+        "fatigue": "Fatigue grade",
+        "handFoot": "Hand-foot syndrome grade",
+        "nausea": "Nausea/vomiting grade"
+      },
+      "vteItems": {
+        "pltClexane": "PLT adequate for Clexane continuation",
+        "noDvt": "No new DVT/PE symptoms (leg swelling, dyspnea, chest pain)",
+        "clexaneCompliance": "Clexane compliance confirmed"
+      },
+      "generalItems": {
+        "ecog": "ECOG performance status",
+        "weight": "Weight + change from baseline",
+        "nutritional": "Nutritional status adequate"
+      },
       "items": {
         "cbc": "CBC with differential",
         "lft": "LFT (ALT, AST, bilirubin)",

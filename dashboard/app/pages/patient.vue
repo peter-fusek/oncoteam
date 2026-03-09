@@ -80,22 +80,22 @@ const drilldown = useDrilldown()
             {{ patient.diagnosis_description }} ({{ patient.diagnosis_code }})
           </p>
           <div class="flex items-center gap-3 mt-2 text-xs">
-            <UBadge variant="subtle" color="info">Stage {{ patient.staging?.split(' ')[0] || 'IV' }}</UBadge>
+            <UBadge variant="subtle" color="info">{{ $t('patient.stage', { stage: patient.staging?.split(' ')[0] || 'IV' }) }}</UBadge>
             <UBadge variant="subtle" color="neutral">{{ patient.histology }}</UBadge>
-            <UBadge variant="subtle" color="neutral">{{ patient.tumor_laterality }}-sided</UBadge>
+            <UBadge variant="subtle" color="neutral">{{ $t('patient.sided', { side: patient.tumor_laterality }) }}</UBadge>
           </div>
         </div>
         <div class="text-right text-sm">
           <div class="text-white font-medium">{{ patient.treatment_regimen }}</div>
-          <div class="text-gray-400">Cycle {{ patient.current_cycle }}</div>
-          <div v-if="patient.ecog" class="text-gray-500 text-xs">ECOG: {{ patient.ecog }}</div>
+          <div class="text-gray-400">{{ $t('patient.cycle', { n: patient.current_cycle }) }}</div>
+          <div v-if="patient.ecog" class="text-gray-500 text-xs">{{ $t('patient.ecogLabel', { val: patient.ecog }) }}</div>
         </div>
       </div>
     </div>
 
     <!-- Genomic Profile Cards (hidden for patient role) -->
     <div v-if="activeRole !== 'patient'">
-      <h2 class="text-lg font-semibold text-white mb-3">Genomic Profile</h2>
+      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.genomicProfile') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <BiomarkerCard
           v-for="b in biomarkerDisplay"
@@ -110,7 +110,7 @@ const drilldown = useDrilldown()
 
     <!-- Excluded Therapies (hidden for patient role) -->
     <div v-if="patient.excluded_therapies && activeRole !== 'patient'">
-      <h2 class="text-lg font-semibold text-white mb-3">Excluded Therapies</h2>
+      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.excludedTherapies') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div
           v-for="(reason, therapy) in patient.excluded_therapies"
@@ -128,7 +128,7 @@ const drilldown = useDrilldown()
 
     <!-- Safety Flags (hidden for patient role) -->
     <div v-if="protocol?.safety_flags && activeRole !== 'patient'">
-      <h2 class="text-lg font-semibold text-white mb-3">Safety Flags</h2>
+      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.safetyFlags') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <SafetyFlag
           v-for="(flag, id) in protocol.safety_flags"
@@ -142,7 +142,7 @@ const drilldown = useDrilldown()
 
     <!-- Metastases -->
     <div v-if="patient.metastases?.length">
-      <h2 class="text-lg font-semibold text-white mb-3">Metastases</h2>
+      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.metastases') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
         <div
           v-for="met in patient.metastases"
@@ -158,26 +158,26 @@ const drilldown = useDrilldown()
     <!-- Treatment Info -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-        <h3 class="text-sm font-semibold text-white mb-2">Hospitals</h3>
+        <h3 class="text-sm font-semibold text-white mb-2">{{ $t('patient.hospitals') }}</h3>
         <div v-for="h in patient.hospitals" :key="h" class="text-sm text-gray-400 flex items-center gap-2 py-1">
           <UIcon name="i-lucide-building-2" class="text-gray-600" />
           {{ h }}
         </div>
       </div>
       <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-        <h3 class="text-sm font-semibold text-white mb-2">Physicians</h3>
+        <h3 class="text-sm font-semibold text-white mb-2">{{ $t('patient.physicians') }}</h3>
         <div v-if="patient.treating_physician" class="text-sm text-gray-400 py-1">
-          <span class="text-gray-600">Treating:</span> {{ patient.treating_physician }}
+          <span class="text-gray-600">{{ $t('patient.treating') }}</span> {{ patient.treating_physician }}
         </div>
         <div v-if="patient.admitting_physician" class="text-sm text-gray-400 py-1">
-          <span class="text-gray-600">Admitting:</span> {{ patient.admitting_physician }}
+          <span class="text-gray-600">{{ $t('patient.admitting') }}</span> {{ patient.admitting_physician }}
         </div>
       </div>
     </div>
 
     <!-- Comorbidities & Notes -->
     <div v-if="patient.comorbidities?.length || patient.notes" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <h3 class="text-sm font-semibold text-white mb-2">Notes & Comorbidities</h3>
+      <h3 class="text-sm font-semibold text-white mb-2">{{ $t('patient.notesComorbidities') }}</h3>
       <div v-for="c in patient.comorbidities" :key="c" class="text-sm text-amber-400 flex items-center gap-2 py-1">
         <UIcon name="i-lucide-alert-circle" class="shrink-0" />
         {{ c }}
