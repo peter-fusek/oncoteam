@@ -21,12 +21,16 @@ export default defineEventHandler(async (event) => {
     roleMap = {}
   }
 
-  const userConfig = roleMap[session.user.email as string] || { roles: ['advocate'] }
+  const email = session.user.email as string
+  const userConfig = roleMap[email] || { roles: ['advocate'] }
   const roles = userConfig.roles || ['advocate']
 
-  await setUserSession(event, {
+  // replaceUserSession to avoid deep-merge accumulating roles array
+  await replaceUserSession(event, {
     user: {
-      ...session.user,
+      email,
+      name: session.user.name,
+      picture: session.user.picture,
       roles,
       activeRole: roles[0],
       phone: userConfig.phone || null,
