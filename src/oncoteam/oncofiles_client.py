@@ -58,7 +58,7 @@ async def compare_labs(file_id_a: str, file_id_b: str) -> dict:
 
 
 async def get_document(document_id: int) -> dict:
-    return await call_oncofiles("get_document", {"document_id": document_id})
+    return await call_oncofiles("get_document_by_id", {"doc_id": document_id})
 
 
 async def set_agent_state(key: str, value: dict, agent_id: str = "oncoteam") -> dict:
@@ -282,7 +282,7 @@ async def store_lab_values(
         {
             "document_id": document_id,
             "lab_date": lab_date,
-            "values_json": values_json,
+            "values": values_json,
         },
     )
 
