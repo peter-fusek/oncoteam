@@ -28,8 +28,11 @@ export function useUserRole() {
   const landingPage = computed(() => LANDING_PAGES[activeRole.value] || '/')
 
   function canAccess(path: string): boolean {
+    // Login page is always accessible
+    if (path === '/login') return true
     const allowed = PAGE_ACCESS[path]
-    if (!allowed) return true
+    // Deny access to unlisted pages (secure by default)
+    if (!allowed) return activeRole.value === 'advocate'
     return allowed.includes(activeRole.value)
   }
 
