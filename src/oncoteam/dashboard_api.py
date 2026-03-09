@@ -186,6 +186,8 @@ async def api_status(request: Request) -> JSONResponse:
         "check_trial_eligibility",
         "daily_briefing",
         "get_lab_trends",
+        "store_lab_values",
+        "get_lab_trends_by_parameter",
         "search_documents",
         "get_patient_context",
         "view_document",

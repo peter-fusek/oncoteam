@@ -107,6 +107,12 @@ mcp = FastMCP(
         "5. PLT + thrombosis cross-check: if PLT elevated + active VTE, FLAG immediately\n"
         "6. Tumor markers: CEA, CA19-9 trends (need baseline pre-treatment values)\n"
         "7. End every analysis with 'Questions for oncologist' section (2-4 specific questions)\n\n"
+        "LAB PERSISTENCE — after every lab analysis:\n"
+        "1. Call store_lab_values(document_id, lab_date, values_json) to persist parsed values.\n"
+        "   - Extract: WBC, ABS_NEUT, ABS_LYMPH, PLT, HGB, CEA, CA19_9\n"
+        "   - Compute and include: SII, NE_LY_RATIO\n"
+        "2. Call get_lab_trends_by_parameter('CEA') (or other param) to compare with history.\n"
+        "3. Include trend direction in your analysis (rising/stable/falling vs previous).\n\n"
         #
         # --- CLINICAL TRIAL SEARCH ---
         #
@@ -439,6 +445,50 @@ async def get_lab_trends(limit: int = 10) -> str:
         return json.dumps({"source": "oncofiles", "lab_documents": lab_data})
     except Exception as e:
         return json.dumps({"error": str(e), "hint": "Oncofiles MCP may not be available"})
+
+
+@mcp.tool()
+@log_activity
+async def store_lab_values(document_id: int, lab_date: str, values_json: str) -> str:
+    """Persist parsed lab values to Oncofiles for trend tracking.
+
+    Call this after analyzing a lab document to store extracted values.
+
+    Args:
+        document_id: Oncofiles document ID of the source lab report
+        lab_date: Date of the lab results (YYYY-MM-DD)
+        values_json: JSON object with lab parameters, e.g.
+            {"WBC": 5.2, "ABS_NEUT": 3.1, "ABS_LYMPH": 1.5, "PLT": 220,
+             "HGB": 12.5, "CEA": 4.8, "CA19_9": 18.0, "SII": 456, "NE_LY_RATIO": 2.07}
+
+    Returns:
+        JSON confirmation of stored values.
+    """
+    try:
+        result = await oncofiles_client.store_lab_values(document_id, lab_date, values_json)
+        return json.dumps(result)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+@log_activity
+async def get_lab_trends_by_parameter(parameter: str, limit: int = 20) -> str:
+    """Retrieve historical lab values for a specific parameter for trend analysis.
+
+    Args:
+        parameter: Lab parameter name. One of: WBC, ABS_NEUT, ABS_LYMPH, PLT,
+            HGB, CEA, CA19_9, SII, NE_LY_RATIO
+        limit: Maximum number of data points to retrieve
+
+    Returns:
+        JSON with historical values sorted by date.
+    """
+    try:
+        result = await oncofiles_client.get_lab_trends_data(parameter, limit)
+        return json.dumps(result)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
 
 
 @mcp.tool()

@@ -272,6 +272,31 @@ async def search_conversations(
     return await call_oncofiles("search_conversations", args)
 
 
+async def store_lab_values(
+    document_id: int,
+    lab_date: str,
+    values_json: str,
+) -> dict:
+    return await call_oncofiles(
+        "store_lab_values",
+        {
+            "document_id": document_id,
+            "lab_date": lab_date,
+            "values_json": values_json,
+        },
+    )
+
+
+async def get_lab_trends_data(
+    parameter: str,
+    limit: int = 20,
+) -> dict:
+    return await call_oncofiles(
+        "get_lab_trends",
+        {"parameter": parameter, "limit": limit},
+    )
+
+
 async def get_journey_timeline(
     date_from: str | None = None,
     date_to: str | None = None,

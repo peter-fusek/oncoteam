@@ -116,6 +116,10 @@ def _summarize_input(tool_name: str, inputs: dict) -> str:
         "search_clinical_trials": lambda d: _kv_summary(d, ["condition", "intervention"]),
         "daily_briefing": lambda d: "",
         "get_lab_trends": lambda d: f"limit={d.get('limit')}",
+        "store_lab_values": lambda d: f"doc_id={d.get('document_id')}, date={d.get('lab_date')}",
+        "get_lab_trends_by_parameter": lambda d: (
+            f"param={d.get('parameter')!r}, limit={d.get('limit')}"
+        ),
         "search_documents": lambda d: _kv_summary(d, ["text", "category"]),
         "get_patient_context": lambda d: "",
         "view_document": lambda d: f"file_id={d.get('file_id')!r}",
@@ -166,6 +170,12 @@ def _summarize_output(tool_name: str, output: str | None) -> str:
         ),
         "get_lab_trends": lambda d: (
             f"{len(d.get('lab_documents', {}).get('documents', []))} lab documents"
+        ),
+        "store_lab_values": lambda d: (
+            f"stored {len(d.get('stored', {}))} values" if "stored" in d else d.get("error", "ok")
+        ),
+        "get_lab_trends_by_parameter": lambda d: (
+            f"{len(d.get('values', []))} data points" if "values" in d else d.get("error", "")
         ),
         "search_documents": lambda d: (
             f"{len(d.get('results', {}).get('documents', []))} documents found"

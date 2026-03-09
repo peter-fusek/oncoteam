@@ -50,7 +50,7 @@ async def test_api_status_returns_ok():
     assert data["server"] == "oncoteam"
     assert data["version"] == VERSION
     assert "session_id" in data
-    assert data["tools_count"] == 18
+    assert data["tools_count"] == 20
     assert isinstance(data["tools"], list)
 
 
