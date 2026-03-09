@@ -166,7 +166,8 @@ const drilldown = useDrilldown()
       <div
         v-for="update in updates.updates"
         :key="update.id"
-        class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white"
+        class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+        @click="drilldown.open({ type: 'document', id: update.id, label: update.title, data: { title: update.title, content: update.content, date: update.date, tags: update.tags, type: 'family_update' } })"
       >
         <div class="flex items-center justify-between mb-2">
           <span class="text-sm font-medium text-white print:text-black">{{ update.title }}</span>

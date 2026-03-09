@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
+const drilldown = useDrilldown()
 
 const { data: protocol, refresh } = await fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; note?: string; action: string }>
@@ -80,12 +81,14 @@ const tabs = computed(() => [
 
       <!-- Dose Modifications -->
       <div v-if="activeTab === 'dosemods'" class="space-y-2">
-        <DoseModCard
+        <div
           v-for="(action, toxicity) in protocol.dose_modifications"
           :key="toxicity"
-          :toxicity="toxicity"
-          :action="action"
-        />
+          class="cursor-pointer hover:ring-1 hover:ring-teal-500/30 rounded-xl transition-all"
+          @click="drilldown.open({ type: 'protocol_section', id: `dosemod-${toxicity}`, label: String(toxicity).replace(/_/g, ' '), data: { toxicity, action, source: 'ESMO/NCCN mFOLFOX6 guidelines' } })"
+        >
+          <DoseModCard :toxicity="toxicity" :action="action" />
+        </div>
       </div>
 
       <!-- Cumulative Dose -->
@@ -144,17 +147,19 @@ const tabs = computed(() => [
           <div
             v-for="(rule, i) in protocol.cycle_delay_rules"
             :key="i"
-            class="flex items-start gap-3 py-2 border-b border-gray-800/50 last:border-0"
+            class="flex items-start gap-3 py-2 border-b border-gray-800/50 last:border-0 cursor-pointer hover:bg-gray-800/30 rounded-lg px-2 -mx-2 transition-colors"
+            @click="drilldown.open({ type: 'protocol_section', id: `delay-${i}`, label: rule.condition, data: { condition: rule.condition, action: rule.action, source: 'ESMO/NCCN cycle delay guidelines' } })"
           >
             <UIcon
               name="i-lucide-clock"
               :class="rule.action.toLowerCase().includes('hold') || rule.action.toLowerCase().includes('mandatory') ? 'text-red-500' : 'text-amber-500'"
               class="mt-0.5 shrink-0"
             />
-            <div>
+            <div class="flex-1">
               <div class="text-sm text-white">{{ rule.condition }}</div>
               <div class="text-xs text-gray-400">{{ rule.action }}</div>
             </div>
+            <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 mt-1 shrink-0" />
           </div>
         </div>
       </div>
@@ -172,13 +177,15 @@ const tabs = computed(() => [
           <div
             v-for="(schedule, item) in protocol.monitoring_schedule"
             :key="item"
-            class="flex items-start gap-3 py-2 border-b border-gray-800/50 last:border-0"
+            class="flex items-start gap-3 py-2 border-b border-gray-800/50 last:border-0 cursor-pointer hover:bg-gray-800/30 rounded-lg px-2 -mx-2 transition-colors"
+            @click="drilldown.open({ type: 'protocol_section', id: `monitor-${item}`, label: String(item).replace(/_/g, ' '), data: { item: String(item).replace(/_/g, ' '), schedule, source: 'mFOLFOX6 monitoring protocol' } })"
           >
             <UIcon name="i-lucide-clock" class="text-gray-600 mt-0.5 shrink-0" />
-            <div>
+            <div class="flex-1">
               <div class="text-sm text-white">{{ item.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) }}</div>
               <div class="text-xs text-gray-500">{{ schedule }}</div>
             </div>
+            <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 mt-1 shrink-0" />
           </div>
         </div>
       </div>
@@ -188,11 +195,13 @@ const tabs = computed(() => [
         <div
           v-for="(opt, i) in protocol.second_line_options"
           :key="i"
-          class="rounded-lg border border-gray-800 bg-gray-900/50 p-4"
+          class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+          @click="drilldown.open({ type: 'protocol_section', id: `2l-${i}`, label: opt.regimen, data: { regimen: opt.regimen, evidence: opt.evidence, note: opt.note, ranking: i + 1, source: 'ESMO/NCCN 2L options for KRAS-mutant mCRC' } })"
         >
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium text-white">{{ i + 1 }}.</span>
             <span class="text-sm font-medium text-white">{{ opt.regimen }}</span>
+            <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 ml-auto" />
           </div>
           <div class="text-xs text-gray-400 mt-1">{{ opt.evidence }}</div>
           <div class="text-xs text-gray-500 mt-0.5 italic">{{ opt.note }}</div>
@@ -204,10 +213,12 @@ const tabs = computed(() => [
         <div
           v-for="trial in protocol.watched_trials"
           :key="trial"
-          class="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/50 px-4 py-3"
+          class="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/50 px-4 py-3 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+          @click="drilldown.open({ type: 'protocol_section', id: `trial-${trial}`, label: trial, data: { trial, status: 'Watched', relevance: 'KRAS G12S mCRC', source: 'ClinicalTrials.gov' } })"
         >
           <UIcon name="i-lucide-eye" class="text-teal-500 shrink-0" />
-          <span class="text-sm text-gray-300">{{ trial }}</span>
+          <span class="text-sm text-gray-300 flex-1">{{ trial }}</span>
+          <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
         </div>
       </div>
     </div>

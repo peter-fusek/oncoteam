@@ -19,7 +19,7 @@ const { data: patient } = await fetchApi<{
   hospitals: string[]
   treating_physician: string
   admitting_physician: string
-  excluded_therapies: Record<string, string>
+  excluded_therapies: Array<{ therapy: string; reason: string }> | Record<string, string>
   notes: string
 }>('/patient')
 
@@ -66,6 +66,14 @@ function getMetIcon(met: string): string {
   return 'i-lucide-map-pin'
 }
 
+const excludedTherapies = computed(() => {
+  const raw = patient.value?.excluded_therapies
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw
+  // Legacy dict format
+  return Object.entries(raw).map(([therapy, reason]) => ({ therapy, reason }))
+})
+
 const drilldown = useDrilldown()
 </script>
 
@@ -109,19 +117,21 @@ const drilldown = useDrilldown()
     </div>
 
     <!-- Excluded Therapies (hidden for patient role) -->
-    <div v-if="patient.excluded_therapies && activeRole !== 'patient'">
+    <div v-if="excludedTherapies.length && activeRole !== 'patient'">
       <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.excludedTherapies') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div
-          v-for="(reason, therapy) in patient.excluded_therapies"
-          :key="therapy"
-          class="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2"
+          v-for="(et, i) in excludedTherapies"
+          :key="i"
+          class="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 cursor-pointer hover:ring-1 hover:ring-red-500/30 transition-all"
+          @click="drilldown.open({ type: 'biomarker', id: `excluded-${i}`, label: et.therapy, data: { therapy: et.therapy, reason: et.reason, status: 'Permanently excluded', source: 'Molecular pathology B26/746963' } })"
         >
           <UIcon name="i-lucide-x-circle" class="text-red-500 shrink-0" />
-          <div class="min-w-0">
-            <div class="text-sm text-white truncate">{{ therapy }}</div>
-            <div class="text-xs text-gray-500">{{ reason }}</div>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm text-white truncate">{{ et.therapy }}</div>
+            <div class="text-xs text-gray-500">{{ et.reason }}</div>
           </div>
+          <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
         </div>
       </div>
     </div>
@@ -130,13 +140,14 @@ const drilldown = useDrilldown()
     <div v-if="protocol?.safety_flags && activeRole !== 'patient'">
       <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.safetyFlags') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <SafetyFlag
+        <div
           v-for="(flag, id) in protocol.safety_flags"
           :key="id"
-          :id="String(id)"
-          :rule="flag.rule"
-          :source="flag.source"
-        />
+          class="cursor-pointer hover:ring-1 hover:ring-teal-500/30 rounded-xl transition-all"
+          @click="drilldown.open({ type: 'protocol_section', id: `safety-${id}`, label: String(id).replace(/_/g, ' '), data: { flag: String(id), rule: flag.rule, source: flag.source, severity: flag.rule.includes('NEVER') ? 'critical' : 'warning' } })"
+        >
+          <SafetyFlag :id="String(id)" :rule="flag.rule" :source="flag.source" />
+        </div>
       </div>
     </div>
 
@@ -145,12 +156,14 @@ const drilldown = useDrilldown()
       <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.metastases') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
         <div
-          v-for="met in patient.metastases"
-          :key="met"
-          class="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/50 px-3 py-2"
+          v-for="(met, i) in patient.metastases"
+          :key="i"
+          class="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/50 px-3 py-2 cursor-pointer hover:border-gray-600 transition-colors"
+          @click="drilldown.open({ type: 'patient', id: `met-${i}`, label: met, data: { site: met, type: 'Metastasis', source: 'CT staging / pathology' } })"
         >
           <UIcon :name="getMetIcon(met)" class="text-gray-500 shrink-0" />
-          <span class="text-sm text-gray-300">{{ met }}</span>
+          <span class="text-sm text-gray-300 flex-1">{{ met }}</span>
+          <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
         </div>
       </div>
     </div>

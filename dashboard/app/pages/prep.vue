@@ -68,6 +68,14 @@ const criticalFlags = computed(() => {
     .map(([id, f]: any) => ({ id, ...f }))
 })
 
+// Excluded therapies (normalize dict vs list format)
+const excludedTherapies = computed(() => {
+  const raw = patient.value?.excluded_therapies
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw
+  return Object.entries(raw).map(([therapy, reason]) => ({ therapy, reason }))
+})
+
 // Print-friendly
 const drilldown = useDrilldown()
 
@@ -110,12 +118,18 @@ function printPrep() {
     <!-- Critical Safety Flags -->
     <div v-if="criticalFlags.length" class="rounded-xl border border-red-500/30 bg-red-500/5 p-4 print:border-red-300 print:bg-red-50">
       <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.criticalSafetyFlags') }}</h2>
-      <div v-for="flag in criticalFlags" :key="flag.id" class="flex items-start gap-2 py-1 text-sm">
+      <div
+        v-for="flag in criticalFlags"
+        :key="flag.id"
+        class="flex items-start gap-2 py-1 text-sm cursor-pointer hover:bg-red-500/10 rounded px-1 -mx-1 transition-colors print:cursor-default"
+        @click="drilldown.open({ type: 'protocol_section', id: `safety-${flag.id}`, label: flag.id.replace(/_/g, ' '), data: { flag: flag.id, rule: flag.rule, source: flag.source, severity: 'critical' } })"
+      >
         <UIcon name="i-lucide-triangle-alert" class="text-red-500 shrink-0 mt-0.5 print:hidden" />
-        <div>
+        <div class="flex-1">
           <span class="text-white print:text-black">{{ flag.rule }}</span>
           <span class="text-xs text-gray-500 ml-2">({{ flag.source }})</span>
         </div>
+        <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 mt-1 shrink-0 print:hidden" />
       </div>
     </div>
 
@@ -164,9 +178,15 @@ function printPrep() {
     <!-- Upcoming Milestones -->
     <div v-if="upcomingMilestones.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
       <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.upcomingMilestones') }}</h2>
-      <div v-for="m in upcomingMilestones" :key="m.action" class="flex items-center gap-2 py-1 text-sm">
+      <div
+        v-for="m in upcomingMilestones"
+        :key="m.action"
+        class="flex items-center gap-2 py-1 text-sm cursor-pointer hover:bg-gray-800/30 rounded px-1 -mx-1 transition-colors print:cursor-default"
+        @click="drilldown.open({ type: 'protocol_section', id: `milestone-${m.action}`, label: m.description, data: { cycle: m.cycle, action: m.action, description: m.description, source: 'mFOLFOX6 treatment milestones' } })"
+      >
         <UBadge variant="subtle" size="xs" color="warning">C{{ m.cycle }}</UBadge>
-        <span class="text-gray-300 print:text-black">{{ m.description }}</span>
+        <span class="text-gray-300 print:text-black flex-1">{{ m.description }}</span>
+        <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0 print:hidden" />
       </div>
     </div>
 
@@ -185,10 +205,15 @@ function printPrep() {
     </div>
 
     <!-- Excluded Therapies Reminder -->
-    <div v-if="patient?.excluded_therapies" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
+    <div v-if="excludedTherapies.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
       <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.excludedTherapiesBiomarker') }}</h2>
-      <div v-for="(reason, therapy) in patient.excluded_therapies" :key="therapy" class="text-sm text-gray-400 print:text-gray-600 py-0.5">
-        <span class="text-red-400 print:text-red-600">{{ therapy }}</span> — {{ reason }}
+      <div
+        v-for="(et, i) in excludedTherapies"
+        :key="i"
+        class="text-sm text-gray-400 print:text-gray-600 py-0.5 cursor-pointer hover:text-gray-300 transition-colors print:cursor-default"
+        @click="drilldown.open({ type: 'biomarker', id: `excluded-${i}`, label: et.therapy, data: { therapy: et.therapy, reason: et.reason, status: 'Permanently excluded', source: 'Molecular pathology B26/746963' } })"
+      >
+        <span class="text-red-400 print:text-red-600">{{ et.therapy }}</span> — {{ et.reason }}
       </div>
     </div>
   </div>

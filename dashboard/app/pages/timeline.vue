@@ -81,12 +81,13 @@ const drilldown = useDrilldown()
         <div
           v-for="m in protocol.milestones"
           :key="m.action"
-          class="shrink-0 rounded-lg px-3 py-2 text-xs border"
+          class="shrink-0 rounded-lg px-3 py-2 text-xs border cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
           :class="m.cycle < protocol.current_cycle
             ? 'border-green-500/30 bg-green-500/5 text-green-400'
             : m.cycle <= protocol.current_cycle + 1
               ? 'border-amber-500/30 bg-amber-500/5 text-amber-400'
               : 'border-gray-800 bg-gray-800/30 text-gray-500'"
+          @click="drilldown.open({ type: 'protocol_section', id: `milestone-${m.action}`, label: m.description, data: { cycle: m.cycle, action: m.action, description: m.description, source: 'mFOLFOX6 treatment milestones' } })"
         >
           <div class="font-medium">C{{ m.cycle }}</div>
           <div class="text-[10px] mt-0.5 max-w-32 truncate">{{ m.description }}</div>
@@ -126,10 +127,12 @@ const drilldown = useDrilldown()
                 <div
                   v-for="m in getMilestonesForEvent(event.title)"
                   :key="m.action"
-                  class="flex items-center gap-1.5 text-xs text-amber-400"
+                  class="flex items-center gap-1.5 text-xs text-amber-400 cursor-pointer hover:text-amber-300 transition-colors"
+                  @click.stop="drilldown.open({ type: 'protocol_section', id: `milestone-${m.action}`, label: m.description, data: { cycle: m.cycle, action: m.action, description: m.description, source: 'mFOLFOX6 treatment milestones' } })"
                 >
                   <UIcon name="i-lucide-milestone" class="w-3 h-3" />
                   <span>{{ m.description }}</span>
+                  <UIcon name="i-lucide-chevron-right" class="w-2.5 h-2.5" />
                 </div>
               </div>
             </div>
