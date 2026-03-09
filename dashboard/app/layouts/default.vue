@@ -3,6 +3,7 @@ const { user, clear } = useUserSession()
 const { showTestData } = useTestDataToggle()
 const { t, locale } = useI18n()
 const { setLocale } = useI18n()
+const { activeRole, roles, hasMultipleRoles, canAccess } = useUserRole()
 
 const mobileMenuOpen = ref(false)
 const route = useRoute()
@@ -12,7 +13,13 @@ watch(() => route.path, () => {
   mobileMenuOpen.value = false
 })
 
-const navigation = computed(() => [
+const ROLE_COLORS: Record<string, string> = {
+  advocate: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+  patient: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  doctor: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+}
+
+const allNavItems = computed(() => [
   { label: t('nav.agents'), icon: 'i-lucide-brain-circuit', to: '/' },
   { label: t('nav.patient'), icon: 'i-lucide-user-round', to: '/patient' },
   { label: t('nav.protocol'), icon: 'i-lucide-clipboard-check', to: '/protocol' },
@@ -26,6 +33,16 @@ const navigation = computed(() => [
   { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
   { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
 ])
+
+const navigation = computed(() => allNavItems.value.filter(item => canAccess(item.to)))
+
+const roleSwitcherOpen = ref(false)
+
+async function switchRole(role: string) {
+  roleSwitcherOpen.value = false
+  await $fetch('/api/role/switch', { method: 'POST', body: { role } })
+  window.location.reload()
+}
 
 async function toggleLocale() {
   await setLocale(locale.value === 'sk' ? 'en' : 'sk')
@@ -50,6 +67,49 @@ async function logout() {
         <span class="font-bold text-lg text-white">Oncoteam</span>
       </div>
 
+      <!-- Role switcher -->
+      <div v-if="hasMultipleRoles" class="px-3 pb-2">
+        <div class="relative">
+          <button
+            class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors"
+            :class="ROLE_COLORS[activeRole]"
+            @click="roleSwitcherOpen = !roleSwitcherOpen"
+          >
+            <span>{{ $t(`roles.${activeRole}`) }}</span>
+            <UIcon name="i-lucide-chevrons-up-down" class="w-3 h-3 opacity-60" />
+          </button>
+          <div
+            v-if="roleSwitcherOpen"
+            class="absolute top-full left-0 right-0 mt-1 rounded-lg border border-gray-700 bg-gray-900 shadow-xl z-10 overflow-hidden"
+          >
+            <button
+              v-for="role in roles"
+              :key="role"
+              class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-gray-800"
+              :class="role === activeRole ? 'text-white font-medium' : 'text-gray-400'"
+              @click="switchRole(role)"
+            >
+              <span
+                class="w-2 h-2 rounded-full"
+                :class="{
+                  'bg-teal-500': role === 'advocate',
+                  'bg-blue-500': role === 'patient',
+                  'bg-purple-500': role === 'doctor',
+                }"
+              />
+              {{ $t(`roles.${role}`) }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Single role badge -->
+      <div v-else class="px-3 pb-2">
+        <span class="inline-flex px-2.5 py-1 rounded-lg border text-xs font-medium" :class="ROLE_COLORS[activeRole]">
+          {{ $t(`roles.${activeRole}`) }}
+        </span>
+      </div>
+
       <!-- Navigation -->
       <nav class="flex-1 overflow-y-auto px-2">
         <UNavigationMenu :items="navigation" orientation="vertical" />
@@ -58,10 +118,11 @@ async function logout() {
       <!-- Footer -->
       <div class="border-t border-gray-800 px-3 py-2 space-y-2">
         <div class="flex items-center justify-between">
-          <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
+          <label v-if="activeRole === 'advocate'" class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
             <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
             {{ $t('common.showTestData') }}
           </label>
+          <span v-else />
           <button
             class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
             @click="toggleLocale"
@@ -92,6 +153,9 @@ async function logout() {
         <span class="text-xs">🧬</span>
       </div>
       <span class="font-bold text-white">Oncoteam</span>
+      <span class="ml-auto inline-flex px-2 py-0.5 rounded border text-[10px] font-medium" :class="ROLE_COLORS[activeRole]">
+        {{ $t(`roles.${activeRole}`) }}
+      </span>
     </div>
 
     <!-- Mobile drawer overlay -->
@@ -114,6 +178,26 @@ async function logout() {
             </button>
           </div>
 
+          <!-- Role switcher (mobile) -->
+          <div v-if="hasMultipleRoles" class="px-3 pb-2">
+            <div class="flex gap-1">
+              <button
+                v-for="role in roles"
+                :key="role"
+                class="flex-1 px-2 py-1.5 rounded-lg border text-xs font-medium transition-colors"
+                :class="role === activeRole ? ROLE_COLORS[role] : 'border-gray-700 text-gray-500 hover:text-gray-300'"
+                @click="switchRole(role)"
+              >
+                {{ $t(`roles.${role}`) }}
+              </button>
+            </div>
+          </div>
+          <div v-else class="px-3 pb-2">
+            <span class="inline-flex px-2.5 py-1 rounded-lg border text-xs font-medium" :class="ROLE_COLORS[activeRole]">
+              {{ $t(`roles.${activeRole}`) }}
+            </span>
+          </div>
+
           <!-- Navigation -->
           <nav class="flex-1 overflow-y-auto px-2">
             <UNavigationMenu :items="navigation" orientation="vertical" />
@@ -122,10 +206,11 @@ async function logout() {
           <!-- Footer -->
           <div class="border-t border-gray-800 px-3 py-2 space-y-2">
             <div class="flex items-center justify-between">
-              <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
+              <label v-if="activeRole === 'advocate'" class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
                 <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
                 {{ $t('common.showTestData') }}
               </label>
+              <span v-else />
               <button
                 class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
                 @click="toggleLocale"

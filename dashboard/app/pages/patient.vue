@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
+const { activeRole } = useUserRole()
 
 const { data: patient } = await fetchApi<{
   name: string
@@ -92,8 +93,8 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <!-- Genomic Profile Cards -->
-    <div>
+    <!-- Genomic Profile Cards (hidden for patient role) -->
+    <div v-if="activeRole !== 'patient'">
       <h2 class="text-lg font-semibold text-white mb-3">Genomic Profile</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <BiomarkerCard
@@ -107,8 +108,8 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <!-- Excluded Therapies -->
-    <div v-if="patient.excluded_therapies">
+    <!-- Excluded Therapies (hidden for patient role) -->
+    <div v-if="patient.excluded_therapies && activeRole !== 'patient'">
       <h2 class="text-lg font-semibold text-white mb-3">Excluded Therapies</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div
@@ -125,8 +126,8 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <!-- Safety Flags -->
-    <div v-if="protocol?.safety_flags">
+    <!-- Safety Flags (hidden for patient role) -->
+    <div v-if="protocol?.safety_flags && activeRole !== 'patient'">
       <h2 class="text-lg font-semibold text-white mb-3">Safety Flags</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <SafetyFlag

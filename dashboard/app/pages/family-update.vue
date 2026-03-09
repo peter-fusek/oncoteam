@@ -17,6 +17,25 @@ const { data: updates, refresh } = await fetchApi<{
 
 const generating = ref(false)
 const latestGenerated = ref('')
+const whatsappSending = ref(false)
+const whatsappMsg = ref('')
+
+async function sendWhatsApp(text: string) {
+  whatsappSending.value = true
+  whatsappMsg.value = ''
+  try {
+    await $fetch('/api/notify/whatsapp', {
+      method: 'POST',
+      body: { message: text },
+    })
+    whatsappMsg.value = 'sent'
+    setTimeout(() => { whatsappMsg.value = '' }, 3000)
+  } catch (e: any) {
+    whatsappMsg.value = `error: ${e.message || e}`
+  } finally {
+    whatsappSending.value = false
+  }
+}
 
 async function generateUpdate() {
   generating.value = true
@@ -104,13 +123,28 @@ const drilldown = useDrilldown()
         <h2 class="text-sm font-semibold text-white">
           {{ $t('familyUpdate.newUpdate') }}
         </h2>
-        <UButton
-          icon="i-lucide-copy"
-          variant="ghost"
-          size="xs"
-          color="neutral"
-          @click="copyToClipboard(latestGenerated)"
-        />
+        <div class="flex items-center gap-2">
+          <UButton
+            icon="i-lucide-copy"
+            variant="ghost"
+            size="xs"
+            color="neutral"
+            @click="copyToClipboard(latestGenerated)"
+          />
+          <UButton
+            :loading="whatsappSending"
+            icon="i-lucide-message-circle"
+            variant="ghost"
+            size="xs"
+            color="success"
+            @click="sendWhatsApp(latestGenerated)"
+          >
+            {{ $t('whatsapp.send') }}
+          </UButton>
+          <span v-if="whatsappMsg" class="text-xs" :class="whatsappMsg === 'sent' ? 'text-green-500' : 'text-red-500'">
+            {{ whatsappMsg === 'sent' ? $t('whatsapp.sent') : $t('whatsapp.error') }}
+          </span>
+        </div>
       </div>
       <div class="prose prose-sm prose-invert max-w-none print:prose-gray">
         <p

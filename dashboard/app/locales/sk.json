@@ -193,6 +193,17 @@
     "printTitle": "Oncoteam — Správa pre rodinu",
     "noUpdates": "Zatiaľ žiadne správy — kliknite na Generovať"
   },
+  "roles": {
+    "advocate": "Zástupca",
+    "patient": "Pacient",
+    "doctor": "Lekár",
+    "switchRole": "Prepnúť rolu"
+  },
+  "whatsapp": {
+    "send": "WhatsApp",
+    "sent": "Odoslané!",
+    "error": "Nepodarilo sa odoslať"
+  },
   "components": {
     "apiError": "Nepodarilo sa načítať údaje. Backend môže byť dočasne nedostupný.",
     "emergency": {

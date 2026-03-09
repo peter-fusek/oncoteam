@@ -32,6 +32,10 @@ export default defineNuxtConfig({
       },
     },
     allowedEmails: process.env.NUXT_ALLOWED_EMAILS || 'peterfusek1980@gmail.com',
+    roleMap: process.env.NUXT_ROLE_MAP || '{"peterfusek1980@gmail.com":{"roles":["advocate","patient","doctor"],"phone":"+421903124356"},"peter.fusek@instarea.sk":{"roles":["doctor"],"phone":"+421903124356"},"peter.fusek@instarea.com":{"roles":["doctor"],"phone":"+421903124356"}}',
+    twilioAccountSid: process.env.NUXT_TWILIO_ACCOUNT_SID || '',
+    twilioAuthToken: process.env.NUXT_TWILIO_AUTH_TOKEN || '',
+    twilioWhatsappFrom: process.env.NUXT_TWILIO_WHATSAPP_FROM || '',
     databaseUrl: process.env.DATABASE_URL || '',
   },
 

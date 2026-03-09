@@ -6,4 +6,9 @@ export default defineNuxtRouteMiddleware((to) => {
   if (!loggedIn.value) {
     return navigateTo('/login')
   }
+
+  const { canAccess, landingPage } = useUserRole()
+  if (!canAccess(to.path)) {
+    return navigateTo(landingPage.value)
+  }
 })

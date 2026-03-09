@@ -1,10 +1,6 @@
 export default defineOAuthGoogleEventHandler({
   config: {
     scope: ['openid', 'email', 'profile'],
-    authorizationParams: {
-      // Skip account chooser — auto-select the allowed Google account
-      login_hint: 'peterfusek1980@gmail.com',
-    },
   },
   async onSuccess(event, { user }) {
     const config = useRuntimeConfig()
@@ -14,14 +10,33 @@ export default defineOAuthGoogleEventHandler({
       throw createError({ statusCode: 403, message: 'Not authorized' })
     }
 
+    let roleMap: Record<string, { roles?: string[]; phone?: string }> = {}
+    try {
+      roleMap = JSON.parse(config.roleMap || '{}')
+    } catch {
+      roleMap = {}
+    }
+    const userConfig = roleMap[user.email] || { roles: ['advocate'] }
+    const roles = userConfig.roles || ['advocate']
+
     await setUserSession(event, {
       user: {
         email: user.email,
         name: user.name,
         picture: user.picture,
+        roles,
+        activeRole: roles[0],
+        phone: userConfig.phone || null,
       },
     })
 
-    return sendRedirect(event, '/')
+    // Redirect to role-appropriate landing page
+    const landingPages: Record<string, string> = {
+      advocate: '/',
+      patient: '/patient',
+      doctor: '/labs',
+    }
+
+    return sendRedirect(event, landingPages[roles[0]] || '/')
   },
 })

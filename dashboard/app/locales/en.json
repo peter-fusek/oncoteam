@@ -193,6 +193,17 @@
     "printTitle": "Oncoteam — Family Update",
     "noUpdates": "No updates yet — click Generate"
   },
+  "roles": {
+    "advocate": "Advocate",
+    "patient": "Patient",
+    "doctor": "Doctor",
+    "switchRole": "Switch role"
+  },
+  "whatsapp": {
+    "send": "WhatsApp",
+    "sent": "Sent!",
+    "error": "Failed to send"
+  },
   "components": {
     "apiError": "Unable to load data. The backend may be temporarily unavailable.",
     "emergency": {

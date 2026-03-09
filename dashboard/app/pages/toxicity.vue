@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi, apiUrl } = useOncoteamApi()
+const { activeRole } = useUserRole()
 
 const { data: toxicity, refresh } = await fetchApi<{
   entries: Array<{
@@ -26,13 +27,21 @@ const { data: weightData } = await fetchApi<{
 }>('/weight')
 
 const grades = [0, 1, 2, 3, 4]
-const gradeLabels: Record<number, string> = {
+const clinicalGradeLabels: Record<number, string> = {
   0: 'None',
   1: 'Mild',
   2: 'Moderate',
   3: 'Severe',
   4: 'Life-threatening',
 }
+const patientGradeLabels: Record<number, string> = {
+  0: 'Not present',
+  1: 'A little',
+  2: 'Noticeable',
+  3: 'Quite bad',
+  4: 'Very bad',
+}
+const gradeLabels = computed(() => activeRole.value === 'patient' ? patientGradeLabels : clinicalGradeLabels)
 const gradeColors: Record<number, string> = {
   0: 'text-green-500',
   1: 'text-yellow-500',
@@ -164,6 +173,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           <span class="text-xs ml-2" :class="gradeColors[(form as any)[field.key]]">
             {{ gradeLabels[(form as any)[field.key]] }}
           </span>
+
         </div>
       </div>
 

@@ -7,16 +7,6 @@ const { loggedIn } = useUserSession()
 if (loggedIn.value) {
   navigateTo('/')
 }
-
-// Auto-redirect to Google OAuth (no-click login)
-const autoRedirect = ref(true)
-onMounted(() => {
-  if (!loggedIn.value && autoRedirect.value) {
-    setTimeout(() => {
-      window.location.href = '/auth/google'
-    }, 800)
-  }
-})
 </script>
 
 <template>
@@ -32,11 +22,10 @@ onMounted(() => {
 
       <div>
         <h1 class="text-3xl font-bold text-white">Oncoteam</h1>
-        <p class="text-gray-400 mt-2">Signing in...</p>
+        <p class="text-gray-400 mt-2">Sign in to continue</p>
       </div>
 
       <div class="flex flex-col items-center gap-4">
-        <div class="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
         <UButton
           to="/auth/google"
           external
