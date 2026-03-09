@@ -133,8 +133,7 @@ const tabs = computed(() => [
           </div>
         </div>
         <div v-if="cumDose.next_threshold" class="mt-3 text-xs text-gray-400">
-          Next threshold at {{ cumDose.next_threshold.at }} {{ cumDose.unit }}
-          ({{ cumDose.pct_to_next }}% reached)
+          {{ $t('protocol.doseNextThreshold', { at: cumDose.next_threshold.at, unit: cumDose.unit, pct: cumDose.pct_to_next }) }}
         </div>
       </div>
 

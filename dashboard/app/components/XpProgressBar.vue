@@ -5,25 +5,30 @@ const props = defineProps<{
   streakDays: number
 }>()
 
-const LEVELS = [
-  { xp: 0, name: 'Intern' },
-  { xp: 100, name: 'Resident' },
-  { xp: 300, name: 'Fellow' },
-  { xp: 600, name: 'Attending' },
-  { xp: 1000, name: 'Chief' },
-  { xp: 2000, name: 'Director' },
-  { xp: 5000, name: 'Distinguished' },
-]
+const { t } = useI18n()
+
+const LEVEL_KEYS = ['intern', 'resident', 'fellow', 'attending', 'chief', 'director', 'distinguished'] as const
+const LEVEL_XP = [0, 100, 300, 600, 1000, 2000, 5000]
+
+const levels = computed(() => LEVEL_XP.map((xp, i) => ({
+  xp,
+  name: t(`components.xp.levels.${LEVEL_KEYS[i]}`),
+})))
+
+const levelName = computed(() => {
+  const key = props.level.toLowerCase() as typeof LEVEL_KEYS[number]
+  return LEVEL_KEYS.includes(key) ? t(`components.xp.levels.${key}`) : props.level
+})
 
 const progress = computed(() => {
   let currentIdx = 0
-  for (let i = 0; i < LEVELS.length; i++) {
-    if (props.totalXp >= LEVELS[i].xp) currentIdx = i
+  for (let i = 0; i < levels.value.length; i++) {
+    if (props.totalXp >= levels.value[i].xp) currentIdx = i
   }
-  const nextLevel = LEVELS[currentIdx + 1]
+  const nextLevel = levels.value[currentIdx + 1]
   if (!nextLevel) return { percent: 100, xpToNext: 0, nextName: 'Max' }
 
-  const currentFloor = LEVELS[currentIdx].xp
+  const currentFloor = levels.value[currentIdx].xp
   const range = nextLevel.xp - currentFloor
   const earned = props.totalXp - currentFloor
   return {
@@ -37,7 +42,7 @@ const progress = computed(() => {
 <template>
   <div class="flex items-center gap-3 text-xs">
     <div class="flex items-center gap-1.5">
-      <span class="text-amber-500 font-semibold">{{ level }}</span>
+      <span class="text-amber-500 font-semibold">{{ levelName }}</span>
       <span class="text-gray-600">{{ totalXp }} XP</span>
     </div>
     <div class="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
@@ -46,7 +51,7 @@ const progress = computed(() => {
         :style="{ width: `${progress.percent}%` }"
       />
     </div>
-    <span class="text-gray-600">{{ progress.xpToNext }} to {{ progress.nextName }}</span>
-    <span v-if="streakDays > 0" class="text-orange-500">{{ streakDays }}d streak</span>
+    <span class="text-gray-600">{{ t('components.xp.toNext', { xp: progress.xpToNext, level: progress.nextName }) }}</span>
+    <span v-if="streakDays > 0" class="text-orange-500">{{ t('components.xp.streak', { days: streakDays }) }}</span>
   </div>
 </template>

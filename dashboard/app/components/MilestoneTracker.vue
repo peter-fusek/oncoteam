@@ -4,6 +4,8 @@ const props = defineProps<{
   currentCycle: number
 }>()
 
+const { t } = useI18n()
+
 function milestoneStatus(cycle: number) {
   if (cycle < props.currentCycle) return 'done'
   if (cycle === props.currentCycle || cycle === props.currentCycle + 1) return 'upcoming'
@@ -32,13 +34,13 @@ function statusColor(status: string) {
       </div>
       <div class="pb-4">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-white">Cycle {{ m.cycle }}</span>
+          <span class="text-sm font-medium text-white">{{ t('components.milestone.cycle', { n: m.cycle }) }}</span>
           <UBadge
             :color="milestoneStatus(m.cycle) === 'done' ? 'success' : milestoneStatus(m.cycle) === 'upcoming' ? 'warning' : 'neutral'"
             variant="subtle"
             size="xs"
           >
-            {{ milestoneStatus(m.cycle) }}
+            {{ t(`components.milestone.${milestoneStatus(m.cycle)}`) }}
           </UBadge>
         </div>
         <div class="text-xs text-gray-400 mt-0.5">{{ m.description }}</div>

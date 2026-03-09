@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { fetchApi, apiUrl } = useOncoteamApi()
+const { formatDate } = useFormatDate()
 
 const lang = ref<'sk' | 'en'>('sk')
 
@@ -178,7 +179,7 @@ const drilldown = useDrilldown()
             >
               {{ update.tags?.find((t: string) => t.startsWith('lang:'))?.replace('lang:', '').toUpperCase() }}
             </UBadge>
-            <span class="text-xs text-gray-500">{{ update.date }}</span>
+            <span class="text-xs text-gray-500">{{ formatDate(update.date) }}</span>
             <UButton
               icon="i-lucide-copy"
               variant="ghost"
