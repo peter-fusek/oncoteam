@@ -31,46 +31,47 @@ async function logout() {
 
 <template>
   <div class="flex h-screen bg-gray-950">
-    <UDashboardSidebar class="border-r border-gray-800">
-      <template #header>
-        <div class="flex items-center gap-2 px-2">
-          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-            <span class="text-sm">🧬</span>
-          </div>
-          <span class="font-bold text-lg text-white">Oncoteam</span>
+    <aside class="flex flex-col w-52 shrink-0 border-r border-gray-800 bg-gray-950">
+      <!-- Header -->
+      <div class="flex items-center gap-2 px-4 py-3">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
+          <span class="text-sm">🧬</span>
         </div>
-      </template>
+        <span class="font-bold text-lg text-white">Oncoteam</span>
+      </div>
 
-      <UNavigationMenu :items="navigation" orientation="vertical" />
+      <!-- Navigation -->
+      <nav class="flex-1 overflow-y-auto px-2">
+        <UNavigationMenu :items="navigation" orientation="vertical" />
+      </nav>
 
-      <template #footer>
-        <div class="px-3 py-2 space-y-2">
-          <div class="flex items-center justify-between">
-            <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
-              <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
-              {{ $t('common.showTestData') }}
-            </label>
-            <button
-              class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
-              @click="toggleLocale"
-            >
-              {{ locale === 'sk' ? 'EN' : 'SK' }}
-            </button>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 min-w-0">
-              <UAvatar
-                v-if="user?.picture"
-                :src="user.picture"
-                size="xs"
-              />
-              <span class="text-xs text-gray-400 truncate">{{ user?.name }}</span>
-            </div>
-            <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
-          </div>
+      <!-- Footer -->
+      <div class="border-t border-gray-800 px-3 py-2 space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
+            <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
+            {{ $t('common.showTestData') }}
+          </label>
+          <button
+            class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+            @click="toggleLocale"
+          >
+            {{ locale === 'sk' ? 'EN' : 'SK' }}
+          </button>
         </div>
-      </template>
-    </UDashboardSidebar>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 min-w-0">
+            <UAvatar
+              v-if="user?.picture"
+              :src="user.picture"
+              size="xs"
+            />
+            <span class="text-xs text-gray-400 truncate">{{ user?.name }}</span>
+          </div>
+          <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
+        </div>
+      </div>
+    </aside>
 
     <main class="flex-1 overflow-auto p-6">
       <slot />
