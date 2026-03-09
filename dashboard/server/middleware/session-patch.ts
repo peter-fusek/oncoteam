@@ -10,7 +10,8 @@ export default defineEventHandler(async (event) => {
 
   const session = await getUserSession(event)
   if (!session.user?.email) return
-  if (session.user.roles && Array.isArray(session.user.roles)) return // already patched
+  // Skip if session already has roles AND phone (fully patched)
+  if (session.user.roles && Array.isArray(session.user.roles) && session.user.phone) return
 
   const config = useRuntimeConfig()
   let roleMap: Record<string, { roles?: string[]; phone?: string }> = {}
