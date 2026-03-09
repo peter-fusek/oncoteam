@@ -114,7 +114,7 @@ const drilldown = useDrilldown()
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-white text-sm">{{ event.title }}</span>
-                <UBadge variant="subtle" size="xs" color="neutral">{{ event.type }}</UBadge>
+                <UBadge variant="subtle" size="xs" color="neutral">{{ $t(`timeline.eventTypes.${event.type}`, event.type) }}</UBadge>
                 <UBadge v-if="getCycleNumber(event.title)" variant="subtle" size="xs" color="info">
                   {{ $t('timeline.cycleBadge', { n: getCycleNumber(event.title) }) }}
                 </UBadge>

@@ -171,7 +171,7 @@ function isObject(val: unknown): val is Record<string, unknown> {
           class="flex items-center gap-1 text-teal-500 hover:text-teal-400"
         >
           <UIcon name="i-lucide-download" class="w-3 h-3" />
-          Google Drive
+          {{ t('common.googleDrive') }}
         </a>
       </div>
     </div>

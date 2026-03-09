@@ -35,7 +35,11 @@
     "noData": "Žiadne údaje",
     "showTestData": "Zobraziť testovacie údaje",
     "back": "Späť",
-    "viewSource": "Zobraziť zdroj"
+    "viewSource": "Zobraziť zdroj",
+    "viewDetails": "Zobraziť detaily",
+    "googleDrive": "Google Drive",
+    "errorPrefix": "Chyba: {msg}",
+    "minSafe": "Min bezpečné ({param})"
   },
   "agents": {
     "title": "Prehľad agentov",
@@ -244,7 +248,9 @@
     "safetyAlerts": "Bezpečnostné upozornenia",
     "resultsTable": "Tabuľka výsledkov",
     "noData": "Zatiaľ žiadne laboratórne údaje — kliknite na Pridať výsledky",
-    "placeholderNotes": "Nepovinné poznámky"
+    "placeholderNotes": "Nepovinné poznámky",
+    "belowRange": "Pod referenčným rozsahom",
+    "aboveRange": "Nad referenčným rozsahom"
   },
   "briefings": {
     "title": "Briefingy agentov",
@@ -279,7 +285,9 @@
     "noResearch": "Zatiaľ žiadne výsledky výskumu",
     "count": "{count} záznamov",
     "filterAll": "Všetky",
-    "filterTrials": "Štúdie"
+    "filterTrials": "Štúdie",
+    "sourcePubMed": "PubMed",
+    "sourceClinicalTrials": "ClinicalTrials.gov"
   },
   "timeline": {
     "title": "Časová os liečby",
@@ -288,7 +296,15 @@
     "count": "{count} udalostí",
     "currentCycle": "Aktuálny: Cyklus {n}",
     "treatmentMilestones": "Míľniky liečby",
-    "cycleBadge": "Cyklus {n}"
+    "cycleBadge": "Cyklus {n}",
+    "eventTypes": {
+      "chemo_cycle": "Chemoterapia",
+      "chemo": "Chemoterapia",
+      "lab_work": "Laboratórium",
+      "consultation": "Konzultácia",
+      "surgery": "Operácia",
+      "scan": "Vyšetrenie"
+    }
   },
   "sessions": {
     "title": "Sedenia",

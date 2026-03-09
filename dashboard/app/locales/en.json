@@ -35,7 +35,11 @@
     "noData": "No data available",
     "showTestData": "Show test data",
     "back": "Back",
-    "viewSource": "View source"
+    "viewSource": "View source",
+    "viewDetails": "View full details",
+    "googleDrive": "Google Drive",
+    "errorPrefix": "Error: {msg}",
+    "minSafe": "Min safe ({param})"
   },
   "agents": {
     "title": "Agent Dashboard",
@@ -244,7 +248,9 @@
     "safetyAlerts": "Safety Alerts",
     "resultsTable": "Lab Results Table",
     "noData": "No lab data yet — click \"Add Labs\" to enter results",
-    "placeholderNotes": "Optional notes"
+    "placeholderNotes": "Optional notes",
+    "belowRange": "Below reference range",
+    "aboveRange": "Above reference range"
   },
   "briefings": {
     "title": "Agent Briefings",
@@ -279,7 +285,9 @@
     "noResearch": "No research findings yet",
     "count": "{count} entries",
     "filterAll": "All",
-    "filterTrials": "Trials"
+    "filterTrials": "Trials",
+    "sourcePubMed": "PubMed",
+    "sourceClinicalTrials": "ClinicalTrials.gov"
   },
   "timeline": {
     "title": "Treatment Timeline",
@@ -288,7 +296,15 @@
     "count": "{count} events",
     "currentCycle": "Current: Cycle {n}",
     "treatmentMilestones": "Treatment Milestones",
-    "cycleBadge": "Cycle {n}"
+    "cycleBadge": "Cycle {n}",
+    "eventTypes": {
+      "chemo_cycle": "Chemotherapy",
+      "chemo": "Chemotherapy",
+      "lab_work": "Lab Work",
+      "consultation": "Consultation",
+      "surgery": "Surgery",
+      "scan": "Scan"
+    }
   },
   "sessions": {
     "title": "Chat Sessions",

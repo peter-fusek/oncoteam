@@ -67,7 +67,7 @@ async function submitLog() {
       method: 'POST',
       body: form,
     })
-    submitMsg.value = 'Saved'
+    submitMsg.value = 'saved'
     // Reset form
     form.neuropathy = 0
     form.diarrhea = 0
@@ -83,7 +83,7 @@ async function submitLog() {
     form.date = new Date().toISOString().slice(0, 10)
     await refresh()
   } catch (e: any) {
-    submitMsg.value = `Error: ${e.message || e}`
+    submitMsg.value = `error:${e.message || e}`
   } finally {
     submitting.value = false
   }
@@ -239,8 +239,8 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
         <UButton :loading="submitting" color="primary" size="sm" @click="submitLog">
           {{ $t('toxicity.saveEntry') }}
         </UButton>
-        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
-          {{ submitMsg }}
+        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-500' : 'text-green-500'">
+          {{ submitMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: submitMsg.slice(6) }) : $t('common.saved') }}
         </span>
       </div>
     </div>

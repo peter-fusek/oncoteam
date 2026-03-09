@@ -83,7 +83,7 @@ const drilldown = useDrilldown()
                 size="xs"
                 :color="entry.source === 'pubmed' ? 'info' : 'success'"
               >
-                {{ entry.source }}
+                {{ entry.source === 'pubmed' ? $t('research.sourcePubMed') : $t('research.sourceClinicalTrials') }}
               </UBadge>
               <span v-if="entry.external_id" class="text-xs font-mono text-gray-500">
                 {{ entry.external_id }}

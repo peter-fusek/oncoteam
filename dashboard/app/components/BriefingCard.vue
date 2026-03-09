@@ -41,7 +41,7 @@ function formatTags(tags: string[] | string | undefined): string[] {
         @click.stop="$emit('drilldown')"
       >
         <UIcon name="i-lucide-arrow-right" class="w-3 h-3" />
-        View full details
+        {{ $t('common.viewDetails') }}
       </button>
     </div>
   </div>

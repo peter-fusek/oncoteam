@@ -67,10 +67,10 @@ async function submitCheckin() {
         medications: { ...checkin },
       },
     })
-    checkinMsg.value = 'Saved'
+    checkinMsg.value = 'saved'
     await refresh()
   } catch (e: any) {
-    checkinMsg.value = `Error: ${e.message || e}`
+    checkinMsg.value = `error:${e.message || e}`
   } finally {
     checkinSubmitting.value = false
   }
@@ -87,7 +87,7 @@ async function submitMed() {
       method: 'POST',
       body: form,
     })
-    submitMsg.value = 'Saved'
+    submitMsg.value = 'saved'
     form.name = ''
     form.dose = ''
     form.frequency = ''
@@ -97,7 +97,7 @@ async function submitMed() {
     showForm.value = false
     await refresh()
   } catch (e: any) {
-    submitMsg.value = `Error: ${e.message || e}`
+    submitMsg.value = `error:${e.message || e}`
   } finally {
     submitting.value = false
   }
@@ -145,7 +145,7 @@ const drilldown = useDrilldown()
       </div>
       <div class="flex items-center gap-3">
         <UButton :loading="checkinSubmitting" color="primary" size="xs" @click="submitCheckin">{{ $t('medications.logToday') }}</UButton>
-        <span v-if="checkinMsg" class="text-xs" :class="checkinMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'">{{ checkinMsg }}</span>
+        <span v-if="checkinMsg" class="text-xs" :class="checkinMsg.startsWith('error:') ? 'text-red-500' : 'text-green-500'">{{ checkinMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: checkinMsg.slice(6) }) : $t('common.saved') }}</span>
       </div>
     </div>
 
@@ -278,8 +278,8 @@ const drilldown = useDrilldown()
         <UButton variant="ghost" size="sm" color="neutral" @click="showForm = false">
           {{ $t('common.cancel') }}
         </UButton>
-        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
-          {{ submitMsg }}
+        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-500' : 'text-green-500'">
+          {{ submitMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: submitMsg.slice(6) }) : $t('common.saved') }}
         </span>
       </div>
     </div>

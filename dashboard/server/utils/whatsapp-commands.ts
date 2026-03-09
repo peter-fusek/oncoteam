@@ -1,5 +1,10 @@
 const MAX_REPLY_LENGTH = 1500
 
+type Lang = 'sk' | 'en'
+
+const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka'])
+const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help'])
+
 const COMMAND_MAP: Record<string, string> = {
   // Slovak
   labky: 'labs',
@@ -17,17 +22,30 @@ const COMMAND_MAP: Record<string, string> = {
   help: 'help',
 }
 
+function detectLang(input: string): Lang {
+  if (SLOVAK_COMMANDS.has(input)) return 'sk'
+  if (ENGLISH_COMMANDS.has(input)) return 'en'
+  return 'sk'
+}
+
+const L = (sk: string, en: string) => ({ sk, en })
+const t = (msg: { sk: string; en: string }, lang: Lang) => msg[lang]
+
 function truncate(text: string, max: number = MAX_REPLY_LENGTH): string {
   if (text.length <= max) return text
   return text.slice(0, max - 3) + '...'
 }
 
-function formatLabs(data: Record<string, unknown>): string {
+function formatLabs(data: Record<string, unknown>, lang: Lang): string {
   const entries = (data.entries || []) as Array<Record<string, unknown>>
-  if (!entries.length) return 'Zatial ziadne labky v systeme.\n\nLab data sa syncne po prvom analyze_labs cez Oncoteam.'
+  if (!entries.length) {
+    return t(L(
+      'Zatial ziadne labky v systeme.\n\nLab data sa syncne po prvom analyze_labs cez Oncoteam.',
+      'No lab data in the system yet.\n\nLab data will sync after the first analyze_labs via Oncoteam.',
+    ), lang)
+  }
 
-  // Show all entries (most recent first)
-  let text = '*Labky*\n'
+  let text = t(L('*Labky*\n', '*Labs*\n'), lang)
   for (const entry of entries.slice(0, 3)) {
     const date = entry.date || 'N/A'
     const statuses = (entry.value_statuses || {}) as Record<string, string>
@@ -54,16 +72,19 @@ function formatLabs(data: Record<string, unknown>): string {
   return truncate(text)
 }
 
-function formatMeds(data: Record<string, unknown>): string {
-  // Use tracked medications first, fall back to default_medications from protocol
+function formatMeds(data: Record<string, unknown>, lang: Lang): string {
   const tracked = (data.medications || []) as Array<Record<string, unknown>>
   const defaults = (data.default_medications || []) as Array<Record<string, unknown>>
   const meds = tracked.length > 0 ? tracked : defaults
   const isDefault = tracked.length === 0 && defaults.length > 0
 
-  if (!meds.length) return 'Ziadne lieky v systeme.'
+  if (!meds.length) return t(L('Ziadne lieky v systeme.', 'No medications in the system.'), lang)
 
-  let text = `*Lieky${isDefault ? ' (protokol)' : ''}*\n\n`
+  const header = isDefault
+    ? t(L('*Lieky (protokol)*', '*Medications (protocol)*'), lang)
+    : t(L('*Lieky*', '*Medications*'), lang)
+  let text = `${header}\n\n`
+
   for (const med of meds) {
     const active = med.active !== false
     const icon = active ? '💊' : '⏸️'
@@ -75,50 +96,68 @@ function formatMeds(data: Record<string, unknown>): string {
 
   const adherence = data.adherence as Record<string, unknown> | undefined
   if (adherence?.compliance_pct != null) {
-    text += `\nCompliance: ${adherence.compliance_pct}%`
+    text += `\n${t(L('Adherencia', 'Compliance'), lang)}: ${adherence.compliance_pct}%`
   }
 
   return truncate(text)
 }
 
-function formatBriefing(data: Record<string, unknown>): string {
+function formatBriefing(data: Record<string, unknown>, lang: Lang): string {
   const briefings = (data.briefings || []) as Array<Record<string, unknown>>
   if (!briefings.length) {
-    return 'Zatial ziadne briefingy.\n\nBriefingy sa generuju automaticky cez autonomous agent (daily_briefing task).'
+    return t(L(
+      'Zatial ziadne briefingy.\n\nBriefingy sa generuju automaticky cez autonomous agent (daily_briefing task).',
+      'No briefings yet.\n\nBriefings are generated automatically by the autonomous agent (daily_briefing task).',
+    ), lang)
   }
 
   const latest = briefings[0]
   const date = latest.date || latest.created_at || 'N/A'
-  const content = String(latest.content || latest.summary || 'No content')
+  const content = String(latest.content || latest.summary || t(L('Bez obsahu', 'No content'), lang))
 
   return truncate(`*Briefing (${date})*\n\n${content}`)
 }
 
-function formatTimeline(data: Record<string, unknown>): string {
+function formatTimeline(data: Record<string, unknown>, lang: Lang): string {
   const events = (data.events || []) as Array<Record<string, unknown>>
-  if (!events.length) return 'Ziadne udalosti v timeline.'
+  if (!events.length) return t(L('Ziadne udalosti v timeline.', 'No events in the timeline.'), lang)
 
-  let text = `*Timeline (${events.length} udalosti)*\n`
+  const header = t(L(`*Casova os (${events.length} udalosti)*`, `*Timeline (${events.length} events)*`), lang)
+  let text = `${header}\n`
   for (const ev of events.slice(0, 5)) {
     const type = ev.type as string || ''
-    const icon = type === 'chemo' ? '💉' : type.includes('pathology') ? '🧬' : type === 'lab_result' ? '🔬' : '📅'
-    text += `\n${icon} *${ev.date || 'N/A'}*\n${ev.title || 'Event'}\n`
+    const icon = type === 'chemo' || type === 'chemo_cycle' ? '💉' : type.includes('pathology') ? '🧬' : type === 'lab_work' || type === 'lab_result' ? '🔬' : '📅'
+    text += `\n${icon} *${ev.date || 'N/A'}*\n${ev.title || t(L('Udalost', 'Event'), lang)}\n`
   }
 
   return truncate(text)
 }
 
-function formatStatus(data: Record<string, unknown>): string {
+function formatStatus(data: Record<string, unknown>, lang: Lang): string {
   let text = `*Oncoteam Status*\n\n`
-  text += `Server: ${data.status === 'ok' ? '✅ OK' : '❌ ' + data.status}\n`
-  text += `Version: ${data.version || 'N/A'}\n`
-  text += `Tools: ${data.tools_count || 'N/A'}\n`
-  text += `Session: ${data.session_id || 'N/A'}\n`
+  text += `${t(L('Server', 'Server'), lang)}: ${data.status === 'ok' ? '✅ OK' : '❌ ' + data.status}\n`
+  text += `${t(L('Verzia', 'Version'), lang)}: ${data.version || 'N/A'}\n`
+  text += `${t(L('Nastroje', 'Tools'), lang)}: ${data.tools_count || 'N/A'}\n`
+  text += `${t(L('Sedenie', 'Session'), lang)}: ${data.session_id || 'N/A'}\n`
 
   return truncate(text)
 }
 
-function helpText(): string {
+function helpText(lang: Lang): string {
+  if (lang === 'en') {
+    return `*Oncoteam WhatsApp*
+
+Commands:
+• *labs* / *labky* — Latest lab results
+• *meds* / *lieky* — Medications and compliance
+• *timeline* / *casovka* — Treatment events
+• *briefing* — Latest briefing
+• *status* / *stav* — System status
+• *help* / *pomoc* — This help
+
+Send a command to get a response.`
+  }
+
   return `*Oncoteam WhatsApp*
 
 Prikazy:
@@ -134,10 +173,11 @@ Posli prikaz a dostanes odpoved.`
 
 export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string): Promise<string> {
   const input = body.trim().toLowerCase().split(/\s+/)[0] || ''
+  const lang = detectLang(input)
   const command = COMMAND_MAP[input]
 
   if (!command || command === 'help') {
-    return helpText()
+    return helpText(lang)
   }
 
   const apiMap: Record<string, string> = {
@@ -149,22 +189,26 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
   }
 
   const endpoint = apiMap[command]
-  if (!endpoint) return helpText()
+  if (!endpoint) return helpText(lang)
 
   try {
-    const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}`)
+    const sep = endpoint.includes('?') ? '&' : '?'
+    const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}${sep}lang=${lang}`)
 
     switch (command) {
-      case 'labs': return formatLabs(data)
-      case 'meds': return formatMeds(data)
-      case 'briefing': return formatBriefing(data)
-      case 'timeline': return formatTimeline(data)
-      case 'status': return formatStatus(data)
-      default: return helpText()
+      case 'labs': return formatLabs(data, lang)
+      case 'meds': return formatMeds(data, lang)
+      case 'briefing': return formatBriefing(data, lang)
+      case 'timeline': return formatTimeline(data, lang)
+      case 'status': return formatStatus(data, lang)
+      default: return helpText(lang)
     }
   }
   catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return `⚠️ Chyba: ${message}\n\nSkus znova neskor alebo posli *pomoc*.`
+    return t(L(
+      `⚠️ Chyba: ${message}\n\nSkus znova neskor alebo posli *pomoc*.`,
+      `⚠️ Error: ${message}\n\nTry again later or send *help*.`,
+    ), lang)
   }
 }

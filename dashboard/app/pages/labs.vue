@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { fetchApi, apiUrl } = useOncoteamApi()
 const { formatDate } = useFormatDate()
+const { t } = useI18n()
 
 const { data: labs, refresh } = await fetchApi<{
   entries: Array<{
@@ -96,14 +97,14 @@ async function submitLab() {
       method: 'POST',
       body: { date: form.date, values: cleanValues, notes: form.notes },
     })
-    submitMsg.value = 'Saved'
+    submitMsg.value = 'saved'
     showForm.value = false
     form.values = {}
     form.notes = ''
     form.date = new Date().toISOString().slice(0, 10)
     await refresh()
   } catch (e: any) {
-    submitMsg.value = `Error: ${e.message || e}`
+    submitMsg.value = `error:${e.message || e}`
   } finally {
     submitting.value = false
   }
@@ -184,8 +185,8 @@ async function submitLab() {
       </div>
       <div class="flex items-center gap-3">
         <UButton :loading="submitting" color="primary" size="sm" @click="submitLab">{{ $t('common.save') }}</UButton>
-        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('Error') ? 'text-red-500' : 'text-green-500'">
-          {{ submitMsg }}
+        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-500' : 'text-green-500'">
+          {{ submitMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: submitMsg.slice(6) }) : $t('common.saved') }}
         </span>
       </div>
     </div>
@@ -200,7 +201,7 @@ async function submitLab() {
           :labels="chartLabels"
           :values="getValues(param.key)"
           :threshold-min="param.thresholdKey ? getThreshold(param.thresholdKey) : undefined"
-          :threshold-label="param.thresholdKey ? `Min safe (${param.thresholdKey})` : undefined"
+          :threshold-label="param.thresholdKey ? t('common.minSafe', { param: param.thresholdKey }) : undefined"
           :color="param.color"
           :unit="param.unit"
         />
@@ -239,7 +240,7 @@ async function submitLab() {
                 <span
                   v-if="entry.values?.[p.key] != null"
                   :class="entry.alerts?.some((a: any) => a.param === p.key) ? 'text-red-400 font-semibold' : statusColor(entry.value_statuses?.[p.key])"
-                  :title="entry.value_statuses?.[p.key] === 'low' ? 'Below reference range' : entry.value_statuses?.[p.key] === 'high' ? 'Above reference range' : ''"
+                  :title="entry.value_statuses?.[p.key] === 'low' ? t('labs.belowRange') : entry.value_statuses?.[p.key] === 'high' ? t('labs.aboveRange') : ''"
                 >
                   {{ typeof entry.values[p.key] === 'number' ? entry.values[p.key].toLocaleString() : entry.values[p.key] }}
                 </span>
