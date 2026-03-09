@@ -5,12 +5,16 @@ const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 
+function normalizePhone(phone: string): string {
+  return phone.replace(/[\s\-()]/g, '')
+}
+
 function extractPhoneAllowlist(roleMapJson: string): Set<string> {
   try {
     const roleMap = JSON.parse(roleMapJson || '{}')
     const phones = new Set<string>()
     for (const config of Object.values(roleMap) as Array<{ phone?: string }>) {
-      if (config.phone) phones.add(config.phone)
+      if (config.phone) phones.add(normalizePhone(config.phone))
     }
     return phones
   }
@@ -37,7 +41,7 @@ export default defineEventHandler(async (event) => {
 
   // Parse form-encoded body from Twilio
   const body = await readBody(event)
-  const from = String(body?.From || '').replace('whatsapp:', '')
+  const from = normalizePhone(String(body?.From || '').replace('whatsapp:', ''))
   const messageBody = String(body?.Body || '').trim()
   const twilioSignature = getRequestHeader(event, 'x-twilio-signature') || ''
 
