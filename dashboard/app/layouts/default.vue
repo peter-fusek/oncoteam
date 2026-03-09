@@ -4,6 +4,14 @@ const { showTestData } = useTestDataToggle()
 const { t, locale } = useI18n()
 const { setLocale } = useI18n()
 
+const mobileMenuOpen = ref(false)
+const route = useRoute()
+
+// Close mobile menu on navigation
+watch(() => route.path, () => {
+  mobileMenuOpen.value = false
+})
+
 const navigation = computed(() => [
   { label: t('nav.agents'), icon: 'i-lucide-brain-circuit', to: '/' },
   { label: t('nav.patient'), icon: 'i-lucide-user-round', to: '/patient' },
@@ -32,7 +40,8 @@ async function logout() {
 
 <template>
   <div class="flex h-screen bg-gray-950">
-    <aside class="flex flex-col w-52 shrink-0 border-r border-gray-800 bg-gray-950">
+    <!-- Desktop sidebar -->
+    <aside class="hidden md:flex flex-col w-52 shrink-0 border-r border-gray-800 bg-gray-950">
       <!-- Header -->
       <div class="flex items-center gap-2 px-4 py-3">
         <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
@@ -74,9 +83,95 @@ async function logout() {
       </div>
     </aside>
 
-    <main class="flex-1 overflow-auto p-6">
+    <!-- Mobile header -->
+    <div class="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 py-2 border-b border-gray-800 bg-gray-950">
+      <button class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800" @click="mobileMenuOpen = true">
+        <UIcon name="i-lucide-menu" class="w-5 h-5" />
+      </button>
+      <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
+        <span class="text-xs">🧬</span>
+      </div>
+      <span class="font-bold text-white">Oncoteam</span>
+    </div>
+
+    <!-- Mobile drawer overlay -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="mobileMenuOpen" class="md:hidden fixed inset-0 z-50 bg-black/60" @click="mobileMenuOpen = false" />
+      </Transition>
+      <Transition name="slide">
+        <aside v-if="mobileMenuOpen" class="md:hidden fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-gray-950 border-r border-gray-800 shadow-xl">
+          <!-- Header -->
+          <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
+                <span class="text-sm">🧬</span>
+              </div>
+              <span class="font-bold text-lg text-white">Oncoteam</span>
+            </div>
+            <button class="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800" @click="mobileMenuOpen = false">
+              <UIcon name="i-lucide-x" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <!-- Navigation -->
+          <nav class="flex-1 overflow-y-auto px-2">
+            <UNavigationMenu :items="navigation" orientation="vertical" />
+          </nav>
+
+          <!-- Footer -->
+          <div class="border-t border-gray-800 px-3 py-2 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
+                <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
+                {{ $t('common.showTestData') }}
+              </label>
+              <button
+                class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+                @click="toggleLocale"
+              >
+                {{ locale === 'sk' ? 'EN' : 'SK' }}
+              </button>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <UAvatar
+                  v-if="user?.picture"
+                  :src="user.picture"
+                  size="xs"
+                />
+                <span class="text-xs text-gray-400 truncate">{{ user?.name }}</span>
+              </div>
+              <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
+            </div>
+          </div>
+        </aside>
+      </Transition>
+    </Teleport>
+
+    <!-- Main content -->
+    <main class="flex-1 overflow-auto p-4 md:p-6 pt-14 md:pt-6">
       <slot />
       <DrilldownPanel />
     </main>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.2s ease;
+}
+.slide-enter-from,
+.slide-leave-to {
+  transform: translateX(-100%);
+}
+</style>

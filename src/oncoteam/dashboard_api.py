@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import re
 import time
 
 from starlette.requests import Request
@@ -64,6 +65,80 @@ def _filter_test(entries: list[dict], request: Request) -> list[dict]:
     if _show_test(request):
         return entries
     return [e for e in entries if not _is_test_entry(e)]
+
+
+# --- Timeline deduplication ---
+
+_CYCLE_RE = re.compile(r"\b(?:c|cycle|cyklus)\s*(\d+)\b", re.IGNORECASE)
+
+
+def _extract_cycle_number(title: str) -> int | None:
+    """Extract cycle number from event title (e.g., 'FOLFOX C2' -> 2)."""
+    m = _CYCLE_RE.search(title)
+    if m:
+        return int(m.group(1))
+    # Try leading number pattern: "2. cyklus FOLFOX"
+    m2 = re.match(r"^(\d+)\.\s*(?:cyklus|cycle)\b", title, re.IGNORECASE)
+    return int(m2.group(1)) if m2 else None
+
+
+def _deduplicate_timeline(events: list[dict]) -> list[dict]:
+    """Merge events that share the same date and cycle number.
+
+    For events without a cycle number, no deduplication is applied.
+    Among duplicates, the entry with the longest notes is kept.
+    """
+    by_key: dict[tuple[str, int], list[dict]] = {}
+    no_cycle: list[dict] = []
+
+    for e in events:
+        date = e.get("event_date") or e.get("date") or ""
+        title = e.get("title") or ""
+        cycle = _extract_cycle_number(title)
+        if cycle is not None:
+            by_key.setdefault((date, cycle), []).append(e)
+        else:
+            no_cycle.append(e)
+
+    merged: list[dict] = []
+    for group in by_key.values():
+        best = max(group, key=lambda x: len(x.get("notes") or ""))
+        merged.append(best)
+
+    result = merged + no_cycle
+    # Preserve original order by date (descending) then id
+    result.sort(
+        key=lambda x: (x.get("event_date") or x.get("date") or "", x.get("id") or 0),
+        reverse=True,
+    )
+    return result
+
+
+# --- Session relevance filtering ---
+
+_NON_ONCOLOGY_PATTERNS = (
+    "accounting",
+    "instarea",
+    "invoice",
+    "billing",
+    "email scan",
+    "contacts refiner",
+    "homegrif",
+    "shift rotation",
+)
+
+
+def _is_oncology_session(entry: dict) -> bool:
+    """Return True if the session is oncology-relevant."""
+    title = (entry.get("title") or "").lower()
+    content = (entry.get("content") or "").lower()
+    # Check negative patterns in title
+    for pattern in _NON_ONCOLOGY_PATTERNS:
+        if pattern in title:
+            return False
+    # Also check content first 200 chars for non-oncology patterns
+    snippet = content[:200]
+    return all(pattern not in snippet for pattern in _NON_ONCOLOGY_PATTERNS)
 
 
 def _extract_list(result: dict | list | str, key: str) -> list[dict]:
@@ -180,6 +255,7 @@ async def api_timeline(request: Request) -> JSONResponse:
     try:
         result = await oncofiles_client.list_treatment_events(limit=limit)
         events = _filter_test(_extract_list(result, "events"), request)
+        events = _deduplicate_timeline(events)
         return _cors_json(
             {
                 "events": [
@@ -248,6 +324,7 @@ async def api_sessions(request: Request) -> JSONResponse:
             entry_type="session_summary", limit=limit
         )
         entries = _filter_test(_extract_list(result, "entries"), request)
+        entries = [e for e in entries if _is_oncology_session(e)]
         return _cors_json(
             {
                 "sessions": [

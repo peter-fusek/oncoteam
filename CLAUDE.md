@@ -6,7 +6,7 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 309 tests
+uv run pytest          # 328 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
@@ -51,7 +51,7 @@ uv run oncoteam-mcp    # stdio mode
 - Push to `main` auto-deploys via Railway
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
-- 309 tests, ruff clean
+- 328 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
