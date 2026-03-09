@@ -84,18 +84,6 @@ const allQuestions = computed(() => {
       </div>
     </div>
 
-    <!-- Task Schedule -->
-    <div v-if="autonomous?.jobs?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <h2 class="text-sm font-semibold text-white mb-3">{{ $t('agents.scheduledTasks') }}</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div v-for="job in autonomous.jobs" :key="job.id" class="rounded-lg bg-gray-800/50 px-3 py-2">
-          <div class="text-xs font-mono text-gray-300">{{ job.id }}</div>
-          <div class="text-xs text-gray-500">{{ job.schedule }}</div>
-          <div class="text-xs text-gray-600 mt-0.5">{{ job.description }}</div>
-        </div>
-      </div>
-    </div>
-
     <!-- Briefing Cards -->
     <div v-if="briefings?.briefings?.length" class="space-y-2">
       <BriefingCard
@@ -109,8 +97,20 @@ const allQuestions = computed(() => {
       />
     </div>
 
-    <div v-else-if="!briefings?.error" class="text-gray-600 text-center py-16 text-sm">
-      {{ $t('briefings.noBriefings') }}
+    <div v-else-if="!briefings?.error" class="text-center py-16 space-y-4">
+      <div class="text-gray-600 text-sm">
+        {{ $t('briefings.noBriefings') }}
+      </div>
+      <!-- Show scheduled tasks that will generate briefings -->
+      <div v-if="autonomous?.jobs?.length" class="inline-flex flex-wrap justify-center gap-2 max-w-lg">
+        <div
+          v-for="job in autonomous.jobs"
+          :key="job.id"
+          class="rounded-lg bg-gray-800/50 px-3 py-1.5 text-xs text-gray-500"
+        >
+          {{ job.description }} · {{ job.schedule }}
+        </div>
+      </div>
     </div>
   </div>
 </template>

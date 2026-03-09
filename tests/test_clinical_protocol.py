@@ -82,9 +82,10 @@ class TestDoseModification:
     def test_unknown_toxicity(self):
         assert get_dose_modification("unknown") is None
 
-    def test_all_rules_are_strings(self):
+    def test_all_rules_are_bilingual_dicts(self):
         for key, value in DOSE_MODIFICATION_RULES.items():
-            assert isinstance(value, str), f"{key} is not a string"
+            assert isinstance(value, dict), f"{key} is not a bilingual dict"
+            assert "sk" in value and "en" in value, f"{key} missing sk/en keys"
 
 
 class TestTreatmentMilestones:

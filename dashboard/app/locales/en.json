@@ -55,18 +55,51 @@
     "level": "Level",
     "rooms": {
       "researchLab": "Research Lab",
+      "researchLabDesc": "PubMed search, clinical trial monitoring",
       "eligibilityCheck": "Eligibility Check",
+      "eligibilityCheckDesc": "Trial matching and eligibility verification",
       "clinicalProtocol": "Clinical Protocol",
-      "analyticsRoom": "Analytics Room",
-      "reportRoom": "Report Room",
+      "clinicalProtocolDesc": "Pre-cycle safety, markers, response assessment",
+      "analyticsRoom": "Lab Analytics",
+      "analyticsRoomDesc": "Lab analysis, comparisons, and trends",
+      "reportRoom": "Reports & Briefings",
+      "reportRoomDesc": "Daily briefings, session summaries, QA reviews",
       "documentVault": "Document Vault",
-      "sessionLog": "Session Log"
+      "documentVaultDesc": "Medical documents, patient context",
+      "sessionLog": "Session Log",
+      "sessionLogDesc": "Research decisions, notes, improvement tracking"
     },
     "operationsCompleted": "{count} operations completed",
     "calls": "{count} calls",
     "avgMs": "~{ms}ms avg",
     "costToday": "${cost} today",
-    "scheduledTasks": "Scheduled Tasks"
+    "scheduledTasks": "Scheduled Tasks",
+    "statusActive": "Active",
+    "statusRecent": "Recently active",
+    "statusIdle": "Idle",
+    "toolNames": {
+      "search_pubmed": "PubMed Search",
+      "search_clinical_trials": "Clinical Trial Search",
+      "search_clinical_trials_adjacent": "Adjacent Trial Search",
+      "check_trial_eligibility": "Eligibility Check",
+      "fetch_trial_details": "Trial Details",
+      "fetch_pubmed_article": "PubMed Article",
+      "pre_cycle_check": "Pre-Cycle Safety",
+      "tumor_marker_review": "Tumor Marker Review",
+      "response_assessment": "Response Assessment",
+      "analyze_labs": "Lab Analysis",
+      "compare_labs": "Lab Comparison",
+      "get_lab_trends": "Lab Trends",
+      "daily_briefing": "Daily Briefing",
+      "summarize_session": "Session Summary",
+      "review_session": "QA Review",
+      "search_documents": "Document Search",
+      "view_document": "View Document",
+      "get_patient_context": "Patient Context",
+      "log_research_decision": "Research Decision",
+      "log_session_note": "Session Note",
+      "create_improvement_issue": "Improvement Issue"
+    }
   },
   "patient": {
     "title": "Patient Profile",
@@ -156,6 +189,7 @@
     "alertThreshold": "Alert threshold: -5%",
     "nutritionEscalation": "Nutrition Escalation Thresholds",
     "placeholderWeight": "e.g. 65",
+    "placeholderOralIntake": "e.g. 80",
     "placeholderNotes": "Additional observations..."
   },
   "medications": {
@@ -201,7 +235,7 @@
   "briefings": {
     "title": "Agent Briefings",
     "subtitle": "AI-generated clinical briefings",
-    "noBriefings": "No briefings yet",
+    "noBriefings": "No briefings yet — autonomous tasks will generate briefings automatically",
     "count": "{count} briefings",
     "questionsForOncologist": "Questions for Oncologist"
   },

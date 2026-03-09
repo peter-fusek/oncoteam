@@ -204,7 +204,7 @@ async def test_api_timeline_handles_error(mock_list):
 
 @pytest.mark.anyio
 async def test_api_patient_returns_profile():
-    request = _make_request("/api/patient")
+    request = _make_request("/api/patient", query_string="lang=en")
     response = await api_patient(request)
     data = json.loads(response.body)
 

@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   if (!session.user.roles?.includes(role)) {
     throw createError({ statusCode: 403, message: 'Role not assigned' })
   }
-  await setUserSession(event, {
+  await replaceUserSession(event, {
     user: { ...session.user, activeRole: role },
   })
   return { ok: true, activeRole: role }

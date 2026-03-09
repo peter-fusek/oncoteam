@@ -55,18 +55,51 @@
     "level": "Úroveň",
     "rooms": {
       "researchLab": "Výskumné laboratórium",
+      "researchLabDesc": "PubMed vyhľadávanie, monitorovanie štúdií",
       "eligibilityCheck": "Kontrola oprávnenosti",
+      "eligibilityCheckDesc": "Porovnávanie a overovanie vhodnosti štúdií",
       "clinicalProtocol": "Klinický protokol",
-      "analyticsRoom": "Analytická miestnosť",
-      "reportRoom": "Miestnosť správ",
+      "clinicalProtocolDesc": "Pred-cyklová bezpečnosť, markery, hodnotenie odpovede",
+      "analyticsRoom": "Laboratórna analytika",
+      "analyticsRoomDesc": "Analýza labov, porovnania a trendy",
+      "reportRoom": "Správy a brífingy",
+      "reportRoomDesc": "Denné brífingy, súhrny sedení, QA recenzie",
       "documentVault": "Archív dokumentov",
-      "sessionLog": "Záznam sedení"
+      "documentVaultDesc": "Lekárske dokumenty, kontext pacienta",
+      "sessionLog": "Záznam sedení",
+      "sessionLogDesc": "Výskumné rozhodnutia, poznámky, vylepšenia"
     },
     "operationsCompleted": "{count} operácií vykonaných",
     "calls": "{count} volaní",
     "avgMs": "~{ms}ms priemer",
     "costToday": "${cost} dnes",
-    "scheduledTasks": "Naplánované úlohy"
+    "scheduledTasks": "Naplánované úlohy",
+    "statusActive": "Aktívny",
+    "statusRecent": "Nedávno aktívny",
+    "statusIdle": "Nečinný",
+    "toolNames": {
+      "search_pubmed": "PubMed vyhľadávanie",
+      "search_clinical_trials": "Vyhľadávanie štúdií",
+      "search_clinical_trials_adjacent": "Susedné štúdie",
+      "check_trial_eligibility": "Kontrola oprávnenosti",
+      "fetch_trial_details": "Detail štúdie",
+      "fetch_pubmed_article": "PubMed článok",
+      "pre_cycle_check": "Pred-cyklová kontrola",
+      "tumor_marker_review": "Kontrola markerov",
+      "response_assessment": "Hodnotenie odpovede",
+      "analyze_labs": "Analýza labov",
+      "compare_labs": "Porovnanie labov",
+      "get_lab_trends": "Trendy labov",
+      "daily_briefing": "Denný bríf",
+      "summarize_session": "Súhrn sedenia",
+      "review_session": "QA recenzia",
+      "search_documents": "Vyhľadávanie dokumentov",
+      "view_document": "Zobrazenie dokumentu",
+      "get_patient_context": "Kontext pacienta",
+      "log_research_decision": "Výskumné rozhodnutie",
+      "log_session_note": "Poznámka sedenia",
+      "create_improvement_issue": "Návrh vylepšenia"
+    }
   },
   "patient": {
     "title": "Profil pacienta",
@@ -93,7 +126,7 @@
     "title": "Klinický protokol",
     "subtitle": "Liečebný protokol mFOLFOX6 a usmernenia",
     "tabs": {
-      "checklist": "Pred-cyklový checklist",
+      "checklist": "Pred-cyklový kontrolný zoznam",
       "labs": "Laborat. prahy",
       "dosemods": "Úpravy dávky",
       "cumdose": "Kumulatívna dávka",
@@ -156,6 +189,7 @@
     "alertThreshold": "Prah upozornenia: -5%",
     "nutritionEscalation": "Prahy nutričnej eskalácie",
     "placeholderWeight": "napr. 65",
+    "placeholderOralIntake": "napr. 80",
     "placeholderNotes": "Ďalšie pozorovania..."
   },
   "medications": {
@@ -201,7 +235,7 @@
   "briefings": {
     "title": "Briefingy agentov",
     "subtitle": "AI-generované klinické briefingy",
-    "noBriefings": "Zatiaľ žiadne briefingy",
+    "noBriefings": "Zatiaľ žiadne brífingy — autonómne úlohy ich generujú automaticky",
     "count": "{count} briefingov",
     "questionsForOncologist": "Otázky pre onkológa"
   },

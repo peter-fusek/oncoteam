@@ -218,7 +218,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
             min="0"
             max="100"
             step="10"
-            placeholder="e.g. 80"
+            :placeholder="$t('toxicity.placeholderOralIntake')"
             class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
           />
         </div>

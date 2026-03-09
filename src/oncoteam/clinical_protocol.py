@@ -2,21 +2,46 @@
 
 Sourced from ESMO 2022 mCRC Living Guidelines, NCCN Colon Cancer Guidelines,
 ASCO VTE Guidelines, ASH 2021 VTE in Cancer. NOT AI-generated.
+
+All user-facing strings are bilingual via L(sk, en) dicts.
+Use resolve_protocol(lang) to get locale-resolved copies.
 """
 
 from __future__ import annotations
 
+from .locale import L, resolve
+
 # FOLFOX dose modification rules (NCCN)
-DOSE_MODIFICATION_RULES: dict[str, str] = {
-    "neuropathy_grade_2": ("Reduce oxaliplatin to 75%. Continue 5-FU/LV full dose."),
-    "neuropathy_grade_3": (
-        "HOLD oxaliplatin. Continue 5-FU/LV (de Gramont). Resume at 50% if resolves to grade 1."
+DOSE_MODIFICATION_RULES: dict[str, dict] = {
+    "neuropathy_grade_2": L(
+        "Znížiť oxaliplatinu na 75%. Pokračovať 5-FU/LV plnou dávkou.",
+        "Reduce oxaliplatin to 75%. Continue 5-FU/LV full dose.",
     ),
-    "neuropathy_grade_4": "DISCONTINUE oxaliplatin permanently.",
-    "plt_below_75k": "Hold FOLFOX. Recheck in 1 week.",
-    "anc_below_1500": "Hold FOLFOX. Consider G-CSF if recurrent.",
-    "alt_ast_above_5x": ("Hold FOLFOX. Evaluate hepatic progression vs toxicity."),
-    "diarrhea_grade_3": ("Hold 5-FU. Resume at 80% when resolved to grade 1."),
+    "neuropathy_grade_3": L(
+        "POZASTAVIŤ oxaliplatinu. Pokračovať 5-FU/LV (de Gramont). "
+        "Obnoviť na 50% pri zlepšení na stupeň 1.",
+        "HOLD oxaliplatin. Continue 5-FU/LV (de Gramont). Resume at 50% if resolves to grade 1.",
+    ),
+    "neuropathy_grade_4": L(
+        "UKONČIŤ oxaliplatinu natrvalo.",
+        "DISCONTINUE oxaliplatin permanently.",
+    ),
+    "plt_below_75k": L(
+        "Pozastaviť FOLFOX. Kontrola o 1 týždeň.",
+        "Hold FOLFOX. Recheck in 1 week.",
+    ),
+    "anc_below_1500": L(
+        "Pozastaviť FOLFOX. Zvážiť G-CSF pri opakovaní.",
+        "Hold FOLFOX. Consider G-CSF if recurrent.",
+    ),
+    "alt_ast_above_5x": L(
+        "Pozastaviť FOLFOX. Vyhodnotiť hepatálnu progresiu vs toxicitu.",
+        "Hold FOLFOX. Evaluate hepatic progression vs toxicity.",
+    ),
+    "diarrhea_grade_3": L(
+        "Pozastaviť 5-FU. Obnoviť na 80% po zlepšení na stupeň 1.",
+        "Hold 5-FU. Resume at 80% when resolved to grade 1.",
+    ),
 }
 
 # Pre-cycle lab safety thresholds
@@ -31,50 +56,90 @@ LAB_SAFETY_THRESHOLDS: dict[str, dict] = {
 }
 
 # Treatment timeline milestones
-TREATMENT_MILESTONES: list[dict[str, str | int]] = [
+TREATMENT_MILESTONES: list[dict] = [
     {
         "cycle": 3,
         "action": "first_response_ct",
-        "description": "Schedule first CT response evaluation (RECIST 1.1)",
+        "description": L(
+            "Naplánovať prvé CT hodnotenie odpovede (RECIST 1.1)",
+            "Schedule first CT response evaluation (RECIST 1.1)",
+        ),
     },
     {
         "cycle": 4,
         "action": "tumor_markers",
-        "description": "CEA + CA 19-9 trend check vs baseline",
+        "description": L(
+            "CEA + CA 19-9 trend oproti východiskovej hodnote",
+            "CEA + CA 19-9 trend check vs baseline",
+        ),
     },
     {
         "cycle": 6,
         "action": "neuropathy_cumulative",
-        "description": "Formal cumulative neuropathy assessment (NCI-CTC)",
+        "description": L(
+            "Formálne kumulatívne hodnotenie neuropatie (NCI-CTC)",
+            "Formal cumulative neuropathy assessment (NCI-CTC)",
+        ),
     },
     {
         "cycle": 6,
         "action": "maintenance_discussion",
-        "description": "Discuss maintenance vs continuation vs oxaliplatin holiday",
+        "description": L(
+            "Diskusia o udržiavacej liečbe vs pokračovanie vs prestávka oxaliplatiny",
+            "Discuss maintenance vs continuation vs oxaliplatin holiday",
+        ),
     },
     {
         "cycle": 8,
         "action": "second_response_ct",
-        "description": "Second CT response evaluation",
+        "description": L(
+            "Druhé CT hodnotenie odpovede",
+            "Second CT response evaluation",
+        ),
     },
     {
         "cycle": 12,
         "action": "end_of_first_line",
-        "description": ("Evaluate 1L completion, maintenance strategy, 2L trial screening"),
+        "description": L(
+            "Hodnotenie ukončenia 1L, stratégia udržiavacej liečby, skríning 2L štúdií",
+            "Evaluate 1L completion, maintenance strategy, 2L trial screening",
+        ),
     },
 ]
 
 # Monitoring schedule (days relative to cycle start)
-MONITORING_SCHEDULE: dict[str, str] = {
-    "pre_cycle_labs": "Every 14 days (day 1 of each cycle)",
-    "tumor_markers": "Every 4-8 weeks (cycles 2, 4, 6...)",
-    "response_imaging": "Every 8 weeks after first assessment (cycles 4, 8, 12...)",
-    "neuropathy_grade": "Every cycle, formal assessment every 3 cycles",
-    "vte_check": "Every cycle: PLT + clinical DVT/PE assessment",
-    "ecog_assessment": "Every cycle",
-    "weight_nutrition": "Every cycle, flag if >5% loss from baseline",
-    "trial_screening": "Weekly (new trials published continuously)",
-    "research_scan": "Daily (PubMed, preprints relevant to case)",
+MONITORING_SCHEDULE: dict[str, dict] = {
+    "pre_cycle_labs": L(
+        "Každých 14 dní (deň 1 každého cyklu)", "Every 14 days (day 1 of each cycle)"
+    ),
+    "tumor_markers": L(
+        "Každé 4-8 týždňov (cykly 2, 4, 6...)", "Every 4-8 weeks (cycles 2, 4, 6...)"
+    ),
+    "response_imaging": L(
+        "Každých 8 týždňov po prvom hodnotení (cykly 4, 8, 12...)",
+        "Every 8 weeks after first assessment (cycles 4, 8, 12...)",
+    ),
+    "neuropathy_grade": L(
+        "Každý cyklus, formálne hodnotenie každé 3 cykly",
+        "Every cycle, formal assessment every 3 cycles",
+    ),
+    "vte_check": L(
+        "Každý cyklus: PLT + klinické DVT/PE hodnotenie",
+        "Every cycle: PLT + clinical DVT/PE assessment",
+    ),
+    "ecog_assessment": L("Každý cyklus", "Every cycle"),
+    "weight_nutrition": L(
+        "Každý cyklus, upozorniť pri >5% úbytku od východiskovej hodnoty",
+        "Every cycle, flag if >5% loss from baseline",
+    ),
+    "trial_screening": L(
+        "Týždenne (nové štúdie sa publikujú priebežne)",
+        "Weekly (new trials published continuously)",
+    ),
+    "research_scan": L(
+        "Denne (PubMed, preprinty relevantné pre prípad)",
+        "Daily (PubMed, preprints relevant to case)",
+    ),
 }
 
 # Watched clinical trials (specific to patient profile)
@@ -88,36 +153,45 @@ WATCHED_TRIALS: list[str] = [
 ]
 
 # 2L options ranking for KRAS G12S mCRC (ESMO/NCCN based)
-SECOND_LINE_OPTIONS: list[dict[str, str]] = [
+SECOND_LINE_OPTIONS: list[dict] = [
     {
         "regimen": "FOLFIRI +/- bevacizumab",
-        "evidence": "ESMO preferred 2L after oxaliplatin-based 1L",
-        "note": "If bev not used in 1L or beyond progression on bev",
+        "evidence": L(
+            "ESMO preferovaná 2L po oxaliplatine v 1L",
+            "ESMO preferred 2L after oxaliplatin-based 1L",
+        ),
+        "note": L(
+            "Ak bev nebol v 1L alebo po progresii na bev",
+            "If bev not used in 1L or beyond progression on bev",
+        ),
     },
     {
         "regimen": "FOLFIRI +/- aflibercept",
-        "evidence": "VELOUR trial",
-        "note": "Anti-VEGF option",
+        "evidence": L("Štúdia VELOUR", "VELOUR trial"),
+        "note": L("Anti-VEGF možnosť", "Anti-VEGF option"),
     },
     {
         "regimen": "FOLFIRI +/- ramucirumab",
-        "evidence": "RAISE trial",
-        "note": "Anti-VEGF option",
+        "evidence": L("Štúdia RAISE", "RAISE trial"),
+        "note": L("Anti-VEGF možnosť", "Anti-VEGF option"),
     },
     {
         "regimen": "Trifluridine/tipiracil (TAS-102)",
-        "evidence": "RECOURSE trial, 3L+",
-        "note": "Later line",
+        "evidence": L("Štúdia RECOURSE, 3L+", "RECOURSE trial, 3L+"),
+        "note": L("Neskoršia línia", "Later line"),
     },
     {
         "regimen": "Regorafenib",
-        "evidence": "CORRECT trial, 3L+",
-        "note": "Later line",
+        "evidence": L("Štúdia CORRECT, 3L+", "CORRECT trial, 3L+"),
+        "note": L("Neskoršia línia", "Later line"),
     },
     {
-        "regimen": "Clinical trial (pan-KRAS inhibitor)",
-        "evidence": "Experimental",
-        "note": "Screen actively for KRAS G12S-eligible trials",
+        "regimen": L("Klinická štúdia (pan-KRAS inhibítor)", "Clinical trial (pan-KRAS inhibitor)"),
+        "evidence": L("Experimentálna", "Experimental"),
+        "note": L(
+            "Aktívne vyhľadávať štúdie pre KRAS G12S",
+            "Screen actively for KRAS G12S-eligible trials",
+        ),
     },
 ]
 
@@ -140,16 +214,36 @@ CUMULATIVE_DOSE_THRESHOLDS: dict[str, dict] = {
         "unit": "mg/m²",
         "dose_per_cycle": 85,  # standard mFOLFOX6: 85 mg/m² q2w
         "thresholds": [
-            {"at": 400, "action": "Formal neuropathy assessment (NCI-CTC)", "severity": "warning"},
-            {"at": 550, "action": "Strongly consider oxaliplatin holiday", "severity": "warning"},
+            {
+                "at": 400,
+                "action": L(
+                    "Formálne hodnotenie neuropatie (NCI-CTC)",
+                    "Formal neuropathy assessment (NCI-CTC)",
+                ),
+                "severity": "warning",
+            },
+            {
+                "at": 550,
+                "action": L(
+                    "Dôrazne zvážiť prestávku oxaliplatiny",
+                    "Strongly consider oxaliplatin holiday",
+                ),
+                "severity": "warning",
+            },
             {
                 "at": 680,
-                "action": "High risk persistent neuropathy — discuss stop",
+                "action": L(
+                    "Vysoké riziko pretrvávajúcej neuropatie — diskusia o ukončení",
+                    "High risk persistent neuropathy — discuss stop",
+                ),
                 "severity": "critical",
             },
             {
                 "at": 850,
-                "action": "Maximum recommended — STOP oxaliplatin",
+                "action": L(
+                    "Maximum odporúčanej dávky — UKONČIŤ oxaliplatinu",
+                    "Maximum recommended — STOP oxaliplatin",
+                ),
                 "severity": "critical",
             },
         ],
@@ -157,68 +251,138 @@ CUMULATIVE_DOSE_THRESHOLDS: dict[str, dict] = {
 }
 
 # Cycle delay rules (ESMO/NCCN)
-CYCLE_DELAY_RULES: list[dict[str, str]] = [
-    {"condition": "ANC 1000–1499", "action": "Delay 7 days, recheck. G-CSF if recurrent."},
-    {"condition": "ANC < 1000", "action": "Delay until >= 1500. G-CSF mandatory."},
-    {"condition": "PLT 50000–74999", "action": "Delay 7 days. Check anticoagulation dose."},
-    {"condition": "PLT < 50000", "action": "Hold chemo + reduce Clexane. Hematology consult."},
-    {"condition": "ALT/AST 3–5x ULN", "action": "Delay 3–7 days. Evaluate hepatic progression."},
-    {"condition": "Creatinine 1.5–2x ULN", "action": "Delay 7 days. Hydration. Recheck."},
-    {"condition": "Diarrhea grade 2 unresolved", "action": "Delay until grade ≤ 1."},
+CYCLE_DELAY_RULES: list[dict] = [
     {
-        "condition": "Neuropathy grade 2 worsening",
-        "action": "Consider oxaliplatin dose reduction to 75%.",
+        "condition": "ANC 1000–1499",
+        "action": L(
+            "Odložiť 7 dní, kontrola. G-CSF pri opakovaní.",
+            "Delay 7 days, recheck. G-CSF if recurrent.",
+        ),
     },
     {
-        "condition": "Febrile neutropenia",
-        "action": "Hold until resolved + ANC ≥ 1500. G-CSF prophylaxis future cycles.",
+        "condition": "ANC < 1000",
+        "action": L("Odložiť do >= 1500. G-CSF povinne.", "Delay until >= 1500. G-CSF mandatory."),
+    },
+    {
+        "condition": "PLT 50000–74999",
+        "action": L(
+            "Odložiť 7 dní. Skontrolovať dávku antikoagulácie.",
+            "Delay 7 days. Check anticoagulation dose.",
+        ),
+    },
+    {
+        "condition": "PLT < 50000",
+        "action": L(
+            "Pozastaviť chemo + znížiť Clexane. Konzultácia hematológ.",
+            "Hold chemo + reduce Clexane. Hematology consult.",
+        ),
+    },
+    {
+        "condition": "ALT/AST 3–5x ULN",
+        "action": L(
+            "Odložiť 3–7 dní. Vyhodnotiť hepatálnu progresiu.",
+            "Delay 3–7 days. Evaluate hepatic progression.",
+        ),
+    },
+    {
+        "condition": L("Kreatinín 1,5–2x HHN", "Creatinine 1.5–2x ULN"),
+        "action": L("Odložiť 7 dní. Hydratácia. Kontrola.", "Delay 7 days. Hydration. Recheck."),
+    },
+    {
+        "condition": L("Hnačka stupeň 2 neústupujúca", "Diarrhea grade 2 unresolved"),
+        "action": L("Odložiť do stupňa ≤ 1.", "Delay until grade ≤ 1."),
+    },
+    {
+        "condition": L("Neuropatia stupeň 2 zhoršujúca sa", "Neuropathy grade 2 worsening"),
+        "action": L(
+            "Zvážiť zníženie dávky oxaliplatiny na 75%.",
+            "Consider oxaliplatin dose reduction to 75%.",
+        ),
+    },
+    {
+        "condition": L("Febrilná neutropénia", "Febrile neutropenia"),
+        "action": L(
+            "Pozastaviť do ústupu + ANC ≥ 1500. G-CSF profylaxia v ďalších cykloch.",
+            "Hold until resolved + ANC ≥ 1500. G-CSF prophylaxis future cycles.",
+        ),
     },
 ]
 
 # Nutrition escalation thresholds (weight loss from baseline)
 NUTRITION_ESCALATION: list[dict] = [
-    {"loss_pct": 5, "action": "Flag for nutritional assessment", "severity": "warning"},
+    {
+        "loss_pct": 5,
+        "action": L("Upozorniť na nutričné hodnotenie", "Flag for nutritional assessment"),
+        "severity": "warning",
+    },
     {
         "loss_pct": 7,
-        "action": "Dietitian referral — oral nutritional supplements",
+        "action": L(
+            "Odporúčanie k dietetičke — perorálne nutričné doplnky",
+            "Dietitian referral — oral nutritional supplements",
+        ),
         "severity": "warning",
     },
     {
         "loss_pct": 10,
-        "action": "Nutritional support team — consider enteral nutrition",
+        "action": L(
+            "Tím nutričnej podpory — zvážiť enterálnu výživu",
+            "Nutritional support team — consider enteral nutrition",
+        ),
         "severity": "critical",
     },
     {
         "loss_pct": 15,
-        "action": "Malnutrition alert — multidisciplinary assessment",
+        "action": L(
+            "Upozornenie na malnutríciu — multidisciplinárne hodnotenie",
+            "Malnutrition alert — multidisciplinary assessment",
+        ),
         "severity": "critical",
     },
 ]
 
 # Drug interaction safety flags
-SAFETY_FLAGS: dict[str, dict[str, str]] = {
+SAFETY_FLAGS: dict[str, dict] = {
     "anti_egfr_kras_mutant": {
-        "rule": "NEVER — permanently contraindicated",
+        "label": L("Anti-EGFR pri KRAS mutácii", "Anti-EGFR with KRAS mutation"),
+        "rule": L("NIKDY — trvalo kontraindikované", "NEVER — permanently contraindicated"),
         "source": "ESMO 2022",
     },
     "bevacizumab_active_vte": {
-        "rule": "HIGH RISK — requires explicit oncologist discussion",
+        "label": L("Bevacizumab pri aktívnej VTE", "Bevacizumab with active VTE"),
+        "rule": L(
+            "VYSOKÉ RIZIKO — vyžaduje výslovný súhlas onkológa",
+            "HIGH RISK — requires explicit oncologist discussion",
+        ),
         "source": "ASCO VTE 2023",
     },
     "oxaliplatin_grade3_neuropathy": {
-        "rule": "HOLD oxaliplatin, continue 5-FU/LV (de Gramont)",
+        "label": L("Oxaliplatina pri neuropatii st. 3", "Oxaliplatin with grade 3 neuropathy"),
+        "rule": L(
+            "POZASTAVIŤ oxaliplatinu, pokračovať 5-FU/LV (de Gramont)",
+            "HOLD oxaliplatin, continue 5-FU/LV (de Gramont)",
+        ),
         "source": "NCCN",
     },
     "checkpoint_mono_pmmr_mss": {
-        "rule": "NOT indicated as monotherapy",
+        "label": L("Checkpoint monoterapia pri pMMR/MSS", "Checkpoint monotherapy with pMMR/MSS"),
+        "rule": L("NIE JE indikovaná ako monoterapia", "NOT indicated as monotherapy"),
         "source": "ESMO 2022",
     },
     "lmwh_thrombocytopenia_50k": {
-        "rule": "FLAG — dose reduction or hold, hematology consult",
+        "label": L("LMWH pri trombocytopénii <50k", "LMWH with thrombocytopenia <50k"),
+        "rule": L(
+            "UPOZORNENIE — zníženie dávky alebo pozastavenie, konzultácia hematológ",
+            "FLAG — dose reduction or hold, hematology consult",
+        ),
         "source": "ASH 2021",
     },
     "5fu_dpd_deficiency": {
-        "rule": "TEST recommended — fatal toxicity risk",
+        "label": L("5-FU pri DPD deficiencii", "5-FU with DPD deficiency"),
+        "rule": L(
+            "TEST odporúčaný — riziko fatálnej toxicity",
+            "TEST recommended — fatal toxicity risk",
+        ),
         "source": "ESMO/CPIC",
     },
 }
@@ -286,9 +450,12 @@ def get_milestones_for_cycle(cycle: int) -> list[dict]:
     return [m for m in TREATMENT_MILESTONES if m["cycle"] == cycle or m["cycle"] == cycle + 1]
 
 
-def get_dose_modification(toxicity: str) -> str | None:
+def get_dose_modification(toxicity: str, lang: str = "en") -> str | None:
     """Look up dose modification rule for a toxicity key."""
-    return DOSE_MODIFICATION_RULES.get(toxicity)
+    value = DOSE_MODIFICATION_RULES.get(toxicity)
+    if value is None:
+        return None
+    return resolve(value, lang) if isinstance(value, dict) else value
 
 
 def format_pre_cycle_checklist(
@@ -302,3 +469,21 @@ def format_pre_cycle_checklist(
         milestones=milestones,
         questions=questions,
     )
+
+
+def resolve_protocol(lang: str = "sk") -> dict:
+    """Return all protocol data with bilingual values resolved to requested language."""
+    return {
+        "lab_thresholds": LAB_SAFETY_THRESHOLDS,
+        "reference_ranges": LAB_REFERENCE_RANGES,
+        "dose_modifications": resolve(DOSE_MODIFICATION_RULES, lang),
+        "milestones": resolve(TREATMENT_MILESTONES, lang),
+        "monitoring_schedule": resolve(MONITORING_SCHEDULE, lang),
+        "watched_trials": WATCHED_TRIALS,
+        "second_line_options": resolve(SECOND_LINE_OPTIONS, lang),
+        "cumulative_dose": resolve(CUMULATIVE_DOSE_THRESHOLDS, lang),
+        "cycle_delay_rules": resolve(CYCLE_DELAY_RULES, lang),
+        "nutrition_escalation": resolve(NUTRITION_ESCALATION, lang),
+        "safety_flags": resolve(SAFETY_FLAGS, lang),
+        "current_cycle": 2,
+    }

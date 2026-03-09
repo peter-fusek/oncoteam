@@ -149,7 +149,7 @@ async def test_api_weight_7pct_loss_gets_dietitian_referral(mock_list):
         ],
         [],
     ]
-    request = FakeRequest("GET")
+    request = FakeRequest("GET", query="lang=en")
     response = await api_weight(request)
     data = json.loads(response.body)
 
@@ -177,7 +177,7 @@ async def test_api_weight_10pct_loss_gets_enteral_nutrition(mock_list):
         ],
         [],
     ]
-    request = FakeRequest("GET")
+    request = FakeRequest("GET", query="lang=en")
     response = await api_weight(request)
     data = json.loads(response.body)
 

@@ -5,6 +5,7 @@ import re
 from datetime import date
 
 from . import oncofiles_client
+from .locale import L, resolve
 from .models import PatientProfile
 
 PATIENT = PatientProfile(
@@ -24,9 +25,9 @@ PATIENT = PatientProfile(
         "anti_EGFR_reason": "KRAS G12S mutation",
     },
     treatment_regimen="mFOLFOX6 90%",
-    hospitals=["NOU (Narodny onkologicky ustav)", "Bory Nemocnica"],
+    hospitals=["NOU (Národný onkologický ústav)", "Nemocnica Bory"],
     notes="Left-sided mCRC. 1L mFOLFOX6 90% dose. Active VJI thrombosis on Clexane.",
-    staging="IV (liver mets, peritoneal carcinomatosis, LN, Krukenberg tumor l.dx.)",
+    staging="IV",
     histology="Adenocarcinoma Grade 3",
     tumor_laterality="left-sided",
     metastases=[
@@ -44,13 +45,13 @@ PATIENT = PatientProfile(
     surgeries=[
         {
             "date": "2026-01-18",
-            "institution": "Bory Nemocnica",
+            "institution": "Nemocnica Bory",
             "type": "palliative resection",
             "result": "AdenoCa G3",
         }
     ],
-    treating_physician="MUDr. Stefan Porsok, PhD., MPH — primar OKO G, NOU Bratislava",
-    admitting_physician="MUDr. Natalia Pazderova — NOU Bratislava",
+    treating_physician="MUDr. Stefan Porsok, PhD., MPH — primár OKO G, NOU Bratislava",
+    admitting_physician="MUDr. Natália Pazderová — NOU Bratislava",
     baseline_weight_kg=72.0,
     current_cycle=2,
     ecog="unknown — verify",
@@ -62,6 +63,106 @@ PATIENT = PatientProfile(
         "KRAS G12C-specific (sotorasib, adagrasib)": "patient has G12S, not G12C",
     },
 )
+
+# ── Bilingual overlay for dashboard display ──────────────────────────────
+# Keys match PATIENT fields. Values are L(sk, en) bilingual dicts.
+# Fields not listed here are displayed as-is (e.g. name, diagnosis_code).
+
+_PATIENT_L10N: dict = {
+    "tumor_site": L("Sigmoideum (hrubé črevo)", "Sigmoid colon"),
+    "histology": L("Adenokarcinóm G3", "Adenocarcinoma Grade 3"),
+    "tumor_laterality": L("ľavostranný", "left-sided"),
+    "staging": L(
+        "IV (metastázy pečene, peritoneálna karcinomatóza, LU, Krukenbergov tumor l.dx.)",
+        "IV (liver mets, peritoneal carcinomatosis, LN, Krukenberg tumor l.dx.)",
+    ),
+    "ecog": L("neznámy — overiť", "unknown — verify"),
+    "notes": L(
+        "Ľavostranný mCRC. 1L mFOLFOX6 90% dávka. Aktívna VJI trombóza na Clexane.",
+        "Left-sided mCRC. 1L mFOLFOX6 90% dose. Active VJI thrombosis on Clexane.",
+    ),
+    "metastases": [
+        L("pečeň (C78.7)", "liver (C78.7)"),
+        L("pobrušnica (C78.6)", "peritoneum (C78.6)"),
+        L("retroperitoneum", "retroperitoneum"),
+        L("Krukenbergov tumor (vaječník l.dx., C79.6)", "Krukenberg (ovary l.dx., C79.6)"),
+        L("mediastinálne LU", "mediastinal LN"),
+        L("hilové LU", "hilar LN"),
+        L("retrokrurálne LU", "retrocrural LN"),
+        L("portálne LU (C77.8)", "portal LN (C77.8)"),
+        L("pľúcne uzlíky (<=5mm, sledovanie)", "pulmonary nodules (<=5mm, monitor)"),
+    ],
+    "comorbidities": [
+        L(
+            "VJI trombóza (aktívna, Clexane 0,6ml SC 2x/deň)",
+            "VJI thrombosis (active, Clexane 0.6ml SC 2x/day)",
+        ),
+    ],
+    "excluded_therapies": [
+        {
+            "therapy": L(
+                "anti-EGFR (cetuximab, panitumumab)", "anti-EGFR (cetuximab, panitumumab)"
+            ),
+            "reason": L("KRAS G12S mutácia", "KRAS G12S mutation"),
+        },
+        {
+            "therapy": L(
+                "checkpoint monoterapia (pembrolizumab, nivolumab)",
+                "checkpoint monotherapy (pembrolizumab, nivolumab)",
+            ),
+            "reason": L("pMMR/MSS", "pMMR/MSS"),
+        },
+        {
+            "therapy": L(
+                "HER2-cielená terapia (trastuzumab, pertuzumab)",
+                "HER2-targeted (trastuzumab, pertuzumab)",
+            ),
+            "reason": L("HER2 negatívny", "HER2 negative"),
+        },
+        {
+            "therapy": L("BRAF inhibítory (encorafenib)", "BRAF inhibitors (encorafenib)"),
+            "reason": L("BRAF wild-type", "BRAF wild-type"),
+        },
+        {
+            "therapy": L(
+                "KRAS G12C-špecifické (sotorasib, adagrasib)",
+                "KRAS G12C-specific (sotorasib, adagrasib)",
+            ),
+            "reason": L("pacient má G12S, nie G12C", "patient has G12S, not G12C"),
+        },
+    ],
+    "biomarker_annotations": {
+        "KRAS": L("Riadiaca mutácia liečby", "Treatment driver mutation"),
+        "MSI": L("Marker eligibility imunoterapie", "Immunotherapy eligibility marker"),
+    },
+    "surgeries": [
+        {
+            "date": "2026-01-18",
+            "institution": "Nemocnica Bory",
+            "type": L("paliatívna resekcia", "palliative resection"),
+            "result": "AdenoCa G3",
+        }
+    ],
+}
+
+
+def get_patient_localized(lang: str = "sk") -> dict:
+    """Return patient profile dict with bilingual fields resolved to requested language."""
+    data = PATIENT.model_dump()
+    # Convert date to ISO string
+    if data.get("diagnosis_date"):
+        data["diagnosis_date"] = str(data["diagnosis_date"])
+
+    # Overlay bilingual fields
+    for key, bilingual_value in _PATIENT_L10N.items():
+        if key == "biomarker_annotations":
+            # Special: this is extra data not in PATIENT model
+            data["biomarker_annotations"] = resolve(bilingual_value, lang)
+            continue
+        data[key] = resolve(bilingual_value, lang)
+
+    return data
+
 
 # Curated PubMed search terms for Erika's confirmed molecular profile
 RESEARCH_TERMS: list[str] = [

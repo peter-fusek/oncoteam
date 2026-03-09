@@ -15,7 +15,6 @@ from . import oncofiles_client
 from .activity_logger import get_session_id, get_suppressed_errors, record_suppressed_error
 from .clinical_protocol import (
     CUMULATIVE_DOSE_THRESHOLDS,
-    CYCLE_DELAY_RULES,
     DOSE_MODIFICATION_RULES,
     LAB_REFERENCE_RANGES,
     LAB_SAFETY_THRESHOLDS,
@@ -27,7 +26,8 @@ from .clinical_protocol import (
     WATCHED_TRIALS,
 )
 from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
-from .patient_context import PATIENT
+from .locale import L, get_lang, resolve
+from .patient_context import PATIENT, get_patient_localized
 
 VERSION = "0.9.0"
 
@@ -280,10 +280,8 @@ async def api_timeline(request: Request) -> JSONResponse:
 
 async def api_patient(request: Request) -> JSONResponse:
     """GET /api/patient — patient profile (static, no oncofiles call)."""
-    data = PATIENT.model_dump()
-    # Convert date objects to strings for JSON
-    if data.get("diagnosis_date"):
-        data["diagnosis_date"] = str(data["diagnosis_date"])
+    lang = get_lang(request)
+    data = get_patient_localized(lang)
     return _cors_json(data)
 
 
@@ -371,77 +369,91 @@ async def api_autonomous(request: Request) -> JSONResponse:
 
     if AUTONOMOUS_ENABLED:
         try:
-            # Try to get scheduler state from any running instance
+            lang = get_lang(request)
             # Jobs are registered at startup, we report their config
-            jobs = [
+            jobs_raw = [
                 {
                     "id": "pre_cycle_check",
-                    "schedule": "every 13 days",
-                    "description": "Pre-cycle FOLFOX safety check",
+                    "schedule": L("každých 13 dní", "every 13 days"),
+                    "description": L(
+                        "Kontrola bezpečnosti pred cyklom FOLFOX", "Pre-cycle FOLFOX safety check"
+                    ),
                 },
                 {
                     "id": "tumor_marker_review",
-                    "schedule": "every 4 weeks",
-                    "description": "CEA/CA 19-9 trend analysis",
+                    "schedule": L("každé 4 týždne", "every 4 weeks"),
+                    "description": L("Analýza trendu CEA/CA 19-9", "CEA/CA 19-9 trend analysis"),
                 },
                 {
                     "id": "response_assessment",
-                    "schedule": "every 8 weeks",
-                    "description": "RECIST response evaluation",
+                    "schedule": L("každých 8 týždňov", "every 8 weeks"),
+                    "description": L("Hodnotenie odpovede RECIST", "RECIST response evaluation"),
                 },
                 {
                     "id": "daily_research",
-                    "schedule": "daily 07:00 UTC",
-                    "description": "PubMed research scan",
+                    "schedule": L("denne 07:00 UTC", "daily 07:00 UTC"),
+                    "description": L("Prehľad výskumu PubMed", "PubMed research scan"),
                 },
                 {
                     "id": "trial_monitor",
-                    "schedule": "every 6 hours",
-                    "description": "Clinical trial monitoring",
+                    "schedule": L("každých 6 hodín", "every 6 hours"),
+                    "description": L(
+                        "Monitorovanie klinických štúdií", "Clinical trial monitoring"
+                    ),
                 },
                 {
                     "id": "file_scan",
-                    "schedule": "every 2 hours",
-                    "description": "New document scan",
+                    "schedule": L("každé 2 hodiny", "every 2 hours"),
+                    "description": L("Skenovanie nových dokumentov", "New document scan"),
                 },
                 {
                     "id": "weekly_briefing",
-                    "schedule": "Monday 06:00 UTC",
-                    "description": "Weekly physician briefing",
+                    "schedule": L("pondelok 06:00 UTC", "Monday 06:00 UTC"),
+                    "description": L("Týždenný briefing pre lekára", "Weekly physician briefing"),
                 },
                 {
                     "id": "mtb_preparation",
-                    "schedule": "Friday 14:00 UTC",
-                    "description": "Tumor board preparation",
+                    "schedule": L("piatok 14:00 UTC", "Friday 14:00 UTC"),
+                    "description": L("Príprava na tumor board", "Tumor board preparation"),
                 },
                 {
                     "id": "lab_sync",
-                    "schedule": "every 6 hours",
-                    "description": "Extract lab values from documents",
+                    "schedule": L("každých 6 hodín", "every 6 hours"),
+                    "description": L(
+                        "Extrakcia lab. hodnôt z dokumentov", "Extract lab values from documents"
+                    ),
                 },
                 {
                     "id": "toxicity_extraction",
-                    "schedule": "daily 08:00 UTC",
-                    "description": "Extract toxicity from visit reports",
+                    "schedule": L("denne 08:00 UTC", "daily 08:00 UTC"),
+                    "description": L(
+                        "Extrakcia toxicity zo správ z vyšetrení",
+                        "Extract toxicity from visit reports",
+                    ),
                 },
                 {
                     "id": "weight_extraction",
-                    "schedule": "daily 09:00 UTC",
-                    "description": "Extract weight/BMI from visit notes",
+                    "schedule": L("denne 09:00 UTC", "daily 09:00 UTC"),
+                    "description": L(
+                        "Extrakcia hmotnosti/BMI zo správ", "Extract weight/BMI from visit notes"
+                    ),
                 },
                 {
                     "id": "family_update",
-                    "schedule": "Sunday 18:00 UTC",
-                    "description": "Weekly family update in Slovak",
+                    "schedule": L("nedeľa 18:00 UTC", "Sunday 18:00 UTC"),
+                    "description": L("Týždenná správa pre rodinu", "Weekly family update"),
                 },
                 {
                     "id": "medication_adherence_check",
-                    "schedule": "daily 20:00 UTC",
-                    "description": "Check daily medication adherence (Clexane critical)",
+                    "schedule": L("denne 20:00 UTC", "daily 20:00 UTC"),
+                    "description": L(
+                        "Kontrola dennej adherencie liekov (Clexane kritický)",
+                        "Check daily medication adherence (Clexane critical)",
+                    ),
                 },
             ]
-            data["jobs"] = jobs
-            data["job_count"] = len(jobs)
+            data["jobs"] = resolve(jobs_raw, lang)
+            data["job_count"] = len(jobs_raw)
         except Exception:
             data["jobs"] = []
             data["job_count"] = 0
@@ -451,19 +463,10 @@ async def api_autonomous(request: Request) -> JSONResponse:
 
 async def api_protocol(request: Request) -> JSONResponse:
     """GET /api/protocol — clinical protocol data (thresholds, milestones, dose mods)."""
-    return _cors_json(
-        {
-            "lab_thresholds": LAB_SAFETY_THRESHOLDS,
-            "dose_modifications": DOSE_MODIFICATION_RULES,
-            "milestones": TREATMENT_MILESTONES,
-            "monitoring_schedule": MONITORING_SCHEDULE,
-            "safety_flags": SAFETY_FLAGS,
-            "second_line_options": SECOND_LINE_OPTIONS,
-            "watched_trials": WATCHED_TRIALS,
-            "cycle_delay_rules": CYCLE_DELAY_RULES,
-            "current_cycle": PATIENT.current_cycle,
-        }
-    )
+    from .clinical_protocol import resolve_protocol
+
+    lang = get_lang(request)
+    return _cors_json(resolve_protocol(lang))
 
 
 async def api_briefings(request: Request) -> JSONResponse:
@@ -852,31 +855,36 @@ async def api_diagnostics(request: Request) -> JSONResponse:
 _DEFAULT_MEDICATIONS = [
     {
         "name": "Clexane",
-        "dose": "0.6ml SC",
-        "frequency": "2x/day",
+        "dose": "0,6ml SC",
+        "frequency": L("2x/deň", "2x/day"),
         "active": True,
-        "notes": "Anticoagulant — critical, active VJI thrombosis",
+        "notes": L(
+            "Antikoagulant — kritický, aktívna VJI trombóza",
+            "Anticoagulant — critical, active VJI thrombosis",
+        ),
     },
     {
         "name": "Ondansetron",
         "dose": "8mg",
-        "frequency": "as needed",
+        "frequency": L("podľa potreby", "as needed"),
         "active": True,
-        "notes": "Anti-emetic",
+        "notes": L("Antiemetikum", "Anti-emetic"),
     },
     {
         "name": "Dexamethasone",
-        "dose": "per protocol",
-        "frequency": "with chemo",
+        "dose": L("podľa protokolu", "per protocol"),
+        "frequency": L("s chemoterapiou", "with chemo"),
         "active": True,
-        "notes": "Anti-emetic, given with chemotherapy",
+        "notes": L(
+            "Antiemetikum, podávané s chemoterapiou", "Anti-emetic, given with chemotherapy"
+        ),
     },
     {
         "name": "Aprepitant",
         "dose": "125/80mg",
-        "frequency": "D1-3 of cycle",
+        "frequency": L("D1-3 cyklu", "D1-3 of cycle"),
         "active": True,
-        "notes": "Anti-emetic, days 1-3 of each cycle",
+        "notes": L("Antiemetikum, dni 1-3 každého cyklu", "Anti-emetic, days 1-3 of each cycle"),
     },
 ]
 
@@ -991,10 +999,11 @@ async def api_medications(request: Request) -> JSONResponse:
                     missed.append({"date": date, "medication": med_name})
         compliance_pct = round((taken_count / total_checks) * 100, 1) if total_checks > 0 else None
 
+        lang = get_lang(request)
         return _cors_json(
             {
                 "medications": medications,
-                "default_medications": _DEFAULT_MEDICATIONS,
+                "default_medications": resolve(_DEFAULT_MEDICATIONS, lang),
                 "adherence": {
                     "last_7_days": last_7_days,
                     "compliance_pct": compliance_pct,
@@ -1005,11 +1014,12 @@ async def api_medications(request: Request) -> JSONResponse:
         )
     except Exception as e:
         record_suppressed_error("api_medications", "fetch", e)
+        lang = get_lang(request)
         return _cors_json(
             {
                 "error": str(e),
                 "medications": [],
-                "default_medications": _DEFAULT_MEDICATIONS,
+                "default_medications": resolve(_DEFAULT_MEDICATIONS, lang),
                 "adherence": {"last_7_days": [], "compliance_pct": None, "missed": []},
                 "total": 0,
             },
@@ -1087,9 +1097,10 @@ async def api_weight(request: Request) -> JSONResponse:
                 # Find the matching nutrition escalation action
                 escalation_action = None
                 escalation_severity = "warning"
+                lang = get_lang(request)
                 for rule in reversed(NUTRITION_ESCALATION):
                     if loss_pct >= rule["loss_pct"]:
-                        escalation_action = rule["action"]
+                        escalation_action = resolve(rule["action"], lang)
                         escalation_severity = rule["severity"]
                         break
                 alerts.append(
@@ -1103,17 +1114,19 @@ async def api_weight(request: Request) -> JSONResponse:
                     }
                 )
 
+        lang = get_lang(request)
         return _cors_json(
             {
                 "entries": entries,
                 "baseline_weight_kg": baseline,
                 "total": len(entries),
                 "alerts": alerts,
-                "nutrition_escalation": NUTRITION_ESCALATION,
+                "nutrition_escalation": resolve(NUTRITION_ESCALATION, lang),
             }
         )
     except Exception as e:
         record_suppressed_error("api_weight", "fetch", e)
+        lang = get_lang(request)
         return _cors_json(
             {
                 "error": str(e),
@@ -1121,7 +1134,7 @@ async def api_weight(request: Request) -> JSONResponse:
                 "baseline_weight_kg": baseline,
                 "total": 0,
                 "alerts": [],
-                "nutrition_escalation": NUTRITION_ESCALATION,
+                "nutrition_escalation": resolve(NUTRITION_ESCALATION, lang),
             },
             status_code=502,
         )
@@ -1334,11 +1347,14 @@ async def api_family_update(request: Request) -> JSONResponse:
                             )
             weight_data = weight_info
 
-            # Get milestones
+            # Get milestones (resolve bilingual descriptions)
             from .clinical_protocol import TREATMENT_MILESTONES
 
             cycle = PATIENT.current_cycle or 2
-            milestones = [m for m in TREATMENT_MILESTONES if m.get("cycle", 0) >= cycle]
+            milestones = resolve(
+                [m for m in TREATMENT_MILESTONES if m.get("cycle", 0) >= cycle],
+                post_lang,
+            )
 
             content = _translate_for_family(
                 labs=labs_data,
