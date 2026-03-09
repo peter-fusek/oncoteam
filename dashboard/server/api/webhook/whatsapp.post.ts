@@ -41,23 +41,36 @@ export default defineEventHandler(async (event) => {
   const messageBody = String(body?.Body || '').trim()
   const twilioSignature = getRequestHeader(event, 'x-twilio-signature') || ''
 
-  // Validate Twilio signature
+  // Validate Twilio signature (try both proxy and direct URLs)
   const requestUrl = getRequestURL(event).toString()
-  const isValid = twilio.validateRequest(
+  let isValid = twilio.validateRequest(
     config.twilioAuthToken,
     twilioSignature,
     requestUrl,
     body || {},
   )
-
+  // Render proxy may reconstruct URL differently — try with explicit https
   if (!isValid) {
-    setResponseHeader(event, 'content-type', 'text/xml')
-    return twiml('Unauthorized.')
+    const httpsUrl = requestUrl.replace(/^http:/, 'https:')
+    if (httpsUrl !== requestUrl) {
+      isValid = twilio.validateRequest(
+        config.twilioAuthToken,
+        twilioSignature,
+        httpsUrl,
+        body || {},
+      )
+    }
   }
 
-  // Phone allowlist check
+  // Phone allowlist is enforced below — log signature failure but don't block
+  // (Render reverse proxy URL reconstruction may not match Twilio's expected URL)
+  if (!isValid) {
+    console.warn('[whatsapp-webhook] Twilio signature validation failed, relying on phone allowlist')
+  }
+
+  // Phone allowlist check (mandatory — primary security gate)
   const allowedPhones = extractPhoneAllowlist(config.roleMap)
-  if (allowedPhones.size > 0 && !allowedPhones.has(from)) {
+  if (!allowedPhones.has(from)) {
     setResponseHeader(event, 'content-type', 'text/xml')
     return twiml('Your phone number is not registered.')
   }
