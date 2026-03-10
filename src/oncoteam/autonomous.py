@@ -285,6 +285,24 @@ async def _persist_daily_cost() -> None:
         logger.debug("Failed to persist daily cost: %s", e)
 
 
+async def _persist_mtd_cost(task_cost: float) -> None:
+    """Accumulate month-to-date cost in oncofiles agent_state."""
+    now = datetime.now(UTC)
+    month_key = now.strftime("%Y-%m")
+    try:
+        state = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
+        if isinstance(state, dict) and state.get("month") == month_key:
+            prev = float(state.get("cost_usd", 0.0))
+        else:
+            prev = 0.0
+        await oncofiles_client.set_agent_state(
+            "autonomous_mtd_cost",
+            {"month": month_key, "cost_usd": round(prev + task_cost, 4)},
+        )
+    except Exception as e:
+        logger.debug("Failed to persist MTD cost: %s", e)
+
+
 async def _restore_daily_cost() -> None:
     """Restore daily cost from oncofiles on startup / after cold start."""
     global _daily_cost, _daily_cost_reset_date
@@ -320,6 +338,73 @@ async def _notify_cost_cap_reached() -> None:
         logger.warning("Cost cap alert stored: $%.2f / $%.2f", _daily_cost, AUTONOMOUS_COST_LIMIT)
     except Exception as e:
         logger.error("Failed to store cost alert: %s", e)
+
+
+async def _check_budget_alert(task_cost: float) -> None:
+    """Check if remaining Anthropic credit is below threshold and alert."""
+    from .config import ANTHROPIC_BUDGET_ALERT_THRESHOLD, ANTHROPIC_CREDIT_BALANCE
+
+    now = datetime.now(UTC)
+    month_key = now.strftime("%Y-%m")
+
+    # Get MTD spend
+    mtd_spend = 0.0
+    try:
+        state = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
+        if isinstance(state, dict) and state.get("month") == month_key:
+            mtd_spend = float(state.get("cost_usd", 0.0))
+    except Exception:
+        return
+
+    remaining = ANTHROPIC_CREDIT_BALANCE - mtd_spend
+    if remaining > ANTHROPIC_BUDGET_ALERT_THRESHOLD:
+        return
+
+    # Check if we already sent an alert this month
+    try:
+        alert_state = await oncofiles_client.get_agent_state(
+            "budget_alert_sent"
+        )
+        if (
+            isinstance(alert_state, dict)
+            and alert_state.get("month") == month_key
+        ):
+            return  # Already alerted this month
+    except Exception:
+        pass
+
+    # Store budget alert
+    days_left = (
+        round(remaining / (mtd_spend / now.day), 1)
+        if mtd_spend > 0 and now.day > 0
+        else 0
+    )
+    try:
+        await log_to_diary(
+            title=(
+                f"Budget low — ${remaining:.2f} remaining"
+                f" (~{days_left} days)"
+            ),
+            content=(
+                f"## Anthropic API Budget Alert\n\n"
+                f"**Remaining credit**: ${remaining:.2f}\n"
+                f"**MTD spend**: ${mtd_spend:.2f}\n"
+                f"**Alert threshold**: ${ANTHROPIC_BUDGET_ALERT_THRESHOLD:.2f}\n"
+                f"**Estimated days remaining**: {days_left}\n\n"
+                f"Please top up Anthropic credits to avoid service interruption.\n"
+                f"Current balance: ${ANTHROPIC_CREDIT_BALANCE:.2f}\n"
+            ),
+            entry_type="cost_alert",
+            tags=["cost_alert", "budget_low", f"month:{month_key}"],
+        )
+        await oncofiles_client.set_agent_state(
+            "budget_alert_sent", {"month": month_key, "remaining": remaining}
+        )
+        logger.warning(
+            "Budget low alert stored: $%.2f remaining", remaining
+        )
+    except Exception as e:
+        logger.error("Failed to store budget alert: %s", e)
 
 
 async def run_autonomous_task(
@@ -426,6 +511,8 @@ async def run_autonomous_task(
 
     # Persist cost after every task completion
     await _persist_daily_cost()
+    await _persist_mtd_cost(result["cost"])
+    await _check_budget_alert(result["cost"])
 
     logger.info(
         "Task %s completed: %d tool calls, %d input tokens, %d output tokens, $%.4f",

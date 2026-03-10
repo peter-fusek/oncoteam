@@ -55,6 +55,13 @@
     "nextRun": "Ďalšie spustenie",
     "lastRun": "Posledné spustenie",
     "noTasks": "Žiadne autonómne úlohy",
+    "budgetLow": "Nízky rozpočet",
+    "todaySpend": "Dnes",
+    "mtdSpend": "Mesiac",
+    "expectedEom": "Odhad EOM",
+    "remainingCredit": "Zostatok",
+    "capOf": "limit ${cap}",
+    "projected": "prognóza",
     "streak": "séria",
     "level": "Úroveň",
     "rooms": {

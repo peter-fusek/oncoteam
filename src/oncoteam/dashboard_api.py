@@ -25,7 +25,13 @@ from .clinical_protocol import (
     TREATMENT_MILESTONES,
     WATCHED_TRIALS,
 )
-from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
+from .config import (
+    ANTHROPIC_BUDGET_ALERT_THRESHOLD,
+    ANTHROPIC_CREDIT_BALANCE,
+    AUTONOMOUS_COST_LIMIT,
+    AUTONOMOUS_ENABLED,
+    ONCOFILES_MCP_URL,
+)
 from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, get_patient_localized
 
@@ -472,6 +478,66 @@ async def api_autonomous(request: Request) -> JSONResponse:
             data["job_count"] = 0
 
     return _cors_json(data)
+
+
+async def api_autonomous_cost(request: Request) -> JSONResponse:
+    """GET /api/autonomous/cost — budget overview for dashboard widget.
+
+    Returns MTD spend, daily spend, expected EOM bill, remaining credit,
+    daily cap, and budget alert status. Visible to all roles.
+    """
+    from calendar import monthrange
+    from datetime import UTC, datetime
+
+    from .autonomous import get_daily_cost
+
+    now = datetime.now(UTC)
+    days_in_month = monthrange(now.year, now.month)[1]
+    day_of_month = now.day
+
+    # Today's spend (from in-memory accumulator, restored from DB on cold start)
+    today_spend = round(get_daily_cost(), 4)
+
+    # Fetch MTD spend from oncofiles agent_state
+    mtd_spend = today_spend
+    try:
+        state = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
+        if isinstance(state, dict) and state.get("month") == now.strftime("%Y-%m"):
+            mtd_spend = round(
+                float(state.get("cost_usd", 0.0)) + today_spend, 4
+            )
+    except Exception:
+        pass
+
+    # Project EOM spend (linear extrapolation)
+    if day_of_month > 0:
+        daily_avg = mtd_spend / day_of_month
+        expected_eom = round(daily_avg * days_in_month, 2)
+    else:
+        daily_avg = 0.0
+        expected_eom = 0.0
+
+    remaining_credit = round(ANTHROPIC_CREDIT_BALANCE - mtd_spend, 2)
+    days_remaining = (
+        round(remaining_credit / daily_avg, 1) if daily_avg > 0 else 999
+    )
+
+    budget_alert = remaining_credit <= ANTHROPIC_BUDGET_ALERT_THRESHOLD
+
+    return _cors_json({
+        "today_spend": today_spend,
+        "daily_cap": AUTONOMOUS_COST_LIMIT,
+        "mtd_spend": round(mtd_spend, 2),
+        "expected_eom": expected_eom,
+        "remaining_credit": max(remaining_credit, 0),
+        "total_credit": ANTHROPIC_CREDIT_BALANCE,
+        "days_remaining": days_remaining,
+        "budget_alert": budget_alert,
+        "alert_threshold": ANTHROPIC_BUDGET_ALERT_THRESHOLD,
+        "month": now.strftime("%Y-%m"),
+        "day_of_month": day_of_month,
+        "days_in_month": days_in_month,
+    })
 
 
 async def api_protocol(request: Request) -> JSONResponse:

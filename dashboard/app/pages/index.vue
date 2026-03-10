@@ -32,6 +32,12 @@ const { data: autonomous, refresh: refreshAutonomous } = await fetchApi<{
   jobs?: Array<{ id: string; schedule: string; description: string; assigned_tool?: string }>
 }>('/autonomous')
 
+const { data: costData, refresh: refreshCost } = await fetchApi<{
+  today_spend: number; daily_cap: number; mtd_spend: number
+  expected_eom: number; remaining_credit: number; total_credit: number
+  days_remaining: number; budget_alert: boolean; month: string
+}>('/autonomous/cost')
+
 const { data: gamification, refresh: refreshGamification } = useFetch<{
   totalXp: number; level: string; streakDays: number
 }>('/api/gamification')
@@ -294,7 +300,7 @@ const roomJobs = computed(() => {
 // ── Refresh ──────────────────────────────────────
 
 async function refreshAll() {
-  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshGamification(), refreshLabs()])
+  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshCost(), refreshGamification(), refreshLabs()])
 }
 
 const refreshInterval = ref<ReturnType<typeof setInterval>>()
@@ -334,16 +340,42 @@ onUnmounted(() => {
     <!-- Emergency Alerts -->
     <EmergencyAlert v-if="recentAlerts.length" :alerts="recentAlerts" />
 
-    <!-- Autonomous Status Bar -->
-    <div v-if="autonomous?.enabled && currentLevel === 0" class="rounded-xl border border-gray-800 bg-gray-900/50 p-3 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-bot" class="text-teal-500 w-4 h-4" />
-        <span class="text-sm font-medium text-white">{{ $t('agents.autonomous') }}</span>
-        <UBadge color="success" variant="subtle" size="xs">{{ $t('common.active') }}</UBadge>
+    <!-- Autonomous Status + Budget Widget -->
+    <div v-if="autonomous?.enabled && currentLevel === 0" class="rounded-xl border bg-gray-900/50 p-4 space-y-3" :class="costData?.budget_alert ? 'border-amber-600/50' : 'border-gray-800'">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-lucide-bot" class="text-teal-500 w-4 h-4" />
+          <span class="text-sm font-medium text-white">{{ $t('agents.autonomous') }}</span>
+          <UBadge color="success" variant="subtle" size="xs">{{ $t('common.active') }}</UBadge>
+        </div>
+        <UBadge v-if="costData?.budget_alert" color="warning" variant="subtle" size="xs">
+          <UIcon name="i-lucide-alert-triangle" class="w-3 h-3 mr-1" />
+          {{ $t('agents.budgetLow') }}
+        </UBadge>
       </div>
-      <span v-if="autonomous.daily_cost > 0" class="text-xs text-gray-400">
-        {{ $t('agents.costToday', { cost: autonomous.daily_cost.toFixed(4) }) }}
-      </span>
+      <!-- Budget stats row -->
+      <div v-if="costData" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="text-center">
+          <div class="text-xs text-gray-500">{{ $t('agents.todaySpend') }}</div>
+          <div class="text-sm font-mono text-white">${{ costData.today_spend.toFixed(2) }}</div>
+          <div class="text-[10px] text-gray-600">{{ $t('agents.capOf', { cap: costData.daily_cap.toFixed(0) }) }}</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-500">{{ $t('agents.mtdSpend') }}</div>
+          <div class="text-sm font-mono text-white">${{ costData.mtd_spend.toFixed(2) }}</div>
+          <div class="text-[10px] text-gray-600">{{ costData.month }}</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-500">{{ $t('agents.expectedEom') }}</div>
+          <div class="text-sm font-mono text-white">${{ costData.expected_eom.toFixed(2) }}</div>
+          <div class="text-[10px] text-gray-600">{{ $t('agents.projected') }}</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-500">{{ $t('agents.remainingCredit') }}</div>
+          <div class="text-sm font-mono" :class="costData.budget_alert ? 'text-amber-400' : 'text-emerald-400'">${{ costData.remaining_credit.toFixed(2) }}</div>
+          <div class="text-[10px] text-gray-600">~{{ costData.days_remaining }}d</div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══════════════ LEVEL 0: Room Grid ═══════════════ -->

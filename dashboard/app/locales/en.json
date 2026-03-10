@@ -55,6 +55,13 @@
     "nextRun": "Next run",
     "lastRun": "Last run",
     "noTasks": "No autonomous tasks configured",
+    "budgetLow": "Budget Low",
+    "todaySpend": "Today",
+    "mtdSpend": "MTD Spend",
+    "expectedEom": "Expected EOM",
+    "remainingCredit": "Remaining",
+    "capOf": "cap ${cap}",
+    "projected": "projected",
     "streak": "streak",
     "level": "Level",
     "rooms": {

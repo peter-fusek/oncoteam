@@ -39,3 +39,9 @@ AUTONOMOUS_ENABLED: bool = os.environ.get("AUTONOMOUS_ENABLED", "").lower() in (
 )
 AUTONOMOUS_MODEL: str = os.environ.get("AUTONOMOUS_MODEL", "claude-sonnet-4-6")
 AUTONOMOUS_COST_LIMIT: float = float(os.environ.get("AUTONOMOUS_COST_LIMIT", "5.0"))
+
+# Anthropic API credit balance (set in Railway env, updated manually or via billing API)
+ANTHROPIC_CREDIT_BALANCE: float = float(os.environ.get("ANTHROPIC_CREDIT_BALANCE", "33.58"))
+ANTHROPIC_BUDGET_ALERT_THRESHOLD: float = float(
+    os.environ.get("ANTHROPIC_BUDGET_ALERT_THRESHOLD", "15.0")
+)
