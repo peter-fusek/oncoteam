@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 
@@ -12,6 +13,25 @@ from .clinical_protocol import WATCHED_TRIALS, format_pre_cycle_checklist, get_m
 from .patient_context import PATIENT, RESEARCH_TERMS
 
 logger = logging.getLogger("oncoteam.autonomous_tasks")
+
+
+def _extract_timestamp(state: dict | None) -> str:
+    """Safely extract timestamp from agent_state, handling all return formats."""
+    if not isinstance(state, dict):
+        return ""
+    # Flat format: {"timestamp": "..."}
+    if "timestamp" in state:
+        return state["timestamp"]
+    # Nested format: {"value": '{"timestamp": "..."}' or {"timestamp": "..."}}
+    raw = state.get("value")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return ""
+    if isinstance(raw, dict):
+        return raw.get("timestamp", "")
+    return ""
 
 # ── State helpers ──────────────────────────────
 
@@ -194,7 +214,7 @@ Search terms: "KRAS mutant colorectal cancer", "pan-KRAS inhibitor", "MSS colore
 async def run_file_scan() -> dict:
     """Scan oncofiles for new document uploads."""
     state = await _get_state("last_file_scan")
-    last_scan = state.get("value", {}).get("timestamp", "") if isinstance(state, dict) else ""
+    last_scan = _extract_timestamp(state)
 
     prompt = f"""\
 Scan for new document uploads since last check ({last_scan or "first run"}).
