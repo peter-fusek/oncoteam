@@ -5,9 +5,24 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from .config import AUTONOMOUS_ENABLED
+import httpx
+
+from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
 
 logger = logging.getLogger("oncoteam.scheduler")
+
+
+async def _keepalive_ping():
+    """Ping oncofiles /health to prevent Railway cold start."""
+    # Derive health URL from MCP URL (e.g. .../mcp -> .../health)
+    base = ONCOFILES_MCP_URL.rsplit("/", 1)[0] if "/" in ONCOFILES_MCP_URL else ONCOFILES_MCP_URL
+    health_url = f"{base}/health"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(health_url)
+            logger.debug("Keep-alive ping %s -> %d", health_url, resp.status_code)
+    except Exception as e:
+        logger.debug("Keep-alive ping failed: %s", e)
 
 
 def _create_scheduler():
@@ -33,6 +48,9 @@ def _create_scheduler():
     )
 
     scheduler = AsyncIOScheduler()
+
+    # === Keep-alive: prevent oncofiles Railway cold start ===
+    scheduler.add_job(_keepalive_ping, IntervalTrigger(minutes=5), id="keepalive_ping")
 
     # === Clinical protocol schedule ===
 

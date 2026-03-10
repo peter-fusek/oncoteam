@@ -22,9 +22,10 @@ class TestSchedulerLifespan:
             async with autonomous_lifespan(None) as ctx:
                 scheduler = ctx["scheduler"]
                 jobs = scheduler.get_jobs()
-                assert len(jobs) == 13
+                assert len(jobs) == 14  # 13 tasks + 1 keepalive ping
 
                 job_ids = {j.id for j in jobs}
+                assert "keepalive_ping" in job_ids
                 assert "pre_cycle_check" in job_ids
                 assert "daily_research" in job_ids
                 assert "trial_monitor" in job_ids

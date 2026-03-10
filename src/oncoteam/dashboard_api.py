@@ -1480,7 +1480,7 @@ async def api_family_update(request: Request) -> JSONResponse:
                     title=title,
                     content=content,
                     entry_type="family_update",
-                    tags=[f"lang:{post_lang}"],
+                    tags=f"lang:{post_lang}",
                 )
             except Exception as store_err:
                 record_suppressed_error("api_family_update", "store", store_err)

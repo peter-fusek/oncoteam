@@ -314,10 +314,10 @@ async def run_autonomous_task(
         try:
             response = await client.messages.create(
                 model=AUTONOMOUS_MODEL,
-                max_tokens=8000,
+                max_tokens=16000,
                 thinking={
                     "type": "enabled",
-                    "budget_tokens": 8000,
+                    "budget_tokens": 10000,
                 },
                 system=AUTONOMOUS_SYSTEM_PROMPT,
                 tools=TOOLS,
