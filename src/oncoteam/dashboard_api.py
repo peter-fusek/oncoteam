@@ -29,7 +29,7 @@ from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
 from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, get_patient_localized
 
-VERSION = "0.9.0"
+VERSION = "0.11.0"
 
 # Patterns that identify test/E2E data created by automated tests
 _TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test ", "testovacia")
