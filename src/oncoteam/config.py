@@ -38,4 +38,4 @@ AUTONOMOUS_ENABLED: bool = os.environ.get("AUTONOMOUS_ENABLED", "").lower() in (
     "yes",
 )
 AUTONOMOUS_MODEL: str = os.environ.get("AUTONOMOUS_MODEL", "claude-sonnet-4-6")
-AUTONOMOUS_COST_LIMIT: float = float(os.environ.get("AUTONOMOUS_COST_LIMIT", "1.0"))
+AUTONOMOUS_COST_LIMIT: float = float(os.environ.get("AUTONOMOUS_COST_LIMIT", "5.0"))

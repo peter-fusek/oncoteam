@@ -1,11 +1,30 @@
 from __future__ import annotations
 
+import asyncio
+import time
 import xml.etree.ElementTree as ET
 
 import httpx
 
 from .config import NCBI_API_KEY, NCBI_BASE_URL
 from .models import PubMedArticle
+
+# Rate limiter: NCBI allows 3 req/s without API key, 10 req/s with key
+_RATE_LIMIT = 10 if NCBI_API_KEY else 3
+_MIN_INTERVAL = 1.0 / _RATE_LIMIT
+_last_request_time: float = 0.0
+_rate_lock = asyncio.Lock()
+
+
+async def _rate_limit():
+    """Enforce minimum interval between NCBI requests."""
+    global _last_request_time
+    async with _rate_lock:
+        now = time.monotonic()
+        wait = _MIN_INTERVAL - (now - _last_request_time)
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _last_request_time = time.monotonic()
 
 
 def _base_params() -> dict:
@@ -18,6 +37,7 @@ def _base_params() -> dict:
 async def fetch_article(pmid: str) -> PubMedArticle | None:
     """Fetch a single PubMed article by PMID via efetch."""
     async with httpx.AsyncClient(timeout=30) as client:
+        await _rate_limit()
         params = {**_base_params(), "db": "pubmed", "id": pmid}
         resp = await client.get(f"{NCBI_BASE_URL}/efetch.fcgi", params=params)
         resp.raise_for_status()
@@ -29,6 +49,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> list[PubMedArticle
     """Search PubMed via E-utilities: esearch → efetch → parse."""
     async with httpx.AsyncClient(timeout=30) as client:
         # Step 1: esearch to get PMIDs
+        await _rate_limit()
         params = {**_base_params(), "db": "pubmed", "term": query, "retmax": max_results}
         resp = await client.get(f"{NCBI_BASE_URL}/esearch.fcgi", params=params)
         resp.raise_for_status()
@@ -38,6 +59,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> list[PubMedArticle
             return []
 
         # Step 2: efetch to get article details
+        await _rate_limit()
         params = {**_base_params(), "db": "pubmed", "id": ",".join(pmids)}
         resp = await client.get(f"{NCBI_BASE_URL}/efetch.fcgi", params=params)
         resp.raise_for_status()
