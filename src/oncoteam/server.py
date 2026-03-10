@@ -16,6 +16,7 @@ from .activity_logger import (
 )
 from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .dashboard_api import (
+    VERSION,
     api_activity,
     api_autonomous,
     api_briefings,
@@ -776,7 +777,7 @@ async def create_improvement_issue(
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": "0.9.0"})
+    return JSONResponse({"status": "ok", "server": "oncoteam", "version": VERSION})
 
 
 # ── Dashboard API routes ────────────────────────
