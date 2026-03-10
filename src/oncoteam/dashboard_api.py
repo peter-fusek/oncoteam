@@ -396,12 +396,15 @@ async def api_autonomous(request: Request) -> JSONResponse:
                 }
                 _logger.info("Trigger %s completed: %s", trigger, _last_trigger_result)
             except Exception as e:
+                import traceback
+
                 _last_trigger_result = {
                     "task": trigger,
                     "status": "failed",
                     "error": str(e),
+                    "traceback": traceback.format_exc(),
                 }
-                _logger.error("Trigger %s failed: %s", trigger, e)
+                _logger.error("Trigger %s failed: %s", trigger, e, exc_info=True)
 
         asyncio.create_task(_run_with_capture())
         return _cors_json({"triggered": trigger, "status": "started"})
