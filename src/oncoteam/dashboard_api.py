@@ -860,6 +860,14 @@ async def api_detail(request: Request) -> JSONResponse:
             if gdrive_id:
                 source["gdrive_file_id"] = gdrive_id
                 source["gdrive_url"] = f"https://drive.google.com/file/d/{gdrive_id}/view"
+            # Fetch full content if file_id is available
+            file_id = data.get("file_id")
+            if file_id:
+                try:
+                    content = await oncofiles_client.view_document(file_id)
+                    data["content"] = content
+                except Exception:
+                    pass  # Content fetch failed — metadata still available
 
         elif detail_type == "biomarker":
             # Static from patient context
