@@ -579,14 +579,26 @@ async def api_protocol_cycles(request: Request) -> JSONResponse:
 
 
 async def api_briefings(request: Request) -> JSONResponse:
-    """GET /api/briefings — autonomous briefings from oncofiles diary."""
+    """GET /api/briefings — autonomous briefings + cost alerts from oncofiles diary."""
     limit = int(request.query_params.get("limit", "20"))
     try:
-        result = await oncofiles_client.search_conversations(
-            entry_type="autonomous_briefing",
-            limit=limit,
+        briefings_res, alerts_res = await asyncio.gather(
+            oncofiles_client.search_conversations(
+                entry_type="autonomous_briefing", limit=limit
+            ),
+            oncofiles_client.search_conversations(
+                entry_type="cost_alert", limit=5
+            ),
+            return_exceptions=True,
         )
-        entries = _filter_test(_extract_list(result, "entries"), request)
+        briefings = (
+            _extract_list(briefings_res, "entries") if isinstance(briefings_res, dict) else []
+        )
+        alerts = (
+            _extract_list(alerts_res, "entries") if isinstance(alerts_res, dict) else []
+        )
+        entries = _filter_test(briefings + alerts, request)
+        entries.sort(key=lambda e: e.get("created_at", ""), reverse=True)
         return _cors_json(
             {
                 "briefings": [
@@ -596,8 +608,9 @@ async def api_briefings(request: Request) -> JSONResponse:
                         "content": e.get("content"),
                         "date": e.get("created_at"),
                         "tags": e.get("tags"),
+                        "type": e.get("entry_type", "autonomous_briefing"),
                     }
-                    for e in entries
+                    for e in entries[:limit]
                 ],
                 "total": len(entries),
             }

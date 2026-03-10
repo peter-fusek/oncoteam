@@ -273,6 +273,55 @@ def get_daily_cost() -> float:
     return _daily_cost
 
 
+async def _persist_daily_cost() -> None:
+    """Persist daily cost to oncofiles agent_state for cold-start resilience."""
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    try:
+        await oncofiles_client.set_agent_state(
+            "autonomous_daily_cost",
+            {"date": today, "cost_usd": round(_daily_cost, 4)},
+        )
+    except Exception as e:
+        logger.debug("Failed to persist daily cost: %s", e)
+
+
+async def _restore_daily_cost() -> None:
+    """Restore daily cost from oncofiles on startup / after cold start."""
+    global _daily_cost, _daily_cost_reset_date
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    try:
+        state = await oncofiles_client.get_agent_state("autonomous_daily_cost")
+        if isinstance(state, dict) and state.get("date") == today:
+            _daily_cost = float(state.get("cost_usd", 0.0))
+            _daily_cost_reset_date = today
+            logger.info("Restored daily cost from DB: $%.4f", _daily_cost)
+    except Exception as e:
+        logger.debug("Failed to restore daily cost: %s", e)
+
+
+async def _notify_cost_cap_reached() -> None:
+    """Store a cost alert briefing so dashboard/WhatsApp can surface it."""
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    try:
+        await log_to_diary(
+            title=f"Cost cap reached — ${_daily_cost:.2f} / ${AUTONOMOUS_COST_LIMIT:.2f}",
+            content=(
+                f"## Autonomous Agent Cost Alert\n\n"
+                f"**Date**: {today}\n"
+                f"**Daily spend**: ${_daily_cost:.2f}\n"
+                f"**Daily cap**: ${AUTONOMOUS_COST_LIMIT:.2f}\n\n"
+                f"All remaining scheduled tasks for today have been **paused**.\n"
+                f"Tasks will resume tomorrow at midnight UTC.\n\n"
+                f"To increase the cap, set `AUTONOMOUS_COST_LIMIT` env var on Railway."
+            ),
+            entry_type="cost_alert",
+            tags=["cost_alert", f"date:{today}"],
+        )
+        logger.warning("Cost cap alert stored: $%.2f / $%.2f", _daily_cost, AUTONOMOUS_COST_LIMIT)
+    except Exception as e:
+        logger.error("Failed to store cost alert: %s", e)
+
+
 async def run_autonomous_task(
     task_prompt: str,
     max_turns: int = 15,
@@ -283,6 +332,10 @@ async def run_autonomous_task(
     Returns dict with thinking, tool_calls, response, token counts, cost.
     """
     global _daily_cost
+
+    # Restore persisted cost on first call (cold start recovery)
+    if not _daily_cost_reset_date:
+        await _restore_daily_cost()
 
     if _daily_cost >= AUTONOMOUS_COST_LIMIT:
         return {
@@ -364,10 +417,15 @@ async def run_autonomous_task(
         if _daily_cost >= AUTONOMOUS_COST_LIMIT:
             logger.warning("Daily cost limit reached mid-task: $%.2f", _daily_cost)
             result["response"] += "\n\n[COST LIMIT REACHED — task stopped]"
+            await _persist_daily_cost()
+            await _notify_cost_cap_reached()
             break
 
     result["duration_ms"] = int((time.monotonic() - start_time) * 1000)
     result["completed_at"] = datetime.now(UTC).isoformat()
+
+    # Persist cost after every task completion
+    await _persist_daily_cost()
 
     logger.info(
         "Task %s completed: %d tool calls, %d input tokens, %d output tokens, $%.4f",

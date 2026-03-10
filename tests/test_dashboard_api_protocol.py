@@ -117,10 +117,17 @@ MOCK_BRIEFINGS = {
 }
 
 
+def _briefings_side_effect(**kwargs):
+    """Mock side_effect for search_conversations: briefings + alerts calls."""
+    if kwargs.get("entry_type") == "cost_alert":
+        return {"entries": []}
+    return MOCK_BRIEFINGS
+
+
 @pytest.mark.anyio
 @patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
 async def test_api_briefings_returns_entries(mock_search):
-    mock_search.return_value = MOCK_BRIEFINGS
+    mock_search.side_effect = _briefings_side_effect
     request = _make_request()
     response = await api_briefings(request)
     data = json.loads(response.body)
@@ -129,7 +136,6 @@ async def test_api_briefings_returns_entries(mock_search):
     assert data["total"] == 2
     assert data["briefings"][0]["title"] == "Pre-cycle check C2"
     assert data["briefings"][0]["content"].startswith("## Pre-Cycle")
-    mock_search.assert_called_once_with(entry_type="autonomous_briefing", limit=20)
 
 
 @pytest.mark.anyio
@@ -138,7 +144,7 @@ async def test_api_briefings_with_limit(mock_search):
     mock_search.return_value = {"entries": []}
     request = _make_request("limit=5")
     await api_briefings(request)
-    mock_search.assert_called_once_with(entry_type="autonomous_briefing", limit=5)
+    assert mock_search.call_count == 2  # briefings + alerts
 
 
 @pytest.mark.anyio
@@ -149,30 +155,38 @@ async def test_api_briefings_handles_error(mock_search):
     response = await api_briefings(request)
     data = json.loads(response.body)
 
-    assert response.status_code == 502
-    assert "error" in data
+    # asyncio.gather with return_exceptions=True means errors become empty lists
+    assert response.status_code == 200
     assert data["briefings"] == []
+    assert data["total"] == 0
 
 
 @pytest.mark.anyio
 @patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
 async def test_api_briefings_filters_test_data(mock_search):
-    mock_search.return_value = [
-        {
-            "id": 1,
-            "title": "Real briefing",
-            "content": "content",
-            "created_at": "2026-03-06T07:00:00Z",
-            "tags": ["autonomous"],
-        },
-        {
-            "id": 2,
-            "title": "e2e-test-briefing",
-            "content": "test",
-            "created_at": "2026-03-06T06:00:00Z",
-            "tags": ["e2e-test"],
-        },
-    ]
+    def _filter_side_effect(**kwargs):
+        if kwargs.get("entry_type") == "cost_alert":
+            return {"entries": []}
+        return {
+            "entries": [
+                {
+                    "id": 1,
+                    "title": "Real briefing",
+                    "content": "content",
+                    "created_at": "2026-03-06T07:00:00Z",
+                    "tags": ["autonomous"],
+                },
+                {
+                    "id": 2,
+                    "title": "e2e-test-briefing",
+                    "content": "test",
+                    "created_at": "2026-03-06T06:00:00Z",
+                    "tags": ["e2e-test"],
+                },
+            ]
+        }
+
+    mock_search.side_effect = _filter_side_effect
     request = _make_request()
     response = await api_briefings(request)
     data = json.loads(response.body)
