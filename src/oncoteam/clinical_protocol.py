@@ -485,5 +485,5 @@ def resolve_protocol(lang: str = "sk") -> dict:
         "cycle_delay_rules": resolve(CYCLE_DELAY_RULES, lang),
         "nutrition_escalation": resolve(NUTRITION_ESCALATION, lang),
         "safety_flags": resolve(SAFETY_FLAGS, lang),
-        "current_cycle": 2,
+        "current_cycle": 3,
     }

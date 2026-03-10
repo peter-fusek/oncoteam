@@ -53,7 +53,7 @@ PATIENT = PatientProfile(
     treating_physician="MUDr. Stefan Porsok, PhD., MPH — primár OKO G, NOU Bratislava",
     admitting_physician="MUDr. Natália Pazderová — NOU Bratislava",
     baseline_weight_kg=72.0,
-    current_cycle=2,
+    current_cycle=3,
     ecog="unknown — verify",
     excluded_therapies={
         "anti-EGFR (cetuximab, panitumumab)": "KRAS G12S mutation",

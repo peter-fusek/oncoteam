@@ -95,6 +95,7 @@
     "breadcrumbRooms": "Departments",
     "neverRun": "Not yet run",
     "scheduledJobs": "Scheduled jobs",
+    "keyInsights": "Key insights",
     "toolNames": {
       "search_pubmed": "PubMed Search",
       "search_clinical_trials": "Clinical Trial Search",
@@ -160,7 +161,10 @@
     "doseNextThreshold": "Next threshold at {at} {unit} ({pct}% reached)",
     "delayRules": "Cycle Delay Rules",
     "milestonesTitle": "Treatment Milestones",
-    "monitoringTitle": "Monitoring Schedule"
+    "monitoringTitle": "Monitoring Schedule",
+    "previousCycles": "Previous cycles",
+    "passed": "Passed",
+    "issues": "Issues"
   },
   "toxicity": {
     "title": "Toxicity Log",

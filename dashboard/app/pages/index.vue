@@ -29,7 +29,7 @@ const { data: activity, refresh: refreshActivity } = await fetchApi<{
 
 const { data: autonomous, refresh: refreshAutonomous } = await fetchApi<{
   enabled: boolean; daily_cost: number
-  jobs?: Array<{ id: string; schedule: string; description: string }>
+  jobs?: Array<{ id: string; schedule: string; description: string; assigned_tool?: string }>
 }>('/autonomous')
 
 const { data: gamification, refresh: refreshGamification } = useFetch<{
@@ -58,6 +58,18 @@ const toolStatsMap = computed(() =>
 const autonomousJobsMap = computed(() =>
   new Map((autonomous.value?.jobs ?? []).map(j => [j.id, j]))
 )
+
+const toolJobsMap = computed(() => {
+  const map = new Map<string, Array<{ id: string; schedule: string; description: string }>>()
+  for (const job of (autonomous.value?.jobs ?? [])) {
+    const tool = job.assigned_tool
+    if (tool) {
+      if (!map.has(tool)) map.set(tool, [])
+      map.get(tool)!.push(job)
+    }
+  }
+  return map
+})
 
 function getAgentStatus(tools: string[]): 'active' | 'recent' | 'idle' {
   const recent = activity.value?.entries ?? []
@@ -204,6 +216,30 @@ const rooms = computed<RoomDef[]>(() => [
   },
 ])
 
+// ── Key Insights ─────────────────────────────────
+
+function formatInsight(entry: { tool: string; input: string; output: string }): string {
+  const qm = entry.input?.match(/query='([^']*)'/)
+  const q = qm?.[1]
+  if (q) return `${q.length > 50 ? q.slice(0, 50) + '…' : q} → ${entry.output}`
+  return entry.output
+}
+
+function keyInsightsForTools(tools: string[], limit = 5) {
+  return (activity.value?.entries ?? [])
+    .filter(e => tools.includes(e.tool) && e.status === 'ok' && e.output)
+    .slice(0, limit)
+    .map(e => ({ tool: e.tool, timestamp: e.timestamp, summary: formatInsight(e) }))
+}
+
+const roomInsights = computed(() =>
+  selectedRoom.value ? keyInsightsForTools(selectedRoom.value.tools) : []
+)
+
+const workerInsights = computed(() =>
+  selectedWorker.value ? keyInsightsForTools([selectedWorker.value]) : []
+)
+
 // ── Drilldown integration ────────────────────────
 
 const drilldown = useDrilldown()
@@ -242,6 +278,10 @@ const workerEntries = computed(() =>
   selectedWorker.value
     ? (activity.value?.entries ?? []).filter(e => e.tool === selectedWorker.value)
     : []
+)
+
+const workerJobs = computed(() =>
+  selectedWorker.value ? (toolJobsMap.value.get(selectedWorker.value) ?? []) : []
 )
 
 const roomJobs = computed(() => {
@@ -439,23 +479,24 @@ onUnmounted(() => {
                 {{ $t('agents.neverRun') }}
               </div>
             </div>
+            <div v-for="job in toolJobsMap.get(tool) || []" :key="job.id"
+                 class="flex items-center gap-1 text-[10px] text-gray-500 mt-1">
+              <UIcon name="i-lucide-timer" class="w-2.5 h-2.5" />
+              <span>{{ job.schedule }}</span>
+            </div>
           </button>
         </div>
 
-        <!-- Autonomous jobs for this room -->
-        <div v-if="roomJobs.length > 0">
+        <!-- Key Insights for this room -->
+        <div v-if="roomInsights.length > 0" class="mt-5">
           <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <UIcon name="i-lucide-timer" class="w-3 h-3" />
-            {{ $t('agents.scheduledJobs') }}
+            <UIcon name="i-lucide-sparkles" class="w-3 h-3 text-amber-500" />
+            {{ $t('agents.keyInsights') }}
           </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div
-              v-for="job in roomJobs"
-              :key="job.id"
-              class="rounded-lg border border-gray-800 bg-gray-900/30 px-4 py-3"
-            >
-              <div class="text-sm text-gray-300">{{ job.description }}</div>
-              <div class="text-xs text-gray-500 mt-1">{{ job.schedule }}</div>
+          <div class="rounded-xl border border-gray-800 bg-gray-900/50 divide-y divide-gray-800/50">
+            <div v-for="(insight, i) in roomInsights" :key="i" class="px-4 py-2.5 flex items-start gap-3 text-xs">
+              <span class="text-gray-600 shrink-0 mt-0.5">{{ relativeTime(insight.timestamp) }}</span>
+              <span class="text-gray-300">{{ insight.summary }}</span>
             </div>
           </div>
         </div>
@@ -523,6 +564,32 @@ onUnmounted(() => {
                   'bg-gray-600': getAgentStatus([selectedWorker]) === 'idle',
                 }"
               />
+            </div>
+          </div>
+        </div>
+
+        <!-- Assigned scheduled jobs -->
+        <div v-if="workerJobs.length" class="mb-5">
+          <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            {{ $t('agents.scheduledJobs') }}
+          </h3>
+          <div v-for="job in workerJobs" :key="job.id"
+               class="rounded-lg border border-gray-800 bg-gray-900/30 px-4 py-3 mb-2">
+            <div class="text-sm text-gray-300">{{ job.description }}</div>
+            <div class="text-xs text-gray-500 mt-1">{{ job.schedule }}</div>
+          </div>
+        </div>
+
+        <!-- Key Insights for this worker -->
+        <div v-if="workerInsights.length > 0" class="mb-5">
+          <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <UIcon name="i-lucide-sparkles" class="w-3 h-3 text-amber-500" />
+            {{ $t('agents.keyInsights') }}
+          </h3>
+          <div class="rounded-xl border border-gray-800 bg-gray-900/50 divide-y divide-gray-800/50">
+            <div v-for="(insight, i) in workerInsights" :key="i" class="px-4 py-2.5 flex items-start gap-3 text-xs">
+              <span class="text-gray-600 shrink-0 mt-0.5">{{ relativeTime(insight.timestamp) }}</span>
+              <span class="text-gray-300">{{ insight.summary }}</span>
             </div>
           </div>
         </div>

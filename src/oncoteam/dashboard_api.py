@@ -374,6 +374,7 @@ async def api_autonomous(request: Request) -> JSONResponse:
             jobs_raw = [
                 {
                     "id": "pre_cycle_check",
+                    "assigned_tool": "pre_cycle_check",
                     "schedule": L("každých 13 dní", "every 13 days"),
                     "description": L(
                         "Kontrola bezpečnosti pred cyklom FOLFOX", "Pre-cycle FOLFOX safety check"
@@ -381,21 +382,25 @@ async def api_autonomous(request: Request) -> JSONResponse:
                 },
                 {
                     "id": "tumor_marker_review",
+                    "assigned_tool": "tumor_marker_review",
                     "schedule": L("každé 4 týždne", "every 4 weeks"),
                     "description": L("Analýza trendu CEA/CA 19-9", "CEA/CA 19-9 trend analysis"),
                 },
                 {
                     "id": "response_assessment",
+                    "assigned_tool": "response_assessment",
                     "schedule": L("každých 8 týždňov", "every 8 weeks"),
                     "description": L("Hodnotenie odpovede RECIST", "RECIST response evaluation"),
                 },
                 {
                     "id": "daily_research",
+                    "assigned_tool": "search_pubmed",
                     "schedule": L("denne 07:00 UTC", "daily 07:00 UTC"),
                     "description": L("Prehľad výskumu PubMed", "PubMed research scan"),
                 },
                 {
                     "id": "trial_monitor",
+                    "assigned_tool": "search_clinical_trials",
                     "schedule": L("každých 6 hodín", "every 6 hours"),
                     "description": L(
                         "Monitorovanie klinických štúdií", "Clinical trial monitoring"
@@ -403,21 +408,25 @@ async def api_autonomous(request: Request) -> JSONResponse:
                 },
                 {
                     "id": "file_scan",
+                    "assigned_tool": "search_documents",
                     "schedule": L("každé 2 hodiny", "every 2 hours"),
                     "description": L("Skenovanie nových dokumentov", "New document scan"),
                 },
                 {
                     "id": "weekly_briefing",
+                    "assigned_tool": "daily_briefing",
                     "schedule": L("pondelok 06:00 UTC", "Monday 06:00 UTC"),
                     "description": L("Týždenný briefing pre lekára", "Weekly physician briefing"),
                 },
                 {
                     "id": "mtb_preparation",
+                    "assigned_tool": "review_session",
                     "schedule": L("piatok 14:00 UTC", "Friday 14:00 UTC"),
                     "description": L("Príprava na tumor board", "Tumor board preparation"),
                 },
                 {
                     "id": "lab_sync",
+                    "assigned_tool": "analyze_labs",
                     "schedule": L("každých 6 hodín", "every 6 hours"),
                     "description": L(
                         "Extrakcia lab. hodnôt z dokumentov", "Extract lab values from documents"
@@ -425,6 +434,7 @@ async def api_autonomous(request: Request) -> JSONResponse:
                 },
                 {
                     "id": "toxicity_extraction",
+                    "assigned_tool": "compare_labs",
                     "schedule": L("denne 08:00 UTC", "daily 08:00 UTC"),
                     "description": L(
                         "Extrakcia toxicity zo správ z vyšetrení",
@@ -433,6 +443,7 @@ async def api_autonomous(request: Request) -> JSONResponse:
                 },
                 {
                     "id": "weight_extraction",
+                    "assigned_tool": "get_lab_trends",
                     "schedule": L("denne 09:00 UTC", "daily 09:00 UTC"),
                     "description": L(
                         "Extrakcia hmotnosti/BMI zo správ", "Extract weight/BMI from visit notes"
@@ -440,11 +451,13 @@ async def api_autonomous(request: Request) -> JSONResponse:
                 },
                 {
                     "id": "family_update",
+                    "assigned_tool": "summarize_session",
                     "schedule": L("nedeľa 18:00 UTC", "Sunday 18:00 UTC"),
                     "description": L("Týždenná správa pre rodinu", "Weekly family update"),
                 },
                 {
                     "id": "medication_adherence_check",
+                    "assigned_tool": "log_session_note",
                     "schedule": L("denne 20:00 UTC", "daily 20:00 UTC"),
                     "description": L(
                         "Kontrola dennej adherencie liekov (Clexane kritický)",
@@ -467,6 +480,102 @@ async def api_protocol(request: Request) -> JSONResponse:
 
     lang = get_lang(request)
     return _cors_json(resolve_protocol(lang))
+
+
+async def api_protocol_cycles(request: Request) -> JSONResponse:
+    """GET /api/protocol/cycles — previous cycle history with lab evaluations."""
+    from .clinical_protocol import LAB_SAFETY_THRESHOLDS, check_lab_safety
+
+    cycle = PATIENT.current_cycle or 3
+
+    # Fetch lab results and chemo events
+    try:
+        lab_result, chemo_result = await asyncio.gather(
+            oncofiles_client.list_treatment_events(event_type="lab_result", limit=50),
+            oncofiles_client.list_treatment_events(event_type="chemotherapy", limit=50),
+        )
+        lab_entries = _extract_list(lab_result, "entries")
+        chemo_entries = _extract_list(chemo_result, "entries")
+    except Exception as e:
+        record_suppressed_error("api_protocol_cycles", "fetch", e)
+        return _cors_json({"cycles": [], "current_cycle": cycle, "error": str(e)})
+
+    # Build a map: cycle_number -> chemo date
+    chemo_by_cycle: dict[int, str] = {}
+    for entry in chemo_entries:
+        title = entry.get("title") or ""
+        c_num = _extract_cycle_number(title)
+        if c_num and c_num < cycle:
+            chemo_by_cycle[c_num] = entry.get("event_date") or entry.get("date") or ""
+
+    # Lab parameter name mapping (from lab entry keys to LAB_SAFETY_THRESHOLDS keys)
+    lab_key_map = {
+        "ABS_NEUT": "ANC",
+        "ANC": "ANC",
+        "PLT": "PLT",
+        "creatinine": "creatinine",
+        "ALT": "ALT",
+        "AST": "AST",
+        "bilirubin": "bilirubin",
+    }
+
+    cycles = []
+    for c_num in range(1, cycle):
+        chemo_date = chemo_by_cycle.get(c_num, "")
+        # Find lab entries near this cycle's date (within 3 days before, or same day)
+        lab_eval: dict[str, dict] = {}
+        source_id = None
+        for lab in lab_entries:
+            lab_date = lab.get("event_date") or lab.get("date") or ""
+            if not chemo_date or not lab_date:
+                continue
+            # Simple date proximity: check if lab_date is within 3 days before chemo_date
+            try:
+                from datetime import datetime
+
+                ld = datetime.fromisoformat(lab_date[:10])
+                cd = datetime.fromisoformat(chemo_date[:10])
+                diff = (cd - ld).days
+                if 0 <= diff <= 3:
+                    # Extract lab values from notes/data
+                    data_field = lab.get("data") or {}
+                    if isinstance(data_field, str):
+                        with contextlib.suppress(Exception):
+                            data_field = json.loads(data_field)
+                    values = data_field if isinstance(data_field, dict) else {}
+                    # Check each threshold parameter
+                    for raw_key, threshold_key in lab_key_map.items():
+                        val = values.get(raw_key)
+                        if val is not None:
+                            try:
+                                fval = float(val)
+                                threshold = LAB_SAFETY_THRESHOLDS.get(threshold_key, {})
+                                result = check_lab_safety(threshold_key, fval)
+                                lab_eval[threshold_key] = {
+                                    "value": fval,
+                                    "threshold": threshold.get("min", threshold.get("max_ratio")),
+                                    "unit": threshold.get("unit", ""),
+                                    "pass": result["safe"],
+                                }
+                            except (ValueError, TypeError):
+                                pass
+                    source_id = lab.get("id")
+                    break  # Use first matching lab
+            except Exception:
+                continue
+
+        overall_pass = all(v["pass"] for v in lab_eval.values()) if lab_eval else True
+        cycles.append(
+            {
+                "cycle_number": c_num,
+                "date": chemo_date,
+                "lab_evaluation": lab_eval,
+                "overall_pass": overall_pass,
+                "source_event_id": source_id,
+            }
+        )
+
+    return _cors_json({"cycles": cycles, "current_cycle": cycle})
 
 
 async def api_briefings(request: Request) -> JSONResponse:

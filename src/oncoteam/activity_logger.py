@@ -153,6 +153,20 @@ def _kv_summary(d: dict, keys: list[str]) -> str:
 # ── Output summarizers ─────────────────────────
 
 
+def _titled_summary(count: int, label: str, items: list, key: str, max_items: int = 5) -> str:
+    """Build summary like '3 articles: Title1… | Title2…'."""
+    if not items:
+        return f"{count} {label} found"
+    titles = []
+    for item in items[:max_items]:
+        t = item.get(key, "") if isinstance(item, dict) else ""
+        if t:
+            titles.append(t[:50] + "…" if len(t) > 50 else t)
+    if titles:
+        return f"{count} {label}: {' | '.join(titles)}"
+    return f"{count} {label} found"
+
+
 def _summarize_output(tool_name: str, output: str | None) -> str:
     """One-liner summary of tool output."""
     if output is None:
@@ -163,8 +177,15 @@ def _summarize_output(tool_name: str, output: str | None) -> str:
         return str(output)[:100]
 
     builders: dict[str, object] = {
-        "search_pubmed": lambda d: f"{d.get('count', 0)} articles found",
-        "search_clinical_trials": lambda d: f"{d.get('count', 0)} trials found",
+        "search_pubmed": lambda d: _titled_summary(
+            d.get("count", 0), "articles", d.get("articles", []), "title"
+        ),
+        "search_clinical_trials": lambda d: _titled_summary(
+            d.get("count", 0), "trials", d.get("trials", []), "title"
+        ),
+        "search_clinical_trials_adjacent": lambda d: _titled_summary(
+            d.get("count", 0), "trials", d.get("trials", []), "title"
+        ),
         "daily_briefing": lambda d: (
             f"{d.get('pubmed_articles', 0)} articles, {d.get('clinical_trials', 0)} trials"
         ),
@@ -177,8 +198,11 @@ def _summarize_output(tool_name: str, output: str | None) -> str:
         "get_lab_trends_by_parameter": lambda d: (
             f"{len(d.get('values', []))} data points" if "values" in d else d.get("error", "")
         ),
-        "search_documents": lambda d: (
-            f"{len(d.get('results', {}).get('documents', []))} documents found"
+        "search_documents": lambda d: _titled_summary(
+            len(d.get("results", {}).get("documents", [])),
+            "documents",
+            d.get("results", {}).get("documents", []),
+            "title",
         ),
         "get_patient_context": lambda d: "patient profile returned",
         "view_document": lambda d: "document content returned",

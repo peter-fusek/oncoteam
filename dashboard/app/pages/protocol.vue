@@ -26,9 +26,21 @@ const { data: cumDose } = await fetchApi<{
   max_recommended: number
 }>('/cumulative-dose')
 
+const { data: cycleHistory } = await fetchApi<{
+  cycles: Array<{
+    cycle_number: number
+    date: string
+    lab_evaluation: Record<string, { value: number; threshold: number | null; unit: string; pass: boolean }>
+    overall_pass: boolean
+    source_event_id: number | null
+  }>
+  current_cycle: number
+}>('/protocol/cycles')
+
 const { t } = useI18n()
 
 const activeTab = ref('checklist')
+const expandedCycle = ref<number | null>(null)
 const tabs = computed(() => [
   { key: 'checklist', label: t('protocol.tabs.checklist'), icon: 'i-lucide-clipboard-check' },
   { key: 'labs', label: t('protocol.tabs.labs'), icon: 'i-lucide-test-tube-diagonal' },
@@ -69,8 +81,37 @@ const tabs = computed(() => [
 
     <div v-if="protocol">
       <!-- Pre-Cycle Checklist -->
-      <div v-if="activeTab === 'checklist'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <PreCycleChecklist :current-cycle="protocol.current_cycle" />
+      <div v-if="activeTab === 'checklist'">
+        <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+          <PreCycleChecklist :current-cycle="protocol.current_cycle" />
+        </div>
+
+        <!-- Previous cycles -->
+        <div v-if="cycleHistory?.cycles?.length" class="mt-6">
+          <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            {{ $t('protocol.previousCycles') }}
+          </h3>
+          <div v-for="cycle in cycleHistory.cycles" :key="cycle.cycle_number"
+               class="rounded-lg border border-gray-800 bg-gray-900/30 mb-2">
+            <button class="w-full px-4 py-3 flex items-center justify-between text-left"
+                    @click="expandedCycle = expandedCycle === cycle.cycle_number ? null : cycle.cycle_number">
+              <span class="text-sm text-white">{{ $t('components.milestone.cycle', { n: cycle.cycle_number }) }}</span>
+              <div class="flex items-center gap-2">
+                <span v-if="cycle.date" class="text-xs text-gray-500">{{ cycle.date }}</span>
+                <UBadge :color="cycle.overall_pass ? 'success' : 'error'" variant="subtle" size="xs">
+                  {{ cycle.overall_pass ? $t('protocol.passed') : $t('protocol.issues') }}
+                </UBadge>
+                <UIcon
+                  :name="expandedCycle === cycle.cycle_number ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                  class="w-4 h-4 text-gray-600"
+                />
+              </div>
+            </button>
+            <div v-if="expandedCycle === cycle.cycle_number" class="px-4 pb-4">
+              <PreCycleChecklist :current-cycle="cycle.cycle_number" :lab-values="cycle.lab_evaluation" readonly />
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Lab Thresholds -->

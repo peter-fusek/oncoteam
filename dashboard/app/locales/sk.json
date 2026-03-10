@@ -95,6 +95,7 @@
     "breadcrumbRooms": "Oddelenia",
     "neverRun": "Ešte nespustený",
     "scheduledJobs": "Naplánované úlohy",
+    "keyInsights": "Kľúčové poznatky",
     "toolNames": {
       "search_pubmed": "PubMed vyhľadávanie",
       "search_clinical_trials": "Vyhľadávanie štúdií",
@@ -160,7 +161,10 @@
     "doseNextThreshold": "Ďalší prah pri {at} {unit} ({pct}% dosiahnuté)",
     "delayRules": "Pravidlá odkladu cyklu",
     "milestonesTitle": "Míľniky liečby",
-    "monitoringTitle": "Plán monitorovania"
+    "monitoringTitle": "Plán monitorovania",
+    "previousCycles": "Predchádzajúce cykly",
+    "passed": "OK",
+    "issues": "Problémy"
   },
   "toxicity": {
     "title": "Záznam toxicity",
