@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import re
 import time
 
@@ -36,6 +37,11 @@ from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, get_patient_localized
 
 VERSION = "0.11.0"
+
+_logger = logging.getLogger("oncoteam.dashboard_api")
+
+# Last trigger result (for debugging via /api/autonomous?last_trigger=1)
+_last_trigger_result: dict | None = None
 
 # Patterns that identify test/E2E data created by automated tests
 _TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test ", "testovacia")
@@ -355,6 +361,10 @@ async def api_autonomous(request: Request) -> JSONResponse:
     """GET /api/autonomous — autonomous agent status and manual trigger."""
     from .autonomous import get_daily_cost
 
+    # Check last trigger result
+    if request.query_params.get("last_trigger"):
+        return _cors_json(_last_trigger_result or {"status": "no_trigger_yet"})
+
     # Manual trigger via ?trigger=<task_name>
     trigger = request.query_params.get("trigger")
     if trigger:
@@ -363,8 +373,37 @@ async def api_autonomous(request: Request) -> JSONResponse:
         task_fn = getattr(autonomous_tasks, f"run_{trigger}", None)
         if task_fn is None:
             return _cors_json({"error": f"Unknown task: {trigger}"}, status_code=400)
-        # Run in background, return immediately
-        asyncio.create_task(task_fn())
+
+        from .config import ANTHROPIC_API_KEY
+
+        if not ANTHROPIC_API_KEY:
+            return _cors_json(
+                {"error": "ANTHROPIC_API_KEY not configured"}, status_code=500
+            )
+
+        # Run in background with error capture
+        async def _run_with_capture():
+            global _last_trigger_result
+            try:
+                result = await task_fn()
+                _last_trigger_result = {
+                    "task": trigger,
+                    "status": "completed",
+                    "cost": result.get("cost", 0),
+                    "tool_calls": len(result.get("tool_calls", [])),
+                    "error": result.get("error"),
+                    "duration_ms": result.get("duration_ms", 0),
+                }
+                _logger.info("Trigger %s completed: %s", trigger, _last_trigger_result)
+            except Exception as e:
+                _last_trigger_result = {
+                    "task": trigger,
+                    "status": "failed",
+                    "error": str(e),
+                }
+                _logger.error("Trigger %s failed: %s", trigger, e)
+
+        asyncio.create_task(_run_with_capture())
         return _cors_json({"triggered": trigger, "status": "started"})
 
     # Default: return scheduler status

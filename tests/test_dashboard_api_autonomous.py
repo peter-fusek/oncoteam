@@ -102,6 +102,34 @@ async def test_autonomous_trigger_unknown():
 
 @pytest.mark.anyio
 @patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+async def test_autonomous_trigger_no_api_key():
+    """Should return 500 when ANTHROPIC_API_KEY is not set."""
+    with patch("oncoteam.config.ANTHROPIC_API_KEY", ""):
+        request = _make_request("trigger=file_scan")
+        response = await api_autonomous(request)
+        data = json.loads(response.body)
+
+    assert response.status_code == 500
+    assert "ANTHROPIC_API_KEY" in data["error"]
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+async def test_autonomous_last_trigger_empty():
+    """Should return no_trigger_yet when no task has been triggered."""
+    import oncoteam.dashboard_api as mod
+
+    mod._last_trigger_result = None
+    request = _make_request("last_trigger=1")
+    response = await api_autonomous(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "no_trigger_yet"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_has_cors():
     request = _make_request()
     response = await api_autonomous(request)
