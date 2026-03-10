@@ -128,6 +128,46 @@ class TestCostTracking:
         assert get_daily_cost() == pytest.approx(cost1 + cost2)
 
 
+class TestExtractTimestamp:
+    """Tests for _extract_timestamp, fixing the NoneType.get crash."""
+
+    def test_none_input(self):
+        from oncoteam.autonomous_tasks import _extract_timestamp
+
+        assert _extract_timestamp(None) == ""
+
+    def test_empty_dict(self):
+        from oncoteam.autonomous_tasks import _extract_timestamp
+
+        assert _extract_timestamp({}) == ""
+
+    def test_flat_format(self):
+        from oncoteam.autonomous_tasks import _extract_timestamp
+
+        assert _extract_timestamp({"timestamp": "2026-03-10"}) == "2026-03-10"
+
+    def test_nested_dict(self):
+        from oncoteam.autonomous_tasks import _extract_timestamp
+
+        assert _extract_timestamp({"value": {"timestamp": "2026-03-10"}}) == "2026-03-10"
+
+    def test_nested_json_string(self):
+        from oncoteam.autonomous_tasks import _extract_timestamp
+
+        assert _extract_timestamp({"value": '{"timestamp": "2026-03-10"}'}) == "2026-03-10"
+
+    def test_value_none(self):
+        """This is the exact case that caused the production crash."""
+        from oncoteam.autonomous_tasks import _extract_timestamp
+
+        assert _extract_timestamp({"value": None}) == ""
+
+    def test_full_agent_state_row(self):
+        from oncoteam.autonomous_tasks import _extract_timestamp
+
+        assert _extract_timestamp({"key": "last_file_scan", "value": None, "agent_id": "oncoteam"}) == ""
+
+
 class TestRunAutonomousTask:
     @pytest.mark.asyncio
     async def test_cost_limit_abort(self):
