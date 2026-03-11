@@ -183,6 +183,31 @@ def _build_external_url(source: str, external_id: str) -> str | None:
     return None
 
 
+def _build_source_ref(entry: dict, entry_type: str) -> dict:
+    """Build a source reference dict for any data entry.
+
+    Returns a dict with: type, id, label, url (gdrive/pubmed/clinicaltrials.gov).
+    """
+    ref: dict = {"type": entry_type, "id": entry.get("id")}
+    # Label: use title, filename, or event_type
+    ref["label"] = (
+        entry.get("title")
+        or entry.get("filename")
+        or entry.get("event_type", entry_type)
+    )
+    # URL: prefer gdrive_url, then compute from gdrive_file_id, then external_url
+    if entry.get("gdrive_url"):
+        ref["url"] = entry["gdrive_url"]
+    elif entry.get("gdrive_file_id") or entry.get("google_drive_id"):
+        gid = entry.get("gdrive_file_id") or entry.get("google_drive_id")
+        ref["url"] = f"https://drive.google.com/file/d/{gid}/view"
+    elif entry.get("source") and entry.get("external_id"):
+        ref["url"] = _build_external_url(entry["source"], entry["external_id"])
+    else:
+        ref["url"] = None
+    return ref
+
+
 def _get_cors_origin(request: Request) -> str:
     """Return the allowed CORS origin for this request, or empty string."""
     origin = request.headers.get("origin", "")
@@ -339,6 +364,7 @@ async def api_timeline(request: Request) -> JSONResponse:
                         "type": e.get("event_type"),
                         "title": e.get("title"),
                         "notes": e.get("notes"),
+                        "source": _build_source_ref(e, "treatment_event"),
                     }
                     for e in events
                 ],
@@ -372,6 +398,9 @@ async def api_research(request: Request) -> JSONResponse:
             rel = assess_research_relevance(
                 e.get("title", ""), e.get("summary"),
             )
+            ext_url = _build_external_url(
+                e.get("source", ""), e.get("external_id", "")
+            )
             items.append({
                 "id": e.get("id"),
                 "source": e.get("source"),
@@ -379,11 +408,10 @@ async def api_research(request: Request) -> JSONResponse:
                 "title": e.get("title"),
                 "summary": e.get("summary"),
                 "date": e.get("created_at"),
-                "external_url": _build_external_url(
-                    e.get("source", ""), e.get("external_id", "")
-                ),
+                "external_url": ext_url,
                 "relevance": rel.score,
                 "relevance_reason": rel.reason,
+                "source_ref": _build_source_ref(e, "research"),
             })
         items.sort(key=lambda x: _RELEVANCE_SORT_ORDER.get(
             x["relevance"], 2,
@@ -412,6 +440,7 @@ async def api_sessions(request: Request) -> JSONResponse:
                         "content": e.get("content"),
                         "date": e.get("created_at"),
                         "tags": e.get("tags"),
+                        "source": _build_source_ref(e, "session"),
                     }
                     for e in entries
                 ],
@@ -903,6 +932,7 @@ async def api_briefings(request: Request) -> JSONResponse:
                         "tags": e.get("tags"),
                         "type": e.get("entry_type", "autonomous_briefing"),
                         **_briefing_summary(e.get("content", "")),
+                        "source": _build_source_ref(e, "briefing"),
                     }
                     for e in entries[:limit]
                 ],
@@ -975,6 +1005,7 @@ async def api_toxicity(request: Request) -> JSONResponse:
                         "date": e.get("event_date"),
                         "notes": e.get("notes"),
                         "metadata": e.get("metadata", {}),
+                        "source": _build_source_ref(e, "toxicity"),
                     }
                     for e in events
                 ],
@@ -1136,6 +1167,7 @@ async def api_labs(request: Request) -> JSONResponse:
                     "notes": e.get("notes"),
                     "alerts": alerts,
                     "value_statuses": value_statuses,
+                    "source": _build_source_ref(e, "lab"),
                 }
             )
 
@@ -1492,6 +1524,7 @@ async def api_medications(request: Request) -> JSONResponse:
                     "time_of_day": meta.get("time_of_day"),
                     "active": meta.get("active", True),
                     "notes": e.get("notes") or meta.get("notes"),
+                    "source": _build_source_ref(e, "medication"),
                 }
             )
 

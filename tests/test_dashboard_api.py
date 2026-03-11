@@ -10,6 +10,7 @@ import pytest
 from oncoteam.dashboard_api import (
     VERSION,
     _build_external_url,
+    _build_source_ref,
     _extract_list,
     _is_test_entry,
     api_activity,
@@ -732,3 +733,86 @@ async def test_api_sessions_filters_test_data(mock_search):
 
     assert data["total"] == 1
     assert data["sessions"][0]["title"] == "Session: Lab review"
+
+
+# ── Source attribution tests ─────────────────────
+
+
+def test_build_source_ref_with_gdrive_url():
+    entry = {"id": 42, "title": "Lab 2026-03-01", "gdrive_url": "https://drive.google.com/file/d/abc/view"}
+    ref = _build_source_ref(entry, "lab")
+    assert ref["type"] == "lab"
+    assert ref["id"] == 42
+    assert ref["label"] == "Lab 2026-03-01"
+    assert ref["url"] == "https://drive.google.com/file/d/abc/view"
+
+
+def test_build_source_ref_with_gdrive_file_id():
+    entry = {"id": 10, "title": "Report", "gdrive_file_id": "xyz123"}
+    ref = _build_source_ref(entry, "document")
+    assert ref["url"] == "https://drive.google.com/file/d/xyz123/view"
+
+
+def test_build_source_ref_with_external_url():
+    entry = {"id": 5, "title": "KRAS study", "source": "pubmed", "external_id": "39876543"}
+    ref = _build_source_ref(entry, "research")
+    assert ref["url"] == "https://pubmed.ncbi.nlm.nih.gov/39876543/"
+
+
+def test_build_source_ref_clinicaltrials():
+    entry = {
+        "id": 7, "title": "Phase II trial",
+        "source": "clinicaltrials", "external_id": "NCT12345678",
+    }
+    ref = _build_source_ref(entry, "research")
+    assert ref["url"] == "https://clinicaltrials.gov/study/NCT12345678"
+
+
+def test_build_source_ref_no_url():
+    entry = {"id": 3, "title": "Some event"}
+    ref = _build_source_ref(entry, "treatment_event")
+    assert ref["url"] is None
+    assert ref["label"] == "Some event"
+
+
+def test_build_source_ref_fallback_label():
+    entry = {"id": 1, "event_type": "chemo_cycle"}
+    ref = _build_source_ref(entry, "treatment_event")
+    assert ref["label"] == "chemo_cycle"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_api_timeline_includes_source(mock_list):
+    mock_list.return_value = MOCK_EVENTS
+    request = _make_request("/api/timeline")
+    response = await api_timeline(request)
+    data = json.loads(response.body)
+
+    assert "source" in data["events"][0]
+    assert data["events"][0]["source"]["type"] == "treatment_event"
+    assert data["events"][0]["source"]["id"] == 1
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+async def test_api_research_includes_source_ref(mock_list):
+    mock_list.return_value = MOCK_RESEARCH
+    request = _make_request("/api/research")
+    response = await api_research(request)
+    data = json.loads(response.body)
+
+    assert "source_ref" in data["entries"][0]
+    assert data["entries"][0]["source_ref"]["type"] == "research"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_includes_source(mock_search):
+    mock_search.return_value = MOCK_SESSIONS
+    request = _make_request("/api/sessions")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    assert "source" in data["sessions"][0]
+    assert data["sessions"][0]["source"]["type"] == "session"
