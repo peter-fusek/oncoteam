@@ -37,7 +37,7 @@ from .config import (
 from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, get_patient_localized
 
-VERSION = "0.13.0"
+VERSION = "0.14.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -392,6 +392,7 @@ async def api_autonomous(request: Request) -> JSONResponse:
                     "status": "completed",
                     "cost": result.get("cost", 0),
                     "tool_calls": len(result.get("tool_calls", [])),
+                    "citations": len(result.get("citations", [])),
                     "error": result.get("error"),
                     "duration_ms": result.get("duration_ms", 0),
                 }

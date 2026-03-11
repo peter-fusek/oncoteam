@@ -24,6 +24,15 @@ from .patient_context import PATIENT, RESEARCH_TERMS, get_patient_profile_text
 
 logger = logging.getLogger("oncoteam.autonomous")
 
+# Tools whose output should be wrapped as citable documents
+_CITABLE_TOOLS = {
+    "search_pubmed",
+    "search_trials",
+    "search_documents",
+    "view_document",
+    "get_treatment_timeline",
+}
+
 # Cost per million tokens (Sonnet 4.6 defaults)
 _COST_INPUT = 3.0 / 1_000_000
 _COST_OUTPUT = 15.0 / 1_000_000
@@ -192,6 +201,69 @@ TOOLS = [
             "required": ["key", "value"],
         },
     },
+    {
+        "name": "view_document",
+        "description": "View full content of a document by ID (OCR text, metadata)",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "document_id": {"type": "integer", "description": "Document ID"},
+            },
+            "required": ["document_id"],
+        },
+    },
+    {
+        "name": "store_lab_values",
+        "description": "Store structured lab values for a specific date (ANC, PLT, WBC, CEA, etc.)",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "document_id": {
+                    "type": "integer",
+                    "description": "Source document ID (0 if manual entry)",
+                },
+                "lab_date": {"type": "string", "description": "Lab date (YYYY-MM-DD)"},
+                "values": {
+                    "type": "object",
+                    "description": (
+                        "Lab values as {parameter: value} "
+                        'e.g. {"ANC": 3200, "PLT": 180000}'
+                    ),
+                },
+            },
+            "required": ["document_id", "lab_date", "values"],
+        },
+    },
+    {
+        "name": "add_treatment_event",
+        "description": "Add a treatment event (lab_result, toxicity, imaging, etc.)",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_date": {"type": "string", "description": "Event date (YYYY-MM-DD)"},
+                "event_type": {
+                    "type": "string",
+                    "description": (
+                        "Event type: lab_result, toxicity, "
+                        "imaging, weight_measurement, etc."
+                    ),
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Event title",
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "Optional notes",
+                },
+                "metadata": {
+                    "type": "object",
+                    "description": "Structured data (lab values, grades)",
+                },
+            },
+            "required": ["event_date", "event_type", "title"],
+        },
+    },
 ]
 
 
@@ -246,6 +318,28 @@ async def execute_tool(name: str, inputs: dict) -> str:
 
         if name == "set_agent_state":
             result = await oncofiles_client.set_agent_state(inputs["key"], inputs["value"])
+            return json.dumps(result)
+
+        if name == "view_document":
+            result = await oncofiles_client.view_document(str(inputs["document_id"]))
+            return json.dumps(result)
+
+        if name == "store_lab_values":
+            result = await oncofiles_client.store_lab_values(
+                document_id=inputs["document_id"],
+                lab_date=inputs["lab_date"],
+                values_json=json.dumps(inputs["values"]),
+            )
+            return json.dumps(result)
+
+        if name == "add_treatment_event":
+            result = await oncofiles_client.add_treatment_event(
+                event_date=inputs["event_date"],
+                event_type=inputs["event_type"],
+                title=inputs["title"],
+                notes=inputs.get("notes", ""),
+                metadata=inputs.get("metadata"),
+            )
             return json.dumps(result)
 
         return json.dumps({"error": f"Unknown tool: {name}"})
@@ -438,6 +532,7 @@ async def run_autonomous_task(
     result = {
         "thinking": [],
         "tool_calls": [],
+        "citations": [],
         "response": "",
         "input_tokens": 0,
         "output_tokens": 0,
@@ -471,23 +566,43 @@ async def run_autonomous_task(
         call_cost = _track_cost(response.usage.input_tokens, response.usage.output_tokens)
         result["cost"] += call_cost
 
-        # Extract content
+        # Extract content and citations
         for block in response.content:
             if block.type == "thinking":
                 result["thinking"].append(block.thinking)
             elif block.type == "text":
                 result["response"] += block.text
+                # Collect citations from text blocks
+                if hasattr(block, "citations") and block.citations:
+                    for cite in block.citations:
+                        result["citations"].append(
+                            {
+                                "text": block.text,
+                                "cited_text": getattr(
+                                    cite, "cited_text", ""
+                                ),
+                                "source": getattr(
+                                    cite, "document_title", ""
+                                ),
+                            }
+                        )
 
         if response.stop_reason != "tool_use":
             break
 
         # Execute tools, preserve thinking blocks in assistant message
         messages.append({"role": "assistant", "content": response.content})
-        tool_results = []
+        tool_results: list[dict] = []
         for block in response.content:
             if block.type == "tool_use":
-                logger.info("Tool call: %s(%s)", block.name, json.dumps(block.input)[:200])
-                result["tool_calls"].append({"tool": block.name, "input": block.input})
+                logger.info(
+                    "Tool call: %s(%s)",
+                    block.name,
+                    json.dumps(block.input)[:200],
+                )
+                result["tool_calls"].append(
+                    {"tool": block.name, "input": block.input}
+                )
                 tool_output = await execute_tool(block.name, block.input)
                 tool_results.append(
                     {
@@ -496,6 +611,20 @@ async def run_autonomous_task(
                         "content": tool_output,
                     }
                 )
+                # Wrap citable tool output as document for citations
+                if block.name in _CITABLE_TOOLS:
+                    tool_results.append(
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "text",
+                                "media_type": "text/plain",
+                                "data": tool_output[:50000],
+                            },
+                            "title": f"{block.name} result",
+                            "citations": {"enabled": True},
+                        }
+                    )
         messages.append({"role": "user", "content": tool_results})
 
         # Check cost limit mid-run

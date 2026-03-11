@@ -281,19 +281,24 @@ Structure the briefing with clear sections:
 
 
 async def run_lab_sync() -> dict:
-    """Extract lab values from oncofiles documents and create lab_result treatment events."""
+    """Extract lab values from oncofiles documents and store as structured lab data."""
     prompt = """\
-Extract structured lab data from uploaded documents and store as treatment events.
+Extract structured lab data from uploaded documents and store as lab values.
 
 Instructions:
-1. Search documents for lab results (search "lab", "krvny obraz", "biochemia")
-2. For each lab result document found, extract key values:
-   - ANC, PLT, creatinine, ALT, AST, bilirubin, CEA, CA 19-9
-3. Use get_treatment_timeline to check if a lab_result event already exists for that date
-4. If not, create one via store_briefing noting which values were extracted
-5. Store a briefing summarizing what was synced
+1. Search documents for lab results (search "lab", "krvny obraz", "biochemia", "odber")
+2. For each document found, use view_document to read its full content
+3. Extract numeric lab values: WBC, ANC, PLT, hemoglobin, creatinine,
+   ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH
+4. Use get_treatment_timeline to check if data already exists for that date
+5. For NEW data only, use store_lab_values with the document_id, lab_date, and extracted values
+6. Also create a lab_result treatment event via add_treatment_event with the values in metadata
+7. Store a briefing summarizing what was extracted and stored
 
-Focus on creating structured data from unstructured lab documents.
+IMPORTANT: Use store_lab_values for structured persistence (enables trends/charts).
+Use add_treatment_event for timeline visibility.
+Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
+creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """
     result = await run_autonomous_task(prompt, max_turns=8, task_name="lab_sync")
     await _log_task("lab_sync", result)

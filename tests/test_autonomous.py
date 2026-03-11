@@ -37,12 +37,15 @@ class TestSystemPrompt:
 
 class TestTools:
     def test_tools_defined(self):
-        assert len(TOOLS) >= 7
+        assert len(TOOLS) >= 11
         tool_names = {t["name"] for t in TOOLS}
         assert "search_pubmed" in tool_names
         assert "search_trials" in tool_names
         assert "check_trial_eligibility" in tool_names
         assert "store_briefing" in tool_names
+        assert "view_document" in tool_names
+        assert "store_lab_values" in tool_names
+        assert "add_treatment_event" in tool_names
 
     def test_all_tools_have_schema(self):
         for tool in TOOLS:
@@ -87,6 +90,49 @@ class TestExecuteTool:
             data = json.loads(result)
             assert data["stored"] is True
             mock.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_view_document(self):
+        with patch("oncoteam.autonomous.oncofiles_client") as mock:
+            mock.view_document = AsyncMock(return_value={"content": "Lab results..."})
+
+            result = await execute_tool("view_document", {"document_id": 42})
+            data = json.loads(result)
+            assert data["content"] == "Lab results..."
+            mock.view_document.assert_called_once_with("42")
+
+    @pytest.mark.asyncio
+    async def test_store_lab_values(self):
+        with patch("oncoteam.autonomous.oncofiles_client") as mock:
+            mock.store_lab_values = AsyncMock(return_value={"stored": 3})
+
+            result = await execute_tool(
+                "store_lab_values",
+                {"document_id": 1, "lab_date": "2026-03-10", "values": {"ANC": 3200}},
+            )
+            data = json.loads(result)
+            assert data["stored"] == 3
+            mock.store_lab_values.assert_called_once_with(
+                document_id=1, lab_date="2026-03-10", values_json='{"ANC": 3200}'
+            )
+
+    @pytest.mark.asyncio
+    async def test_add_treatment_event(self):
+        with patch("oncoteam.autonomous.oncofiles_client") as mock:
+            mock.add_treatment_event = AsyncMock(return_value={"id": 99})
+
+            result = await execute_tool(
+                "add_treatment_event",
+                {
+                    "event_date": "2026-03-10",
+                    "event_type": "lab_result",
+                    "title": "Pre-cycle 3 CBC",
+                    "metadata": {"ANC": 3200, "PLT": 180000},
+                },
+            )
+            data = json.loads(result)
+            assert data["id"] == 99
+            mock.add_treatment_event.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_unknown_tool(self):
@@ -215,6 +261,7 @@ class TestRunAutonomousTask:
             assert result["cost"] > 0
             assert result["task_name"] == "test"
             assert result["tool_calls"] == []
+            assert result["citations"] == []
 
     @pytest.mark.asyncio
     async def test_run_with_thinking(self):
@@ -248,3 +295,37 @@ class TestRunAutonomousTask:
             assert len(result["thinking"]) == 1
             assert "analyze this" in result["thinking"][0]
             assert result["response"] == "Here is my analysis."
+
+    @pytest.mark.asyncio
+    async def test_run_with_citations(self):
+        """Test that citations are extracted from text blocks."""
+        import oncoteam.autonomous as mod
+
+        mod._daily_cost = 0.0
+        mod._daily_cost_reset_date = ""
+
+        mock_response = MagicMock()
+        mock_response.usage.input_tokens = 100
+        mock_response.usage.output_tokens = 200
+        mock_response.stop_reason = "end_turn"
+
+        citation = MagicMock()
+        citation.cited_text = "FOLFOX is first-line for mCRC"
+        citation.document_title = "search_pubmed result"
+
+        text_block = MagicMock()
+        text_block.type = "text"
+        text_block.text = "According to research, FOLFOX is standard."
+        text_block.citations = [citation]
+        mock_response.content = [text_block]
+
+        with patch("oncoteam.autonomous._get_client") as mock_client:
+            client = AsyncMock()
+            client.messages.create = AsyncMock(return_value=mock_response)
+            mock_client.return_value = client
+
+            result = await run_autonomous_task("test citations")
+
+            assert len(result["citations"]) == 1
+            assert "FOLFOX" in result["citations"][0]["cited_text"]
+            assert result["citations"][0]["source"] == "search_pubmed result"
