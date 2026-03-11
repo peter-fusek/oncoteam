@@ -34,6 +34,21 @@ function formatValue(val: unknown): string {
 function isObject(val: unknown): val is Record<string, unknown> {
   return typeof val === 'object' && val !== null && !Array.isArray(val)
 }
+
+// For activity type: track expanded output sections
+const expandedOutputs = ref(new Set<string>())
+
+function toggleOutput(key: string) {
+  if (expandedOutputs.value.has(key)) {
+    expandedOutputs.value.delete(key)
+  } else {
+    expandedOutputs.value.add(key)
+  }
+}
+
+function isActivityType(): boolean {
+  return current?.value?.type === 'activity'
+}
 </script>
 
 <template>
@@ -124,6 +139,24 @@ function isObject(val: unknown): val is Record<string, unknown> {
                 </template>
                 <template v-else>{{ formatValue(item) }}</template>
               </div>
+            </div>
+
+            <!-- Activity output: full display with collapsible section -->
+            <div v-else-if="isActivityType() && ['output', 'input'].includes(String(key)) && String(val).length > 100" class="rounded-lg border border-gray-800 p-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-xs text-gray-500 uppercase tracking-wider">{{ String(key).replace(/_/g, ' ') }}</div>
+                <button
+                  v-if="String(val).length > 500"
+                  class="text-[10px] text-teal-400 hover:text-teal-300"
+                  @click="toggleOutput(String(key))"
+                >
+                  {{ expandedOutputs.has(String(key)) ? t('agents.collapseOutput') : t('agents.showFullOutput') }}
+                </button>
+              </div>
+              <div
+                class="text-sm text-gray-300 whitespace-pre-wrap break-words overflow-auto"
+                :class="!expandedOutputs.has(String(key)) && String(val).length > 500 ? 'max-h-32' : 'max-h-[70vh]'"
+              >{{ val }}</div>
             </div>
 
             <!-- Long text (content, notes, summary) -->

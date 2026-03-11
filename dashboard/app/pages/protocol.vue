@@ -12,6 +12,7 @@ const { data: protocol, refresh } = await fetchApi<{
   watched_trials: string[]
   cycle_delay_rules: Array<{ condition: string; action: string }>
   current_cycle: number
+  last_lab_values?: Record<string, { value: number; date: string; status: 'safe' | 'warning' | 'critical' }>
 }>('/protocol')
 
 const { data: cumDose } = await fetchApi<{
@@ -117,7 +118,11 @@ const tabs = computed(() => [
       <!-- Lab Thresholds -->
       <div v-if="activeTab === 'labs'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
         <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.labThresholds') }}</h2>
-        <LabThresholdTable :thresholds="protocol.lab_thresholds" />
+        <LabThresholdTable
+          :thresholds="protocol.lab_thresholds"
+          :last-values="protocol.last_lab_values"
+          @row-click="(param: string) => drilldown.open({ type: 'treatment_event', id: `lab-${param}`, label: `${param} threshold`, data: { parameter: param, ...protocol.lab_thresholds[param], last_value: protocol.last_lab_values?.[param] } })"
+        />
       </div>
 
       <!-- Dose Modifications -->

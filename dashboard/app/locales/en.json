@@ -103,6 +103,8 @@
     "neverRun": "Not yet run",
     "scheduledJobs": "Scheduled jobs",
     "keyInsights": "Key insights",
+    "showFullOutput": "Show full output",
+    "collapseOutput": "Collapse output",
     "toolNames": {
       "search_pubmed": "PubMed Search",
       "search_clinical_trials": "Clinical Trial Search",
@@ -146,7 +148,14 @@
     "physicians": "Physicians",
     "treating": "Treating:",
     "admitting": "Admitting:",
-    "notesComorbidities": "Notes & Comorbidities"
+    "notesComorbidities": "Notes & Comorbidities",
+    "activeTherapies": "Active Therapies",
+    "plannedTherapies": "Planned Therapies",
+    "patientIds": "Patient IDs",
+    "rodne_cislo": "Birth Number",
+    "nou_id": "NOU ID",
+    "layExplanation": "Simple explanation",
+    "medicalExplanation": "Medical details"
   },
   "protocol": {
     "title": "Clinical Protocol",
@@ -261,7 +270,10 @@
     "noData": "No lab data yet — click \"Add Labs\" to enter results",
     "placeholderNotes": "Optional notes",
     "belowRange": "Below reference range",
-    "aboveRange": "Above reference range"
+    "aboveRange": "Above reference range",
+    "improving": "Improving",
+    "worsening": "Worsening",
+    "stable": "Stable"
   },
   "briefings": {
     "title": "Agent Briefings",
@@ -396,7 +408,13 @@
       "parameter": "Parameter",
       "threshold": "Threshold",
       "action": "Action",
-      "note": "Note"
+      "note": "Note",
+      "lastValue": "Last Value",
+      "date": "Date",
+      "safe": "Safe",
+      "warning": "Warning",
+      "critical": "Critical",
+      "noData": "No data"
     },
     "checklist": {
       "title": "Pre-Cycle {cycle} Checklist",

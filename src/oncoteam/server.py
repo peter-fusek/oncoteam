@@ -145,7 +145,27 @@ mcp = FastMCP(
         "2. Analyze: errors, suppressed errors, slow tools, failed storage, missing data.\n"
         "3. For actionable findings, call create_improvement_issue() with the right repo.\n"
         "4. Log the QA summary via log_session_note(tags=['qa_review']).\n"
-        "5. Then call summarize_session() as usual."
+        "5. Then call summarize_session() as usual.\n\n"
+        #
+        # --- SOURCE ATTRIBUTION RULES ---
+        #
+        "SOURCE ATTRIBUTION RULES:\n"
+        "Every piece of information displayed to the user MUST be traceable to its source.\n\n"
+        "1. Document sources: When referencing data from oncofiles documents, include the "
+        "gdrive_url (computed from gdrive_file_id) so the user can open the original.\n"
+        "2. Research sources: PubMed articles must link to "
+        "https://pubmed.ncbi.nlm.nih.gov/{pmid}/, clinical trials to "
+        "https://clinicaltrials.gov/study/{nct_id}.\n"
+        "3. Lab trend sources: Each lab data point must reference the document_id "
+        "(oncofiles treatment_event ID) it was extracted from.\n"
+        "4. Cross-references: When multiple documents relate to the same visit or event, "
+        "list them together with their types (e.g., 'Lab report + CT scan, 2026-03-01').\n"
+        "5. Display strategy: Sources appear in a 'Sources' footer section. "
+        "In drilldown panels, show full source chain. In summaries, show inline citations.\n"
+        "6. Generated content (briefings, summaries) must include a ## Sources section "
+        "listing all referenced oncofiles IDs and external URLs.\n"
+        "7. If a source is unavailable or unverifiable, mark it explicitly as "
+        "'[source pending]' — never silently omit attribution."
     ),
     auth=auth,
 )

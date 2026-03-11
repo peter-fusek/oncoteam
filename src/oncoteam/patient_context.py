@@ -62,6 +62,66 @@ PATIENT = PatientProfile(
         "BRAF inhibitors (encorafenib)": "BRAF wild-type",
         "KRAS G12C-specific (sotorasib, adagrasib)": "patient has G12S, not G12C",
     },
+    patient_ids={
+        "rodne_cislo": "XXXXXX/XXXX",
+        "nou_id": "overiť",
+    },
+    active_therapies=[
+        {
+            "name": "mFOLFOX6 90%",
+            "drugs": [
+                {
+                    "name": "Oxaliplatin",
+                    "dose": "76.5 mg/m²",
+                    "lay": "Platinový liek, ktorý poškodzuje DNA nádorových buniek",
+                    "medical": "3rd-gen platinum analog; forms inter/intra-strand DNA crosslinks",
+                },
+                {
+                    "name": "Leucovorin (calcium folinate)",
+                    "dose": "400 mg/m²",
+                    "lay": "Vitamín, ktorý zosilňuje účinok 5-FU",
+                    "medical": "Reduced folate; potentiates 5-FU by stabilizing FdUMP-TS complex",
+                },
+                {
+                    "name": "5-Fluorouracil (5-FU)",
+                    "dose": "400 mg/m² bolus + 2400 mg/m² 46h infúzia",
+                    "lay": "Antimetabolit, ktorý bráni deleniu nádorových buniek",
+                    "medical": "Fluoropyrimidine antimetabolite; inhibits thymidylate synthase",
+                },
+            ],
+            "status": "active",
+            "cycle": 3,
+        },
+        {
+            "name": "Clexane (enoxaparin)",
+            "drugs": [
+                {
+                    "name": "Enoxaparin",
+                    "dose": "0.6 ml SC 2x/deň",
+                    "lay": "Riedenie krvi — prevencia zhoršenia krvnej zrazeniny v žile",
+                    "medical": "LMWH anticoagulation for active VJI thrombosis",
+                },
+            ],
+            "status": "active",
+            "indication": "VJI thrombosis",
+        },
+        {
+            "name": "Bevacizumab",
+            "drugs": [
+                {
+                    "name": "Bevacizumab",
+                    "dose": "5 mg/kg q2w",
+                    "lay": (
+                        "Protilátka blokujúca rast ciev nádoru"
+                        " — VYSOKÉ RIZIKO pre aktívnu trombózu"
+                    ),
+                    "medical": "Anti-VEGF mAb; HIGH RISK due to active VJI thrombosis + Clexane",
+                },
+            ],
+            "status": "planned",
+            "warning": "HIGH RISK — requires explicit oncologist discussion due to active VTE",
+        },
+    ],
 )
 
 # ── Bilingual overlay for dashboard display ──────────────────────────────
@@ -135,6 +195,99 @@ _PATIENT_L10N: dict = {
         "KRAS": L("Riadiaca mutácia liečby", "Treatment driver mutation"),
         "MSI": L("Marker eligibility imunoterapie", "Immunotherapy eligibility marker"),
     },
+    "patient_ids": {
+        "rodne_cislo": L("Rodné číslo", "Birth number"),
+        "nou_id": L("NOU ID", "NOU ID"),
+    },
+    "active_therapies": [
+        {
+            "name": "mFOLFOX6 90%",
+            "drugs": [
+                {
+                    "name": "Oxaliplatin",
+                    "dose": "76.5 mg/m²",
+                    "lay": L(
+                        "Platinový liek, ktorý poškodzuje DNA nádorových buniek",
+                        "Platinum drug that damages cancer cell DNA",
+                    ),
+                    "medical": L(
+                        "Platinový analóg 3. generácie; tvorí inter/intra-reťazcové"
+                        " DNA krížové väzby",
+                        "3rd-gen platinum analog; forms inter/intra-strand DNA crosslinks",
+                    ),
+                },
+                {
+                    "name": "Leucovorin",
+                    "dose": "400 mg/m²",
+                    "lay": L(
+                        "Vitamín, ktorý zosilňuje účinok 5-FU",
+                        "Vitamin that enhances 5-FU effect",
+                    ),
+                    "medical": L(
+                        "Redukovaný folát; zosilňuje 5-FU stabilizáciou komplexu FdUMP-TS",
+                        "Reduced folate; potentiates 5-FU by stabilizing FdUMP-TS complex",
+                    ),
+                },
+                {
+                    "name": "5-Fluorouracil (5-FU)",
+                    "dose": L(
+                        "400 mg/m² bolus + 2400 mg/m² 46h infúzia",
+                        "400 mg/m² bolus + 2400 mg/m² 46h infusion",
+                    ),
+                    "lay": L(
+                        "Antimetabolit, ktorý bráni deleniu nádorových buniek",
+                        "Antimetabolite that prevents cancer cell division",
+                    ),
+                    "medical": L(
+                        "Fluoropyrimidínový antimetabolit; inhibuje tymidylátsyntetázu",
+                        "Fluoropyrimidine antimetabolite; inhibits thymidylate synthase",
+                    ),
+                },
+            ],
+            "status": L("aktívna", "active"),
+        },
+        {
+            "name": L("Clexane (enoxaparín)", "Clexane (enoxaparin)"),
+            "drugs": [
+                {
+                    "name": L("Enoxaparín", "Enoxaparin"),
+                    "dose": "0.6 ml SC 2x/deň",
+                    "lay": L(
+                        "Riedenie krvi — prevencia zhoršenia krvnej zrazeniny v žile",
+                        "Blood thinner — prevents worsening of the blood clot in the vein",
+                    ),
+                    "medical": L(
+                        "LMWH antikoagulácia pre aktívnu VJI trombózu",
+                        "LMWH anticoagulation for active VJI thrombosis",
+                    ),
+                },
+            ],
+            "status": L("aktívna", "active"),
+            "indication": L("VJI trombóza", "VJI thrombosis"),
+        },
+        {
+            "name": "Bevacizumab",
+            "drugs": [
+                {
+                    "name": "Bevacizumab",
+                    "dose": "5 mg/kg q2w",
+                    "lay": L(
+                        "Protilátka blokujúca rast ciev nádoru — VYSOKÉ RIZIKO",
+                        "Antibody blocking tumor blood vessel growth — HIGH RISK",
+                    ),
+                    "medical": L(
+                        "Anti-VEGF mAb; VYSOKÉ RIZIKO kvôli aktívnej VJI trombóze + Clexane",
+                        "Anti-VEGF mAb; HIGH RISK due to active VJI thrombosis + Clexane",
+                    ),
+                },
+            ],
+            "status": L("plánovaná", "planned"),
+            "warning": L(
+                "VYSOKÉ RIZIKO — vyžaduje výslovný súhlas onkológa kvôli aktívnej VTE",
+                "HIGH RISK — requires explicit oncologist discussion due to active VTE",
+            ),
+        },
+    ],
     "surgeries": [
         {
             "date": "2026-01-18",

@@ -71,6 +71,8 @@ class PatientProfile(BaseModel):
     current_cycle: int | None = None
     ecog: str = ""
     excluded_therapies: dict[str, str] = Field(default_factory=dict)
+    patient_ids: dict[str, str] = Field(default_factory=dict)
+    active_therapies: list[dict] = Field(default_factory=list)
 
 
 class ResearchEntry(BaseModel):

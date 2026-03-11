@@ -206,6 +206,29 @@ LAB_REFERENCE_RANGES: dict[str, dict] = {
     "bilirubin": {"min": 0.1, "max": 1.2, "unit": "mg/dL"},
     "CEA": {"min": 0, "max": 5.0, "unit": "ng/mL", "note": "non-smoker ULN"},
     "CA_19_9": {"min": 0, "max": 37.0, "unit": "U/mL"},
+    "WBC": {"min": 4.5, "max": 11.0, "unit": "×10³/µL"},
+    "ABS_LYMPH": {"min": 1000, "max": 4800, "unit": "/µL"},
+    "SII": {"min": 0, "max": 1800, "unit": "", "note": "systemic immune-inflammation index"},
+    "NE_LY_RATIO": {"min": 0, "max": 3.0, "unit": "", "note": "neutrophil/lymphocyte ratio"},
+}
+
+# Health direction for lab parameters: determines if rising/falling is good or bad.
+# "lower_is_better" = rising is worsening, falling is improving.
+# "higher_is_better" = rising is improving, falling is worsening.
+PARAMETER_HEALTH_DIRECTION: dict[str, str] = {
+    "CEA": "lower_is_better",
+    "CA_19_9": "lower_is_better",
+    "ANC": "higher_is_better",
+    "PLT": "in_range",  # both too high and too low are bad
+    "hemoglobin": "higher_is_better",
+    "creatinine": "lower_is_better",
+    "ALT": "lower_is_better",
+    "AST": "lower_is_better",
+    "bilirubin": "lower_is_better",
+    "WBC": "in_range",
+    "ABS_LYMPH": "higher_is_better",
+    "SII": "lower_is_better",
+    "NE_LY_RATIO": "lower_is_better",
 }
 
 # Cumulative oxaliplatin dose thresholds (ESMO/NCCN)

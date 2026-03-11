@@ -21,6 +21,7 @@ from .clinical_protocol import (
     LAB_SAFETY_THRESHOLDS,
     MONITORING_SCHEDULE,
     NUTRITION_ESCALATION,
+    PARAMETER_HEALTH_DIRECTION,
     SAFETY_FLAGS,
     SECOND_LINE_OPTIONS,
     TREATMENT_MILESTONES,
@@ -36,7 +37,7 @@ from .config import (
 from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, get_patient_localized
 
-VERSION = "0.11.0"
+VERSION = "0.12.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -587,7 +588,48 @@ async def api_protocol(request: Request) -> JSONResponse:
     from .clinical_protocol import resolve_protocol
 
     lang = get_lang(request)
-    return _cors_json(resolve_protocol(lang))
+    data = resolve_protocol(lang)
+
+    # Fetch latest lab values for threshold status display
+    last_lab_values: dict[str, dict] = {}
+    try:
+        result = await oncofiles_client.list_treatment_events(
+            event_type="lab_result", limit=1
+        )
+        events = _extract_list(result, "events")
+        if events:
+            latest = events[0]
+            meta = latest.get("metadata", {})
+            if isinstance(meta, str):
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
+                    meta = json.loads(meta)
+            lab_date = latest.get("event_date", "")
+            for param, threshold in LAB_SAFETY_THRESHOLDS.items():
+                if param not in meta:
+                    continue
+                val = meta[param]
+                if not isinstance(val, (int, float)):
+                    continue
+                # Determine safety status
+                status = "safe"
+                if "min" in threshold:
+                    if val < threshold["min"]:
+                        status = "critical"
+                    elif val < threshold["min"] * 1.2:
+                        status = "warning"
+                elif "max_ratio" in threshold:
+                    # max_ratio thresholds don't have absolute values
+                    pass
+                last_lab_values[param] = {
+                    "value": val,
+                    "date": lab_date,
+                    "status": status,
+                }
+    except Exception as e:
+        record_suppressed_error("api_protocol", "fetch_last_labs", e)
+
+    data["last_lab_values"] = last_lab_values
+    return _cors_json(data)
 
 
 async def api_protocol_cycles(request: Request) -> JSONResponse:
@@ -860,6 +902,9 @@ async def api_labs(request: Request) -> JSONResponse:
             except Exception as fallback_err:
                 record_suppressed_error("api_labs", "analyze_labs_fallback", fallback_err)
 
+        # Sort events by date descending (newest first)
+        events.sort(key=lambda e: e.get("event_date", ""), reverse=True)
+
         # Extract values and check against safety thresholds + reference ranges
         entries = []
         for e in events:
@@ -910,6 +955,50 @@ async def api_labs(request: Request) -> JSONResponse:
                     "value_statuses": value_statuses,
                 }
             )
+
+        # Compute direction (vs previous entry) and health_direction per parameter
+        for i, entry in enumerate(entries):
+            directions: dict[str, str] = {}
+            health_dirs: dict[str, str] = {}
+            prev = entries[i + 1] if i + 1 < len(entries) else None
+            for param, val in entry["values"].items():
+                if not isinstance(val, (int, float)):
+                    continue
+                if prev and param in prev["values"]:
+                    prev_val = prev["values"][param]
+                    if isinstance(prev_val, (int, float)):
+                        if val > prev_val:
+                            directions[param] = "up"
+                        elif val < prev_val:
+                            directions[param] = "down"
+                        else:
+                            directions[param] = "stable"
+                        # Determine health direction
+                        health = PARAMETER_HEALTH_DIRECTION.get(param, "in_range")
+                        if directions[param] == "stable":
+                            health_dirs[param] = "stable"
+                        elif health == "lower_is_better":
+                            health_dirs[param] = (
+                                "improving" if directions[param] == "down" else "worsening"
+                            )
+                        elif health == "higher_is_better":
+                            health_dirs[param] = (
+                                "improving" if directions[param] == "up" else "worsening"
+                            )
+                        else:
+                            # in_range: check if moving toward or away from range
+                            ref = LAB_REFERENCE_RANGES.get(param)
+                            if ref:
+                                mid = (ref["min"] + ref["max"]) / 2
+                                health_dirs[param] = (
+                                    "improving"
+                                    if abs(val - mid) < abs(prev_val - mid)
+                                    else "worsening"
+                                )
+                            else:
+                                health_dirs[param] = "stable"
+            entry["directions"] = directions
+            entry["health_directions"] = health_dirs
 
         return _cors_json(
             {

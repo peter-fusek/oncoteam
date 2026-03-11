@@ -21,6 +21,15 @@ const { data: patient } = await fetchApi<{
   admitting_physician: string
   excluded_therapies: Array<{ therapy: string; reason: string }> | Record<string, string>
   notes: string
+  patient_ids?: Record<string, string>
+  active_therapies?: Array<{
+    name: string
+    drugs: Array<{ name: string; dose: string; lay: string; medical: string }>
+    status: string
+    warning?: string
+    indication?: string
+    cycle?: number
+  }>
 }>('/patient')
 
 const { data: protocol } = await fetchApi<{
@@ -74,7 +83,35 @@ const excludedTherapies = computed(() => {
   return Object.entries(raw).map(([therapy, reason]) => ({ therapy, reason }))
 })
 
+const activeTherapies = computed(() =>
+  (patient.value?.active_therapies ?? []).filter(t => t.status === 'active' || t.status === 'aktívna')
+)
+
+const plannedTherapies = computed(() =>
+  (patient.value?.active_therapies ?? []).filter(t => t.status === 'planned' || t.status === 'plánovaná')
+)
+
+// Toggle between lay and medical explanations
+const showMedical = ref(false)
+
 const drilldown = useDrilldown()
+
+// Medical abbreviation tooltips
+const abbreviations: Record<string, string> = {
+  ECOG: 'Eastern Cooperative Oncology Group performance status',
+  mCRC: 'Metastatic colorectal cancer',
+  FOLFOX: 'FOLinic acid + Fluorouracil + OXaliplatin',
+  mFOLFOX6: 'Modified FOLFOX6 regimen',
+  VJI: 'Vena jugularis interna (internal jugular vein)',
+  pMMR: 'Proficient mismatch repair',
+  MSS: 'Microsatellite stable',
+  G12S: 'Glycine to Serine substitution at position 12',
+  KRAS: 'Kirsten rat sarcoma viral oncogene',
+  LMWH: 'Low-molecular-weight heparin',
+  VTE: 'Venous thromboembolism',
+  VEGF: 'Vascular endothelial growth factor',
+  DPD: 'Dihydropyrimidine dehydrogenase',
+}
 </script>
 
 <template>
@@ -87,6 +124,12 @@ const drilldown = useDrilldown()
           <p class="text-sm text-gray-400 mt-1">
             {{ patient.diagnosis_description }} ({{ patient.diagnosis_code }})
           </p>
+          <!-- Patient IDs -->
+          <div v-if="patient.patient_ids" class="flex items-center gap-4 mt-1.5 text-xs text-gray-500">
+            <span v-for="(val, key) in patient.patient_ids" :key="key">
+              <span class="text-gray-600">{{ $t(`patient.${key}`, key) }}:</span> {{ val }}
+            </span>
+          </div>
           <div class="flex items-center gap-3 mt-2 text-xs">
             <UBadge variant="subtle" color="info">{{ $t('patient.stage', { stage: patient.staging?.split(' ')[0] || 'IV' }) }}</UBadge>
             <UBadge variant="subtle" color="neutral">{{ patient.histology }}</UBadge>
@@ -94,9 +137,78 @@ const drilldown = useDrilldown()
           </div>
         </div>
         <div class="text-right text-sm">
-          <div class="text-white font-medium">{{ patient.treatment_regimen }}</div>
+          <div class="text-white font-medium">
+            <UTooltip :text="abbreviations['mFOLFOX6']">{{ patient.treatment_regimen }}</UTooltip>
+          </div>
           <div class="text-gray-400">{{ $t('patient.cycle', { n: patient.current_cycle }) }}</div>
-          <div v-if="patient.ecog" class="text-gray-500 text-xs">{{ $t('patient.ecogLabel', { val: patient.ecog }) }}</div>
+          <div v-if="patient.ecog" class="text-gray-500 text-xs">
+            <UTooltip :text="abbreviations['ECOG']">{{ $t('patient.ecogLabel', { val: patient.ecog }) }}</UTooltip>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Therapies -->
+    <div v-if="activeTherapies.length">
+      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.activeTherapies') }}</h2>
+      <div class="space-y-3">
+        <div
+          v-for="(therapy, i) in activeTherapies"
+          :key="i"
+          class="rounded-xl border border-gray-800 bg-gray-900/50 p-4"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-pill" class="text-teal-500" />
+              <span class="text-sm font-medium text-white">{{ therapy.name }}</span>
+              <UBadge v-if="therapy.cycle" variant="subtle" color="info" size="xs">
+                {{ $t('patient.cycle', { n: therapy.cycle }) }}
+              </UBadge>
+            </div>
+            <button class="text-[10px] text-teal-400 hover:text-teal-300" @click="showMedical = !showMedical">
+              {{ showMedical ? $t('patient.layExplanation') : $t('patient.medicalExplanation') }}
+            </button>
+          </div>
+          <div class="space-y-2">
+            <div v-for="drug in therapy.drugs" :key="drug.name" class="rounded-lg bg-gray-800/30 px-3 py-2">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="text-white font-mono text-xs">{{ drug.name }}</span>
+                <span class="text-gray-500 text-xs">{{ drug.dose }}</span>
+              </div>
+              <p class="text-xs text-gray-400 mt-1">{{ showMedical ? drug.medical : drug.lay }}</p>
+            </div>
+          </div>
+          <div v-if="therapy.indication" class="text-xs text-gray-500 mt-2">
+            {{ therapy.indication }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Planned Therapies (with warnings) -->
+    <div v-if="plannedTherapies.length">
+      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.plannedTherapies') }}</h2>
+      <div class="space-y-3">
+        <div
+          v-for="(therapy, i) in plannedTherapies"
+          :key="i"
+          class="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <UIcon name="i-lucide-alert-triangle" class="text-amber-500" />
+            <span class="text-sm font-medium text-white">{{ therapy.name }}</span>
+            <UBadge variant="subtle" color="warning" size="xs">{{ therapy.status }}</UBadge>
+          </div>
+          <div v-if="therapy.warning" class="text-xs text-amber-400 mb-2">{{ therapy.warning }}</div>
+          <div class="space-y-2">
+            <div v-for="drug in therapy.drugs" :key="drug.name" class="rounded-lg bg-gray-800/30 px-3 py-2">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="text-white font-mono text-xs">{{ drug.name }}</span>
+                <span class="text-gray-500 text-xs">{{ drug.dose }}</span>
+              </div>
+              <p class="text-xs text-gray-400 mt-1">{{ showMedical ? drug.medical : drug.lay }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

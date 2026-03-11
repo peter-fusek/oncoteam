@@ -317,8 +317,10 @@ async def test_api_labs_fallback_to_analyze_labs(mock_list, mock_analyze):
 
     assert response.status_code == 200
     assert data["total"] == 2
-    assert data["entries"][0]["date"] == "2026-02-20"
-    assert data["entries"][0]["values"]["ANC"] == 3200
+    # Sorted descending (newest first)
+    assert data["entries"][0]["date"] == "2026-03-05"
+    assert data["entries"][1]["date"] == "2026-02-20"
+    assert data["entries"][1]["values"]["ANC"] == 3200
     mock_analyze.assert_called_once()
 
 

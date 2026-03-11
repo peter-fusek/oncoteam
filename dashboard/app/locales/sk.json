@@ -103,6 +103,8 @@
     "neverRun": "Ešte nespustený",
     "scheduledJobs": "Naplánované úlohy",
     "keyInsights": "Kľúčové poznatky",
+    "showFullOutput": "Zobraziť celý výstup",
+    "collapseOutput": "Skryť výstup",
     "toolNames": {
       "search_pubmed": "PubMed vyhľadávanie",
       "search_clinical_trials": "Vyhľadávanie štúdií",
@@ -146,7 +148,14 @@
     "physicians": "Lekári",
     "treating": "Ošetrujúci:",
     "admitting": "Prijímajúci:",
-    "notesComorbidities": "Poznámky a komorbidity"
+    "notesComorbidities": "Poznámky a komorbidity",
+    "activeTherapies": "Aktívna liečba",
+    "plannedTherapies": "Plánovaná liečba",
+    "patientIds": "Identifikátory pacienta",
+    "rodne_cislo": "Rodné číslo",
+    "nou_id": "NOU ID",
+    "layExplanation": "Jednoduché vysvetlenie",
+    "medicalExplanation": "Medicínsky detail"
   },
   "protocol": {
     "title": "Klinický protokol",
@@ -261,7 +270,10 @@
     "noData": "Zatiaľ žiadne laboratórne údaje — kliknite na Pridať výsledky",
     "placeholderNotes": "Nepovinné poznámky",
     "belowRange": "Pod referenčným rozsahom",
-    "aboveRange": "Nad referenčným rozsahom"
+    "aboveRange": "Nad referenčným rozsahom",
+    "improving": "Zlepšuje sa",
+    "worsening": "Zhoršuje sa",
+    "stable": "Stabilné"
   },
   "briefings": {
     "title": "Briefingy agentov",
@@ -396,7 +408,13 @@
       "parameter": "Parameter",
       "threshold": "Prah",
       "action": "Akcia",
-      "note": "Poznámka"
+      "note": "Poznámka",
+      "lastValue": "Posledná hodnota",
+      "date": "Dátum",
+      "safe": "Bezpečné",
+      "warning": "Varovanie",
+      "critical": "Kritické",
+      "noData": "Žiadne údaje"
     },
     "checklist": {
       "title": "Checklist pred cyklom {cycle}",

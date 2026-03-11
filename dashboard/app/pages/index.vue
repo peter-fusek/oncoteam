@@ -224,18 +224,28 @@ const rooms = computed<RoomDef[]>(() => [
 
 // ── Key Insights ─────────────────────────────────
 
-function formatInsight(entry: { tool: string; input: string; output: string }): string {
-  const qm = entry.input?.match(/query='([^']*)'/)
+function formatInsight(entry: { tool: string; input: string; output: string }): { line1: string; line2: string } {
+  // Line 1: What was searched/analyzed (from input)
+  const qm = entry.input?.match(/query='([^']*)'/) || entry.input?.match(/condition='([^']*)'/)
   const q = qm?.[1]
-  if (q) return `${q.length > 50 ? q.slice(0, 50) + '…' : q} → ${entry.output}`
-  return entry.output
+  const line1 = q
+    ? (q.length > 60 ? q.slice(0, 60) + '…' : q)
+    : (entry.input?.length > 60 ? entry.input.slice(0, 60) + '…' : entry.input || entry.tool)
+
+  // Line 2: Key finding (from output — extract count + first item)
+  const countMatch = entry.output?.match(/(\d+)\s+(articles?|trials?|results?|documents?|entries)/i)
+  const line2 = countMatch
+    ? `${countMatch[1]} ${countMatch[2]}`
+    : (entry.output?.length > 80 ? entry.output.slice(0, 80) + '…' : entry.output || '')
+
+  return { line1, line2 }
 }
 
 function keyInsightsForTools(tools: string[], limit = 5) {
   return (activity.value?.entries ?? [])
     .filter(e => tools.includes(e.tool) && e.status === 'ok' && e.output)
     .slice(0, limit)
-    .map(e => ({ tool: e.tool, timestamp: e.timestamp, summary: formatInsight(e) }))
+    .map(e => ({ tool: e.tool, timestamp: e.timestamp, insight: formatInsight(e), entry: e }))
 }
 
 const roomInsights = computed(() =>
@@ -526,10 +536,19 @@ onUnmounted(() => {
             {{ $t('agents.keyInsights') }}
           </h3>
           <div class="rounded-xl border border-gray-800 bg-gray-900/50 divide-y divide-gray-800/50">
-            <div v-for="(insight, i) in roomInsights" :key="i" class="px-4 py-2.5 flex items-start gap-3 text-xs">
+            <button
+              v-for="(insight, i) in roomInsights"
+              :key="i"
+              class="w-full px-4 py-2.5 flex items-start gap-3 text-xs hover:bg-gray-800/30 transition-colors text-left"
+              @click="openTaskDetail(insight.entry)"
+            >
               <span class="text-gray-600 shrink-0 mt-0.5">{{ relativeTime(insight.timestamp) }}</span>
-              <span class="text-gray-300">{{ insight.summary }}</span>
-            </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-gray-300">{{ insight.insight.line1 }}</div>
+                <div v-if="insight.insight.line2" class="text-gray-500 mt-0.5">{{ insight.insight.line2 }}</div>
+              </div>
+              <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0 mt-0.5" />
+            </button>
           </div>
         </div>
 
@@ -619,10 +638,19 @@ onUnmounted(() => {
             {{ $t('agents.keyInsights') }}
           </h3>
           <div class="rounded-xl border border-gray-800 bg-gray-900/50 divide-y divide-gray-800/50">
-            <div v-for="(insight, i) in workerInsights" :key="i" class="px-4 py-2.5 flex items-start gap-3 text-xs">
+            <button
+              v-for="(insight, i) in workerInsights"
+              :key="i"
+              class="w-full px-4 py-2.5 flex items-start gap-3 text-xs hover:bg-gray-800/30 transition-colors text-left"
+              @click="openTaskDetail(insight.entry)"
+            >
               <span class="text-gray-600 shrink-0 mt-0.5">{{ relativeTime(insight.timestamp) }}</span>
-              <span class="text-gray-300">{{ insight.summary }}</span>
-            </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-gray-300">{{ insight.insight.line1 }}</div>
+                <div v-if="insight.insight.line2" class="text-gray-500 mt-0.5">{{ insight.insight.line2 }}</div>
+              </div>
+              <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0 mt-0.5" />
+            </button>
           </div>
         </div>
 

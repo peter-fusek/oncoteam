@@ -11,6 +11,8 @@ const { data: labs, refresh } = await fetchApi<{
     notes: string
     alerts: Array<{ param: string; value: number; threshold: number; action: string }>
     value_statuses: Record<string, 'low' | 'high' | 'normal'>
+    directions: Record<string, 'up' | 'down' | 'stable'>
+    health_directions: Record<string, 'improving' | 'worsening' | 'stable'>
   }>
   reference_ranges: Record<string, { min: number; max: number; unit: string; note?: string }>
   total: number
@@ -27,16 +29,36 @@ const labParams = [
   { key: 'CA_19_9', label: 'CA 19-9', color: '#8b5cf6', unit: 'U/mL' },
   { key: 'ANC', label: 'ANC', color: '#14b8a6', unit: '/uL', thresholdKey: 'ANC' },
   { key: 'PLT', label: 'Platelets', color: '#3b82f6', unit: '/uL', thresholdKey: 'PLT' },
+  { key: 'WBC', label: 'WBC', color: '#06b6d4', unit: '×10³/µL' },
+  { key: 'hemoglobin', label: 'Hemoglobin', color: '#e11d48', unit: 'g/dL' },
+  { key: 'ABS_LYMPH', label: 'Lymphocytes', color: '#a855f7', unit: '/µL' },
   { key: 'creatinine', label: 'Creatinine', color: '#ef4444', unit: 'mg/dL' },
+  { key: 'bilirubin', label: 'Bilirubin', color: '#eab308', unit: 'mg/dL' },
   { key: 'ALT', label: 'ALT', color: '#f97316', unit: 'U/L' },
   { key: 'AST', label: 'AST', color: '#ec4899', unit: 'U/L' },
-  { key: 'hemoglobin', label: 'Hemoglobin', color: '#e11d48', unit: 'g/dL' },
+  { key: 'SII', label: 'SII', color: '#64748b', unit: '' },
+  { key: 'NE_LY_RATIO', label: 'Ne/Ly', color: '#78716c', unit: '' },
 ]
 
 const sortedEntries = computed(() => {
   if (!labs.value?.entries) return []
-  return [...labs.value.entries].sort((a, b) => a.date.localeCompare(b.date))
+  return [...labs.value.entries].sort((a, b) => b.date.localeCompare(a.date))
 })
+
+function directionArrow(entry: any, key: string): string {
+  const dir = entry.directions?.[key]
+  if (dir === 'up') return '\u2191'
+  if (dir === 'down') return '\u2193'
+  if (dir === 'stable') return '\u2192'
+  return ''
+}
+
+function directionColor(entry: any, key: string): string {
+  const health = entry.health_directions?.[key]
+  if (health === 'improving') return 'text-green-400'
+  if (health === 'worsening') return 'text-red-400'
+  return 'text-gray-500'
+}
 
 const chartLabels = computed(() => sortedEntries.value.map(e => e.date))
 
@@ -239,10 +261,20 @@ async function submitLab() {
               <td v-for="p in labParams" :key="p.key" class="px-3 py-2">
                 <span
                   v-if="entry.values?.[p.key] != null"
-                  :class="entry.alerts?.some((a: any) => a.param === p.key) ? 'text-red-400 font-semibold' : statusColor(entry.value_statuses?.[p.key])"
-                  :title="entry.value_statuses?.[p.key] === 'low' ? t('labs.belowRange') : entry.value_statuses?.[p.key] === 'high' ? t('labs.aboveRange') : ''"
+                  class="inline-flex items-center gap-0.5"
                 >
-                  {{ typeof entry.values[p.key] === 'number' ? entry.values[p.key].toLocaleString() : entry.values[p.key] }}
+                  <span
+                    :class="entry.alerts?.some((a: any) => a.param === p.key) ? 'text-red-400 font-semibold' : statusColor(entry.value_statuses?.[p.key])"
+                    :title="entry.value_statuses?.[p.key] === 'low' ? t('labs.belowRange') : entry.value_statuses?.[p.key] === 'high' ? t('labs.aboveRange') : ''"
+                  >
+                    {{ typeof entry.values[p.key] === 'number' ? entry.values[p.key].toLocaleString() : entry.values[p.key] }}
+                  </span>
+                  <span
+                    v-if="directionArrow(entry, p.key)"
+                    class="text-[10px]"
+                    :class="directionColor(entry, p.key)"
+                    :title="entry.health_directions?.[p.key] === 'improving' ? t('labs.improving') : entry.health_directions?.[p.key] === 'worsening' ? t('labs.worsening') : t('labs.stable')"
+                  >{{ directionArrow(entry, p.key) }}</span>
                 </span>
                 <span v-else class="text-gray-700">-</span>
               </td>
