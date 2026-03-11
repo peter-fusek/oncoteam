@@ -24,7 +24,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 
 export function useDrilldown() {
-  const { apiUrl } = useOncoteamApi()
+  const { apiUrl, authHeaders } = useOncoteamApi()
 
   const current = computed(() => stack.value.length ? stack.value[stack.value.length - 1] : null)
 
@@ -43,7 +43,9 @@ export function useDrilldown() {
     loading.value = true
     error.value = null
     try {
-      const result = await $fetch<DetailResponse>(apiUrl(`/detail/${item.type}/${item.id}`))
+      const result = await $fetch<DetailResponse>(apiUrl(`/detail/${item.type}/${item.id}`), {
+        headers: authHeaders,
+      })
       detail.value = result
     } catch (e: any) {
       error.value = e.message || String(e)
