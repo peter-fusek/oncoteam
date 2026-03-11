@@ -34,6 +34,7 @@ from .config import (
     AUTONOMOUS_ENABLED,
     DASHBOARD_ALLOWED_ORIGINS,
     DASHBOARD_API_KEY,
+    MCP_TRANSPORT,
     ONCOFILES_MCP_URL,
 )
 from .eligibility import assess_research_relevance
@@ -213,14 +214,15 @@ def _cors_json(
 def _check_api_auth(request: Request) -> JSONResponse | None:
     """Check API key auth. Returns error response if unauthorized, None if OK."""
     if not DASHBOARD_API_KEY:
-        return None  # No key configured = auth disabled (dev mode)
+        if MCP_TRANSPORT == "stdio":
+            return None  # Dev mode: auth disabled for local stdio
+        return _cors_json(
+            {"error": "DASHBOARD_API_KEY not configured"}, status_code=500, request=request
+        )
     auth_header = request.headers.get("authorization", "")
-    key_param = request.query_params.get("key", "")
     token = ""
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
-    elif key_param:
-        token = key_param
     if token == DASHBOARD_API_KEY:
         return None  # Authorized
     return _cors_json(
@@ -251,6 +253,8 @@ async def api_status(request: Request) -> JSONResponse:
         "summarize_session",
         "review_session",
         "create_improvement_issue",
+        "get_lab_safety_check",
+        "get_precycle_checklist",
     ]
     return _cors_json(
         {
@@ -1251,10 +1255,14 @@ async def api_detail(request: Request) -> JSONResponse:
             raw = await oncofiles_client.get_document(int(detail_id))
             data = raw if isinstance(raw, dict) else {"raw": raw}
             source["oncofiles_id"] = int(detail_id)
-            gdrive_id = data.get("gdrive_file_id") or data.get("google_drive_id")
-            if gdrive_id:
-                source["gdrive_file_id"] = gdrive_id
-                source["gdrive_url"] = f"https://drive.google.com/file/d/{gdrive_id}/view"
+            # Prefer gdrive_url from oncofiles v3.11+ response; fallback to computing from ID
+            if data.get("gdrive_url"):
+                source["gdrive_url"] = data["gdrive_url"]
+            else:
+                gdrive_id = data.get("gdrive_file_id") or data.get("google_drive_id")
+                if gdrive_id:
+                    source["gdrive_file_id"] = gdrive_id
+                    source["gdrive_url"] = f"https://drive.google.com/file/d/{gdrive_id}/view"
             # Fetch full content if file_id is available
             file_id = data.get("file_id")
             if file_id:

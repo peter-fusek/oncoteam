@@ -55,7 +55,7 @@ async def test_api_status_returns_ok():
     assert data["server"] == "oncoteam"
     assert data["version"] == VERSION
     assert "session_id" in data
-    assert data["tools_count"] == 20
+    assert data["tools_count"] == 22
     assert isinstance(data["tools"], list)
 
 
@@ -535,12 +535,23 @@ def test_is_test_entry_passes_real_data():
 
 
 class TestApiAuth:
-    def test_no_key_configured_allows_all(self):
+    def test_no_key_configured_allows_all_in_stdio(self):
         from oncoteam.dashboard_api import _check_api_auth
 
         request = _make_request()
-        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""):
+        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""), \
+             patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"):
             assert _check_api_auth(request) is None
+
+    def test_no_key_configured_returns_500_in_http(self):
+        from oncoteam.dashboard_api import _check_api_auth
+
+        request = _make_request()
+        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""), \
+             patch("oncoteam.dashboard_api.MCP_TRANSPORT", "streamable-http"):
+            result = _check_api_auth(request)
+            assert result is not None
+            assert result.status_code == 500
 
     def test_valid_bearer_token(self):
         from starlette.datastructures import Headers, QueryParams
@@ -568,7 +579,8 @@ class TestApiAuth:
             assert result is not None
             assert result.status_code == 401
 
-    def test_valid_query_param_key(self):
+    def test_query_param_key_rejected(self):
+        """Query param auth was removed — only Bearer header accepted."""
         from starlette.datastructures import Headers, QueryParams
 
         from oncoteam.dashboard_api import _check_api_auth
@@ -578,7 +590,9 @@ class TestApiAuth:
             headers = Headers({})
 
         with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", "test-secret-123"):
-            assert _check_api_auth(AuthRequest()) is None
+            result = _check_api_auth(AuthRequest())
+            assert result is not None
+            assert result.status_code == 401
 
     def test_missing_key_returns_401(self):
         from starlette.datastructures import Headers, QueryParams

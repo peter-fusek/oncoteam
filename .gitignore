@@ -12,6 +12,7 @@ venv/
 *.db
 *.db-wal
 backups/
+.claude/
 
 # Dashboard (Nuxt)
 dashboard/node_modules/

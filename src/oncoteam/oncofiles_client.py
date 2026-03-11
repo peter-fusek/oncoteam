@@ -1,16 +1,26 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 
 from .config import ONCOFILES_MCP_TOKEN, ONCOFILES_MCP_URL
 
+_logger = logging.getLogger("oncoteam.oncofiles_client")
+
+if not ONCOFILES_MCP_URL:
+    _logger.warning("ONCOFILES_MCP_URL not set — oncofiles calls will fail")
+if ONCOFILES_MCP_URL and not ONCOFILES_MCP_TOKEN:
+    _logger.warning("ONCOFILES_MCP_TOKEN not set — connecting to oncofiles without auth")
+
 
 def _get_transport() -> StreamableHttpTransport:
-    # ONCOFILES_MCP_TOKEN: passed as bearer token string to StreamableHttpTransport
-    # Requires oncofiles to accept StaticTokenVerifier alongside or instead of OAuth
+    if not ONCOFILES_MCP_URL:
+        raise RuntimeError(
+            "ONCOFILES_MCP_URL not configured. Set the env var to connect to oncofiles."
+        )
     auth = ONCOFILES_MCP_TOKEN if ONCOFILES_MCP_TOKEN else None
     return StreamableHttpTransport(ONCOFILES_MCP_URL, auth=auth)
 
@@ -308,3 +318,18 @@ async def get_journey_timeline(
     if date_to:
         args["date_to"] = date_to
     return await call_oncofiles("get_journey_timeline", args)
+
+
+async def get_related_documents(doc_id: int) -> dict:
+    """Get cross-referenced documents (same visit, shared diagnoses, follow-ups)."""
+    return await call_oncofiles("get_related_documents", {"doc_id": doc_id})
+
+
+async def get_lab_safety_check() -> dict:
+    """Pre-cycle lab safety check against mFOLFOX6 thresholds."""
+    return await call_oncofiles("get_lab_safety_check", {})
+
+
+async def get_precycle_checklist(cycle_number: int = 3) -> dict:
+    """Full pre-cycle checklist: lab safety + toxicity + VTE + general assessment."""
+    return await call_oncofiles("get_precycle_checklist", {"cycle_number": cycle_number})

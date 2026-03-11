@@ -51,18 +51,21 @@ uv run oncoteam-mcp    # stdio mode
 - Push to `main` auto-deploys via Railway
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
-- 328 tests, ruff clean
+- **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
+- 435 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
 
-| Variable | Description |
-|----------|-------------|
-| `ONCOFILES_MCP_URL` | Oncofiles MCP endpoint |
-| `ONCOFILES_MCP_TOKEN` | Bearer token for oncofiles auth |
-| `MCP_TRANSPORT` | `stdio` or `streamable-http` |
-| `MCP_HOST` | Bind host (default `0.0.0.0`) |
-| `MCP_PORT` / `PORT` | Bind port |
-| `GITHUB_TOKEN` | Fine-grained PAT for issue creation |
-| `MCP_BEARER_TOKEN` | Optional auth token |
-| `NCBI_API_KEY` | NCBI E-utilities API key (optional) |
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `ONCOFILES_MCP_URL` | Oncofiles MCP endpoint | Yes |
+| `ONCOFILES_MCP_TOKEN` | Bearer token for oncofiles auth | Yes |
+| `MCP_TRANSPORT` | `stdio` or `streamable-http` | No (default: stdio) |
+| `MCP_HOST` | Bind host (default `0.0.0.0`) | No |
+| `MCP_PORT` / `PORT` | Bind port | No |
+| `MCP_BEARER_TOKEN` | Auth token for MCP connections | **Yes for HTTP** |
+| `DASHBOARD_API_KEY` | Auth key for /api/* endpoints | **Yes for HTTP** |
+| `DASHBOARD_ALLOWED_ORIGINS` | Comma-separated CORS origins | **Yes for HTTP** |
+| `GITHUB_TOKEN` | Fine-grained PAT for issue creation | No |
+| `NCBI_API_KEY` | NCBI E-utilities API key | No |

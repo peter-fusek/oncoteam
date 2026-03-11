@@ -6,10 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Oncofiles MCP connection
-ONCOFILES_MCP_URL: str = os.environ.get(
-    "ONCOFILES_MCP_URL", "https://aware-kindness-production.up.railway.app/mcp"
-)
+# Oncofiles MCP connection (no default — must be set explicitly)
+ONCOFILES_MCP_URL: str = os.environ.get("ONCOFILES_MCP_URL", "")
 
 # NCBI E-utilities
 NCBI_BASE_URL: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
@@ -28,10 +26,7 @@ MCP_BEARER_TOKEN: str = os.environ.get("MCP_BEARER_TOKEN", "")
 DASHBOARD_API_KEY: str = os.environ.get("DASHBOARD_API_KEY", "")
 DASHBOARD_ALLOWED_ORIGINS: list[str] = [
     o.strip()
-    for o in os.environ.get(
-        "DASHBOARD_ALLOWED_ORIGINS",
-        "https://oncoteam-dashboard.onrender.com,https://oncoteam-dashboard-test.onrender.com",
-    ).split(",")
+    for o in os.environ.get("DASHBOARD_ALLOWED_ORIGINS", "").split(",")
     if o.strip()
 ]
 

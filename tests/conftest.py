@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+_TEST_ALLOWED_ORIGINS = ["https://oncoteam-dashboard.onrender.com", "https://oncoteam-dashboard-test.onrender.com"]
+
 
 @pytest.fixture(autouse=True)
 def _mock_activity_logging():
@@ -13,8 +15,8 @@ def _mock_activity_logging():
 
 
 @pytest.fixture(autouse=True)
-def _set_cors_request():
-    """Set a fake dashboard request for CORS origin resolution in tests."""
+def _set_cors_and_origins():
+    """Set a fake dashboard request and allowed origins for tests."""
     from starlette.datastructures import Headers
 
     import oncoteam.dashboard_api as mod
@@ -23,5 +25,6 @@ def _set_cors_request():
         headers = Headers({"origin": "https://oncoteam-dashboard.onrender.com"})
 
     mod._CURRENT_REQUEST = FakeCorsRequest()
-    yield
+    with patch("oncoteam.dashboard_api.DASHBOARD_ALLOWED_ORIGINS", _TEST_ALLOWED_ORIGINS):
+        yield
     mod._CURRENT_REQUEST = None

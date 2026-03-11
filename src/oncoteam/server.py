@@ -60,6 +60,11 @@ if MCP_BEARER_TOKEN:
     from fastmcp.server.auth import StaticTokenVerifier
 
     auth = StaticTokenVerifier(tokens={MCP_BEARER_TOKEN: {"client_id": "claude-ai", "scopes": []}})
+elif MCP_TRANSPORT != "stdio":
+    raise RuntimeError(
+        "MCP_BEARER_TOKEN must be set for HTTP transport. "
+        "Set MCP_BEARER_TOKEN env var or use MCP_TRANSPORT=stdio for local development."
+    )
 
 mcp = FastMCP(
     "Oncoteam",
@@ -794,6 +799,34 @@ async def create_improvement_issue(
         labels=labels or ["enhancement"],
     )
     return json.dumps(result)
+
+
+@mcp.tool()
+@log_activity
+async def get_lab_safety_check() -> str:
+    """Pre-cycle lab safety check against mFOLFOX6 thresholds.
+
+    Returns green/yellow/red/missing status per parameter (ANC, PLT, HGB, WBC,
+    bilirubin, creatinine, ALT, AST, eGFR) with NCCN/SmPC source attribution.
+    """
+    result = await oncofiles_client.get_lab_safety_check()
+    return json.dumps(result) if isinstance(result, dict) else str(result)
+
+
+@mcp.tool()
+@log_activity
+async def get_precycle_checklist(cycle_number: int = 3) -> str:
+    """Full pre-cycle checklist: lab safety + toxicity assessment + VTE monitoring.
+
+    Args:
+        cycle_number: Current cycle number (default: 3).
+
+    Returns:
+        Checklist with guideline source URLs per item. Lab items auto-populate
+        with latest patient values.
+    """
+    result = await oncofiles_client.get_precycle_checklist(cycle_number)
+    return json.dumps(result) if isinstance(result, dict) else str(result)
 
 
 # ── Health check ────────────────────────────────
