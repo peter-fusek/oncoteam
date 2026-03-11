@@ -254,6 +254,31 @@ async def test_api_patient_has_cors():
     assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
 
 
+@pytest.mark.anyio
+async def test_api_patient_includes_therapy_categories():
+    request = _make_request("/api/patient", query_string="lang=en")
+    response = await api_patient(request)
+    data = json.loads(response.body)
+
+    assert "therapy_categories" in data
+    assert "chemo" in data["therapy_categories"]
+    assert data["therapy_categories"]["chemo"]["label"] == "Chemotherapy"
+    assert "color" in data["therapy_categories"]["chemo"]
+    # Verify active therapies have category field
+    therapies = data.get("active_therapies", [])
+    assert len(therapies) >= 3
+    assert therapies[0]["category"] == "chemo"
+
+
+@pytest.mark.anyio
+async def test_api_patient_therapy_categories_sk():
+    request = _make_request("/api/patient", query_string="lang=sk")
+    response = await api_patient(request)
+    data = json.loads(response.body)
+
+    assert data["therapy_categories"]["chemo"]["label"] == "Chemoterapia"
+
+
 # ── /api/research ─────────────────────────────────
 
 

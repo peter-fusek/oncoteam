@@ -39,7 +39,7 @@ from .config import (
 )
 from .eligibility import assess_research_relevance
 from .locale import L, get_lang, resolve
-from .patient_context import PATIENT, get_patient_localized
+from .patient_context import PATIENT, THERAPY_CATEGORIES, get_patient_localized
 
 VERSION = "0.16.0"
 
@@ -380,6 +380,11 @@ async def api_patient(request: Request) -> JSONResponse:
     """GET /api/patient — patient profile (static, no oncofiles call)."""
     lang = get_lang(request)
     data = get_patient_localized(lang)
+    # Include therapy categories for frontend badge rendering
+    data["therapy_categories"] = {
+        k: {"label": v["label_en"] if lang == "en" else v["label"], "color": v["color"]}
+        for k, v in THERAPY_CATEGORIES.items()
+    }
     return _cors_json(data)
 
 

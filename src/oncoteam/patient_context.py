@@ -8,6 +8,19 @@ from . import oncofiles_client
 from .locale import L, resolve
 from .models import PatientProfile
 
+# Therapy type categories for display grouping and badges
+THERAPY_CATEGORIES: dict[str, dict] = {
+    "chemo": {"label": "Chemoterapia", "label_en": "Chemotherapy", "color": "#e53e3e"},
+    "targeted": {"label": "Cielená terapia", "label_en": "Targeted therapy", "color": "#dd6b20"},
+    "immuno": {"label": "Imunoterapia", "label_en": "Immunotherapy", "color": "#805ad5"},
+    "supportive": {"label": "Podporná liečba", "label_en": "Supportive care", "color": "#3182ce"},
+    "surgery": {"label": "Chirurgia", "label_en": "Surgery", "color": "#2f855a"},
+    "anticoagulation": {
+        "label": "Antikoagulácia", "label_en": "Anticoagulation", "color": "#d69e2e",
+    },
+}
+
+
 PATIENT = PatientProfile(
     name="Erika Fusekova",
     diagnosis_code="C18.7",
@@ -69,6 +82,7 @@ PATIENT = PatientProfile(
     active_therapies=[
         {
             "name": "mFOLFOX6 90%",
+            "category": "chemo",
             "drugs": [
                 {
                     "name": "Oxaliplatin",
@@ -94,6 +108,7 @@ PATIENT = PatientProfile(
         },
         {
             "name": "Clexane (enoxaparin)",
+            "category": "anticoagulation",
             "drugs": [
                 {
                     "name": "Enoxaparin",
@@ -107,6 +122,7 @@ PATIENT = PatientProfile(
         },
         {
             "name": "Bevacizumab",
+            "category": "targeted",
             "drugs": [
                 {
                     "name": "Bevacizumab",
@@ -199,6 +215,7 @@ _PATIENT_L10N: dict = {
     "active_therapies": [
         {
             "name": "mFOLFOX6 90%",
+            "category": "chemo",
             "drugs": [
                 {
                     "name": "Oxaliplatin",
@@ -245,6 +262,7 @@ _PATIENT_L10N: dict = {
         },
         {
             "name": L("Clexane (enoxaparín)", "Clexane (enoxaparin)"),
+            "category": "anticoagulation",
             "drugs": [
                 {
                     "name": L("Enoxaparín", "Enoxaparin"),
@@ -264,6 +282,7 @@ _PATIENT_L10N: dict = {
         },
         {
             "name": "Bevacizumab",
+            "category": "targeted",
             "drugs": [
                 {
                     "name": "Bevacizumab",
