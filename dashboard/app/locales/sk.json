@@ -138,7 +138,7 @@
     "safetyFlags": "Bezpečnostné upozornenia",
     "noProfile": "Profil pacienta nie je dostupný",
     "stage": "Štádium {stage}",
-    "sided": "{side}-strana",
+    "sided": "{side}",
     "cycle": "Cyklus {n}",
     "ecogLabel": "ECOG: {val}",
     "genomicProfile": "Genomický profil",

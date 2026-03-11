@@ -195,10 +195,7 @@ _PATIENT_L10N: dict = {
         "KRAS": L("Riadiaca mutácia liečby", "Treatment driver mutation"),
         "MSI": L("Marker eligibility imunoterapie", "Immunotherapy eligibility marker"),
     },
-    "patient_ids": {
-        "rodne_cislo": L("Rodné číslo", "Birth number"),
-        "nou_id": L("NOU ID", "NOU ID"),
-    },
+    # patient_ids values are IDs, not translatable — labels come from frontend i18n
     "active_therapies": [
         {
             "name": "mFOLFOX6 90%",

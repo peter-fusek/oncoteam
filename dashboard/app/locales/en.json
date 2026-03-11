@@ -138,7 +138,7 @@
     "safetyFlags": "Safety Flags",
     "noProfile": "Patient profile not available",
     "stage": "Stage {stage}",
-    "sided": "{side}-sided",
+    "sided": "{side}",
     "cycle": "Cycle {n}",
     "ecogLabel": "ECOG: {val}",
     "genomicProfile": "Genomic Profile",
