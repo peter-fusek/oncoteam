@@ -21,6 +21,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       oncoteamApiUrl: process.env.NUXT_PUBLIC_ONCOTEAM_API_URL || 'https://oncoteam-production.up.railway.app',
+      oncoteamApiKey: process.env.NUXT_PUBLIC_ONCOTEAM_API_KEY || '',
     },
     session: {
       maxAge: 60 * 60 * 24 * 7, // 7 days

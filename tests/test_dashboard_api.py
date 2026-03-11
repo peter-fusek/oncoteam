@@ -25,15 +25,20 @@ from oncoteam.dashboard_api import (
 # ── Helpers ───────────────────────────────────────
 
 
-def _make_request(path: str = "/api/test", query_string: str = "") -> object:
+def _make_request(
+    path: str = "/api/test",
+    query_string: str = "",
+    origin: str = "https://oncoteam-dashboard.onrender.com",
+) -> object:
     """Create a minimal Starlette-like Request stub."""
-    from starlette.datastructures import QueryParams
+    from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:
-        def __init__(self, query: str):
+        def __init__(self, query: str, origin: str):
             self.query_params = QueryParams(query)
+            self.headers = Headers({"origin": origin} if origin else {})
 
-    return FakeRequest(query_string)
+    return FakeRequest(query_string, origin)
 
 
 # ── /api/status ───────────────────────────────────
@@ -58,7 +63,7 @@ async def test_api_status_returns_ok():
 async def test_api_status_has_cors_headers():
     request = _make_request("/api/status")
     response = await api_status(request)
-    assert response.headers["access-control-allow-origin"] == "*"
+    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
     assert "GET" in response.headers["access-control-allow-methods"]
 
 
@@ -220,7 +225,7 @@ async def test_api_patient_returns_profile():
 async def test_api_patient_has_cors():
     request = _make_request("/api/patient")
     response = await api_patient(request)
-    assert response.headers["access-control-allow-origin"] == "*"
+    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
 
 
 # ── /api/research ─────────────────────────────────
@@ -413,7 +418,7 @@ async def test_cors_preflight_returns_headers():
     response = await api_cors_preflight(request)
 
     assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == "*"
+    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
     assert "GET" in response.headers["access-control-allow-methods"]
     assert "OPTIONS" in response.headers["access-control-allow-methods"]
 
@@ -448,6 +453,90 @@ def test_is_test_entry_passes_real_data():
     assert not _is_test_entry({"tool_name": "search_pubmed"})
     assert not _is_test_entry({"agent_id": "oncoteam"})
     assert not _is_test_entry({})
+
+
+# ── API auth ─────────────────────────────────────
+
+
+class TestApiAuth:
+    def test_no_key_configured_allows_all(self):
+        from oncoteam.dashboard_api import _check_api_auth
+
+        request = _make_request()
+        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""):
+            assert _check_api_auth(request) is None
+
+    def test_valid_bearer_token(self):
+        from starlette.datastructures import Headers, QueryParams
+
+        from oncoteam.dashboard_api import _check_api_auth
+
+        class AuthRequest:
+            query_params = QueryParams("")
+            headers = Headers({"authorization": "Bearer test-secret-123"})
+
+        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", "test-secret-123"):
+            assert _check_api_auth(AuthRequest()) is None
+
+    def test_invalid_bearer_token(self):
+        from starlette.datastructures import Headers, QueryParams
+
+        from oncoteam.dashboard_api import _check_api_auth
+
+        class AuthRequest:
+            query_params = QueryParams("")
+            headers = Headers({"authorization": "Bearer wrong-key"})
+
+        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", "test-secret-123"):
+            result = _check_api_auth(AuthRequest())
+            assert result is not None
+            assert result.status_code == 401
+
+    def test_valid_query_param_key(self):
+        from starlette.datastructures import Headers, QueryParams
+
+        from oncoteam.dashboard_api import _check_api_auth
+
+        class AuthRequest:
+            query_params = QueryParams("key=test-secret-123")
+            headers = Headers({})
+
+        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", "test-secret-123"):
+            assert _check_api_auth(AuthRequest()) is None
+
+    def test_missing_key_returns_401(self):
+        from starlette.datastructures import Headers, QueryParams
+
+        from oncoteam.dashboard_api import _check_api_auth
+
+        class AuthRequest:
+            query_params = QueryParams("")
+            headers = Headers({})
+
+        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", "test-secret-123"):
+            result = _check_api_auth(AuthRequest())
+            assert result is not None
+            assert result.status_code == 401
+
+
+class TestCorsOrigin:
+    def test_allowed_origin(self):
+        from oncoteam.dashboard_api import _get_cors_origin
+
+        request = _make_request()
+        assert _get_cors_origin(request) == "https://oncoteam-dashboard.onrender.com"
+
+    def test_localhost_allowed(self):
+        from oncoteam.dashboard_api import _get_cors_origin
+
+        request = _make_request(origin="http://localhost:3000")
+        assert _get_cors_origin(request) == "http://localhost:3000"
+
+    def test_unknown_origin_rejected(self):
+        from oncoteam.dashboard_api import _get_cors_origin
+
+        request = _make_request(origin="https://evil.example.com")
+        assert _get_cors_origin(request) == ""
 
 
 MOCK_ACTIVITY_WITH_TEST = [

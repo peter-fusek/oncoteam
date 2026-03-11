@@ -1,6 +1,7 @@
 export function useOncoteamApi() {
   const config = useRuntimeConfig()
   const baseUrl = config.public.oncoteamApiUrl
+  const apiKey = config.public.oncoteamApiKey || ''
   const { showTestData } = useTestDataToggle()
   const { locale } = useI18n()
 
@@ -13,11 +14,16 @@ export function useOncoteamApi() {
     return `${url}${sep}${params.join('&')}`
   }
 
+  const authHeaders: Record<string, string> = apiKey
+    ? { Authorization: `Bearer ${apiKey}` }
+    : {}
+
   function fetchApi<T>(path: string, opts?: Record<string, unknown>) {
     return useFetch<T>(apiUrl(path), {
+      headers: authHeaders,
       ...opts,
     })
   }
 
-  return { apiUrl, fetchApi }
+  return { apiUrl, fetchApi, authHeaders }
 }

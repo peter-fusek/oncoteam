@@ -6,6 +6,8 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+import oncoteam.dashboard_api as _dashboard_mod
+
 from . import clinicaltrials_client, github_client, oncofiles_client, pubmed_client
 from .activity_logger import (
     get_session_id,
@@ -17,6 +19,7 @@ from .activity_logger import (
 from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .dashboard_api import (
     VERSION,
+    _check_api_auth,
     api_activity,
     api_autonomous,
     api_autonomous_cost,
@@ -827,14 +830,32 @@ _API_ROUTES = [
 
 _POST_ROUTES = {"/api/toxicity", "/api/labs", "/api/medications", "/api/family-update"}
 
+
+def _auth_wrap(handler):
+    """Wrap an API handler with auth check and CORS origin tracking."""
+
+    async def wrapper(request: Request) -> JSONResponse:
+        err = _check_api_auth(request)
+        if err is not None:
+            return err
+        _dashboard_mod._CURRENT_REQUEST = request
+        try:
+            return await handler(request)
+        finally:
+            _dashboard_mod._CURRENT_REQUEST = None
+
+    wrapper.__name__ = handler.__name__
+    return wrapper
+
+
 for _path, _handler in _API_ROUTES:
-    mcp.custom_route(_path, methods=["GET"])(_handler)
+    mcp.custom_route(_path, methods=["GET"])(_auth_wrap(_handler))
     if _path in _POST_ROUTES:
-        mcp.custom_route(_path, methods=["POST"])(_handler)
+        mcp.custom_route(_path, methods=["POST"])(_auth_wrap(_handler))
     mcp.custom_route(_path, methods=["OPTIONS"])(api_cors_preflight)
 
 # Parameterized detail route (can't go in the loop above)
-mcp.custom_route("/api/detail/{type}/{id}", methods=["GET"])(api_detail)
+mcp.custom_route("/api/detail/{type}/{id}", methods=["GET"])(_auth_wrap(api_detail))
 mcp.custom_route("/api/detail/{type}/{id}", methods=["OPTIONS"])(api_cors_preflight)
 
 

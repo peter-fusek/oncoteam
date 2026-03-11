@@ -11,11 +11,12 @@ from oncoteam.dashboard_api import api_protocol_cycles
 
 
 def _make_request(query_string: str = "") -> object:
-    from starlette.datastructures import QueryParams
+    from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:
         def __init__(self, query: str):
             self.query_params = QueryParams(query)
+            self.headers = Headers({"origin": "https://oncoteam-dashboard.onrender.com"})
 
     return FakeRequest(query_string)
 
@@ -146,7 +147,7 @@ async def test_protocol_cycles_has_cors(mock_list):
     mock_list.side_effect = [{"entries": []}, {"entries": []}]
     request = _make_request()
     response = await api_protocol_cycles(request)
-    assert response.headers["access-control-allow-origin"] == "*"
+    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
 
 
 @pytest.mark.anyio

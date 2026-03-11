@@ -62,8 +62,11 @@ export default defineEventHandler(async (event) => {
   const apiUrl = config.public.oncoteamApiUrl
 
   // Fetch recent activity from oncoteam backend
+  const apiKey = config.public.oncoteamApiKey || ''
+  const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
   const response = await $fetch<{ entries: Array<{ tool: string; timestamp: string }> }>(
-    `${apiUrl}/api/activity?limit=50`
+    `${apiUrl}/api/activity?limit=50`,
+    { headers },
   ).catch(() => ({ entries: [] }))
 
   if (!response.entries?.length) {

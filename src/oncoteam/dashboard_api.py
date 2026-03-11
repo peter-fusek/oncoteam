@@ -32,6 +32,8 @@ from .config import (
     ANTHROPIC_CREDIT_BALANCE,
     AUTONOMOUS_COST_LIMIT,
     AUTONOMOUS_ENABLED,
+    DASHBOARD_ALLOWED_ORIGINS,
+    DASHBOARD_API_KEY,
     ONCOFILES_MCP_URL,
 )
 from .locale import L, get_lang, resolve
@@ -179,13 +181,50 @@ def _build_external_url(source: str, external_id: str) -> str | None:
     return None
 
 
-def _cors_json(data: dict, status_code: int = 200) -> JSONResponse:
+def _get_cors_origin(request: Request) -> str:
+    """Return the allowed CORS origin for this request, or empty string."""
+    origin = request.headers.get("origin", "")
+    if origin in DASHBOARD_ALLOWED_ORIGINS:
+        return origin
+    # In dev, allow localhost
+    if origin.startswith("http://localhost:"):
+        return origin
+    return ""
+
+
+_CURRENT_REQUEST: Request | None = None
+
+
+def _cors_json(
+    data: dict, status_code: int = 200, *, request: Request | None = None
+) -> JSONResponse:
     """Return JSONResponse with CORS headers for dashboard access."""
     response = JSONResponse(data, status_code=status_code)
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    req = request or _CURRENT_REQUEST
+    origin = _get_cors_origin(req) if req else ""
+    response.headers["Access-Control-Allow-Origin"] = origin or "null"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Vary"] = "Origin"
     return response
+
+
+def _check_api_auth(request: Request) -> JSONResponse | None:
+    """Check API key auth. Returns error response if unauthorized, None if OK."""
+    if not DASHBOARD_API_KEY:
+        return None  # No key configured = auth disabled (dev mode)
+    auth_header = request.headers.get("authorization", "")
+    key_param = request.query_params.get("key", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    elif key_param:
+        token = key_param
+    if token == DASHBOARD_API_KEY:
+        return None  # Authorized
+    return _cors_json(
+        {"error": "Unauthorized"}, status_code=401, request=request
+    )
 
 
 async def api_status(request: Request) -> JSONResponse:
@@ -1772,4 +1811,4 @@ async def api_family_update(request: Request) -> JSONResponse:
 
 async def api_cors_preflight(request: Request) -> JSONResponse:
     """OPTIONS handler for CORS preflight on all /api/* routes."""
-    return _cors_json({})
+    return _cors_json({}, request=request)

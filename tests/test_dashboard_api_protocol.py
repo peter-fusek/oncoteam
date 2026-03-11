@@ -11,11 +11,12 @@ from oncoteam.dashboard_api import api_briefings, api_protocol
 
 
 def _make_request(query_string: str = "") -> object:
-    from starlette.datastructures import QueryParams
+    from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:
         def __init__(self, query: str):
             self.query_params = QueryParams(query)
+            self.headers = Headers({"origin": "https://oncoteam-dashboard.onrender.com"})
 
     return FakeRequest(query_string)
 
@@ -44,7 +45,7 @@ async def test_api_protocol_returns_all_sections():
 async def test_api_protocol_has_cors():
     request = _make_request()
     response = await api_protocol(request)
-    assert response.headers["access-control-allow-origin"] == "*"
+    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
 
 
 @pytest.mark.anyio
@@ -201,4 +202,4 @@ async def test_api_briefings_has_cors(mock_search):
     mock_search.return_value = {"entries": []}
     request = _make_request()
     response = await api_briefings(request)
-    assert response.headers["access-control-allow-origin"] == "*"
+    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"

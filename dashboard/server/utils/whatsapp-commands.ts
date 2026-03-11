@@ -193,7 +193,10 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
 
   try {
     const sep = endpoint.includes('?') ? '&' : '?'
-    const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}${sep}lang=${lang}`)
+    const config = useRuntimeConfig()
+    const apiKey = config.public.oncoteamApiKey || ''
+    const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+    const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}${sep}lang=${lang}`, { headers })
 
     switch (command) {
       case 'labs': return formatLabs(data, lang)

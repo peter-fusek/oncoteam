@@ -24,6 +24,17 @@ MCP_HOST: str = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT: int = int(os.environ.get("MCP_PORT", os.environ.get("PORT", "8000")))
 MCP_BEARER_TOKEN: str = os.environ.get("MCP_BEARER_TOKEN", "")
 
+# Dashboard API auth — required for /api/* endpoints
+DASHBOARD_API_KEY: str = os.environ.get("DASHBOARD_API_KEY", "")
+DASHBOARD_ALLOWED_ORIGINS: list[str] = [
+    o.strip()
+    for o in os.environ.get(
+        "DASHBOARD_ALLOWED_ORIGINS",
+        "https://oncoteam-dashboard.onrender.com,https://oncoteam-dashboard-test.onrender.com",
+    ).split(",")
+    if o.strip()
+]
+
 # Oncofiles MCP auth
 ONCOFILES_MCP_TOKEN: str = os.environ.get("ONCOFILES_MCP_TOKEN", "")
 
