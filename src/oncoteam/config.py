@@ -21,6 +21,7 @@ MCP_TRANSPORT: str = os.environ.get("MCP_TRANSPORT", "stdio")
 MCP_HOST: str = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT: int = int(os.environ.get("MCP_PORT", os.environ.get("PORT", "8000")))
 MCP_BEARER_TOKEN: str = os.environ.get("MCP_BEARER_TOKEN", "")
+MCP_BASE_URL: str = os.environ.get("MCP_BASE_URL", "")
 
 # Dashboard API auth — required for /api/* endpoints
 DASHBOARD_API_KEY: str = os.environ.get("DASHBOARD_API_KEY", "")

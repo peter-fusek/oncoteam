@@ -16,7 +16,7 @@ from .activity_logger import (
     log_to_diary,
     record_suppressed_error,
 )
-from .config import MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
+from .config import MCP_BASE_URL, MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .dashboard_api import (
     VERSION,
     _check_api_auth,
@@ -56,14 +56,25 @@ from .scheduler import autonomous_lifespan
 
 # ── Auth ────────────────────────────────────────
 auth = None
-if MCP_BEARER_TOKEN:
+if MCP_BASE_URL:
+    from fastmcp.server.auth import OAuthProvider
+    from fastmcp.server.auth.auth import ClientRegistrationOptions
+
+    auth = OAuthProvider(
+        base_url=MCP_BASE_URL,
+        client_registration_options=ClientRegistrationOptions(enabled=True),
+    )
+elif MCP_BEARER_TOKEN:
     from fastmcp.server.auth import StaticTokenVerifier
 
-    auth = StaticTokenVerifier(tokens={MCP_BEARER_TOKEN: {"client_id": "claude-ai", "scopes": []}})
+    auth = StaticTokenVerifier(
+        tokens={MCP_BEARER_TOKEN: {"client_id": "claude-ai", "scopes": []}}
+    )
 elif MCP_TRANSPORT != "stdio":
     raise RuntimeError(
-        "MCP_BEARER_TOKEN must be set for HTTP transport. "
-        "Set MCP_BEARER_TOKEN env var or use MCP_TRANSPORT=stdio for local development."
+        "MCP_BASE_URL or MCP_BEARER_TOKEN must be set for HTTP transport. "
+        "Set MCP_BASE_URL for OAuth or MCP_BEARER_TOKEN for static token auth, "
+        "or use MCP_TRANSPORT=stdio for local development."
     )
 
 mcp = FastMCP(
