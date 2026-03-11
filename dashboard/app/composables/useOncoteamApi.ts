@@ -22,6 +22,7 @@ export function useOncoteamApi() {
     return useFetch<T>(apiUrl(path), {
       headers: authHeaders,
       timeout: 8000,
+      server: false,
       ...opts,
     })
   }
