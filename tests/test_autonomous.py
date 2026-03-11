@@ -165,7 +165,8 @@ class TestExtractTimestamp:
     def test_full_agent_state_row(self):
         from oncoteam.autonomous_tasks import _extract_timestamp
 
-        assert _extract_timestamp({"key": "last_file_scan", "value": None, "agent_id": "oncoteam"}) == ""
+        state = {"key": "last_file_scan", "value": None, "agent_id": "oncoteam"}
+        assert _extract_timestamp(state) == ""
 
 
 class TestRunAutonomousTask:
