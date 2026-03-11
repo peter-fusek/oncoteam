@@ -41,7 +41,7 @@ from .eligibility import assess_research_relevance
 from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, THERAPY_CATEGORIES, get_patient_localized
 
-VERSION = "0.16.0"
+VERSION = "0.17.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
