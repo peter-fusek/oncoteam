@@ -17,7 +17,7 @@ const { data: timeline, refresh } = await fetchApi<{
 const { data: protocol } = await fetchApi<{
   milestones: Array<{ cycle: number; action: string; description: string }>
   current_cycle: number
-}>('/protocol')
+}>('/protocol', { lazy: true })
 
 const typeEmoji: Record<string, string> = {
   chemo_cycle: '💊',

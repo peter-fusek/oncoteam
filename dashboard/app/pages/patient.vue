@@ -34,7 +34,7 @@ const { data: patient } = await fetchApi<{
 
 const { data: protocol } = await fetchApi<{
   safety_flags: Record<string, { rule: string; source: string }>
-}>('/protocol')
+}>('/protocol', { lazy: true })
 
 const biomarkerDisplay = computed(() => {
   if (!patient.value?.biomarkers) return []

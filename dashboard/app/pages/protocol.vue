@@ -30,7 +30,7 @@ const { data: cumDose } = await fetchApi<{
   pct_to_next: number
   all_thresholds: Array<{ at: number; action: string; severity: string }>
   max_recommended: number
-}>('/cumulative-dose')
+}>('/cumulative-dose', { lazy: true })
 
 const { data: cycleHistory } = await fetchApi<{
   cycles: Array<{
@@ -41,7 +41,7 @@ const { data: cycleHistory } = await fetchApi<{
     source_event_id: number | null
   }>
   current_cycle: number
-}>('/protocol/cycles')
+}>('/protocol/cycles', { lazy: true })
 
 const { t } = useI18n()
 

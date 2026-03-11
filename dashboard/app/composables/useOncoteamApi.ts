@@ -21,6 +21,7 @@ export function useOncoteamApi() {
   function fetchApi<T>(path: string, opts?: Record<string, unknown>) {
     return useFetch<T>(apiUrl(path), {
       headers: authHeaders,
+      timeout: 8000,
       ...opts,
     })
   }

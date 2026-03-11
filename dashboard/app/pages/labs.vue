@@ -22,7 +22,7 @@ const { data: labs, refresh } = await fetchApi<{
 
 const { data: protocol } = await fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; action: string }>
-}>('/protocol')
+}>('/protocol', { lazy: true })
 
 // Rookie/Pro mode
 const proMode = ref(false)

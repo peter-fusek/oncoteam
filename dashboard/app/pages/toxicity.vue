@@ -26,7 +26,7 @@ const { data: weightData } = await fetchApi<{
   alerts: Array<{ date: string; weight_kg: number; loss_pct: number; action: string; severity: string }>
   nutrition_escalation: Array<{ loss_pct: number; action: string; severity: string }>
   total: number
-}>('/weight')
+}>('/weight', { lazy: true })
 
 const grades = [0, 1, 2, 3, 4]
 const gradeLabels = computed(() => {

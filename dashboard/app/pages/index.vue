@@ -17,7 +17,7 @@ const { data: status, refresh: refreshStatus } = await fetchApi<{
 
 const { data: stats, refresh: refreshStats } = await fetchApi<{
   stats: Array<{ tool_name: string; status: string; count: number; avg_duration_ms: number }>
-}>('/stats')
+}>('/stats', { lazy: true })
 
 const { data: activity, refresh: refreshActivity } = await fetchApi<{
   entries: Array<{
@@ -25,29 +25,29 @@ const { data: activity, refresh: refreshActivity } = await fetchApi<{
     input: string; output: string; error: string
   }>
   total: number
-}>('/activity?limit=100')
+}>('/activity?limit=100', { lazy: true })
 
 const { data: autonomous, refresh: refreshAutonomous } = await fetchApi<{
   enabled: boolean; daily_cost: number
   jobs?: Array<{ id: string; schedule: string; description: string; assigned_tool?: string }>
-}>('/autonomous')
+}>('/autonomous', { lazy: true })
 
 const { data: costData, refresh: refreshCost } = await fetchApi<{
   today_spend: number; daily_cap: number; mtd_spend: number
   expected_eom: number; remaining_credit: number; total_credit: number
   days_remaining: number; budget_alert: boolean; month: string
-}>('/autonomous/cost')
+}>('/autonomous/cost', { lazy: true })
 
 const { data: gamification, refresh: refreshGamification } = useFetch<{
   totalXp: number; level: string; streakDays: number
-}>('/api/gamification')
+}>('/api/gamification', { lazy: true })
 
 const { data: labData, refresh: refreshLabs } = await fetchApi<{
   entries: Array<{
     date: string
     alerts: Array<{ param: string; value: number; threshold: number; action: string }>
   }>
-}>('/labs?limit=3')
+}>('/labs?limit=3', { lazy: true })
 
 // ── Helpers ──────────────────────────────────────
 

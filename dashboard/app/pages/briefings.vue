@@ -19,7 +19,7 @@ const { data: autonomous } = await fetchApi<{
   enabled: boolean
   daily_cost: number
   jobs?: Array<{ id: string; schedule: string; description: string }>
-}>('/autonomous')
+}>('/autonomous', { lazy: true })
 
 function extractQuestions(content: string): string[] {
   const lines = content.split('\n')
