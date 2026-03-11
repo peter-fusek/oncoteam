@@ -37,7 +37,7 @@ from .config import (
 from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, get_patient_localized
 
-VERSION = "0.12.0"
+VERSION = "0.13.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
