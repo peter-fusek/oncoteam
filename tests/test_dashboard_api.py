@@ -138,26 +138,51 @@ async def test_api_activity_handles_oncofiles_error(mock_search):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_activity_stats", new_callable=AsyncMock)
-async def test_api_stats_returns_data(mock_stats):
-    mock_stats.return_value = {
-        "total_calls": 42,
-        "errors": 2,
-        "tools_used": ["search_pubmed", "daily_briefing"],
-        "avg_duration_ms": 350,
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_stats_returns_data(mock_log):
+    mock_log.return_value = {
+        "entries": [
+            {"tool_name": "search_pubmed", "status": "success", "duration_ms": 200},
+            {"tool_name": "search_pubmed", "status": "error", "duration_ms": 100},
+            {"tool_name": "daily_briefing", "status": "success", "duration_ms": 500},
+        ]
     }
     request = _make_request("/api/stats")
     response = await api_stats(request)
     data = json.loads(response.body)
 
     assert response.status_code == 200
-    assert data["total_calls"] == 42
+    assert len(data["stats"]) == 2
+    pubmed = next(s for s in data["stats"] if s["tool_name"] == "search_pubmed")
+    assert pubmed["count"] == 2
+    assert pubmed["error_count"] == 1
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_activity_stats", new_callable=AsyncMock)
-async def test_api_stats_handles_error(mock_stats):
-    mock_stats.side_effect = Exception("timeout")
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_stats_filters_test_entries(mock_log):
+    mock_log.return_value = {
+        "entries": [
+            {"tool_name": "search_pubmed", "status": "success", "duration_ms": 200},
+            {
+                "tool_name": "search_pubmed", "status": "success",
+                "duration_ms": 100, "tags": ["e2e-test"],
+            },
+        ]
+    }
+    request = _make_request("/api/stats")
+    response = await api_stats(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    pubmed = data["stats"][0]
+    assert pubmed["count"] == 1  # test entry filtered out
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_stats_handles_error(mock_log):
+    mock_log.side_effect = Exception("timeout")
     request = _make_request("/api/stats")
     response = await api_stats(request)
 

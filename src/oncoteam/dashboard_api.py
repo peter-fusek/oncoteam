@@ -292,12 +292,27 @@ async def api_activity(request: Request) -> JSONResponse:
 
 
 async def api_stats(request: Request) -> JSONResponse:
-    """GET /api/stats — aggregated activity statistics."""
+    """GET /api/stats — aggregated activity statistics.
+
+    Computes stats from filtered activity entries so counts match
+    what /api/activity returns (excluding test entries).
+    """
     try:
-        result = await oncofiles_client.get_activity_stats(agent_id="oncoteam")
-        if isinstance(result, dict):
-            return _cors_json(result)
-        return _cors_json({"stats": result})
+        result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=500)
+        entries = _filter_test(_extract_list(result, "entries"), request)
+        counts: dict[str, dict] = {}
+        for e in entries:
+            tool = e.get("tool_name") or "unknown"
+            if tool not in counts:
+                counts[tool] = {
+                    "tool_name": tool, "count": 0, "error_count": 0, "total_duration_ms": 0,
+                }
+            counts[tool]["count"] += 1
+            if e.get("status") == "error":
+                counts[tool]["error_count"] += 1
+            counts[tool]["total_duration_ms"] += e.get("duration_ms") or 0
+        stats = sorted(counts.values(), key=lambda s: s["count"], reverse=True)
+        return _cors_json({"stats": stats})
     except Exception as e:
         record_suppressed_error("api_stats", "fetch", e)
         return _cors_json({"error": str(e)}, status_code=502)
