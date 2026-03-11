@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { fetchApi, apiUrl } = useOncoteamApi()
+const { fetchApi, apiUrl, authHeaders } = useOncoteamApi()
 const { activeRole } = useUserRole()
 const { t } = useI18n()
 const { formatDate } = useFormatDate()
@@ -65,6 +65,7 @@ async function submitLog() {
   try {
     await $fetch(apiUrl('/toxicity'), {
       method: 'POST',
+      headers: authHeaders,
       body: form,
     })
     submitMsg.value = 'saved'

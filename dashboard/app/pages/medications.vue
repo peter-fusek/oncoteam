@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { fetchApi, apiUrl } = useOncoteamApi()
+const { fetchApi, apiUrl, authHeaders } = useOncoteamApi()
 const { t } = useI18n()
 const { formatDate, formatDateShort } = useFormatDate()
 
@@ -62,6 +62,7 @@ async function submitCheckin() {
   try {
     await $fetch(apiUrl('/medications'), {
       method: 'POST',
+      headers: authHeaders,
       body: {
         date: new Date().toISOString().slice(0, 10),
         medications: { ...checkin },
@@ -85,6 +86,7 @@ async function submitMed() {
   try {
     await $fetch(apiUrl('/medications'), {
       method: 'POST',
+      headers: authHeaders,
       body: form,
     })
     submitMsg.value = 'saved'

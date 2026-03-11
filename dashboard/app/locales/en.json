@@ -183,6 +183,7 @@
     "milestonesTitle": "Treatment Milestones",
     "monitoringTitle": "Monitoring Schedule",
     "previousCycles": "Previous cycles",
+    "currentRegimen": "Current regimen",
     "passed": "Passed",
     "issues": "Issues"
   },
@@ -277,14 +278,19 @@
     "aboveRange": "Above reference range",
     "improving": "Improving",
     "worsening": "Worsening",
-    "stable": "Stable"
+    "stable": "Stable",
+    "rookie": "Essential",
+    "pro": "All Parameters",
+    "sampleDate": "Sample Date",
+    "syncDate": "Imported"
   },
   "briefings": {
     "title": "Agent Briefings",
     "subtitle": "AI-generated clinical briefings",
     "noBriefings": "No briefings yet — autonomous tasks will generate briefings automatically",
     "count": "{count} briefings",
-    "questionsForOncologist": "Questions for Oncologist"
+    "questionsForOncologist": "Questions for Oncologist",
+    "actionItems": "{count} action items"
   },
   "prep": {
     "title": "Appointment Prep",
@@ -314,7 +320,13 @@
     "filterAll": "All",
     "filterTrials": "Trials",
     "sourcePubMed": "PubMed",
-    "sourceClinicalTrials": "ClinicalTrials.gov"
+    "sourceClinicalTrials": "ClinicalTrials.gov",
+    "relevance": {
+      "high": "High relevance",
+      "medium": "Related",
+      "low": "General",
+      "not_applicable": "Not applicable"
+    }
   },
   "timeline": {
     "title": "Treatment Timeline",
@@ -415,6 +427,8 @@
       "note": "Note",
       "lastValue": "Last Value",
       "date": "Date",
+      "sampleDate": "Sample Date",
+      "syncDate": "Imported",
       "safe": "Safe",
       "warning": "Warning",
       "critical": "Critical",

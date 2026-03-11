@@ -183,6 +183,7 @@
     "milestonesTitle": "Míľniky liečby",
     "monitoringTitle": "Plán monitorovania",
     "previousCycles": "Predchádzajúce cykly",
+    "currentRegimen": "Aktuálny režim",
     "passed": "OK",
     "issues": "Problémy"
   },
@@ -277,14 +278,19 @@
     "aboveRange": "Nad referenčným rozsahom",
     "improving": "Zlepšuje sa",
     "worsening": "Zhoršuje sa",
-    "stable": "Stabilné"
+    "stable": "Stabilné",
+    "rookie": "Základné",
+    "pro": "Všetky parametre",
+    "sampleDate": "Dátum odberu",
+    "syncDate": "Importované"
   },
   "briefings": {
     "title": "Briefingy agentov",
     "subtitle": "AI-generované klinické briefingy",
     "noBriefings": "Zatiaľ žiadne brífingy — autonómne úlohy ich generujú automaticky",
     "count": "{count} briefingov",
-    "questionsForOncologist": "Otázky pre onkológa"
+    "questionsForOncologist": "Otázky pre onkológa",
+    "actionItems": "{count} úloh"
   },
   "prep": {
     "title": "Príprava na vyšetrenie",
@@ -314,7 +320,13 @@
     "filterAll": "Všetky",
     "filterTrials": "Štúdie",
     "sourcePubMed": "PubMed",
-    "sourceClinicalTrials": "ClinicalTrials.gov"
+    "sourceClinicalTrials": "ClinicalTrials.gov",
+    "relevance": {
+      "high": "Vysoká relevancia",
+      "medium": "Súvisiace",
+      "low": "Všeobecné",
+      "not_applicable": "Nevzťahuje sa"
+    }
   },
   "timeline": {
     "title": "Časová os liečby",
@@ -415,6 +427,8 @@
       "note": "Poznámka",
       "lastValue": "Posledná hodnota",
       "date": "Dátum",
+      "sampleDate": "Dátum odberu",
+      "syncDate": "Importované",
       "safe": "Bezpečné",
       "warning": "Varovanie",
       "critical": "Kritické",

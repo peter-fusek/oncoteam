@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from oncoteam.dashboard_api import api_briefings, api_protocol
+from oncoteam.dashboard_api import _briefing_summary, api_briefings, api_protocol
 
 
 def _make_request(query_string: str = "") -> object:
@@ -137,6 +137,8 @@ async def test_api_briefings_returns_entries(mock_search):
     assert data["total"] == 2
     assert data["briefings"][0]["title"] == "Pre-cycle check C2"
     assert data["briefings"][0]["content"].startswith("## Pre-Cycle")
+    assert "summary" in data["briefings"][0]
+    assert "action_count" in data["briefings"][0]
 
 
 @pytest.mark.anyio
@@ -203,3 +205,49 @@ async def test_api_briefings_has_cors(mock_search):
     request = _make_request()
     response = await api_briefings(request)
     assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+
+
+# ── _briefing_summary unit tests ─────────────────────────────────
+
+
+class TestBriefingSummary:
+    def test_extracts_summary_lines(self):
+        content = "## Title\nFirst finding.\nSecond finding.\nThird line."
+        result = _briefing_summary(content)
+        assert "First finding." in result["summary"]
+        assert "Second finding." in result["summary"]
+
+    def test_counts_action_items(self):
+        content = (
+            "## Summary\nSome findings.\n"
+            "## Questions for oncologist\n"
+            "- Ask about dose\n"
+            "- Check neuropathy\n"
+            "- Review labs\n"
+        )
+        result = _briefing_summary(content)
+        assert result["action_count"] == 3
+
+    def test_empty_content(self):
+        result = _briefing_summary("")
+        assert result["summary"] == ""
+        assert result["action_count"] == 0
+
+    def test_no_actions_section(self):
+        content = "## Report\nAll stable. No concerns."
+        result = _briefing_summary(content)
+        assert result["action_count"] == 0
+        assert "All stable" in result["summary"]
+
+    def test_summary_truncated(self):
+        content = "A" * 300
+        result = _briefing_summary(content)
+        assert len(result["summary"]) <= 200
+
+    def test_returns_summary_and_action_count_in_api(self):
+        """Briefing entries from api_briefings include summary fields."""
+        # This is a structural test — _briefing_summary is used in api_briefings
+        content = "## Check\nLabs stable.\n## Actions\n- Follow up\n"
+        result = _briefing_summary(content)
+        assert "summary" in result
+        assert "action_count" in result

@@ -280,8 +280,59 @@ async def test_api_research_returns_entries(mock_list):
 
     assert response.status_code == 200
     assert data["total"] == 1
-    assert data["entries"][0]["source"] == "pubmed"
+    entry = data["entries"][0]
+    assert entry["source"] == "pubmed"
+    assert entry["relevance"] == "high"  # "KRAS G12S" matches patient
+    assert entry["relevance_reason"]
     mock_list.assert_called_once_with(source=None, limit=20)
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+async def test_api_research_relevance_sorting(mock_list):
+    """Research entries are sorted: high > medium > low > not_applicable."""
+    mock_list.return_value = {
+        "entries": [
+            {"id": 1, "source": "pubmed", "external_id": "1",
+             "title": "General oncology review", "created_at": "2026-03-01"},
+            {"id": 2, "source": "pubmed", "external_id": "2",
+             "title": "Cetuximab in mCRC", "created_at": "2026-03-02"},
+            {"id": 3, "source": "clinicaltrials", "external_id": "NCT001",
+             "title": "FOLFOX in metastatic colorectal cancer",
+             "created_at": "2026-03-03"},
+        ]
+    }
+    request = _make_request("/api/research")
+    response = await api_research(request)
+    data = json.loads(response.body)
+
+    scores = [e["relevance"] for e in data["entries"]]
+    # FOLFOX mCRC = high, cetuximab = not_applicable, general = low
+    assert scores[0] == "high"
+    assert scores[-1] in ("low", "not_applicable")
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+async def test_api_research_false_hope_detection(mock_list):
+    """Anti-EGFR and G12C studies are flagged as not_applicable."""
+    mock_list.return_value = {
+        "entries": [
+            {"id": 1, "source": "pubmed", "external_id": "1",
+             "title": "Sotorasib in KRAS G12C CRC",
+             "created_at": "2026-03-01"},
+            {"id": 2, "source": "pubmed", "external_id": "2",
+             "title": "Panitumumab in wild-type KRAS CRC",
+             "created_at": "2026-03-02"},
+        ]
+    }
+    request = _make_request("/api/research")
+    response = await api_research(request)
+    data = json.loads(response.body)
+
+    for entry in data["entries"]:
+        assert entry["relevance"] == "not_applicable"
+        assert entry["relevance_reason"]
 
 
 @pytest.mark.anyio

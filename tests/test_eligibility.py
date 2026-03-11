@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from oncoteam.eligibility import check_eligibility
+from oncoteam.eligibility import assess_research_relevance, check_eligibility
 from oncoteam.models import ClinicalTrial, PatientProfile
 from oncoteam.patient_context import PATIENT
 
@@ -110,3 +110,83 @@ class TestCleanTrial:
         )
         assert not result.eligible
         assert len([f for f in result.flags if f.status == "excluded"]) == 3
+
+
+class TestResearchRelevance:
+    """Tests for assess_research_relevance()."""
+
+    def test_anti_egfr_not_applicable(self):
+        rel = assess_research_relevance("Cetuximab in wild-type KRAS mCRC")
+        assert rel.score == "not_applicable"
+        assert "KRAS" in rel.reason
+
+    def test_panitumumab_not_applicable(self):
+        rel = assess_research_relevance("Panitumumab plus FOLFIRI")
+        assert rel.score == "not_applicable"
+
+    def test_g12c_inhibitor_not_applicable(self):
+        rel = assess_research_relevance("Sotorasib in KRAS G12C CRC")
+        assert rel.score == "not_applicable"
+        assert "G12C" in rel.reason
+
+    def test_adagrasib_not_applicable(self):
+        rel = assess_research_relevance("Adagrasib phase 2 trial")
+        assert rel.score == "not_applicable"
+
+    def test_her2_targeted_not_applicable(self):
+        rel = assess_research_relevance("Trastuzumab deruxtecan in CRC")
+        assert rel.score == "not_applicable"
+        assert "HER2" in rel.reason
+
+    def test_kras_g12s_high(self):
+        rel = assess_research_relevance("KRAS G12S mutation in colorectal")
+        assert rel.score == "high"
+
+    def test_kras_mutant_high(self):
+        rel = assess_research_relevance("KRAS mutant mCRC treatment options")
+        assert rel.score == "high"
+
+    def test_folfox_mcrc_high(self):
+        rel = assess_research_relevance("FOLFOX in metastatic colorectal cancer")
+        assert rel.score == "high"
+
+    def test_pan_kras_high(self):
+        rel = assess_research_relevance("Pan-KRAS inhibitor RMC-6236 trial")
+        assert rel.score == "high"
+
+    def test_colorectal_medium(self):
+        rel = assess_research_relevance("New biomarkers in colorectal cancer")
+        assert rel.score == "medium"
+
+    def test_liver_metastasis_medium(self):
+        rel = assess_research_relevance("Liver metastasis management")
+        assert rel.score == "medium"
+
+    def test_unrelated_low(self):
+        rel = assess_research_relevance("Immunotherapy in melanoma")
+        assert rel.score == "low"
+
+    def test_general_oncology_low(self):
+        rel = assess_research_relevance("General oncology review 2026")
+        assert rel.score == "low"
+
+    def test_summary_used_for_scoring(self):
+        """Summary text is included in relevance assessment."""
+        rel = assess_research_relevance(
+            "Phase 2 study",
+            summary="FOLFOX in mCRC patients",
+        )
+        assert rel.score == "high"
+
+    def test_checkpoint_mss_mono_not_applicable(self):
+        rel = assess_research_relevance(
+            "Pembrolizumab monotherapy in MSS colorectal cancer"
+        )
+        assert rel.score == "not_applicable"
+
+    def test_checkpoint_combo_not_flagged(self):
+        """Checkpoint + chemo combination should not be not_applicable."""
+        rel = assess_research_relevance(
+            "Pembrolizumab plus FOLFOX in colorectal cancer"
+        )
+        assert rel.score != "not_applicable"

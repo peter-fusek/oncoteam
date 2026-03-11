@@ -98,6 +98,20 @@ function isActivityType(): boolean {
     <!-- Detail content -->
     <div v-else-if="detail?.data" class="px-4 pb-4 space-y-4">
 
+      <!-- Research: relevance badge + external link -->
+      <div v-if="detail.data.relevance" class="flex items-center gap-3 flex-wrap">
+        <UBadge
+          variant="subtle"
+          size="xs"
+          :color="({ high: 'success', medium: 'info', low: 'neutral', not_applicable: 'error' } as Record<string, string>)[String(detail.data.relevance)] ?? 'neutral'"
+        >
+          {{ t(`research.relevance.${detail.data.relevance}`) }}
+        </UBadge>
+        <span v-if="detail.data.relevance_reason" class="text-xs text-gray-500">
+          {{ detail.data.relevance_reason }}
+        </span>
+      </div>
+
       <!-- External link (research entries) -->
       <a
         v-if="detail.data.external_url"

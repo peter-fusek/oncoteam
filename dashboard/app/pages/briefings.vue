@@ -8,6 +8,8 @@ const { data: briefings, refresh } = await fetchApi<{
     content: string
     date: string
     tags: string[] | string
+    summary?: string
+    action_count?: number
   }>
   total: number
   error?: string
@@ -93,6 +95,8 @@ const allQuestions = computed(() => {
         :content="b.content"
         :date="b.date"
         :tags="b.tags"
+        :summary="b.summary"
+        :action-count="b.action_count"
         @drilldown="drilldown.open({ type: 'conversation', id: b.id, label: b.title })"
       />
     </div>

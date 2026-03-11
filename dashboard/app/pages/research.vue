@@ -10,6 +10,8 @@ const { data: research, refresh } = await fetchApi<{
     summary: string
     date: string | null
     external_url: string | null
+    relevance: 'high' | 'medium' | 'low' | 'not_applicable'
+    relevance_reason: string
   }>
   total: number
   error?: string
@@ -22,6 +24,13 @@ const filtered = computed(() => {
   if (!sourceFilter.value) return research.value.entries
   return research.value.entries.filter(e => e.source === sourceFilter.value)
 })
+
+const relevanceColor: Record<string, string> = {
+  high: 'success',
+  medium: 'info',
+  low: 'neutral',
+  not_applicable: 'error',
+}
 
 const drilldown = useDrilldown()
 </script>
@@ -77,13 +86,21 @@ const drilldown = useDrilldown()
           <span class="text-lg mt-0.5">{{ entry.source === 'pubmed' ? '📄' : '🧪' }}</span>
           <div class="min-w-0 flex-1">
             <div class="font-medium text-white text-sm">{{ entry.title }}</div>
-            <div class="flex items-center gap-2 mt-1.5">
+            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
               <UBadge
                 variant="subtle"
                 size="xs"
                 :color="entry.source === 'pubmed' ? 'info' : 'success'"
               >
                 {{ entry.source === 'pubmed' ? $t('research.sourcePubMed') : $t('research.sourceClinicalTrials') }}
+              </UBadge>
+              <UBadge
+                variant="subtle"
+                size="xs"
+                :color="relevanceColor[entry.relevance] ?? 'neutral'"
+                :title="entry.relevance_reason"
+              >
+                {{ $t(`research.relevance.${entry.relevance}`) }}
               </UBadge>
               <span v-if="entry.external_id" class="text-xs font-mono text-gray-500">
                 {{ entry.external_id }}
@@ -98,7 +115,10 @@ const drilldown = useDrilldown()
                 {{ $t('common.viewSource') }} ↗
               </a>
             </div>
-            <p v-if="entry.summary" class="text-xs text-gray-500 mt-2 line-clamp-2">
+            <p v-if="entry.relevance_reason" class="text-xs text-gray-600 mt-1">
+              {{ entry.relevance_reason }}
+            </p>
+            <p v-if="entry.summary" class="text-xs text-gray-500 mt-1.5 line-clamp-2">
               {{ entry.summary }}
             </p>
           </div>

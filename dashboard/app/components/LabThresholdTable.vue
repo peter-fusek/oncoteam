@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; note?: string; action: string }>
-  lastValues?: Record<string, { value: number; date: string; status: 'safe' | 'warning' | 'critical' }>
+  lastValues?: Record<string, { value: number; sample_date?: string; sync_date?: string; date?: string; status: 'safe' | 'warning' | 'critical' }>
 }>()
 
 defineEmits<{
@@ -23,7 +23,7 @@ const statusColors: Record<string, string> = {
           <th class="pb-2 pr-4">{{ $t('components.labThreshold.parameter') }}</th>
           <th class="pb-2 pr-4">{{ $t('components.labThreshold.threshold') }}</th>
           <th v-if="lastValues" class="pb-2 pr-4">{{ $t('components.labThreshold.lastValue') }}</th>
-          <th v-if="lastValues" class="pb-2 pr-4">{{ $t('components.labThreshold.date') }}</th>
+          <th v-if="lastValues" class="pb-2 pr-4">{{ $t('components.labThreshold.sampleDate') }}</th>
           <th class="pb-2 pr-4">{{ $t('components.labThreshold.note') }}</th>
           <th class="pb-2">{{ $t('components.labThreshold.action') }}</th>
         </tr>
@@ -60,7 +60,9 @@ const statusColors: Record<string, string> = {
             <span v-else class="text-gray-600 text-xs">{{ $t('components.labThreshold.noData') }}</span>
           </td>
           <td v-if="lastValues" class="py-2 pr-4 text-xs text-gray-500">
-            {{ lastValues[String(name)]?.date || '-' }}
+            <span :title="lastValues[String(name)]?.sync_date ? `${$t('components.labThreshold.syncDate')}: ${lastValues[String(name)]?.sync_date}` : ''">
+              {{ lastValues[String(name)]?.sample_date || lastValues[String(name)]?.date || '-' }}
+            </span>
           </td>
           <td class="py-2 pr-4 text-xs text-gray-500">{{ t.note || '-' }}</td>
           <td class="py-2">

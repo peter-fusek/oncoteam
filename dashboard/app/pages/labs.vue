@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { fetchApi, apiUrl } = useOncoteamApi()
+const { fetchApi, apiUrl, authHeaders } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
 
@@ -7,6 +7,7 @@ const { data: labs, refresh } = await fetchApi<{
   entries: Array<{
     id: number
     date: string
+    sync_date?: string
     values: Record<string, number>
     notes: string
     alerts: Array<{ param: string; value: number; threshold: number; action: string }>
@@ -23,8 +24,13 @@ const { data: protocol } = await fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; action: string }>
 }>('/protocol')
 
-// Lab parameters to chart
-const labParams = [
+// Rookie/Pro mode
+const proMode = ref(false)
+
+// Lab parameters — rookie shows essential only, pro shows all
+const rookieKeys = new Set(['CEA', 'CA_19_9', 'ANC', 'PLT', 'WBC', 'hemoglobin'])
+
+const allLabParams = [
   { key: 'CEA', label: 'CEA', color: '#f59e0b', unit: 'ng/mL' },
   { key: 'CA_19_9', label: 'CA 19-9', color: '#8b5cf6', unit: 'U/mL' },
   { key: 'ANC', label: 'ANC', color: '#14b8a6', unit: '/uL', thresholdKey: 'ANC' },
@@ -39,6 +45,11 @@ const labParams = [
   { key: 'SII', label: 'SII', color: '#64748b', unit: '' },
   { key: 'NE_LY_RATIO', label: 'Ne/Ly', color: '#78716c', unit: '' },
 ]
+
+const labParams = computed(() => {
+  if (proMode.value) return allLabParams
+  return allLabParams.filter(p => rookieKeys.has(p.key))
+})
 
 const sortedEntries = computed(() => {
   if (!labs.value?.entries) return []
@@ -58,6 +69,14 @@ function directionColor(entry: any, key: string): string {
   if (health === 'improving') return 'text-green-400'
   if (health === 'worsening') return 'text-red-400'
   return 'text-gray-500'
+}
+
+function cellBgColor(entry: any, key: string): string {
+  if (entry.alerts?.some((a: any) => a.param === key)) return 'bg-red-500/10'
+  const status = entry.value_statuses?.[key]
+  if (status === 'low' || status === 'high') return 'bg-amber-500/5'
+  if (status === 'normal' && entry.values?.[key] != null) return 'bg-green-500/5'
+  return ''
 }
 
 const chartLabels = computed(() => sortedEntries.value.map(e => e.date))
@@ -126,6 +145,7 @@ async function submitLab() {
   try {
     await $fetch(apiUrl('/labs'), {
       method: 'POST',
+      headers: authHeaders,
       body: { date: form.date, values: cleanValues, notes: form.notes },
     })
     submitMsg.value = 'saved'
@@ -150,6 +170,23 @@ async function submitLab() {
         <p class="text-sm text-gray-400">{{ $t('labs.subtitle', { count: labs?.total ?? 0 }) }}</p>
       </div>
       <div class="flex items-center gap-2">
+        <!-- Rookie/Pro toggle -->
+        <div class="flex rounded-lg border border-gray-700 overflow-hidden">
+          <button
+            class="px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="!proMode ? 'bg-teal-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'"
+            @click="proMode = false"
+          >
+            {{ $t('labs.rookie') }}
+          </button>
+          <button
+            class="px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="proMode ? 'bg-teal-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'"
+            @click="proMode = true"
+          >
+            {{ $t('labs.pro') }}
+          </button>
+        </div>
         <UButton
           :icon="showForm ? 'i-lucide-x' : 'i-lucide-plus'"
           :variant="showForm ? 'outline' : 'solid'"
@@ -194,7 +231,7 @@ async function submitLab() {
             class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
           />
         </div>
-        <div v-for="param in labParams" :key="param.key">
+        <div v-for="param in allLabParams" :key="param.key">
           <label class="text-xs text-gray-400 block mb-1">{{ param.label }} <span v-if="param.unit" class="text-gray-600">({{ param.unit }})</span></label>
           <input
             v-model.number="form.values[param.key]"
@@ -254,7 +291,9 @@ async function submitLab() {
         <table class="w-full text-xs">
           <thead>
             <tr class="text-left text-gray-500 border-b border-gray-800">
-              <th class="px-4 py-2">{{ $t('common.date') }}</th>
+              <th class="px-4 py-2">
+                <div>{{ $t('labs.sampleDate') }}</div>
+              </th>
               <th v-for="p in labParams" :key="p.key" class="px-3 py-2">
                 <div>{{ p.label }}</div>
                 <div v-if="refRangeText(p.key)" class="text-[10px] text-gray-600 font-normal">{{ refRangeText(p.key) }}</div>
@@ -264,13 +303,23 @@ async function submitLab() {
           </thead>
           <tbody class="divide-y divide-gray-800/50">
             <tr
-              v-for="entry in labs.entries"
+              v-for="entry in sortedEntries"
               :key="entry.id"
               class="text-gray-300 cursor-pointer hover:bg-gray-800/30 transition-colors"
               @click="drilldown.open({ type: 'treatment_event', id: entry.id, label: `Labs ${entry.date}` })"
             >
-              <td class="px-4 py-2 font-mono text-white">{{ formatDate(entry.date) }}</td>
-              <td v-for="p in labParams" :key="p.key" class="px-3 py-2">
+              <td class="px-4 py-2 font-mono text-white">
+                <div>{{ formatDate(entry.date) }}</div>
+                <div v-if="entry.sync_date" class="text-[10px] text-gray-600" :title="$t('labs.syncDate')">
+                  {{ $t('labs.syncDate') }}: {{ formatDate(entry.sync_date) }}
+                </div>
+              </td>
+              <td
+                v-for="p in labParams"
+                :key="p.key"
+                class="px-3 py-2"
+                :class="cellBgColor(entry, p.key)"
+              >
                 <span
                   v-if="entry.values?.[p.key] != null"
                   class="inline-flex items-center gap-0.5"

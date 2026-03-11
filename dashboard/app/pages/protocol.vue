@@ -12,7 +12,12 @@ const { data: protocol, refresh } = await fetchApi<{
   watched_trials: string[]
   cycle_delay_rules: Array<{ condition: string; action: string }>
   current_cycle: number
-  last_lab_values?: Record<string, { value: number; date: string; status: 'safe' | 'warning' | 'critical' }>
+  last_lab_values?: Record<string, { value: number; sample_date?: string; sync_date?: string; date?: string; status: 'safe' | 'warning' | 'critical' }>
+  real_values?: {
+    dose_modifications?: { last_change: string; date: string }
+    current_regimen?: { regimen: string; cycle: number }
+    nutrition?: { weight_kg: number; date: string; baseline_kg: number }
+  }
 }>('/protocol')
 
 const { data: cumDose } = await fetchApi<{
@@ -127,6 +132,16 @@ const tabs = computed(() => [
 
       <!-- Dose Modifications -->
       <div v-if="activeTab === 'dosemods'" class="space-y-2">
+        <!-- Current regimen info -->
+        <div v-if="protocol.real_values?.current_regimen" class="rounded-lg border border-gray-800 bg-gray-900/30 px-4 py-3 flex items-center gap-4 text-sm mb-2">
+          <span class="text-gray-400">{{ $t('protocol.currentRegimen') }}:</span>
+          <span class="text-white font-medium">{{ protocol.real_values.current_regimen.regimen }}</span>
+          <span class="text-gray-500">{{ $t('components.milestone.cycle', { n: protocol.real_values.current_regimen.cycle }) }}</span>
+          <template v-if="protocol.real_values.dose_modifications">
+            <span class="text-gray-700">|</span>
+            <span class="text-amber-400 text-xs">{{ protocol.real_values.dose_modifications.last_change }} ({{ protocol.real_values.dose_modifications.date }})</span>
+          </template>
+        </div>
         <div
           v-for="(action, toxicity) in protocol.dose_modifications"
           :key="toxicity"

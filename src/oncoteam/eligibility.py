@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from .models import ClinicalTrial, EligibilityFlag, EligibilityResult, PatientProfile
 
@@ -28,6 +29,119 @@ _CHEMO_NAMES = {
     "fluorouracil",
     "capecitabine",
 }
+
+# --- Research relevance scoring ---
+
+# Contraindicated drug/target keywords → "not_applicable"
+_CONTRAINDICATED_KEYWORDS = (
+    _ANTI_EGFR | _KRAS_G12C | _HER2_TARGETED | {"anti-egfr", "anti egfr", "egfr inhibit"}
+)
+
+# High relevance: matches patient's specific profile
+_HIGH_RELEVANCE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(p, re.IGNORECASE)
+    for p in [
+        r"kras\s*g12s",
+        r"kras\s*mutat",
+        r"(?:mcrc|metastatic\s+colorectal)",
+        r"folfox",
+        r"(?:first|1st|1l|first.line)\s*line",
+        r"pan.kras",
+        r"ras\s*mutat",
+        r"left.sided\s*(?:colon|crc|colorectal)",
+    ]
+]
+
+# Medium relevance: broadly related
+_MEDIUM_RELEVANCE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(p, re.IGNORECASE)
+    for p in [
+        r"colorectal",
+        r"\bcrc\b",
+        r"colon\s*cancer",
+        r"oxaliplatin",
+        r"systemic\s*immune.inflammation",
+        r"\bsii\b",
+        r"liver\s*metast",
+        r"peritoneal",
+        r"anticoagul",
+        r"thrombosis.*cancer",
+        r"cancer.*thrombosis",
+    ]
+]
+
+
+@dataclass
+class ResearchRelevance:
+    """Result of research relevance assessment."""
+
+    score: str  # "high", "medium", "low", "not_applicable"
+    reason: str
+
+
+def assess_research_relevance(
+    title: str,
+    summary: str | None = None,
+) -> ResearchRelevance:
+    """Assess how relevant a research entry is to the patient's profile.
+
+    Checks for contraindicated therapies (false hope), then scores
+    by biomarker/treatment/disease match.
+    """
+    text = (title + " " + (summary or "")).lower()
+    words = set(re.findall(r"[a-z][a-z0-9-]+", text))
+
+    # Rule 1: Contraindicated — false hope detection
+    matched_contra = _CONTRAINDICATED_KEYWORDS & words
+    if matched_contra:
+        # Check if it's specifically about KRAS G12C (not general KRAS)
+        if matched_contra & _KRAS_G12C:
+            return ResearchRelevance(
+                score="not_applicable",
+                reason="KRAS G12C inhibitor — patient has G12S, not G12C",
+            )
+        if matched_contra & (_ANTI_EGFR | {"anti-egfr", "anti egfr", "egfr inhibit"}):
+            return ResearchRelevance(
+                score="not_applicable",
+                reason="Anti-EGFR therapy — contraindicated (KRAS G12S)",
+            )
+        if matched_contra & _HER2_TARGETED:
+            return ResearchRelevance(
+                score="not_applicable",
+                reason="HER2-targeted therapy — patient is HER2 negative",
+            )
+
+    # Check for checkpoint monotherapy in MSS context
+    checkpoint_words = _CHECKPOINT_MONO & words
+    if checkpoint_words:
+        has_combo = bool(words & _CHEMO_NAMES) or "combin" in text
+        if not has_combo and ("mss" in text or "microsatellite stable" in text):
+            return ResearchRelevance(
+                score="not_applicable",
+                reason="Checkpoint monotherapy for MSS — not indicated (pMMR/MSS)",
+            )
+
+    # Rule 2: High relevance — specific profile match
+    for pattern in _HIGH_RELEVANCE_PATTERNS:
+        if pattern.search(text):
+            return ResearchRelevance(
+                score="high",
+                reason=f"Matches patient profile: {pattern.pattern}",
+            )
+
+    # Rule 3: Medium relevance — broadly related
+    for pattern in _MEDIUM_RELEVANCE_PATTERNS:
+        if pattern.search(text):
+            return ResearchRelevance(
+                score="medium",
+                reason=f"Related to patient's condition: {pattern.pattern}",
+            )
+
+    # Rule 4: Low relevance — no specific match
+    return ResearchRelevance(
+        score="low",
+        reason="No specific match to patient's biomarkers or treatment",
+    )
 
 
 def _drugs_in_trial(trial: ClinicalTrial) -> set[str]:

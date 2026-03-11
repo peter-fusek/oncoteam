@@ -228,6 +228,10 @@ async def test_api_protocol_includes_last_lab_values(mock_list):
     assert "ANC" in data["last_lab_values"]
     assert data["last_lab_values"]["ANC"]["value"] == 2100
     assert data["last_lab_values"]["ANC"]["status"] == "safe"
+    assert data["last_lab_values"]["ANC"]["sample_date"] == "2026-03-01"
+    # real_values should always be present
+    assert "real_values" in data
+    assert "current_regimen" in data["real_values"]
 
 
 @pytest.mark.anyio

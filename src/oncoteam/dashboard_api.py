@@ -36,10 +36,11 @@ from .config import (
     DASHBOARD_API_KEY,
     ONCOFILES_MCP_URL,
 )
+from .eligibility import assess_research_relevance
 from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, get_patient_localized
 
-VERSION = "0.14.0"
+VERSION = "0.16.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -352,6 +353,9 @@ async def api_patient(request: Request) -> JSONResponse:
     return _cors_json(data)
 
 
+_RELEVANCE_SORT_ORDER = {"high": 0, "medium": 1, "low": 2, "not_applicable": 3}
+
+
 async def api_research(request: Request) -> JSONResponse:
     """GET /api/research — research entries from oncofiles."""
     limit = int(request.query_params.get("limit", "20"))
@@ -359,25 +363,28 @@ async def api_research(request: Request) -> JSONResponse:
     try:
         result = await oncofiles_client.list_research_entries(source=source, limit=limit)
         entries = _filter_test(_extract_list(result, "entries"), request)
-        return _cors_json(
-            {
-                "entries": [
-                    {
-                        "id": e.get("id"),
-                        "source": e.get("source"),
-                        "external_id": e.get("external_id"),
-                        "title": e.get("title"),
-                        "summary": e.get("summary"),
-                        "date": e.get("created_at"),
-                        "external_url": _build_external_url(
-                            e.get("source", ""), e.get("external_id", "")
-                        ),
-                    }
-                    for e in entries
-                ],
-                "total": len(entries),
-            }
-        )
+        items = []
+        for e in entries:
+            rel = assess_research_relevance(
+                e.get("title", ""), e.get("summary"),
+            )
+            items.append({
+                "id": e.get("id"),
+                "source": e.get("source"),
+                "external_id": e.get("external_id"),
+                "title": e.get("title"),
+                "summary": e.get("summary"),
+                "date": e.get("created_at"),
+                "external_url": _build_external_url(
+                    e.get("source", ""), e.get("external_id", "")
+                ),
+                "relevance": rel.score,
+                "relevance_reason": rel.reason,
+            })
+        items.sort(key=lambda x: _RELEVANCE_SORT_ORDER.get(
+            x["relevance"], 2,
+        ))
+        return _cors_json({"entries": items, "total": len(items)})
     except Exception as e:
         record_suppressed_error("api_research", "fetch", e)
         return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
@@ -680,13 +687,62 @@ async def api_protocol(request: Request) -> JSONResponse:
                     pass
                 last_lab_values[param] = {
                     "value": val,
-                    "date": lab_date,
+                    "sample_date": lab_date,
+                    "sync_date": latest.get("created_at", ""),
                     "status": status,
                 }
     except Exception as e:
         record_suppressed_error("api_protocol", "fetch_last_labs", e)
 
     data["last_lab_values"] = last_lab_values
+
+    # Fetch real values for other tabs (#54)
+    real_values: dict[str, dict] = {}
+    try:
+        events_result = await oncofiles_client.list_treatment_events(limit=50)
+        all_events = _extract_list(events_result, "events")
+
+        # Dose modifications: check for any dose reduction events
+        dose_events = [
+            e for e in all_events
+            if "dose" in (e.get("title") or "").lower()
+            or "reduk" in (e.get("title") or "").lower()
+        ]
+        if dose_events:
+            real_values["dose_modifications"] = {
+                "last_change": dose_events[0].get("title", ""),
+                "date": dose_events[0].get("event_date", ""),
+            }
+
+        # Current dose level from patient context
+        real_values["current_regimen"] = {
+            "regimen": PATIENT.treatment_regimen,
+            "cycle": PATIENT.current_cycle,
+        }
+
+        # Nutrition: latest weight from weight events
+        weight_events = [
+            e for e in all_events
+            if e.get("event_type") == "weight"
+            or "weight" in (e.get("title") or "").lower()
+            or "váha" in (e.get("title") or "").lower()
+        ]
+        if weight_events:
+            meta = weight_events[0].get("metadata", {})
+            if isinstance(meta, str):
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
+                    meta = json.loads(meta)
+            weight = meta.get("weight_kg") or meta.get("weight")
+            if weight:
+                real_values["nutrition"] = {
+                    "weight_kg": weight,
+                    "date": weight_events[0].get("event_date", ""),
+                    "baseline_kg": PATIENT.baseline_weight_kg,
+                }
+    except Exception as e:
+        record_suppressed_error("api_protocol", "fetch_real_values", e)
+
+    data["real_values"] = real_values
     return _cors_json(data)
 
 
@@ -786,6 +842,31 @@ async def api_protocol_cycles(request: Request) -> JSONResponse:
     return _cors_json({"cycles": cycles, "current_cycle": cycle})
 
 
+def _briefing_summary(content: str) -> dict:
+    """Extract a 2-line summary and action item count from briefing content."""
+    lines = content.split("\n") if content else []
+    summary_lines: list[str] = []
+    action_count = 0
+    in_questions = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        low = stripped.lower()
+        if low.startswith("#"):
+            in_questions = "question" in low or "action" in low
+            continue
+        if in_questions and stripped.startswith("-"):
+            action_count += 1
+            continue
+        if len(summary_lines) < 2 and not stripped.startswith("-"):
+            summary_lines.append(stripped)
+    return {
+        "summary": " ".join(summary_lines)[:200],
+        "action_count": action_count,
+    }
+
+
 async def api_briefings(request: Request) -> JSONResponse:
     """GET /api/briefings — autonomous briefings + cost alerts from oncofiles diary."""
     limit = int(request.query_params.get("limit", "20"))
@@ -817,6 +898,7 @@ async def api_briefings(request: Request) -> JSONResponse:
                         "date": e.get("created_at"),
                         "tags": e.get("tags"),
                         "type": e.get("entry_type", "autonomous_briefing"),
+                        **_briefing_summary(e.get("content", "")),
                     }
                     for e in entries[:limit]
                 ],
@@ -1045,6 +1127,7 @@ async def api_labs(request: Request) -> JSONResponse:
                 {
                     "id": e.get("id"),
                     "date": e.get("event_date"),
+                    "sync_date": e.get("created_at", ""),
                     "values": meta,
                     "notes": e.get("notes"),
                     "alerts": alerts,
@@ -1146,6 +1229,12 @@ async def api_detail(request: Request) -> JSONResponse:
                 data["external_url"] = f"https://pubmed.ncbi.nlm.nih.gov/{ext_id}/"
             elif src == "clinicaltrials" and ext_id:
                 data["external_url"] = f"https://clinicaltrials.gov/study/{ext_id}"
+            # Add relevance assessment
+            rel = assess_research_relevance(
+                data.get("title", ""), data.get("summary"),
+            )
+            data["relevance"] = rel.score
+            data["relevance_reason"] = rel.reason
 
         elif detail_type == "conversation":
             try:

@@ -4,6 +4,8 @@ defineProps<{
   content: string
   date: string
   tags?: string[] | string
+  summary?: string
+  actionCount?: number
 }>()
 
 defineEmits<{ drilldown: [] }>()
@@ -25,8 +27,16 @@ function formatTags(tags: string[] | string | undefined): string[] {
     >
       <div class="min-w-0 flex-1">
         <div class="text-sm font-medium text-white truncate">{{ title }}</div>
-        <div class="text-xs text-gray-500 mt-0.5">
-          {{ new Date(date).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+        <div v-if="summary && !expanded" class="text-xs text-gray-400 mt-1 line-clamp-2">
+          {{ summary }}
+        </div>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-xs text-gray-500">
+            {{ new Date(date).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+          </span>
+          <UBadge v-if="actionCount" variant="subtle" size="xs" color="warning">
+            {{ $t('briefings.actionItems', { count: actionCount }) }}
+          </UBadge>
         </div>
       </div>
       <div class="flex items-center gap-2 ml-3 shrink-0">
