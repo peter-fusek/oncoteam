@@ -215,6 +215,51 @@ class TestExtractTimestamp:
         assert _extract_timestamp(state) == ""
 
 
+class TestUnwrapAgentState:
+    """Tests for _unwrap_agent_state, fixing budget zeros regression."""
+
+    def test_none_input(self):
+        from oncoteam.autonomous import _unwrap_agent_state
+
+        assert _unwrap_agent_state(None) == {}
+
+    def test_empty_dict(self):
+        from oncoteam.autonomous import _unwrap_agent_state
+
+        assert _unwrap_agent_state({}) == {}
+
+    def test_flat_format(self):
+        from oncoteam.autonomous import _unwrap_agent_state
+
+        result = _unwrap_agent_state({"month": "2026-03", "cost_usd": 5.0})
+        assert result["month"] == "2026-03"
+        assert result["cost_usd"] == 5.0
+
+    def test_nested_dict_format(self):
+        from oncoteam.autonomous import _unwrap_agent_state
+
+        result = _unwrap_agent_state({"value": {"month": "2026-03", "cost_usd": 5.0}})
+        assert result["month"] == "2026-03"
+        assert result["cost_usd"] == 5.0
+
+    def test_nested_json_string_format(self):
+        from oncoteam.autonomous import _unwrap_agent_state
+
+        result = _unwrap_agent_state({"value": '{"date": "2026-03-11", "cost_usd": 1.5}'})
+        assert result["date"] == "2026-03-11"
+        assert result["cost_usd"] == 1.5
+
+    def test_value_none(self):
+        from oncoteam.autonomous import _unwrap_agent_state
+
+        assert _unwrap_agent_state({"value": None}) == {}
+
+    def test_value_invalid_json(self):
+        from oncoteam.autonomous import _unwrap_agent_state
+
+        assert _unwrap_agent_state({"value": "not json"}) == {}
+
+
 class TestRunAutonomousTask:
     @pytest.mark.asyncio
     async def test_cost_limit_abort(self):

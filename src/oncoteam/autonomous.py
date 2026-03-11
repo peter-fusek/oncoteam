@@ -367,6 +367,25 @@ def get_daily_cost() -> float:
     return _daily_cost
 
 
+def _unwrap_agent_state(state: dict | None) -> dict:
+    """Unwrap agent_state, handling nested {"value": ...} format from oncofiles."""
+    if not isinstance(state, dict):
+        return {}
+    # Already flat: {"date": "...", "cost_usd": ...}
+    if "value" not in state:
+        return state
+    # Nested: {"value": '{"date": "...", ...}' or {"date": "...", ...}}
+    raw = state.get("value")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    if isinstance(raw, dict):
+        return raw
+    return {}
+
+
 async def _persist_daily_cost() -> None:
     """Persist daily cost to oncofiles agent_state for cold-start resilience."""
     today = datetime.now(UTC).strftime("%Y-%m-%d")
@@ -384,11 +403,9 @@ async def _persist_mtd_cost(task_cost: float) -> None:
     now = datetime.now(UTC)
     month_key = now.strftime("%Y-%m")
     try:
-        state = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
-        if isinstance(state, dict) and state.get("month") == month_key:
-            prev = float(state.get("cost_usd", 0.0))
-        else:
-            prev = 0.0
+        raw = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
+        state = _unwrap_agent_state(raw)
+        prev = float(state.get("cost_usd", 0.0)) if state.get("month") == month_key else 0.0
         await oncofiles_client.set_agent_state(
             "autonomous_mtd_cost",
             {"month": month_key, "cost_usd": round(prev + task_cost, 4)},
@@ -402,8 +419,9 @@ async def _restore_daily_cost() -> None:
     global _daily_cost, _daily_cost_reset_date
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     try:
-        state = await oncofiles_client.get_agent_state("autonomous_daily_cost")
-        if isinstance(state, dict) and state.get("date") == today:
+        raw = await oncofiles_client.get_agent_state("autonomous_daily_cost")
+        state = _unwrap_agent_state(raw)
+        if state.get("date") == today:
             _daily_cost = float(state.get("cost_usd", 0.0))
             _daily_cost_reset_date = today
             logger.info("Restored daily cost from DB: $%.4f", _daily_cost)
@@ -444,8 +462,9 @@ async def _check_budget_alert(task_cost: float) -> None:
     # Get MTD spend
     mtd_spend = 0.0
     try:
-        state = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
-        if isinstance(state, dict) and state.get("month") == month_key:
+        raw = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
+        state = _unwrap_agent_state(raw)
+        if state.get("month") == month_key:
             mtd_spend = float(state.get("cost_usd", 0.0))
     except Exception:
         return
@@ -456,9 +475,10 @@ async def _check_budget_alert(task_cost: float) -> None:
 
     # Check if we already sent an alert this month
     try:
-        alert_state = await oncofiles_client.get_agent_state(
+        raw_alert = await oncofiles_client.get_agent_state(
             "budget_alert_sent"
         )
+        alert_state = _unwrap_agent_state(raw_alert)
         if (
             isinstance(alert_state, dict)
             and alert_state.get("month") == month_key

@@ -87,3 +87,29 @@ async def test_cost_budget_alert_when_low(mock_state):
 
     # With $33.58 credit and $25 MTD + today spend, remaining < $15 threshold
     assert data["budget_alert"] is True
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+async def test_cost_endpoint_nested_value_format(mock_state):
+    """Regression: oncofiles returns {"value": {...}} wrapper around actual data."""
+    mock_state.return_value = {"value": {"month": "2026-03", "cost_usd": 5.0}}
+    request = _make_request()
+    response = await api_autonomous_cost(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["mtd_spend"] >= 5.0
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+async def test_cost_endpoint_nested_json_string_format(mock_state):
+    """Regression: oncofiles may return value as JSON string."""
+    mock_state.return_value = {"value": '{"month": "2026-03", "cost_usd": 3.0}'}
+    request = _make_request()
+    response = await api_autonomous_cost(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["mtd_spend"] >= 3.0

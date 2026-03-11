@@ -584,8 +584,11 @@ async def api_autonomous_cost(request: Request) -> JSONResponse:
     # Fetch MTD spend from oncofiles agent_state
     mtd_spend = today_spend
     try:
-        state = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
-        if isinstance(state, dict) and state.get("month") == now.strftime("%Y-%m"):
+        from .autonomous import _unwrap_agent_state
+
+        raw = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
+        state = _unwrap_agent_state(raw)
+        if state.get("month") == now.strftime("%Y-%m"):
             mtd_spend = round(
                 float(state.get("cost_usd", 0.0)) + today_spend, 4
             )
