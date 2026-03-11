@@ -105,6 +105,10 @@
     "keyInsights": "Key insights",
     "showFullOutput": "Show full output",
     "collapseOutput": "Collapse output",
+    "lastLabs": "Last lab results",
+    "today": "today",
+    "daysAgo": "{n} days ago",
+    "labsOverdue": "Overdue",
     "toolNames": {
       "search_pubmed": "PubMed Search",
       "search_clinical_trials": "Clinical Trial Search",

@@ -105,6 +105,10 @@
     "keyInsights": "Kľúčové poznatky",
     "showFullOutput": "Zobraziť celý výstup",
     "collapseOutput": "Skryť výstup",
+    "lastLabs": "Posledné laboratórne výsledky",
+    "today": "dnes",
+    "daysAgo": "pred {n} dňami",
+    "labsOverdue": "Kontrola",
     "toolNames": {
       "search_pubmed": "PubMed vyhľadávanie",
       "search_clinical_trials": "Vyhľadávanie štúdií",

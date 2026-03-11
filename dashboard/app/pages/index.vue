@@ -286,6 +286,14 @@ const recentAlerts = computed(() => {
     .flatMap(e => e.alerts.map(a => ({ ...a, date: e.date })))
 })
 
+const daysSinceLastLabs = computed(() => {
+  if (!labData.value?.entries?.length) return null
+  const latest = labData.value.entries[0]?.date
+  if (!latest) return null
+  const diff = Date.now() - new Date(latest).getTime()
+  return Math.floor(diff / 86400000)
+})
+
 const roomEntries = computed(() =>
   selectedRoom.value ? entriesForTools(selectedRoom.value.tools) : []
 )
@@ -349,6 +357,32 @@ onUnmounted(() => {
 
     <!-- Emergency Alerts -->
     <EmergencyAlert v-if="recentAlerts.length" :alerts="recentAlerts" />
+
+    <!-- Days Since Last Labs -->
+    <NuxtLink
+      v-if="daysSinceLastLabs != null && currentLevel === 0"
+      to="/labs"
+      class="flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-gray-800/30"
+      :class="daysSinceLastLabs > 14 ? 'border-amber-500/30 bg-amber-500/5' : 'border-gray-800 bg-gray-900/50'"
+    >
+      <UIcon
+        name="i-lucide-test-tube-diagonal"
+        :class="daysSinceLastLabs > 14 ? 'text-amber-500' : 'text-teal-500'"
+      />
+      <div class="flex-1">
+        <span class="text-sm text-white">{{ $t('agents.lastLabs') }}</span>
+        <span class="text-xs text-gray-500 ml-2">
+          {{ daysSinceLastLabs === 0 ? $t('agents.today') : $t('agents.daysAgo', { n: daysSinceLastLabs }) }}
+        </span>
+      </div>
+      <UBadge
+        v-if="daysSinceLastLabs > 14"
+        color="warning"
+        variant="subtle"
+        size="xs"
+      >{{ $t('agents.labsOverdue') }}</UBadge>
+      <UIcon name="i-lucide-chevron-right" class="w-4 h-4 text-gray-600" />
+    </NuxtLink>
 
     <!-- Autonomous Status + Budget Widget -->
     <div v-if="autonomous?.enabled && currentLevel === 0" class="rounded-xl border bg-gray-900/50 p-4 space-y-3" :class="costData?.budget_alert ? 'border-amber-600/50' : 'border-gray-800'">

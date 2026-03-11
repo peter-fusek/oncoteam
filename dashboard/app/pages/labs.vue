@@ -234,6 +234,8 @@ async function submitLab() {
           :values="getValues(param.key)"
           :threshold-min="param.thresholdKey ? getThreshold(param.thresholdKey) : undefined"
           :threshold-label="param.thresholdKey ? t('common.minSafe', { param: param.thresholdKey }) : undefined"
+          :reference-min="labs?.reference_ranges?.[param.key]?.min"
+          :reference-max="labs?.reference_ranges?.[param.key]?.max"
           :color="param.color"
           :unit="param.unit"
         />

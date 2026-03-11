@@ -7,6 +7,8 @@ const props = defineProps<{
   values: (number | null)[]
   thresholdMin?: number
   thresholdLabel?: string
+  referenceMin?: number
+  referenceMax?: number
   color?: string
   unit?: string
 }>()
@@ -24,6 +26,25 @@ const chartData = computed(() => {
       pointHoverRadius: 6,
     },
   ]
+  if (props.referenceMin != null && props.referenceMax != null) {
+    datasets.push({
+      label: 'Reference range',
+      data: props.labels.map(() => props.referenceMax),
+      borderColor: 'transparent',
+      backgroundColor: '#14b8a610',
+      fill: true,
+      pointRadius: 0,
+    })
+    datasets.push({
+      label: '',
+      data: props.labels.map(() => props.referenceMin),
+      borderColor: '#14b8a630',
+      borderDash: [4, 4],
+      backgroundColor: '#09090b',
+      fill: true,
+      pointRadius: 0,
+    })
+  }
   if (props.thresholdMin != null) {
     datasets.push({
       label: props.thresholdLabel || 'Threshold',
