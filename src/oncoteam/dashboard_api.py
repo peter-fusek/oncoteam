@@ -877,13 +877,46 @@ async def api_labs(request: Request) -> JSONResponse:
         result = await oncofiles_client.list_treatment_events(event_type="lab_result", limit=limit)
         events = _filter_test(_extract_list(result, "events"), request)
 
-        # Fallback: if no structured lab_result events, try analyze_labs
+        # Fallback 1: try lab_values table (structured numeric data)
+        if not events:
+            try:
+                trends = await oncofiles_client.get_lab_trends_data(limit=200)
+                values_list = _extract_list(trends, "values")
+                if values_list:
+                    # Group by lab_date → single entry per date
+                    from collections import defaultdict
+
+                    by_date: dict[str, dict] = defaultdict(
+                        lambda: {"metadata": {}, "notes": ""}
+                    )
+                    for v in values_list:
+                        d = v.get("lab_date", "")
+                        if not d:
+                            continue
+                        by_date[d]["metadata"][v["parameter"]] = v["value"]
+                        by_date[d]["document_id"] = v.get("document_id")
+                    for d, data in by_date.items():
+                        events.append(
+                            {
+                                "event_date": d,
+                                "metadata": data["metadata"],
+                                "notes": data.get("notes", ""),
+                                "id": data.get("document_id"),
+                            }
+                        )
+            except Exception as fallback_err:
+                record_suppressed_error(
+                    "api_labs", "lab_trends_fallback", fallback_err
+                )
+
+        # Fallback 2: try analyze_labs (unstructured document analysis)
         if not events:
             try:
                 analysis = await oncofiles_client.analyze_labs(limit=limit)
                 if isinstance(analysis, dict):
-                    # analyze_labs may return structured results we can display
-                    lab_sets = analysis.get("lab_results", analysis.get("results", []))
+                    lab_sets = analysis.get(
+                        "lab_results", analysis.get("results", [])
+                    )
                     if isinstance(lab_sets, list):
                         for lab in lab_sets:
                             if isinstance(lab, dict) and lab.get("date"):
@@ -893,14 +926,19 @@ async def api_labs(request: Request) -> JSONResponse:
                                         "metadata": {
                                             k: v
                                             for k, v in lab.items()
-                                            if k not in ("date", "id", "document_id")
+                                            if k
+                                            not in ("date", "id", "document_id")
                                         },
-                                        "notes": lab.get("notes", "From document analysis"),
+                                        "notes": lab.get(
+                                            "notes", "From document analysis"
+                                        ),
                                         "id": lab.get("id"),
                                     }
                                 )
             except Exception as fallback_err:
-                record_suppressed_error("api_labs", "analyze_labs_fallback", fallback_err)
+                record_suppressed_error(
+                    "api_labs", "analyze_labs_fallback", fallback_err
+                )
 
         # Sort events by date descending (newest first)
         events.sort(key=lambda e: e.get("event_date", ""), reverse=True)

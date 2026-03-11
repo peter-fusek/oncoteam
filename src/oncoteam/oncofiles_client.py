@@ -288,13 +288,13 @@ async def store_lab_values(
 
 
 async def get_lab_trends_data(
-    parameter: str,
+    parameter: str | None = None,
     limit: int = 20,
 ) -> dict:
-    return await call_oncofiles(
-        "get_lab_trends",
-        {"parameter": parameter, "limit": limit},
-    )
+    args: dict = {"limit": limit}
+    if parameter:
+        args["parameter"] = parameter
+    return await call_oncofiles("get_lab_trends", args)
 
 
 async def get_journey_timeline(

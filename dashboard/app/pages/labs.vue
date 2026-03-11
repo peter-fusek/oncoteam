@@ -86,6 +86,15 @@ function refRangeText(key: string): string {
   return `${ref.min.toLocaleString()}–${ref.max.toLocaleString()}`
 }
 
+function formValueStatus(key: string): string {
+  const val = form.values[key]
+  if (val == null || val === '') return 'border-gray-700'
+  const ref = labs.value?.reference_ranges?.[key]
+  if (!ref) return 'border-gray-700'
+  if (Number(val) < ref.min || Number(val) > ref.max) return 'border-amber-500/50'
+  return 'border-green-500/30'
+}
+
 // All alerts across entries
 const drilldown = useDrilldown()
 
@@ -186,13 +195,14 @@ async function submitLab() {
           />
         </div>
         <div v-for="param in labParams" :key="param.key">
-          <label class="text-xs text-gray-400 block mb-1">{{ param.label }} ({{ param.unit }})</label>
+          <label class="text-xs text-gray-400 block mb-1">{{ param.label }} <span v-if="param.unit" class="text-gray-600">({{ param.unit }})</span></label>
           <input
             v-model.number="form.values[param.key]"
             type="number"
             step="any"
-            :placeholder="param.label"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+            :placeholder="refRangeText(param.key) || param.label"
+            class="w-full rounded-lg border bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+            :class="formValueStatus(param.key)"
           />
         </div>
       </div>
