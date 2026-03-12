@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from fastmcp import FastMCP
 from starlette.requests import Request
@@ -908,6 +909,8 @@ mcp.custom_route("/api/detail/{type}/{id}", methods=["OPTIONS"])(api_cors_prefli
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+
     if MCP_TRANSPORT == "stdio":
         mcp.run()
     else:
