@@ -159,7 +159,8 @@
     "rodne_cislo": "Rodné číslo",
     "nou_id": "NOU ID",
     "layExplanation": "Jednoduché vysvetlenie",
-    "medicalExplanation": "Medicínsky detail"
+    "medicalExplanation": "Medicínsky detail",
+    "topStudies": "Najdôležitejšie štúdie"
   },
   "protocol": {
     "title": "Klinický protokol",

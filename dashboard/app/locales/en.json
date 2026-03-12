@@ -159,7 +159,8 @@
     "rodne_cislo": "Birth Number",
     "nou_id": "NOU ID",
     "layExplanation": "Simple explanation",
-    "medicalExplanation": "Medical details"
+    "medicalExplanation": "Medical details",
+    "topStudies": "Top Studies"
   },
   "protocol": {
     "title": "Clinical Protocol",

@@ -34,7 +34,30 @@ const { data: patient, status: patientStatus } = fetchApi<{
 
 const { data: protocol } = fetchApi<{
   safety_flags: Record<string, { rule: string; source: string }>
-}>('/protocol', { lazy: true })
+}>('/protocol', { lazy: true, timeout: 15000 })
+
+const { data: researchData } = fetchApi<{
+  items: Array<{
+    id: number
+    title: string
+    source: string
+    external_id: string
+    relevance: string
+    relevance_reason: string
+    summary?: string
+    external_url?: string
+  }>
+}>('/research?limit=5', { lazy: true })
+
+const topStudies = computed(() =>
+  (researchData.value?.items ?? []).slice(0, 3)
+)
+
+const relevanceBadgeColor: Record<string, string> = {
+  high: 'success',
+  medium: 'warning',
+  low: 'neutral',
+}
 
 const biomarkerDisplay = computed(() => {
   if (!patient.value?.biomarkers) return []
@@ -210,6 +233,44 @@ const abbreviations: Record<string, string> = {
                 <span class="text-gray-500 text-xs">{{ drug.dose }}</span>
               </div>
               <p class="text-xs text-gray-400 mt-1">{{ showMedical ? drug.medical : drug.lay }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Studies -->
+    <div v-if="topStudies.length">
+      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.topStudies') }}</h2>
+      <div class="space-y-2">
+        <div
+          v-for="study in topStudies"
+          :key="study.id"
+          class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 cursor-pointer hover:border-gray-600 transition-colors"
+          @click="drilldown.open({ type: 'research', id: String(study.id), label: study.title })"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <UBadge :color="(relevanceBadgeColor[study.relevance] as any) || 'neutral'" variant="subtle" size="xs">
+                  {{ study.relevance }}
+                </UBadge>
+                <span class="text-xs text-gray-500 uppercase">{{ study.source }}</span>
+              </div>
+              <p class="text-sm text-white line-clamp-2">{{ study.title }}</p>
+              <p v-if="study.relevance_reason" class="text-xs text-gray-500 mt-1">{{ study.relevance_reason }}</p>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <a
+                v-if="study.external_url"
+                :href="study.external_url"
+                target="_blank"
+                class="text-teal-500 hover:text-teal-400"
+                @click.stop
+              >
+                <UIcon name="i-lucide-external-link" class="w-4 h-4" />
+              </a>
+              <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700" />
             </div>
           </div>
         </div>
