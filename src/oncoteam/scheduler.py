@@ -144,9 +144,10 @@ _standalone_scheduler = None
 
 
 def start_scheduler() -> None:
-    """Start the autonomous scheduler as a standalone background process.
+    """Start the autonomous scheduler (AsyncIOScheduler).
 
-    Called from main() for HTTP transport where FastMCP lifespan is broken.
+    Called from async main_async() for HTTP transport where FastMCP lifespan
+    is broken. Must be called from within a running asyncio event loop.
     Safe to call multiple times — only starts once.
     """
     global _standalone_scheduler

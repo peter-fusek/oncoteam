@@ -911,10 +911,15 @@ def main() -> None:
     if MCP_TRANSPORT == "stdio":
         mcp.run()
     else:
-        # FastMCP 3.x lifespan is broken in HTTP transport (double-wrap bug).
-        # Start the autonomous scheduler explicitly before handing off to uvicorn.
-        start_scheduler()
-        mcp.run(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
+        import asyncio
+
+        async def _run_http():
+            # FastMCP 3.x lifespan is broken in HTTP transport (double-wrap bug).
+            # Start the autonomous scheduler explicitly within the event loop.
+            start_scheduler()
+            await mcp.run_async(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
+
+        asyncio.run(_run_http())
 
 
 if __name__ == "__main__":
