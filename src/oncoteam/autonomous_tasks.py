@@ -76,6 +76,7 @@ async def _log_task(task_name: str, result: dict) -> None:
 
 async def run_pre_cycle_check() -> dict:
     """Pre-cycle safety check before each FOLFOX infusion."""
+    logger.info(">>> Starting task: pre_cycle_check")
     cycle = PATIENT.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
     milestone_text = (
@@ -99,7 +100,13 @@ Instructions:
 
 Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropathy grade.
 """
-    result = await run_autonomous_task(prompt, max_turns=10, task_name="pre_cycle_check")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=10, task_name="pre_cycle_check")
+    except Exception as e:
+        logger.error("!!! Failed task: pre_cycle_check — %s", e)
+        raise
+    logger.info("<<< Completed task: pre_cycle_check (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("pre_cycle_check", result)
     await _set_state(
         "last_pre_cycle_check",
@@ -115,6 +122,7 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
 
 async def run_tumor_marker_review() -> dict:
     """Review CEA and CA 19-9 tumor marker trends."""
+    logger.info(">>> Starting task: tumor_marker_review")
     prompt = """\
 Review tumor marker trends (CEA, CA 19-9).
 
@@ -128,7 +136,13 @@ Instructions:
 
 Reference ESMO guidelines for marker interpretation in mCRC monitoring.
 """
-    result = await run_autonomous_task(prompt, max_turns=8, task_name="tumor_marker_review")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=8, task_name="tumor_marker_review")
+    except Exception as e:
+        logger.error("!!! Failed task: tumor_marker_review — %s", e)
+        raise
+    logger.info("<<< Completed task: tumor_marker_review (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("tumor_marker_review", result)
     await _set_state(
         "last_tumor_marker_review",
@@ -139,6 +153,7 @@ Reference ESMO guidelines for marker interpretation in mCRC monitoring.
 
 async def run_response_assessment() -> dict:
     """Check if response imaging is due and prepare assessment template."""
+    logger.info(">>> Starting task: response_assessment")
     cycle = PATIENT.current_cycle or 2
     prompt = f"""\
 Response assessment check for cycle {cycle}.
@@ -153,7 +168,13 @@ Instructions:
 
 RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressive disease)
 """
-    result = await run_autonomous_task(prompt, max_turns=8, task_name="response_assessment")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=8, task_name="response_assessment")
+    except Exception as e:
+        logger.error("!!! Failed task: response_assessment — %s", e)
+        raise
+    logger.info("<<< Completed task: response_assessment (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("response_assessment", result)
     await _set_state(
         "last_response_assessment",
@@ -167,6 +188,7 @@ RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressi
 
 async def run_daily_research() -> dict:
     """Daily PubMed research scan with all curated search terms."""
+    logger.info(">>> Starting task: daily_research")
     terms_text = "\n".join(f"- {t}" for t in RESEARCH_TERMS)
     prompt = f"""\
 Run daily research scan for relevant new literature.
@@ -184,7 +206,13 @@ Instructions:
 Focus on: treatment advances for KRAS G12S mCRC, FOLFOX optimization,
 novel targets, clinical trial results.
 """
-    result = await run_autonomous_task(prompt, max_turns=12, task_name="daily_research")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=12, task_name="daily_research")
+    except Exception as e:
+        logger.error("!!! Failed task: daily_research — %s", e)
+        raise
+    logger.info("<<< Completed task: daily_research (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("daily_research", result)
     await _set_state(
         "last_daily_research",
@@ -199,6 +227,7 @@ novel targets, clinical trial results.
 
 async def run_trial_monitor() -> dict:
     """Monitor clinical trials across SK, CZ, AT, HU."""
+    logger.info(">>> Starting task: trial_monitor")
     watched = "\n".join(f"- {t}" for t in WATCHED_TRIALS)
     prompt = f"""\
 Monitor clinical trials for new eligible options.
@@ -215,7 +244,13 @@ Instructions:
 
 Search terms: "KRAS mutant colorectal cancer", "pan-KRAS inhibitor", "MSS colorectal immunotherapy"
 """
-    result = await run_autonomous_task(prompt, max_turns=10, task_name="trial_monitor")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=10, task_name="trial_monitor")
+    except Exception as e:
+        logger.error("!!! Failed task: trial_monitor — %s", e)
+        raise
+    logger.info("<<< Completed task: trial_monitor (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("trial_monitor", result)
     await _set_state(
         "last_trial_monitor",
@@ -226,6 +261,7 @@ Search terms: "KRAS mutant colorectal cancer", "pan-KRAS inhibitor", "MSS colore
 
 async def run_file_scan() -> dict:
     """Scan oncofiles for new document uploads."""
+    logger.info(">>> Starting task: file_scan")
     state = await _get_state("last_file_scan")
     last_scan = _extract_timestamp(state)
 
@@ -241,7 +277,13 @@ Instructions:
 
 Search categories: "pathology", "genetics", "labs", "imaging"
 """
-    result = await run_autonomous_task(prompt, max_turns=8, task_name="file_scan")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=8, task_name="file_scan")
+    except Exception as e:
+        logger.error("!!! Failed task: file_scan — %s", e)
+        raise
+    logger.info("<<< Completed task: file_scan (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("file_scan", result)
     await _set_state(
         "last_file_scan",
@@ -257,6 +299,7 @@ Search categories: "pathology", "genetics", "labs", "imaging"
 
 async def run_weekly_briefing() -> dict:
     """Compile weekly briefing: research, trials, labs, treatment progress."""
+    logger.info(">>> Starting task: weekly_briefing")
     cycle = PATIENT.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
     milestone_text = (
@@ -288,7 +331,13 @@ Structure the briefing with clear sections:
 - Recommendations
 - Questions for Oncologist
 """
-    result = await run_autonomous_task(prompt, max_turns=12, task_name="weekly_briefing")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=12, task_name="weekly_briefing")
+    except Exception as e:
+        logger.error("!!! Failed task: weekly_briefing — %s", e)
+        raise
+    logger.info("<<< Completed task: weekly_briefing (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("weekly_briefing", result)
     await _set_state(
         "last_weekly_briefing",
@@ -299,6 +348,7 @@ Structure the briefing with clear sections:
 
 async def run_lab_sync() -> dict:
     """Extract lab values from oncofiles documents and store as structured lab data."""
+    logger.info(">>> Starting task: lab_sync")
     prompt = """\
 Extract structured lab data from uploaded documents and store as lab values.
 
@@ -317,7 +367,13 @@ Use add_treatment_event for timeline visibility.
 Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
 creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """
-    result = await run_autonomous_task(prompt, max_turns=8, task_name="lab_sync")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=8, task_name="lab_sync")
+    except Exception as e:
+        logger.error("!!! Failed task: lab_sync — %s", e)
+        raise
+    logger.info("<<< Completed task: lab_sync (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("lab_sync", result)
     await _set_state(
         "last_lab_sync",
@@ -328,6 +384,7 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 
 async def run_toxicity_extraction() -> dict:
     """Extract toxicity grades from doctor visit notes/reports."""
+    logger.info(">>> Starting task: toxicity_extraction")
     prompt = """\
 Search for doctor visit notes and extract NCI-CTCAE toxicity assessments.
 
@@ -341,7 +398,13 @@ Instructions:
 
 This creates the baseline toxicity history from existing medical documents.
 """
-    result = await run_autonomous_task(prompt, max_turns=8, task_name="toxicity_extraction")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=8, task_name="toxicity_extraction")
+    except Exception as e:
+        logger.error("!!! Failed task: toxicity_extraction — %s", e)
+        raise
+    logger.info("<<< Completed task: toxicity_extraction (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("toxicity_extraction", result)
     await _set_state(
         "last_toxicity_extraction",
@@ -352,6 +415,7 @@ This creates the baseline toxicity history from existing medical documents.
 
 async def run_weight_extraction() -> dict:
     """Extract weight/BMI from doctor visit notes and store as weight_measurement events."""
+    logger.info(">>> Starting task: weight_extraction")
     prompt = """\
 Search for doctor visit notes and extract weight/BMI data.
 
@@ -368,7 +432,13 @@ Instructions:
 
 Focus on creating structured weight history from existing medical documents.
 """
-    result = await run_autonomous_task(prompt, max_turns=8, task_name="weight_extraction")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=8, task_name="weight_extraction")
+    except Exception as e:
+        logger.error("!!! Failed task: weight_extraction — %s", e)
+        raise
+    logger.info("<<< Completed task: weight_extraction (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("weight_extraction", result)
     await _set_state(
         "last_weight_extraction",
@@ -379,6 +449,7 @@ Focus on creating structured weight history from existing medical documents.
 
 async def run_family_update() -> dict:
     """Generate weekly family update in Slovak from current clinical data."""
+    logger.info(">>> Starting task: family_update")
     cycle = PATIENT.current_cycle or 2
     prompt = f"""\
 Napíš týždennú správu pre rodinu pacientky v slovenčine.
@@ -398,7 +469,13 @@ Píš v slovenčine, jednoducho a zrozumiteľne pre laikov.
 Používaj správnu slovenskú lekársku terminológiu (onkológ, chemoterapia, cyklus).
 Vyhni sa zbytočným odborným detailom.
 """
-    result = await run_autonomous_task(prompt, max_turns=10, task_name="family_update")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=10, task_name="family_update")
+    except Exception as e:
+        logger.error("!!! Failed task: family_update — %s", e)
+        raise
+    logger.info("<<< Completed task: family_update (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("family_update", result)
     await _set_state(
         "last_family_update",
@@ -409,6 +486,7 @@ Vyhni sa zbytočným odborným detailom.
 
 async def run_medication_adherence_check() -> dict:
     """Check if today's medication adherence was logged. Flag missing Clexane."""
+    logger.info(">>> Starting task: medication_adherence_check")
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     prompt = f"""\
 Check medication adherence for today ({today}).
@@ -421,7 +499,15 @@ Instructions:
 
 This is a safety check: Clexane non-compliance with active VJI thrombosis is dangerous.
 """
-    result = await run_autonomous_task(prompt, max_turns=6, task_name="medication_adherence_check")
+    try:
+        result = await run_autonomous_task(
+            prompt, max_turns=6, task_name="medication_adherence_check",
+        )
+    except Exception as e:
+        logger.error("!!! Failed task: medication_adherence_check — %s", e)
+        raise
+    logger.info("<<< Completed task: medication_adherence_check (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("medication_adherence_check", result)
     await _set_state(
         "last_medication_adherence_check",
@@ -432,6 +518,7 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
 
 async def run_mtb_preparation() -> dict:
     """Prepare tumor board (MTB) presentation summary."""
+    logger.info(">>> Starting task: mtb_preparation")
     prompt = """\
 Prepare a multidisciplinary tumor board (MTB) summary.
 
@@ -452,7 +539,13 @@ Structure for MDT presentation:
 - Trial Eligibility Summary
 - Recommendations
 """
-    result = await run_autonomous_task(prompt, max_turns=10, task_name="mtb_preparation")
+    try:
+        result = await run_autonomous_task(prompt, max_turns=10, task_name="mtb_preparation")
+    except Exception as e:
+        logger.error("!!! Failed task: mtb_preparation — %s", e)
+        raise
+    logger.info("<<< Completed task: mtb_preparation (cost=$%.4f, tools=%d)",
+                result.get("cost", 0), len(result.get("tool_calls", [])))
     await _log_task("mtb_preparation", result)
     await _set_state(
         "last_mtb_preparation",
