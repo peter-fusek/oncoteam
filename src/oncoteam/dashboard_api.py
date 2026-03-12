@@ -191,9 +191,7 @@ def _build_source_ref(entry: dict, entry_type: str) -> dict:
     ref: dict = {"type": entry_type, "id": entry.get("id")}
     # Label: use title, filename, or event_type
     ref["label"] = (
-        entry.get("title")
-        or entry.get("filename")
-        or entry.get("event_type", entry_type)
+        entry.get("title") or entry.get("filename") or entry.get("event_type", entry_type)
     )
     # URL: prefer gdrive_url, then compute from gdrive_file_id, then external_url
     if entry.get("gdrive_url"):
@@ -250,9 +248,7 @@ def _check_api_auth(request: Request) -> JSONResponse | None:
         token = auth_header[7:]
     if token == DASHBOARD_API_KEY:
         return None  # Authorized
-    return _cors_json(
-        {"error": "Unauthorized"}, status_code=401, request=request
-    )
+    return _cors_json({"error": "Unauthorized"}, status_code=401, request=request)
 
 
 async def api_status(request: Request) -> JSONResponse:
@@ -335,7 +331,10 @@ async def api_stats(request: Request) -> JSONResponse:
             tool = e.get("tool_name") or "unknown"
             if tool not in counts:
                 counts[tool] = {
-                    "tool_name": tool, "count": 0, "error_count": 0, "total_duration_ms": 0,
+                    "tool_name": tool,
+                    "count": 0,
+                    "error_count": 0,
+                    "total_duration_ms": 0,
                 }
             counts[tool]["count"] += 1
             if e.get("status") == "error":
@@ -401,26 +400,30 @@ async def api_research(request: Request) -> JSONResponse:
         items = []
         for e in entries:
             rel = assess_research_relevance(
-                e.get("title", ""), e.get("summary"),
+                e.get("title", ""),
+                e.get("summary"),
             )
-            ext_url = _build_external_url(
-                e.get("source", ""), e.get("external_id", "")
+            ext_url = _build_external_url(e.get("source", ""), e.get("external_id", ""))
+            items.append(
+                {
+                    "id": e.get("id"),
+                    "source": e.get("source"),
+                    "external_id": e.get("external_id"),
+                    "title": e.get("title"),
+                    "summary": e.get("summary"),
+                    "date": e.get("created_at"),
+                    "external_url": ext_url,
+                    "relevance": rel.score,
+                    "relevance_reason": rel.reason,
+                    "source_ref": _build_source_ref(e, "research"),
+                }
             )
-            items.append({
-                "id": e.get("id"),
-                "source": e.get("source"),
-                "external_id": e.get("external_id"),
-                "title": e.get("title"),
-                "summary": e.get("summary"),
-                "date": e.get("created_at"),
-                "external_url": ext_url,
-                "relevance": rel.score,
-                "relevance_reason": rel.reason,
-                "source_ref": _build_source_ref(e, "research"),
-            })
-        items.sort(key=lambda x: _RELEVANCE_SORT_ORDER.get(
-            x["relevance"], 2,
-        ))
+        items.sort(
+            key=lambda x: _RELEVANCE_SORT_ORDER.get(
+                x["relevance"],
+                2,
+            )
+        )
         return _cors_json({"entries": items, "total": len(items)})
     except Exception as e:
         record_suppressed_error("api_research", "fetch", e)
@@ -477,9 +480,7 @@ async def api_autonomous(request: Request) -> JSONResponse:
         from .config import ANTHROPIC_API_KEY
 
         if not ANTHROPIC_API_KEY:
-            return _cors_json(
-                {"error": "ANTHROPIC_API_KEY not configured"}, status_code=500
-            )
+            return _cors_json({"error": "ANTHROPIC_API_KEY not configured"}, status_code=500)
 
         # Run in background with error capture
         async def _run_with_capture():
@@ -628,10 +629,18 @@ async def api_autonomous_status(request: Request) -> JSONResponse:
     from .autonomous_tasks import _extract_timestamp, _get_state
 
     task_names = [
-        "pre_cycle_check", "daily_research", "file_scan",
-        "tumor_marker_review", "response_assessment", "trial_monitor",
-        "weekly_briefing", "lab_sync", "toxicity_extraction",
-        "weight_extraction", "family_update", "medication_adherence_check",
+        "pre_cycle_check",
+        "daily_research",
+        "file_scan",
+        "tumor_marker_review",
+        "response_assessment",
+        "trial_monitor",
+        "weekly_briefing",
+        "lab_sync",
+        "toxicity_extraction",
+        "weight_extraction",
+        "family_update",
+        "medication_adherence_check",
         "mtb_preparation",
     ]
     tasks = {}
@@ -671,9 +680,7 @@ async def api_autonomous_cost(request: Request) -> JSONResponse:
         raw = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
         state = _unwrap_agent_state(raw)
         if state.get("month") == now.strftime("%Y-%m"):
-            mtd_spend = round(
-                float(state.get("cost_usd", 0.0)) + today_spend, 4
-            )
+            mtd_spend = round(float(state.get("cost_usd", 0.0)) + today_spend, 4)
     except Exception:
         pass
 
@@ -686,26 +693,26 @@ async def api_autonomous_cost(request: Request) -> JSONResponse:
         expected_eom = 0.0
 
     remaining_credit = round(ANTHROPIC_CREDIT_BALANCE - mtd_spend, 2)
-    days_remaining = (
-        round(remaining_credit / daily_avg, 1) if daily_avg > 0 else 999
-    )
+    days_remaining = round(remaining_credit / daily_avg, 1) if daily_avg > 0 else 999
 
     budget_alert = remaining_credit <= ANTHROPIC_BUDGET_ALERT_THRESHOLD
 
-    return _cors_json({
-        "today_spend": today_spend,
-        "daily_cap": AUTONOMOUS_COST_LIMIT,
-        "mtd_spend": round(mtd_spend, 2),
-        "expected_eom": expected_eom,
-        "remaining_credit": max(remaining_credit, 0),
-        "total_credit": ANTHROPIC_CREDIT_BALANCE,
-        "days_remaining": days_remaining,
-        "budget_alert": budget_alert,
-        "alert_threshold": ANTHROPIC_BUDGET_ALERT_THRESHOLD,
-        "month": now.strftime("%Y-%m"),
-        "day_of_month": day_of_month,
-        "days_in_month": days_in_month,
-    })
+    return _cors_json(
+        {
+            "today_spend": today_spend,
+            "daily_cap": AUTONOMOUS_COST_LIMIT,
+            "mtd_spend": round(mtd_spend, 2),
+            "expected_eom": expected_eom,
+            "remaining_credit": max(remaining_credit, 0),
+            "total_credit": ANTHROPIC_CREDIT_BALANCE,
+            "days_remaining": days_remaining,
+            "budget_alert": budget_alert,
+            "alert_threshold": ANTHROPIC_BUDGET_ALERT_THRESHOLD,
+            "month": now.strftime("%Y-%m"),
+            "day_of_month": day_of_month,
+            "days_in_month": days_in_month,
+        }
+    )
 
 
 async def api_protocol(request: Request) -> JSONResponse:
@@ -715,58 +722,64 @@ async def api_protocol(request: Request) -> JSONResponse:
     lang = get_lang(request)
     data = resolve_protocol(lang)
 
-    # Fetch latest lab values for threshold status display
+    # Fetch lab values + treatment events concurrently (#63 perf fix)
+    import asyncio
+
+    lab_result, events_result = await asyncio.gather(
+        oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
+        oncofiles_client.list_treatment_events(limit=50),
+        return_exceptions=True,
+    )
+
+    # Process lab values for threshold status display
     last_lab_values: dict[str, dict] = {}
-    try:
-        result = await oncofiles_client.list_treatment_events(
-            event_type="lab_result", limit=1
-        )
-        events = _extract_list(result, "events")
-        if events:
-            latest = events[0]
-            meta = latest.get("metadata", {})
-            if isinstance(meta, str):
-                with contextlib.suppress(json.JSONDecodeError, TypeError):
-                    meta = json.loads(meta)
-            lab_date = latest.get("event_date", "")
-            for param, threshold in LAB_SAFETY_THRESHOLDS.items():
-                if param not in meta:
-                    continue
-                val = meta[param]
-                if not isinstance(val, (int, float)):
-                    continue
-                # Determine safety status
-                status = "safe"
-                if "min" in threshold:
-                    if val < threshold["min"]:
-                        status = "critical"
-                    elif val < threshold["min"] * 1.2:
-                        status = "warning"
-                elif "max_ratio" in threshold:
-                    # max_ratio thresholds don't have absolute values
-                    pass
-                last_lab_values[param] = {
-                    "value": val,
-                    "sample_date": lab_date,
-                    "sync_date": latest.get("created_at", ""),
-                    "status": status,
-                }
-    except Exception as e:
-        record_suppressed_error("api_protocol", "fetch_last_labs", e)
+    if not isinstance(lab_result, BaseException):
+        try:
+            events = _extract_list(lab_result, "events")
+            if events:
+                latest = events[0]
+                meta = latest.get("metadata", {})
+                if isinstance(meta, str):
+                    with contextlib.suppress(json.JSONDecodeError, TypeError):
+                        meta = json.loads(meta)
+                lab_date = latest.get("event_date", "")
+                for param, threshold in LAB_SAFETY_THRESHOLDS.items():
+                    if param not in meta:
+                        continue
+                    val = meta[param]
+                    if not isinstance(val, (int, float)):
+                        continue
+                    status = "safe"
+                    if "min" in threshold:
+                        if val < threshold["min"]:
+                            status = "critical"
+                        elif val < threshold["min"] * 1.2:
+                            status = "warning"
+                    elif "max_ratio" in threshold:
+                        pass
+                    last_lab_values[param] = {
+                        "value": val,
+                        "sample_date": lab_date,
+                        "sync_date": latest.get("created_at", ""),
+                        "status": status,
+                    }
+        except Exception as e:
+            record_suppressed_error("api_protocol", "fetch_last_labs", e)
+    elif isinstance(lab_result, Exception):
+        record_suppressed_error("api_protocol", "fetch_last_labs", lab_result)
 
     data["last_lab_values"] = last_lab_values
 
-    # Fetch real values for other tabs (#54)
+    # Process real values for other tabs (#54)
     real_values: dict[str, dict] = {}
-    try:
-        events_result = await oncofiles_client.list_treatment_events(limit=50)
+    if not isinstance(events_result, BaseException):
         all_events = _extract_list(events_result, "events")
 
         # Dose modifications: check for any dose reduction events
         dose_events = [
-            e for e in all_events
-            if "dose" in (e.get("title") or "").lower()
-            or "reduk" in (e.get("title") or "").lower()
+            e
+            for e in all_events
+            if "dose" in (e.get("title") or "").lower() or "reduk" in (e.get("title") or "").lower()
         ]
         if dose_events:
             real_values["dose_modifications"] = {
@@ -782,7 +795,8 @@ async def api_protocol(request: Request) -> JSONResponse:
 
         # Nutrition: latest weight from weight events
         weight_events = [
-            e for e in all_events
+            e
+            for e in all_events
             if e.get("event_type") == "weight"
             or "weight" in (e.get("title") or "").lower()
             or "váha" in (e.get("title") or "").lower()
@@ -799,8 +813,8 @@ async def api_protocol(request: Request) -> JSONResponse:
                     "date": weight_events[0].get("event_date", ""),
                     "baseline_kg": PATIENT.baseline_weight_kg,
                 }
-    except Exception as e:
-        record_suppressed_error("api_protocol", "fetch_real_values", e)
+    elif isinstance(events_result, Exception):
+        record_suppressed_error("api_protocol", "fetch_real_values", events_result)
 
     data["real_values"] = real_values
     return _cors_json(data)
@@ -932,20 +946,14 @@ async def api_briefings(request: Request) -> JSONResponse:
     limit = int(request.query_params.get("limit", "20"))
     try:
         briefings_res, alerts_res = await asyncio.gather(
-            oncofiles_client.search_conversations(
-                entry_type="autonomous_briefing", limit=limit
-            ),
-            oncofiles_client.search_conversations(
-                entry_type="cost_alert", limit=5
-            ),
+            oncofiles_client.search_conversations(entry_type="autonomous_briefing", limit=limit),
+            oncofiles_client.search_conversations(entry_type="cost_alert", limit=5),
             return_exceptions=True,
         )
         briefings = (
             _extract_list(briefings_res, "entries") if isinstance(briefings_res, dict) else []
         )
-        alerts = (
-            _extract_list(alerts_res, "entries") if isinstance(alerts_res, dict) else []
-        )
+        alerts = _extract_list(alerts_res, "entries") if isinstance(alerts_res, dict) else []
         entries = _filter_test(briefings + alerts, request)
         entries.sort(key=lambda e: e.get("created_at", ""), reverse=True)
         return _cors_json(
@@ -1088,9 +1096,7 @@ async def api_labs(request: Request) -> JSONResponse:
                     # Group by lab_date → single entry per date
                     from collections import defaultdict
 
-                    by_date: dict[str, dict] = defaultdict(
-                        lambda: {"metadata": {}, "notes": ""}
-                    )
+                    by_date: dict[str, dict] = defaultdict(lambda: {"metadata": {}, "notes": ""})
                     for v in values_list:
                         d = v.get("lab_date", "")
                         if not d:
@@ -1107,18 +1113,14 @@ async def api_labs(request: Request) -> JSONResponse:
                             }
                         )
             except Exception as fallback_err:
-                record_suppressed_error(
-                    "api_labs", "lab_trends_fallback", fallback_err
-                )
+                record_suppressed_error("api_labs", "lab_trends_fallback", fallback_err)
 
         # Fallback 2: try analyze_labs (unstructured document analysis)
         if not events:
             try:
                 analysis = await oncofiles_client.analyze_labs(limit=limit)
                 if isinstance(analysis, dict):
-                    lab_sets = analysis.get(
-                        "lab_results", analysis.get("results", [])
-                    )
+                    lab_sets = analysis.get("lab_results", analysis.get("results", []))
                     if isinstance(lab_sets, list):
                         for lab in lab_sets:
                             if isinstance(lab, dict) and lab.get("date"):
@@ -1128,19 +1130,14 @@ async def api_labs(request: Request) -> JSONResponse:
                                         "metadata": {
                                             k: v
                                             for k, v in lab.items()
-                                            if k
-                                            not in ("date", "id", "document_id")
+                                            if k not in ("date", "id", "document_id")
                                         },
-                                        "notes": lab.get(
-                                            "notes", "From document analysis"
-                                        ),
+                                        "notes": lab.get("notes", "From document analysis"),
                                         "id": lab.get("id"),
                                     }
                                 )
             except Exception as fallback_err:
-                record_suppressed_error(
-                    "api_labs", "analyze_labs_fallback", fallback_err
-                )
+                record_suppressed_error("api_labs", "analyze_labs_fallback", fallback_err)
 
         # Sort events by date descending (newest first)
         events.sort(key=lambda e: e.get("event_date", ""), reverse=True)
@@ -1294,7 +1291,8 @@ async def api_detail(request: Request) -> JSONResponse:
                 data["external_url"] = f"https://clinicaltrials.gov/study/{ext_id}"
             # Add relevance assessment
             rel = assess_research_relevance(
-                data.get("title", ""), data.get("summary"),
+                data.get("title", ""),
+                data.get("summary"),
             )
             data["relevance"] = rel.score
             data["relevance_reason"] = rel.reason

@@ -18,7 +18,7 @@ const { data: protocol, status: protocolStatus, refresh } = fetchApi<{
     current_regimen?: { regimen: string; cycle: number }
     nutrition?: { weight_kg: number; date: string; baseline_kg: number }
   }
-}>('/protocol', { lazy: true })
+}>('/protocol', { lazy: true, timeout: 15000 })
 
 const { data: cumDose } = fetchApi<{
   drug: string

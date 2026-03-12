@@ -33,6 +33,7 @@ def _extract_timestamp(state: dict | None) -> str:
         return raw.get("timestamp", "")
     return ""
 
+
 # ── State helpers ──────────────────────────────
 
 

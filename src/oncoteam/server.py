@@ -68,9 +68,7 @@ if MCP_BASE_URL:
 elif MCP_BEARER_TOKEN:
     from fastmcp.server.auth import StaticTokenVerifier
 
-    auth = StaticTokenVerifier(
-        tokens={MCP_BEARER_TOKEN: {"client_id": "claude-ai", "scopes": []}}
-    )
+    auth = StaticTokenVerifier(tokens={MCP_BEARER_TOKEN: {"client_id": "claude-ai", "scopes": []}})
 elif MCP_TRANSPORT != "stdio":
     raise RuntimeError(
         "MCP_BASE_URL or MCP_BEARER_TOKEN must be set for HTTP transport. "
