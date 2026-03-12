@@ -147,7 +147,9 @@ async def test_protocol_cycles_has_cors(mock_list):
     mock_list.side_effect = [{"entries": []}, {"entries": []}]
     request = _make_request()
     response = await api_protocol_cycles(request)
-    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    assert (
+        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    )
 
 
 @pytest.mark.anyio

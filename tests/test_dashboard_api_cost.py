@@ -47,7 +47,9 @@ async def test_cost_endpoint_has_cors(mock_state):
     mock_state.return_value = {}
     request = _make_request()
     response = await api_autonomous_cost(request)
-    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    assert (
+        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    )
 
 
 @pytest.mark.anyio

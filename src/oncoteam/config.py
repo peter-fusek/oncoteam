@@ -26,9 +26,7 @@ MCP_BASE_URL: str = os.environ.get("MCP_BASE_URL", "")
 # Dashboard API auth — required for /api/* endpoints
 DASHBOARD_API_KEY: str = os.environ.get("DASHBOARD_API_KEY", "")
 DASHBOARD_ALLOWED_ORIGINS: list[str] = [
-    o.strip()
-    for o in os.environ.get("DASHBOARD_ALLOWED_ORIGINS", "").split(",")
-    if o.strip()
+    o.strip() for o in os.environ.get("DASHBOARD_ALLOWED_ORIGINS", "").split(",") if o.strip()
 ]
 
 # Oncofiles MCP auth

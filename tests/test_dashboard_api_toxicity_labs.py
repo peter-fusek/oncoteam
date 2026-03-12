@@ -377,9 +377,7 @@ async def test_api_labs_fallback_to_analyze_labs(mock_list, mock_trends, mock_an
     "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
     new_callable=AsyncMock,
 )
-async def test_api_labs_fallback_skipped_when_events_exist(
-    mock_list, mock_trends, mock_analyze
-):
+async def test_api_labs_fallback_skipped_when_events_exist(mock_list, mock_trends, mock_analyze):
     """Fallback should not be called when structured events exist."""
     mock_list.return_value = MOCK_LAB_EVENTS
     request = FakeRequest("GET")

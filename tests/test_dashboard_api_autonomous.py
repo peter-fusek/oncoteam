@@ -134,7 +134,9 @@ async def test_autonomous_last_trigger_empty():
 async def test_autonomous_has_cors():
     request = _make_request()
     response = await api_autonomous(request)
-    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    assert (
+        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    )
 
 
 @pytest.mark.anyio

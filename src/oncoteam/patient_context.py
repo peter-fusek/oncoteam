@@ -16,7 +16,9 @@ THERAPY_CATEGORIES: dict[str, dict] = {
     "supportive": {"label": "Podporná liečba", "label_en": "Supportive care", "color": "#3182ce"},
     "surgery": {"label": "Chirurgia", "label_en": "Surgery", "color": "#2f855a"},
     "anticoagulation": {
-        "label": "Antikoagulácia", "label_en": "Anticoagulation", "color": "#d69e2e",
+        "label": "Antikoagulácia",
+        "label_en": "Anticoagulation",
+        "color": "#d69e2e",
     },
 }
 
@@ -128,8 +130,7 @@ PATIENT = PatientProfile(
                     "name": "Bevacizumab",
                     "dose": "5 mg/kg q2w",
                     "lay": (
-                        "Protilátka blokujúca rast ciev nádoru"
-                        " — VYSOKÉ RIZIKO pre aktívnu trombózu"
+                        "Protilátka blokujúca rast ciev nádoru — VYSOKÉ RIZIKO pre aktívnu trombózu"
                     ),
                     "medical": "Anti-VEGF mAb; HIGH RISK due to active VJI thrombosis + Clexane",
                 },

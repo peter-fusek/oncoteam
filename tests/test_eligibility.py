@@ -179,14 +179,10 @@ class TestResearchRelevance:
         assert rel.score == "high"
 
     def test_checkpoint_mss_mono_not_applicable(self):
-        rel = assess_research_relevance(
-            "Pembrolizumab monotherapy in MSS colorectal cancer"
-        )
+        rel = assess_research_relevance("Pembrolizumab monotherapy in MSS colorectal cancer")
         assert rel.score == "not_applicable"
 
     def test_checkpoint_combo_not_flagged(self):
         """Checkpoint + chemo combination should not be not_applicable."""
-        rel = assess_research_relevance(
-            "Pembrolizumab plus FOLFOX in colorectal cancer"
-        )
+        rel = assess_research_relevance("Pembrolizumab plus FOLFOX in colorectal cancer")
         assert rel.score != "not_applicable"

@@ -64,7 +64,9 @@ async def test_api_status_returns_ok():
 async def test_api_status_has_cors_headers():
     request = _make_request("/api/status")
     response = await api_status(request)
-    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    assert (
+        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    )
     assert "GET" in response.headers["access-control-allow-methods"]
 
 
@@ -166,8 +168,10 @@ async def test_api_stats_filters_test_entries(mock_log):
         "entries": [
             {"tool_name": "search_pubmed", "status": "success", "duration_ms": 200},
             {
-                "tool_name": "search_pubmed", "status": "success",
-                "duration_ms": 100, "tags": ["e2e-test"],
+                "tool_name": "search_pubmed",
+                "status": "success",
+                "duration_ms": 100,
+                "tags": ["e2e-test"],
             },
         ]
     }
@@ -251,7 +255,9 @@ async def test_api_patient_returns_profile():
 async def test_api_patient_has_cors():
     request = _make_request("/api/patient")
     response = await api_patient(request)
-    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    assert (
+        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    )
 
 
 @pytest.mark.anyio
@@ -319,13 +325,27 @@ async def test_api_research_relevance_sorting(mock_list):
     """Research entries are sorted: high > medium > low > not_applicable."""
     mock_list.return_value = {
         "entries": [
-            {"id": 1, "source": "pubmed", "external_id": "1",
-             "title": "General oncology review", "created_at": "2026-03-01"},
-            {"id": 2, "source": "pubmed", "external_id": "2",
-             "title": "Cetuximab in mCRC", "created_at": "2026-03-02"},
-            {"id": 3, "source": "clinicaltrials", "external_id": "NCT001",
-             "title": "FOLFOX in metastatic colorectal cancer",
-             "created_at": "2026-03-03"},
+            {
+                "id": 1,
+                "source": "pubmed",
+                "external_id": "1",
+                "title": "General oncology review",
+                "created_at": "2026-03-01",
+            },
+            {
+                "id": 2,
+                "source": "pubmed",
+                "external_id": "2",
+                "title": "Cetuximab in mCRC",
+                "created_at": "2026-03-02",
+            },
+            {
+                "id": 3,
+                "source": "clinicaltrials",
+                "external_id": "NCT001",
+                "title": "FOLFOX in metastatic colorectal cancer",
+                "created_at": "2026-03-03",
+            },
         ]
     }
     request = _make_request("/api/research")
@@ -344,12 +364,20 @@ async def test_api_research_false_hope_detection(mock_list):
     """Anti-EGFR and G12C studies are flagged as not_applicable."""
     mock_list.return_value = {
         "entries": [
-            {"id": 1, "source": "pubmed", "external_id": "1",
-             "title": "Sotorasib in KRAS G12C CRC",
-             "created_at": "2026-03-01"},
-            {"id": 2, "source": "pubmed", "external_id": "2",
-             "title": "Panitumumab in wild-type KRAS CRC",
-             "created_at": "2026-03-02"},
+            {
+                "id": 1,
+                "source": "pubmed",
+                "external_id": "1",
+                "title": "Sotorasib in KRAS G12C CRC",
+                "created_at": "2026-03-01",
+            },
+            {
+                "id": 2,
+                "source": "pubmed",
+                "external_id": "2",
+                "title": "Panitumumab in wild-type KRAS CRC",
+                "created_at": "2026-03-02",
+            },
         ]
     }
     request = _make_request("/api/research")
@@ -520,7 +548,9 @@ async def test_cors_preflight_returns_headers():
     response = await api_cors_preflight(request)
 
     assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    assert (
+        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+    )
     assert "GET" in response.headers["access-control-allow-methods"]
     assert "OPTIONS" in response.headers["access-control-allow-methods"]
 
@@ -565,16 +595,20 @@ class TestApiAuth:
         from oncoteam.dashboard_api import _check_api_auth
 
         request = _make_request()
-        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""), \
-             patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"):
+        with (
+            patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
+            patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"),
+        ):
             assert _check_api_auth(request) is None
 
     def test_no_key_configured_returns_500_in_http(self):
         from oncoteam.dashboard_api import _check_api_auth
 
         request = _make_request()
-        with patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""), \
-             patch("oncoteam.dashboard_api.MCP_TRANSPORT", "streamable-http"):
+        with (
+            patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
+            patch("oncoteam.dashboard_api.MCP_TRANSPORT", "streamable-http"),
+        ):
             result = _check_api_auth(request)
             assert result is not None
             assert result.status_code == 500
@@ -764,7 +798,11 @@ async def test_api_sessions_filters_test_data(mock_search):
 
 
 def test_build_source_ref_with_gdrive_url():
-    entry = {"id": 42, "title": "Lab 2026-03-01", "gdrive_url": "https://drive.google.com/file/d/abc/view"}
+    entry = {
+        "id": 42,
+        "title": "Lab 2026-03-01",
+        "gdrive_url": "https://drive.google.com/file/d/abc/view",
+    }
     ref = _build_source_ref(entry, "lab")
     assert ref["type"] == "lab"
     assert ref["id"] == 42
@@ -786,8 +824,10 @@ def test_build_source_ref_with_external_url():
 
 def test_build_source_ref_clinicaltrials():
     entry = {
-        "id": 7, "title": "Phase II trial",
-        "source": "clinicaltrials", "external_id": "NCT12345678",
+        "id": 7,
+        "title": "Phase II trial",
+        "source": "clinicaltrials",
+        "external_id": "NCT12345678",
     }
     ref = _build_source_ref(entry, "research")
     assert ref["url"] == "https://clinicaltrials.gov/study/NCT12345678"

@@ -114,4 +114,7 @@ async def test_diagnostics_has_cors():
     ):
         request = _make_request()
         response = await api_diagnostics(request)
-        assert response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
+        assert (
+            response.headers["access-control-allow-origin"]
+            == "https://oncoteam-dashboard.onrender.com"
+        )

@@ -4,7 +4,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-_TEST_ALLOWED_ORIGINS = ["https://oncoteam-dashboard.onrender.com", "https://oncoteam-dashboard-test.onrender.com"]
+_TEST_ALLOWED_ORIGINS = [
+    "https://oncoteam-dashboard.onrender.com",
+    "https://oncoteam-dashboard-test.onrender.com",
+]
 
 
 @pytest.fixture(autouse=True)

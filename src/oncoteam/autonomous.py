@@ -226,8 +226,7 @@ TOOLS = [
                 "values": {
                     "type": "object",
                     "description": (
-                        "Lab values as {parameter: value} "
-                        'e.g. {"ANC": 3200, "PLT": 180000}'
+                        'Lab values as {parameter: value} e.g. {"ANC": 3200, "PLT": 180000}'
                     ),
                 },
             },
@@ -244,8 +243,7 @@ TOOLS = [
                 "event_type": {
                     "type": "string",
                     "description": (
-                        "Event type: lab_result, toxicity, "
-                        "imaging, weight_measurement, etc."
+                        "Event type: lab_result, toxicity, imaging, weight_measurement, etc."
                     ),
                 },
                 "title": {
@@ -475,30 +473,18 @@ async def _check_budget_alert(task_cost: float) -> None:
 
     # Check if we already sent an alert this month
     try:
-        raw_alert = await oncofiles_client.get_agent_state(
-            "budget_alert_sent"
-        )
+        raw_alert = await oncofiles_client.get_agent_state("budget_alert_sent")
         alert_state = _unwrap_agent_state(raw_alert)
-        if (
-            isinstance(alert_state, dict)
-            and alert_state.get("month") == month_key
-        ):
+        if isinstance(alert_state, dict) and alert_state.get("month") == month_key:
             return  # Already alerted this month
     except Exception:
         pass
 
     # Store budget alert
-    days_left = (
-        round(remaining / (mtd_spend / now.day), 1)
-        if mtd_spend > 0 and now.day > 0
-        else 0
-    )
+    days_left = round(remaining / (mtd_spend / now.day), 1) if mtd_spend > 0 and now.day > 0 else 0
     try:
         await log_to_diary(
-            title=(
-                f"Budget low — ${remaining:.2f} remaining"
-                f" (~{days_left} days)"
-            ),
+            title=(f"Budget low — ${remaining:.2f} remaining (~{days_left} days)"),
             content=(
                 f"## Anthropic API Budget Alert\n\n"
                 f"**Remaining credit**: ${remaining:.2f}\n"
@@ -514,9 +500,7 @@ async def _check_budget_alert(task_cost: float) -> None:
         await oncofiles_client.set_agent_state(
             "budget_alert_sent", {"month": month_key, "remaining": remaining}
         )
-        logger.warning(
-            "Budget low alert stored: $%.2f remaining", remaining
-        )
+        logger.warning("Budget low alert stored: $%.2f remaining", remaining)
     except Exception as e:
         logger.error("Failed to store budget alert: %s", e)
 
@@ -598,12 +582,8 @@ async def run_autonomous_task(
                         result["citations"].append(
                             {
                                 "text": block.text,
-                                "cited_text": getattr(
-                                    cite, "cited_text", ""
-                                ),
-                                "source": getattr(
-                                    cite, "document_title", ""
-                                ),
+                                "cited_text": getattr(cite, "cited_text", ""),
+                                "source": getattr(cite, "document_title", ""),
                             }
                         )
 
@@ -620,9 +600,7 @@ async def run_autonomous_task(
                     block.name,
                     json.dumps(block.input)[:200],
                 )
-                result["tool_calls"].append(
-                    {"tool": block.name, "input": block.input}
-                )
+                result["tool_calls"].append({"tool": block.name, "input": block.input})
                 tool_output = await execute_tool(block.name, block.input)
                 tool_results.append(
                     {
