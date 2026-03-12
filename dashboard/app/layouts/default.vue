@@ -7,10 +7,12 @@ const { activeRole, roles, hasMultipleRoles, canAccess, landingPage } = useUserR
 
 const mobileMenuOpen = ref(false)
 const route = useRoute()
+const drilldown = useDrilldown()
 
-// Close mobile menu on navigation
+// Close mobile menu and drilldown on navigation
 watch(() => route.path, () => {
   mobileMenuOpen.value = false
+  drilldown.close()
 })
 
 const ROLE_COLORS: Record<string, string> = {
