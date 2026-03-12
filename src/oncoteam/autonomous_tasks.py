@@ -105,8 +105,11 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
     except Exception as e:
         logger.error("!!! Failed task: pre_cycle_check — %s", e)
         raise
-    logger.info("<<< Completed task: pre_cycle_check (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: pre_cycle_check (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("pre_cycle_check", result)
     await _set_state(
         "last_pre_cycle_check",
@@ -141,8 +144,11 @@ Reference ESMO guidelines for marker interpretation in mCRC monitoring.
     except Exception as e:
         logger.error("!!! Failed task: tumor_marker_review — %s", e)
         raise
-    logger.info("<<< Completed task: tumor_marker_review (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: tumor_marker_review (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("tumor_marker_review", result)
     await _set_state(
         "last_tumor_marker_review",
@@ -173,8 +179,11 @@ RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressi
     except Exception as e:
         logger.error("!!! Failed task: response_assessment — %s", e)
         raise
-    logger.info("<<< Completed task: response_assessment (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: response_assessment (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("response_assessment", result)
     await _set_state(
         "last_response_assessment",
@@ -211,8 +220,11 @@ novel targets, clinical trial results.
     except Exception as e:
         logger.error("!!! Failed task: daily_research — %s", e)
         raise
-    logger.info("<<< Completed task: daily_research (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: daily_research (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("daily_research", result)
     await _set_state(
         "last_daily_research",
@@ -249,8 +261,11 @@ Search terms: "KRAS mutant colorectal cancer", "pan-KRAS inhibitor", "MSS colore
     except Exception as e:
         logger.error("!!! Failed task: trial_monitor — %s", e)
         raise
-    logger.info("<<< Completed task: trial_monitor (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: trial_monitor (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("trial_monitor", result)
     await _set_state(
         "last_trial_monitor",
@@ -282,8 +297,11 @@ Search categories: "pathology", "genetics", "labs", "imaging"
     except Exception as e:
         logger.error("!!! Failed task: file_scan — %s", e)
         raise
-    logger.info("<<< Completed task: file_scan (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: file_scan (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("file_scan", result)
     await _set_state(
         "last_file_scan",
@@ -336,8 +354,11 @@ Structure the briefing with clear sections:
     except Exception as e:
         logger.error("!!! Failed task: weekly_briefing — %s", e)
         raise
-    logger.info("<<< Completed task: weekly_briefing (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: weekly_briefing (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("weekly_briefing", result)
     await _set_state(
         "last_weekly_briefing",
@@ -372,8 +393,11 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
     except Exception as e:
         logger.error("!!! Failed task: lab_sync — %s", e)
         raise
-    logger.info("<<< Completed task: lab_sync (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: lab_sync (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("lab_sync", result)
     await _set_state(
         "last_lab_sync",
@@ -403,8 +427,11 @@ This creates the baseline toxicity history from existing medical documents.
     except Exception as e:
         logger.error("!!! Failed task: toxicity_extraction — %s", e)
         raise
-    logger.info("<<< Completed task: toxicity_extraction (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: toxicity_extraction (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("toxicity_extraction", result)
     await _set_state(
         "last_toxicity_extraction",
@@ -437,8 +464,11 @@ Focus on creating structured weight history from existing medical documents.
     except Exception as e:
         logger.error("!!! Failed task: weight_extraction — %s", e)
         raise
-    logger.info("<<< Completed task: weight_extraction (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: weight_extraction (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("weight_extraction", result)
     await _set_state(
         "last_weight_extraction",
@@ -474,8 +504,11 @@ Vyhni sa zbytočným odborným detailom.
     except Exception as e:
         logger.error("!!! Failed task: family_update — %s", e)
         raise
-    logger.info("<<< Completed task: family_update (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: family_update (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("family_update", result)
     await _set_state(
         "last_family_update",
@@ -501,13 +534,18 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=6, task_name="medication_adherence_check",
+            prompt,
+            max_turns=6,
+            task_name="medication_adherence_check",
         )
     except Exception as e:
         logger.error("!!! Failed task: medication_adherence_check — %s", e)
         raise
-    logger.info("<<< Completed task: medication_adherence_check (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: medication_adherence_check (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("medication_adherence_check", result)
     await _set_state(
         "last_medication_adherence_check",
@@ -544,8 +582,11 @@ Structure for MDT presentation:
     except Exception as e:
         logger.error("!!! Failed task: mtb_preparation — %s", e)
         raise
-    logger.info("<<< Completed task: mtb_preparation (cost=$%.4f, tools=%d)",
-                result.get("cost", 0), len(result.get("tool_calls", [])))
+    logger.info(
+        "<<< Completed task: mtb_preparation (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
     await _log_task("mtb_preparation", result)
     await _set_state(
         "last_mtb_preparation",
