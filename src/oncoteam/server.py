@@ -59,9 +59,10 @@ from .scheduler import autonomous_lifespan
 auth = None
 if MCP_BASE_URL:
     from fastmcp.server.auth.auth import ClientRegistrationOptions
-    from fastmcp.server.auth.providers.in_memory import InMemoryOAuthProvider
 
-    auth = InMemoryOAuthProvider(
+    from .auth_provider import FileOAuthProvider
+
+    auth = FileOAuthProvider(
         base_url=MCP_BASE_URL,
         client_registration_options=ClientRegistrationOptions(enabled=True),
     )
