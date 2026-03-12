@@ -116,7 +116,12 @@ def _create_scheduler():
 
 @asynccontextmanager
 async def autonomous_lifespan(server):
-    """FastMCP lifespan: start/stop the autonomous scheduler."""
+    """FastMCP lifespan: start/stop the autonomous scheduler.
+
+    NOTE: In FastMCP 3.x HTTP transport, lifespans are double-wrapped and the
+    second entry hits an early-exit guard, so this may not fire. As a fallback,
+    start_scheduler() is called explicitly from main() for HTTP mode.
+    """
     if not AUTONOMOUS_ENABLED:
         logger.info("Autonomous agent disabled (AUTONOMOUS_ENABLED=false)")
         yield {}
@@ -131,3 +136,29 @@ async def autonomous_lifespan(server):
     finally:
         scheduler.shutdown(wait=False)
         logger.info("Autonomous scheduler stopped")
+
+
+# ── Standalone scheduler for HTTP transport workaround ──
+
+_standalone_scheduler = None
+
+
+def start_scheduler() -> None:
+    """Start the autonomous scheduler as a standalone background process.
+
+    Called from main() for HTTP transport where FastMCP lifespan is broken.
+    Safe to call multiple times — only starts once.
+    """
+    global _standalone_scheduler
+    if _standalone_scheduler is not None:
+        return
+    if not AUTONOMOUS_ENABLED:
+        logger.info("Autonomous agent disabled (AUTONOMOUS_ENABLED=false)")
+        return
+
+    _standalone_scheduler = _create_scheduler()
+    _standalone_scheduler.start()
+    logger.info(
+        "Autonomous scheduler started (standalone) with %d jobs",
+        len(_standalone_scheduler.get_jobs()),
+    )

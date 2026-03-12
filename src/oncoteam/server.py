@@ -53,7 +53,7 @@ from .patient_context import (
     get_patient_profile_text,
     get_research_terms_text,
 )
-from .scheduler import autonomous_lifespan
+from .scheduler import autonomous_lifespan, start_scheduler
 
 # ── Auth ────────────────────────────────────────
 auth = None
@@ -911,6 +911,9 @@ def main() -> None:
     if MCP_TRANSPORT == "stdio":
         mcp.run()
     else:
+        # FastMCP 3.x lifespan is broken in HTTP transport (double-wrap bug).
+        # Start the autonomous scheduler explicitly before handing off to uvicorn.
+        start_scheduler()
         mcp.run(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
 
 
