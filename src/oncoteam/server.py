@@ -17,7 +17,7 @@ from .activity_logger import (
     log_to_diary,
     record_suppressed_error,
 )
-from .config import MCP_BASE_URL, MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
+from .config import GIT_COMMIT, MCP_BASE_URL, MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from .dashboard_api import (
     VERSION,
     _check_api_auth,
@@ -846,7 +846,9 @@ async def get_precycle_checklist(cycle_number: int = 3) -> str:
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok", "server": "oncoteam", "version": VERSION})
+    return JSONResponse(
+        {"status": "ok", "server": "oncoteam", "version": VERSION, "commit": GIT_COMMIT}
+    )
 
 
 # ── Dashboard API routes ────────────────────────

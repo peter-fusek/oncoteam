@@ -34,6 +34,7 @@ from .config import (
     AUTONOMOUS_ENABLED,
     DASHBOARD_ALLOWED_ORIGINS,
     DASHBOARD_API_KEY,
+    GIT_COMMIT,
     MCP_TRANSPORT,
     ONCOFILES_MCP_URL,
 )
@@ -41,7 +42,7 @@ from .eligibility import assess_research_relevance
 from .locale import L, get_lang, resolve
 from .patient_context import PATIENT, THERAPY_CATEGORIES, get_patient_localized
 
-VERSION = "0.17.0"
+VERSION = "0.20.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -282,6 +283,7 @@ async def api_status(request: Request) -> JSONResponse:
             "status": "ok",
             "server": "oncoteam",
             "version": VERSION,
+            "commit": GIT_COMMIT,
             "session_id": get_session_id(),
             "tools_count": len(tools),
             "tools": tools,

@@ -9,6 +9,10 @@ const mobileMenuOpen = ref(false)
 const route = useRoute()
 const drilldown = useDrilldown()
 
+// Version info from API
+const { fetchApi } = useOncoteamApi()
+const { data: versionInfo } = fetchApi<{ version: string; commit: string }>('/status', { lazy: true })
+
 // Close mobile menu and drilldown on navigation
 watch(() => route.path, () => {
   mobileMenuOpen.value = false
@@ -153,6 +157,9 @@ async function logout() {
           </div>
           <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
         </div>
+        <div v-if="versionInfo" class="text-[10px] text-gray-600 text-center">
+          v{{ versionInfo.version }} · {{ versionInfo.commit }}
+        </div>
       </div>
     </aside>
 
@@ -240,6 +247,9 @@ async function logout() {
                 <span class="text-xs text-gray-400 truncate">{{ user?.name }}</span>
               </div>
               <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
+            </div>
+            <div v-if="versionInfo" class="text-[10px] text-gray-600 text-center">
+              v{{ versionInfo.version }} · {{ versionInfo.commit }}
             </div>
           </div>
         </aside>
