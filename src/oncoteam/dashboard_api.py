@@ -1728,8 +1728,9 @@ async def api_weight(request: Request) -> JSONResponse:
 
 async def api_cumulative_dose(request: Request) -> JSONResponse:
     """GET /api/cumulative-dose — cumulative oxaliplatin dose tracking."""
+    lang = get_lang(request)
     cycle = PATIENT.current_cycle or 2
-    oxa = CUMULATIVE_DOSE_THRESHOLDS["oxaliplatin"]
+    oxa = resolve(CUMULATIVE_DOSE_THRESHOLDS["oxaliplatin"], lang)
     dose_per_cycle = oxa["dose_per_cycle"]
     cumulative = cycle * dose_per_cycle
 
