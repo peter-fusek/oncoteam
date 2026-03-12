@@ -1,5 +1,6 @@
 const translations = {
   en: {
+    "nav.dashboard": "Dashboard",
     "hero.title": "AI-Powered Cancer Treatment Management",
     "hero.subtitle": "An autonomous AI agent that helps patients and caregivers navigate cancer treatment \u2014 from lab results to clinical trials.",
     "hero.cta": "Get in Touch",
@@ -44,6 +45,7 @@ const translations = {
     "footer.disclaimer": "Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions."
   },
   sk: {
+    "nav.dashboard": "Dashboard",
     "hero.title": "AI spr\u00e1va onkologickej lie\u010dby",
     "hero.subtitle": "Auton\u00f3mny AI agent, ktor\u00fd pom\u00e1ha pacientom a ich bl\u00edzkym orientova\u0165 sa v onkologickej lie\u010dbe \u2014 od laborat\u00f3rnych v\u00fdsledkov po klinick\u00e9 \u0161t\u00fadie.",
     "hero.cta": "Kontaktujte n\u00e1s",

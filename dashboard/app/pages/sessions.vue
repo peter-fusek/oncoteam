@@ -2,7 +2,7 @@
 const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
-const { data: sessions, refresh } = await fetchApi<{
+const { data: sessions, status: sessionsStatus, refresh } = fetchApi<{
   sessions: Array<{
     id: number
     title: string
@@ -12,7 +12,7 @@ const { data: sessions, refresh } = await fetchApi<{
   }>
   total: number
   error?: string
-}>('/sessions?limit=50')
+}>('/sessions?limit=50', { lazy: true })
 
 const drilldown = useDrilldown()
 </script>
@@ -28,8 +28,9 @@ const drilldown = useDrilldown()
     </div>
 
     <ApiErrorBanner :error="sessions?.error" />
+    <SkeletonLoader v-if="sessionsStatus === 'pending'" variant="cards" />
 
-    <div v-if="sessions?.sessions?.length" class="space-y-3">
+    <div v-else-if="sessions?.sessions?.length" class="space-y-3">
       <div
         v-for="session in sessions.sessions"
         :key="session.id"

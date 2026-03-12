@@ -623,6 +623,28 @@ async def api_autonomous(request: Request) -> JSONResponse:
     return _cors_json(data)
 
 
+async def api_autonomous_status(request: Request) -> JSONResponse:
+    """GET /api/autonomous/status — per-task last-run timestamps."""
+    from .autonomous_tasks import _extract_timestamp, _get_state
+
+    task_names = [
+        "pre_cycle_check", "daily_research", "file_scan",
+        "tumor_marker_review", "response_assessment", "trial_monitor",
+        "weekly_briefing", "lab_sync", "toxicity_extraction",
+        "weight_extraction", "family_update", "medication_adherence_check",
+        "mtb_preparation",
+    ]
+    tasks = {}
+    for name in task_names:
+        try:
+            state = await _get_state(f"last_{name}")
+            ts = _extract_timestamp(state)
+            tasks[name] = {"last_run": ts or None}
+        except Exception:
+            tasks[name] = {"last_run": None}
+    return _cors_json({"tasks": tasks})
+
+
 async def api_autonomous_cost(request: Request) -> JSONResponse:
     """GET /api/autonomous/cost — budget overview for dashboard widget.
 

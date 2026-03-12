@@ -4,7 +4,7 @@ const { activeRole } = useUserRole()
 const { t } = useI18n()
 const { formatDate } = useFormatDate()
 
-const { data: toxicity, refresh } = await fetchApi<{
+const { data: toxicity, status: toxicityStatus, refresh } = fetchApi<{
   entries: Array<{
     id: number
     date: string
@@ -13,9 +13,9 @@ const { data: toxicity, refresh } = await fetchApi<{
   }>
   total: number
   error?: string
-}>('/toxicity')
+}>('/toxicity', { lazy: true })
 
-const { data: weightData } = await fetchApi<{
+const { data: weightData } = fetchApi<{
   entries: Array<{
     date: string
     weight_kg: number
@@ -247,7 +247,8 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
     </div>
 
     <!-- History -->
-    <div v-if="toxicity?.entries?.length" class="space-y-2">
+    <SkeletonLoader v-if="toxicityStatus === 'pending'" variant="cards" />
+    <div v-else-if="toxicity?.entries?.length" class="space-y-2">
       <h2 class="text-sm font-semibold text-white">{{ $t('common.history') }}</h2>
       <div
         v-for="entry in toxicity.entries"

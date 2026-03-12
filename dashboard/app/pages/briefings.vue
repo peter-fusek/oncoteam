@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 
-const { data: briefings, refresh } = await fetchApi<{
+const { data: briefings, status: briefingsStatus, refresh } = fetchApi<{
   briefings: Array<{
     id: number
     title: string
@@ -13,9 +13,9 @@ const { data: briefings, refresh } = await fetchApi<{
   }>
   total: number
   error?: string
-}>('/briefings')
+}>('/briefings', { lazy: true })
 
-const { data: autonomous } = await fetchApi<{
+const { data: autonomous } = fetchApi<{
   enabled: boolean
   daily_cost: number
   jobs?: Array<{ id: string; schedule: string; description: string }>
@@ -68,9 +68,10 @@ const allQuestions = computed(() => {
     </div>
 
     <ApiErrorBanner :error="briefings?.error" />
+    <SkeletonLoader v-if="briefingsStatus === 'pending'" variant="cards" />
 
     <!-- Questions for Oncologist (aggregated) -->
-    <div v-if="allQuestions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
+    <div v-else-if="allQuestions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
       <div class="flex items-center gap-2 mb-3">
         <UIcon name="i-lucide-message-circle-question" class="text-teal-500" />
         <h2 class="text-sm font-semibold text-white">{{ $t('briefings.questionsForOncologist') }}</h2>
@@ -87,7 +88,7 @@ const allQuestions = computed(() => {
     </div>
 
     <!-- Briefing Cards -->
-    <div v-if="briefings?.briefings?.length" class="space-y-2">
+    <div v-else-if="briefings?.briefings?.length" class="space-y-2">
       <BriefingCard
         v-for="b in briefings.briefings"
         :key="b.id"

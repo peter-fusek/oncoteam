@@ -2,7 +2,7 @@
 const { fetchApi } = useOncoteamApi()
 const drilldown = useDrilldown()
 
-const { data: protocol, refresh } = await fetchApi<{
+const { data: protocol, status: protocolStatus, refresh } = fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; note?: string; action: string }>
   dose_modifications: Record<string, string>
   milestones: Array<{ cycle: number; action: string; description: string }>
@@ -18,9 +18,9 @@ const { data: protocol, refresh } = await fetchApi<{
     current_regimen?: { regimen: string; cycle: number }
     nutrition?: { weight_kg: number; date: string; baseline_kg: number }
   }
-}>('/protocol')
+}>('/protocol', { lazy: true })
 
-const { data: cumDose } = await fetchApi<{
+const { data: cumDose } = fetchApi<{
   drug: string
   cumulative_mg_m2: number
   cycles_counted: number
@@ -32,7 +32,7 @@ const { data: cumDose } = await fetchApi<{
   max_recommended: number
 }>('/cumulative-dose', { lazy: true })
 
-const { data: cycleHistory } = await fetchApi<{
+const { data: cycleHistory } = fetchApi<{
   cycles: Array<{
     cycle_number: number
     date: string
@@ -85,7 +85,9 @@ const tabs = computed(() => [
       </UButton>
     </div>
 
-    <div v-if="protocol">
+    <SkeletonLoader v-if="protocolStatus === 'pending'" variant="card" />
+    <ApiErrorBanner v-else-if="protocolStatus === 'error'" error="Failed to load protocol" />
+    <div v-else-if="protocol">
       <!-- Pre-Cycle Checklist -->
       <div v-if="activeTab === 'checklist'">
         <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">

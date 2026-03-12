@@ -139,6 +139,17 @@ body {
   background: var(--primary-light);
 }
 
+.btn-sm {
+  padding: 6px 16px;
+  font-size: 0.8rem;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 /* Problem / Solution */
 .problem-solution { padding: 80px 0; }
 

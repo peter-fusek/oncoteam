@@ -2,7 +2,7 @@
 const { fetchApi } = useOncoteamApi()
 const { activeRole } = useUserRole()
 
-const { data: patient } = await fetchApi<{
+const { data: patient, status: patientStatus } = fetchApi<{
   name: string
   diagnosis_code: string
   diagnosis_description: string
@@ -30,9 +30,9 @@ const { data: patient } = await fetchApi<{
     indication?: string
     cycle?: number
   }>
-}>('/patient')
+}>('/patient', { lazy: true })
 
-const { data: protocol } = await fetchApi<{
+const { data: protocol } = fetchApi<{
   safety_flags: Record<string, { rule: string; source: string }>
 }>('/protocol', { lazy: true })
 
@@ -115,7 +115,10 @@ const abbreviations: Record<string, string> = {
 </script>
 
 <template>
-  <div v-if="patient" class="space-y-6">
+  <div class="space-y-6">
+    <SkeletonLoader v-if="patientStatus === 'pending'" variant="card" />
+    <ApiErrorBanner v-else-if="patientStatus === 'error'" error="Failed to load patient data" />
+    <template v-else-if="patient">
     <!-- Patient Header -->
     <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
       <div class="flex items-start justify-between">
@@ -309,5 +312,6 @@ const abbreviations: Record<string, string> = {
       </div>
       <p v-if="patient.notes" class="text-sm text-gray-400 mt-2">{{ patient.notes }}</p>
     </div>
+    </template>
   </div>
 </template>

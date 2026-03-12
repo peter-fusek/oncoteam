@@ -4,7 +4,7 @@ const { formatDate } = useFormatDate()
 
 const lang = ref<'sk' | 'en'>('sk')
 
-const { data: updates, refresh } = await fetchApi<{
+const { data: updates, status: updatesStatus, refresh } = fetchApi<{
   updates: Array<{
     id: number
     title: string
@@ -14,7 +14,7 @@ const { data: updates, refresh } = await fetchApi<{
   }>
   total: number
   error?: string
-}>('/family-update')
+}>('/family-update', { lazy: true })
 
 const generating = ref(false)
 const latestGenerated = ref('')
@@ -118,6 +118,8 @@ const drilldown = useDrilldown()
       <h1 class="text-xl font-bold">{{ $t('familyUpdate.printTitle') }}</h1>
       <p class="text-sm text-gray-500">{{ new Date().toLocaleDateString('sk-SK') }}</p>
     </div>
+
+    <SkeletonLoader v-if="updatesStatus === 'pending' && !latestGenerated" variant="cards" />
 
     <!-- Latest generated update -->
     <div v-if="latestGenerated" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-5 print:border-gray-300 print:bg-white">

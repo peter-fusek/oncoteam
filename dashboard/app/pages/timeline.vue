@@ -2,7 +2,7 @@
 const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
-const { data: timeline, refresh } = await fetchApi<{
+const { data: timeline, status: timelineStatus, refresh } = fetchApi<{
   events: Array<{
     id: number
     date: string
@@ -12,9 +12,9 @@ const { data: timeline, refresh } = await fetchApi<{
   }>
   total: number
   error?: string
-}>('/timeline')
+}>('/timeline', { lazy: true })
 
-const { data: protocol } = await fetchApi<{
+const { data: protocol } = fetchApi<{
   milestones: Array<{ cycle: number; action: string; description: string }>
   current_cycle: number
 }>('/protocol', { lazy: true })
@@ -96,8 +96,9 @@ const drilldown = useDrilldown()
     </div>
 
     <ApiErrorBanner :error="timeline?.error" />
+    <SkeletonLoader v-if="timelineStatus === 'pending'" variant="cards" />
 
-    <div v-if="timeline?.events?.length" class="relative pl-6">
+    <div v-else-if="timeline?.events?.length" class="relative pl-6">
       <!-- Vertical line -->
       <div class="absolute left-2 top-2 bottom-2 w-px bg-gray-800" />
 

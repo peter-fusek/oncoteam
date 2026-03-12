@@ -129,6 +129,10 @@ Reference ESMO guidelines for marker interpretation in mCRC monitoring.
 """
     result = await run_autonomous_task(prompt, max_turns=8, task_name="tumor_marker_review")
     await _log_task("tumor_marker_review", result)
+    await _set_state(
+        "last_tumor_marker_review",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -150,6 +154,10 @@ RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressi
 """
     result = await run_autonomous_task(prompt, max_turns=8, task_name="response_assessment")
     await _log_task("response_assessment", result)
+    await _set_state(
+        "last_response_assessment",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -208,6 +216,10 @@ Search terms: "KRAS mutant colorectal cancer", "pan-KRAS inhibitor", "MSS colore
 """
     result = await run_autonomous_task(prompt, max_turns=10, task_name="trial_monitor")
     await _log_task("trial_monitor", result)
+    await _set_state(
+        "last_trial_monitor",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -277,6 +289,10 @@ Structure the briefing with clear sections:
 """
     result = await run_autonomous_task(prompt, max_turns=12, task_name="weekly_briefing")
     await _log_task("weekly_briefing", result)
+    await _set_state(
+        "last_weekly_briefing",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -302,6 +318,10 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """
     result = await run_autonomous_task(prompt, max_turns=8, task_name="lab_sync")
     await _log_task("lab_sync", result)
+    await _set_state(
+        "last_lab_sync",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -322,6 +342,10 @@ This creates the baseline toxicity history from existing medical documents.
 """
     result = await run_autonomous_task(prompt, max_turns=8, task_name="toxicity_extraction")
     await _log_task("toxicity_extraction", result)
+    await _set_state(
+        "last_toxicity_extraction",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -345,6 +369,10 @@ Focus on creating structured weight history from existing medical documents.
 """
     result = await run_autonomous_task(prompt, max_turns=8, task_name="weight_extraction")
     await _log_task("weight_extraction", result)
+    await _set_state(
+        "last_weight_extraction",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -371,6 +399,10 @@ Vyhni sa zbytočným odborným detailom.
 """
     result = await run_autonomous_task(prompt, max_turns=10, task_name="family_update")
     await _log_task("family_update", result)
+    await _set_state(
+        "last_family_update",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -390,6 +422,10 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
 """
     result = await run_autonomous_task(prompt, max_turns=6, task_name="medication_adherence_check")
     await _log_task("medication_adherence_check", result)
+    await _set_state(
+        "last_medication_adherence_check",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result
 
 
@@ -417,4 +453,8 @@ Structure for MDT presentation:
 """
     result = await run_autonomous_task(prompt, max_turns=10, task_name="mtb_preparation")
     await _log_task("mtb_preparation", result)
+    await _set_state(
+        "last_mtb_preparation",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
     return result

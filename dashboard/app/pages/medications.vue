@@ -3,7 +3,7 @@ const { fetchApi, apiUrl, authHeaders } = useOncoteamApi()
 const { t } = useI18n()
 const { formatDate, formatDateShort } = useFormatDate()
 
-const { data: meds, refresh } = await fetchApi<{
+const { data: meds, status: medsStatus, refresh } = fetchApi<{
   medications: Array<{
     id: number
     date: string
@@ -28,7 +28,7 @@ const { data: meds, refresh } = await fetchApi<{
   }
   total: number
   error?: string
-}>('/medications')
+}>('/medications', { lazy: true })
 
 const showForm = ref(false)
 const form = reactive({
@@ -124,6 +124,9 @@ const drilldown = useDrilldown()
     </div>
 
     <ApiErrorBanner :error="meds?.error" />
+
+    <SkeletonLoader v-if="medsStatus === 'pending'" variant="cards" />
+    <template v-else>
 
     <!-- Today's Check-in -->
     <div class="rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
@@ -311,5 +314,7 @@ const drilldown = useDrilldown()
     <div v-else-if="!meds?.error" class="text-gray-600 text-center py-8 text-sm">
       {{ $t('medications.noEntries') }}
     </div>
+
+    </template>
   </div>
 </template>

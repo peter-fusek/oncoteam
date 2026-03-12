@@ -2,22 +2,13 @@
 const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
-// Fetch all data in parallel for the prep summary
-const [
-  { data: patient },
-  { data: protocol },
-  { data: toxicity },
-  { data: labs },
-  { data: briefings },
-  { data: research },
-] = await Promise.all([
-  fetchApi<Record<string, any>>('/patient'),
-  fetchApi<Record<string, any>>('/protocol'),
-  fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/toxicity?limit=5'),
-  fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/labs?limit=5'),
-  fetchApi<{ briefings: Array<Record<string, any>>; total: number }>('/briefings?limit=3'),
-  fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/research?limit=10'),
-])
+// Fetch all data in parallel (lazy, non-blocking)
+const { data: patient, status: patientStatus } = fetchApi<Record<string, any>>('/patient', { lazy: true })
+const { data: protocol } = fetchApi<Record<string, any>>('/protocol', { lazy: true })
+const { data: toxicity } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/toxicity?limit=5', { lazy: true })
+const { data: labs } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/labs?limit=5', { lazy: true })
+const { data: briefings } = fetchApi<{ briefings: Array<Record<string, any>>; total: number }>('/briefings?limit=3', { lazy: true })
+const { data: research } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/research?limit=10', { lazy: true })
 
 // Latest toxicity entry
 const latestToxicity = computed(() => toxicity.value?.entries?.[0] ?? null)
@@ -102,6 +93,9 @@ function printPrep() {
       <p class="text-sm text-gray-500">{{ new Date().toLocaleDateString('sk-SK') }}</p>
     </div>
 
+    <SkeletonLoader v-if="patientStatus === 'pending'" variant="card" />
+    <ApiErrorBanner v-else-if="patientStatus === 'error'" error="Failed to load prep data" />
+    <template v-else>
     <!-- Patient Summary -->
     <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
       <h2 class="text-sm font-semibold text-white mb-2 print:text-black">{{ $t('prep.sectionPatient') }}</h2>
@@ -216,5 +210,6 @@ function printPrep() {
         <span class="text-red-400 print:text-red-600">{{ et.therapy }}</span> — {{ et.reason }}
       </div>
     </div>
+    </template>
   </div>
 </template>

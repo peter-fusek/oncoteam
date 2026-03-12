@@ -3,7 +3,7 @@ const { fetchApi, apiUrl, authHeaders } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
 
-const { data: labs, refresh } = await fetchApi<{
+const { data: labs, status: labsStatus, refresh } = fetchApi<{
   entries: Array<{
     id: number
     date: string
@@ -18,9 +18,9 @@ const { data: labs, refresh } = await fetchApi<{
   reference_ranges: Record<string, { min: number; max: number; unit: string; note?: string }>
   total: number
   error?: string
-}>('/labs')
+}>('/labs', { lazy: true })
 
-const { data: protocol } = await fetchApi<{
+const { data: protocol } = fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; action: string }>
 }>('/protocol', { lazy: true })
 
@@ -201,6 +201,8 @@ async function submitLab() {
     </div>
 
     <ApiErrorBanner :error="labs?.error" />
+
+    <SkeletonLoader v-if="labsStatus === 'pending'" variant="table" />
 
     <!-- Alerts Banner -->
     <div v-if="allAlerts.length" class="rounded-xl border border-red-500/30 bg-red-500/5 p-4">

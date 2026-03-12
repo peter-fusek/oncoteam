@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 
-const { data: research, refresh } = await fetchApi<{
+const { data: research, status: researchStatus, refresh } = fetchApi<{
   entries: Array<{
     id: number
     source: string
@@ -15,7 +15,7 @@ const { data: research, refresh } = await fetchApi<{
   }>
   total: number
   error?: string
-}>('/research?limit=50')
+}>('/research?limit=50', { lazy: true })
 
 const sourceFilter = ref<string | null>(null)
 
@@ -74,6 +74,7 @@ const drilldown = useDrilldown()
     </div>
 
     <ApiErrorBanner :error="research?.error" />
+    <SkeletonLoader v-if="researchStatus === 'pending'" variant="cards" />
 
     <div v-if="filtered.length" class="space-y-2">
       <div

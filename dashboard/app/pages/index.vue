@@ -11,15 +11,15 @@ const {
 
 // ── Data fetching ────────────────────────────────
 
-const { data: status, refresh: refreshStatus } = await fetchApi<{
+const { data: status, status: statusFetch, refresh: refreshStatus } = fetchApi<{
   status: string; version: string; session_id: string; tools_count: number
-}>('/status')
+}>('/status', { lazy: true })
 
-const { data: stats, refresh: refreshStats } = await fetchApi<{
+const { data: stats, refresh: refreshStats } = fetchApi<{
   stats: Array<{ tool_name: string; status: string; count: number; avg_duration_ms: number }>
 }>('/stats', { lazy: true })
 
-const { data: activity, refresh: refreshActivity } = await fetchApi<{
+const { data: activity, refresh: refreshActivity } = fetchApi<{
   entries: Array<{
     tool: string; status: string; duration_ms: number; timestamp: string
     input: string; output: string; error: string
@@ -27,12 +27,12 @@ const { data: activity, refresh: refreshActivity } = await fetchApi<{
   total: number
 }>('/activity?limit=100', { lazy: true })
 
-const { data: autonomous, refresh: refreshAutonomous } = await fetchApi<{
+const { data: autonomous, refresh: refreshAutonomous } = fetchApi<{
   enabled: boolean; daily_cost: number
   jobs?: Array<{ id: string; schedule: string; description: string; assigned_tool?: string }>
 }>('/autonomous', { lazy: true })
 
-const { data: costData, refresh: refreshCost } = await fetchApi<{
+const { data: costData, refresh: refreshCost } = fetchApi<{
   today_spend: number; daily_cap: number; mtd_spend: number
   expected_eom: number; remaining_credit: number; total_credit: number
   days_remaining: number; budget_alert: boolean; month: string
@@ -42,7 +42,7 @@ const { data: gamification, refresh: refreshGamification } = useFetch<{
   totalXp: number; level: string; streakDays: number
 }>('/api/gamification', { lazy: true })
 
-const { data: labData, refresh: refreshLabs } = await fetchApi<{
+const { data: labData, refresh: refreshLabs } = fetchApi<{
   entries: Array<{
     date: string
     alerts: Array<{ param: string; value: number; threshold: number; action: string }>
@@ -334,6 +334,8 @@ onUnmounted(() => {
 
 <template>
   <div class="space-y-6">
+    <SkeletonLoader v-if="statusFetch === 'pending'" variant="stat-grid" />
+    <template v-else>
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
@@ -738,6 +740,7 @@ onUnmounted(() => {
         </div>
       </div>
     </Transition>
+    </template>
   </div>
 </template>
 
