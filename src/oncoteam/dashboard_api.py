@@ -722,14 +722,22 @@ async def api_protocol(request: Request) -> JSONResponse:
     lang = get_lang(request)
     data = resolve_protocol(lang)
 
-    # Fetch lab values + treatment events concurrently (#63 perf fix)
+    # Fetch lab values + treatment events concurrently with 5s timeout (#63 perf fix)
     import asyncio
 
-    lab_result, events_result = await asyncio.gather(
-        oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
-        oncofiles_client.list_treatment_events(limit=50),
-        return_exceptions=True,
-    )
+    try:
+        lab_result, events_result = await asyncio.wait_for(
+            asyncio.gather(
+                oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
+                oncofiles_client.list_treatment_events(limit=50),
+                return_exceptions=True,
+            ),
+            timeout=5.0,
+        )
+    except TimeoutError:
+        record_suppressed_error("api_protocol", "oncofiles_timeout", TimeoutError("5s"))
+        lab_result = TimeoutError("oncofiles timeout")
+        events_result = TimeoutError("oncofiles timeout")
 
     # Process lab values for threshold status display
     last_lab_values: dict[str, dict] = {}
