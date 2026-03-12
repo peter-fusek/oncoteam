@@ -79,10 +79,12 @@ function cellBgColor(entry: any, key: string): string {
   return ''
 }
 
-const chartLabels = computed(() => sortedEntries.value.map(e => e.date))
+// Chart data in chronological order (oldest → newest, left → right)
+const chronologicalEntries = computed(() => [...sortedEntries.value].reverse())
+const chartLabels = computed(() => chronologicalEntries.value.map(e => e.date))
 
 function getValues(key: string): (number | null)[] {
-  return sortedEntries.value.map(e => e.values?.[key] ?? null)
+  return chronologicalEntries.value.map(e => e.values?.[key] ?? null)
 }
 
 function getThreshold(key: string): number | undefined {

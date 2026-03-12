@@ -14,13 +14,14 @@
     "@nuxtjs/i18n": "^10.2.3",
     "@tailwindcss/vite": "^4.2.1",
     "chart.js": "^4.5.1",
+    "chartjs-plugin-datalabels": "^2.2.0",
     "nuxt": "^4.0.0",
     "nuxt-auth-utils": "^0.5.29",
     "tailwindcss": "^4.2.1",
+    "twilio": "^5.0.0",
     "vue": "^3.5.0",
     "vue-chartjs": "^5.3.3",
-    "vue-router": "^4.5.0",
-    "twilio": "^5.0.0"
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.0.0",

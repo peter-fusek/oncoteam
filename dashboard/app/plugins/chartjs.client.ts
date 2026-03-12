@@ -9,6 +9,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 
 export default defineNuxtPlugin(() => {
   Chart.register(
@@ -20,5 +21,6 @@ export default defineNuxtPlugin(() => {
     Tooltip,
     Legend,
     Filler,
+    ChartDataLabels,
   )
 })
