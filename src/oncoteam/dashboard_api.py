@@ -1352,13 +1352,14 @@ async def api_detail(request: Request) -> JSONResponse:
             }
 
         elif detail_type == "protocol_section":
+            lang = get_lang(request)
             sections = {
                 "lab_thresholds": LAB_SAFETY_THRESHOLDS,
-                "dose_modifications": DOSE_MODIFICATION_RULES,
-                "milestones": TREATMENT_MILESTONES,
-                "monitoring_schedule": MONITORING_SCHEDULE,
-                "safety_flags": SAFETY_FLAGS,
-                "second_line_options": SECOND_LINE_OPTIONS,
+                "dose_modifications": resolve(DOSE_MODIFICATION_RULES, lang),
+                "milestones": resolve(TREATMENT_MILESTONES, lang),
+                "monitoring_schedule": resolve(MONITORING_SCHEDULE, lang),
+                "safety_flags": resolve(SAFETY_FLAGS, lang),
+                "second_line_options": resolve(SECOND_LINE_OPTIONS, lang),
                 "watched_trials": WATCHED_TRIALS,
             }
             data = {"section": detail_id, "data": sections.get(detail_id, {})}
