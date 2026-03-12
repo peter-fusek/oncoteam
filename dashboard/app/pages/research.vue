@@ -74,7 +74,7 @@ const drilldown = useDrilldown()
     </div>
 
     <ApiErrorBanner :error="research?.error" />
-    <SkeletonLoader v-if="researchStatus === 'pending'" variant="cards" />
+    <SkeletonLoader v-if="!research && researchStatus === 'pending'" variant="cards" />
 
     <div v-if="filtered.length" class="space-y-2">
       <div

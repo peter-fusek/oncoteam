@@ -85,8 +85,8 @@ const tabs = computed(() => [
       </UButton>
     </div>
 
-    <SkeletonLoader v-if="protocolStatus === 'pending'" variant="card" />
-    <ApiErrorBanner v-else-if="protocolStatus === 'error'" error="Failed to load protocol" />
+    <SkeletonLoader v-if="!protocol && protocolStatus === 'pending'" variant="card" />
+    <ApiErrorBanner v-else-if="!protocol && protocolStatus === 'error'" error="Failed to load protocol" />
     <div v-else-if="protocol">
       <!-- Pre-Cycle Checklist -->
       <div v-if="activeTab === 'checklist'">

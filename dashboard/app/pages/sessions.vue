@@ -28,7 +28,7 @@ const drilldown = useDrilldown()
     </div>
 
     <ApiErrorBanner :error="sessions?.error" />
-    <SkeletonLoader v-if="sessionsStatus === 'pending'" variant="cards" />
+    <SkeletonLoader v-if="!sessions && sessionsStatus === 'pending'" variant="cards" />
 
     <div v-else-if="sessions?.sessions?.length" class="space-y-3">
       <div

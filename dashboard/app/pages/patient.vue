@@ -139,8 +139,8 @@ const abbreviations: Record<string, string> = {
 
 <template>
   <div class="space-y-6">
-    <SkeletonLoader v-if="patientStatus === 'pending'" variant="card" />
-    <ApiErrorBanner v-else-if="patientStatus === 'error'" error="Failed to load patient data" />
+    <SkeletonLoader v-if="!patient && patientStatus === 'pending'" variant="card" />
+    <ApiErrorBanner v-else-if="!patient && patientStatus === 'error'" error="Failed to load patient data" />
     <template v-else-if="patient">
     <!-- Patient Header -->
     <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">

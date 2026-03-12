@@ -247,7 +247,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
     </div>
 
     <!-- History -->
-    <SkeletonLoader v-if="toxicityStatus === 'pending'" variant="cards" />
+    <SkeletonLoader v-if="!toxicity && toxicityStatus === 'pending'" variant="cards" />
     <div v-else-if="toxicity?.entries?.length" class="space-y-2">
       <h2 class="text-sm font-semibold text-white">{{ $t('common.history') }}</h2>
       <div

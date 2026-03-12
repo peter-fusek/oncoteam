@@ -93,7 +93,7 @@ function printPrep() {
       <p class="text-sm text-gray-500">{{ new Date().toLocaleDateString('sk-SK') }}</p>
     </div>
 
-    <SkeletonLoader v-if="patientStatus === 'pending'" variant="card" />
+    <SkeletonLoader v-if="!patient && patientStatus === 'pending'" variant="card" />
     <ApiErrorBanner v-else-if="patientStatus === 'error'" error="Failed to load prep data" />
     <template v-else>
     <!-- Patient Summary -->

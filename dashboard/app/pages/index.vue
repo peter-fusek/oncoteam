@@ -334,7 +334,7 @@ onUnmounted(() => {
 
 <template>
   <div class="space-y-6">
-    <SkeletonLoader v-if="statusFetch === 'pending'" variant="stat-grid" />
+    <SkeletonLoader v-if="!status && statusFetch === 'pending'" variant="stat-grid" />
     <template v-else>
     <!-- Header -->
     <div class="flex items-center justify-between">

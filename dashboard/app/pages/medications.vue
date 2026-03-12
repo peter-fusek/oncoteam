@@ -125,7 +125,7 @@ const drilldown = useDrilldown()
 
     <ApiErrorBanner :error="meds?.error" />
 
-    <SkeletonLoader v-if="medsStatus === 'pending'" variant="cards" />
+    <SkeletonLoader v-if="!meds && medsStatus === 'pending'" variant="cards" />
     <template v-else>
 
     <!-- Today's Check-in -->

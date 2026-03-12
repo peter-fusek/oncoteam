@@ -204,7 +204,7 @@ async function submitLab() {
 
     <ApiErrorBanner :error="labs?.error" />
 
-    <SkeletonLoader v-if="labsStatus === 'pending'" variant="table" />
+    <SkeletonLoader v-if="!labs && labsStatus === 'pending'" variant="table" />
 
     <!-- Alerts Banner -->
     <div v-if="allAlerts.length" class="rounded-xl border border-red-500/30 bg-red-500/5 p-4">

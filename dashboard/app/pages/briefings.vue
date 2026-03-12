@@ -68,7 +68,7 @@ const allQuestions = computed(() => {
     </div>
 
     <ApiErrorBanner :error="briefings?.error" />
-    <SkeletonLoader v-if="briefingsStatus === 'pending'" variant="cards" />
+    <SkeletonLoader v-if="!briefings && briefingsStatus === 'pending'" variant="cards" />
 
     <!-- Questions for Oncologist (aggregated) -->
     <div v-else-if="allQuestions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">

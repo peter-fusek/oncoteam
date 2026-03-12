@@ -96,7 +96,7 @@ const drilldown = useDrilldown()
     </div>
 
     <ApiErrorBanner :error="timeline?.error" />
-    <SkeletonLoader v-if="timelineStatus === 'pending'" variant="cards" />
+    <SkeletonLoader v-if="!timeline && timelineStatus === 'pending'" variant="cards" />
 
     <div v-else-if="timeline?.events?.length" class="relative pl-6">
       <!-- Vertical line -->
