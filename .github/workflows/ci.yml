@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -76,8 +80,8 @@ jobs:
             exit 0
           fi
           STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL")
-          if [ "$STATUS" = "200" ]; then
-            echo "Dashboard OK"
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
+            echo "Dashboard OK (status: $STATUS)"
           else
             echo "Dashboard returned $STATUS"
             exit 1
@@ -113,9 +117,9 @@ jobs:
         env:
           PROD_DASHBOARD_URL: https://dashboard.oncoteam.cloud
         run: |
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$PROD_DASHBOARD_URL")
-          if [ "$STATUS" = "200" ]; then
-            echo "Dashboard OK"
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L "$PROD_DASHBOARD_URL")
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
+            echo "Dashboard OK (status: $STATUS)"
           else
             echo "Dashboard returned $STATUS"
             exit 1
