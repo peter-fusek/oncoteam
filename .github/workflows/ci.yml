@@ -23,3 +23,117 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --extra dev
       - run: uv run pytest
+
+  smoke-test:
+    if: github.event_name == 'pull_request'
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    environment: preview
+    steps:
+      - name: Wait for Railway PR deploy
+        run: sleep 120
+
+      - name: Check backend health
+        run: |
+          DEPLOY_URL="${{ vars.RAILWAY_PR_BACKEND_URL }}"
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "RAILWAY_PR_BACKEND_URL not set, skipping"
+            exit 0
+          fi
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend healthy"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying in 30s..."
+            sleep 30
+          done
+          echo "Backend health check failed after 5 attempts"
+          exit 1
+
+      - name: Check backend API
+        run: |
+          DEPLOY_URL="${{ vars.RAILWAY_PR_BACKEND_URL }}"
+          API_KEY="${{ secrets.DASHBOARD_API_KEY }}"
+          if [ -z "$DEPLOY_URL" ] || [ -z "$API_KEY" ]; then
+            echo "Missing RAILWAY_PR_BACKEND_URL or DASHBOARD_API_KEY, skipping"
+            exit 0
+          fi
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $API_KEY" "$DEPLOY_URL/api/status")
+          if [ "$STATUS" = "200" ]; then
+            echo "API /api/status OK"
+          else
+            echo "API /api/status returned $STATUS"
+            exit 1
+          fi
+
+      - name: Check dashboard
+        run: |
+          DEPLOY_URL="${{ vars.RAILWAY_PR_DASHBOARD_URL }}"
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "RAILWAY_PR_DASHBOARD_URL not set, skipping"
+            exit 0
+          fi
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL")
+          if [ "$STATUS" = "200" ]; then
+            echo "Dashboard OK"
+          else
+            echo "Dashboard returned $STATUS"
+            exit 1
+          fi
+
+  post-deploy-check:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Railway deploy
+        run: sleep 120
+
+      - name: Check backend health
+        env:
+          PROD_BACKEND_URL: https://oncoteam-production.up.railway.app
+        run: |
+          for i in 1 2 3 4 5; do
+            RESPONSE=$(curl -s "$PROD_BACKEND_URL/health" || true)
+            STATUS=$(echo "$RESPONSE" | jq -r '.status // empty' 2>/dev/null || true)
+            if [ "$STATUS" = "ok" ]; then
+              VERSION=$(echo "$RESPONSE" | jq -r '.version // "unknown"' 2>/dev/null || true)
+              echo "Backend healthy — version: $VERSION"
+              exit 0
+            fi
+            echo "Attempt $i: not healthy yet, retrying in 30s..."
+            sleep 30
+          done
+          echo "Backend health check failed after 5 attempts"
+          exit 1
+
+      - name: Check dashboard
+        env:
+          PROD_DASHBOARD_URL: https://dashboard.oncoteam.cloud
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$PROD_DASHBOARD_URL")
+          if [ "$STATUS" = "200" ]; then
+            echo "Dashboard OK"
+          else
+            echo "Dashboard returned $STATUS"
+            exit 1
+          fi
+
+      - name: Post deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.sha;
+            const state = '${{ job.status }}' === 'success' ? 'success' : 'failure';
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              context: 'deploy/production',
+              description: state === 'success' ? 'Production deploy verified' : 'Production deploy check failed',
+              target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });

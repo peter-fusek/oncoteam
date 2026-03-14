@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oncoteam — AI-Powered Cancer Treatment Management</title>
+  <meta name="description" content="Oncoteam is an AI agent that helps cancer patients and caregivers manage treatment, track labs, find clinical trials, and stay informed. Built on the Model Context Protocol.">
+  <meta property="og:title" content="Oncoteam — AI-Powered Cancer Treatment Management">
+  <meta property="og:description" content="AI agent for cancer patients and caregivers. Track treatment, analyze labs, find clinical trials.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://oncoteam.ai">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩺</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Language switcher -->
+  <nav class="top-nav">
+    <div class="container nav-container">
+      <div class="logo">oncoteam</div>
+      <div class="nav-right">
+        <a href="https://dashboard.oncoteam.cloud" class="btn btn-secondary btn-sm" data-i18n="nav.dashboard">Dashboard</a>
+        <div class="lang-switcher">
+          <button class="lang-btn active" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="sk">SK</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container">
+      <h1 data-i18n="hero.title">AI-Powered Cancer Treatment Management</h1>
+      <p class="hero-sub" data-i18n="hero.subtitle">An autonomous AI agent that helps patients and caregivers navigate cancer treatment — from lab results to clinical trials.</p>
+      <div class="hero-cta">
+        <a href="#contact" class="btn btn-primary" data-i18n="hero.cta">Get in Touch</a>
+        <a href="#features" class="btn btn-secondary" data-i18n="hero.learn">Learn More</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Problem / Solution -->
+  <section class="problem-solution">
+    <div class="container">
+      <div class="ps-grid">
+        <div class="ps-card problem">
+          <h2 data-i18n="problem.title">The Problem</h2>
+          <p data-i18n="problem.text">Cancer patients and their families face an overwhelming flood of medical data — lab results, imaging reports, genetic tests, treatment protocols, clinical trial options. Making sense of it all while fighting the disease is an impossible burden.</p>
+        </div>
+        <div class="ps-card solution">
+          <h2 data-i18n="solution.title">Our Solution</h2>
+          <p data-i18n="solution.text">Oncoteam is a persistent AI agent that works alongside you. It reads your medical documents, tracks your labs, monitors clinical trials, checks drug interactions, and prepares you for every oncologist visit — so you can focus on what matters.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="features">
+    <div class="container">
+      <h2 class="section-title" data-i18n="features.title">What Oncoteam Does</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3 data-i18n="features.dashboard.title">Treatment Dashboard</h3>
+          <p data-i18n="features.dashboard.text">All your medical data in one place — labs, imaging, medications, treatment timeline. Bilingual interface (Slovak/English).</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔬</div>
+          <h3 data-i18n="features.labs.title">Lab Analysis</h3>
+          <p data-i18n="features.labs.text">Automated lab result interpretation with reference ranges, trend analysis, inflammation indices (SII, Ne/Ly ratio), and pre-cycle safety checks.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🧬</div>
+          <h3 data-i18n="features.trials.title">Clinical Trial Matching</h3>
+          <p data-i18n="features.trials.text">Searches ClinicalTrials.gov and PubMed for trials matching your molecular profile. Checks eligibility based on your biomarkers, prior treatments, and location.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🤖</div>
+          <h3 data-i18n="features.agent.title">Autonomous Agent</h3>
+          <p data-i18n="features.agent.text">Runs autonomously to scan new documents, extract data, update your treatment timeline, and flag anything that needs attention — even when you're not looking.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h3 data-i18n="features.protocol.title">Protocol Tracking</h3>
+          <p data-i18n="features.protocol.text">Embedded clinical protocol with dose modification rules, cumulative dose thresholds, toxicity grading, and cycle delay criteria.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔗</div>
+          <h3 data-i18n="features.mcp.title">MCP-Native Architecture</h3>
+          <p data-i18n="features.mcp.text">Built on the Model Context Protocol — open, interoperable, and designed to work with any AI assistant. Your data stays yours.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="how-it-works">
+    <div class="container">
+      <h2 class="section-title" data-i18n="how.title">How It Works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3 data-i18n="how.step1.title">Connect Your Documents</h3>
+          <p data-i18n="how.step1.text">Upload lab results, pathology reports, imaging, and genetic tests to your secure Google Drive folder.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3 data-i18n="how.step2.title">AI Reads & Understands</h3>
+          <p data-i18n="how.step2.text">Oncoteam extracts structured data, identifies biomarkers, tracks trends, and builds your complete treatment profile.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3 data-i18n="how.step3.title">Stay Informed & Prepared</h3>
+          <p data-i18n="how.step3.text">Get daily briefings, pre-cycle checklists, trial recommendations, and questions for your oncologist — all backed by your actual data.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech stack -->
+  <section class="tech-stack">
+    <div class="container">
+      <h2 class="section-title" data-i18n="tech.title">Built With</h2>
+      <div class="tech-badges">
+        <span class="badge">Model Context Protocol (MCP)</span>
+        <span class="badge">Claude AI</span>
+        <span class="badge">PubMed API</span>
+        <span class="badge">ClinicalTrials.gov API</span>
+        <span class="badge">Google Drive</span>
+        <span class="badge">Python / FastMCP</span>
+        <span class="badge">Nuxt.js Dashboard</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="contact">
+    <div class="container">
+      <h2 class="section-title" data-i18n="contact.title">Get in Touch</h2>
+      <p class="contact-sub" data-i18n="contact.subtitle">Oncoteam is currently in active development for a real patient. If you're interested in learning more or collaborating, reach out.</p>
+      <div class="contact-links">
+        <a href="https://github.com/instarea-sk" class="contact-link">
+          <span class="contact-icon">&#9679;</span>
+          GitHub
+        </a>
+        <a href="https://www.linkedin.com/in/peterfusek/" class="contact-link">
+          <span class="contact-icon">&#9679;</span>
+          LinkedIn
+        </a>
+        <a href="mailto:peterfusek1980@gmail.com" class="contact-link">
+          <span class="contact-icon">&#9679;</span>
+          Email
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy / GDPR -->
+  <section id="privacy" class="privacy">
+    <div class="container">
+      <h2 class="section-title" data-i18n="privacy.title">Privacy & Data Protection</h2>
+      <div class="privacy-grid">
+        <div class="privacy-item">
+          <h3 data-i18n="privacy.gdpr.title">GDPR Compliant</h3>
+          <p data-i18n="privacy.gdpr.text">All patient data is processed in compliance with the EU General Data Protection Regulation. Data is encrypted at rest and in transit.</p>
+        </div>
+        <div class="privacy-item">
+          <h3 data-i18n="privacy.ownership.title">Your Data, Your Control</h3>
+          <p data-i18n="privacy.ownership.text">Patient documents are stored in your own Google Drive. Oncoteam reads and processes data but never stores originals outside your control.</p>
+        </div>
+        <div class="privacy-item">
+          <h3 data-i18n="privacy.access.title">Controlled Access</h3>
+          <p data-i18n="privacy.access.text">Multi-layer authentication: Google OAuth, API bearer tokens, and MCP server authentication. No unauthorized access to patient data.</p>
+        </div>
+        <div class="privacy-item">
+          <h3 data-i18n="privacy.audit.title">Full Audit Trail</h3>
+          <p data-i18n="privacy.audit.text">Every data access, AI decision, and document interaction is logged. Complete transparency for patients and caregivers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2026 Oncoteam. <span data-i18n="footer.rights">Built with care for cancer patients and their families.</span></p>
+      <p class="footer-note" data-i18n="footer.disclaimer">Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.</p>
+      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.20.0</p>
+    </div>
+  </footer>
+
+  <script src="i18n.js"></script>
+</body>
+</html>

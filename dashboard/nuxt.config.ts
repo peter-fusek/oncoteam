@@ -20,7 +20,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      oncoteamApiUrl: process.env.NUXT_PUBLIC_ONCOTEAM_API_URL || 'https://oncoteam-production.up.railway.app',
+      oncoteamApiUrl: process.env.NUXT_PUBLIC_ONCOTEAM_API_URL || 'http://oncoteam-backend.railway.internal:8000',
       oncoteamApiKey: process.env.NUXT_PUBLIC_ONCOTEAM_API_KEY || '',
     },
     session: {
