@@ -2,6 +2,8 @@
 const props = defineProps<{
   currentCycle: number
   labValues?: Record<string, { value: number; threshold: number | null; unit: string; pass: boolean }>
+  lastLabValues?: Record<string, { value: number; sample_date?: string; status: 'safe' | 'warning' | 'critical' }>
+  labThresholds?: Record<string, { min?: number; max_ratio?: number; unit?: string }>
   readonly?: boolean
 }>()
 
@@ -58,6 +60,28 @@ function getLabEval(sectionIndex: number, itemIndex: number) {
   const key = sections.value[0].labKeys?.[itemIndex]
   return key ? props.labValues[key] ?? null : null
 }
+
+function getLastLabInfo(sectionIndex: number, itemIndex: number) {
+  if (!props.lastLabValues || sectionIndex !== 0) return null
+  const key = sections.value[0].labKeys?.[itemIndex]
+  if (!key) return null
+  const entry = props.lastLabValues[key]
+  if (!entry) return null
+  const unit = props.labThresholds?.[key]?.unit ?? ''
+  return { ...entry, unit }
+}
+
+const statusColor: Record<string, string> = {
+  safe: 'text-green-400',
+  warning: 'text-amber-400',
+  critical: 'text-red-400',
+}
+
+const statusIcon: Record<string, string> = {
+  safe: 'i-lucide-check-circle',
+  warning: 'i-lucide-alert-triangle',
+  critical: 'i-lucide-x-circle',
+}
 </script>
 
 <template>
@@ -93,7 +117,21 @@ function getLabEval(sectionIndex: number, itemIndex: number) {
             type="checkbox"
             class="rounded border-gray-700 bg-gray-800 text-teal-500 focus:ring-teal-500/30 w-3.5 h-3.5"
           />
-          <span class="text-sm text-gray-300" :class="{ 'line-through text-gray-600': checked[item] }">{{ item }}</span>
+          <span class="text-sm text-gray-300 flex-1" :class="{ 'line-through text-gray-600': checked[item] }">{{ item }}</span>
+          <!-- Show latest lab value inline when available -->
+          <template v-if="getLastLabInfo(si, ii)">
+            <UIcon
+              :name="statusIcon[getLastLabInfo(si, ii)!.status] ?? 'i-lucide-minus'"
+              :class="statusColor[getLastLabInfo(si, ii)!.status] ?? 'text-gray-500'"
+              class="w-3.5 h-3.5 shrink-0"
+            />
+            <span class="font-mono text-xs shrink-0" :class="statusColor[getLastLabInfo(si, ii)!.status] ?? 'text-gray-500'">
+              {{ getLastLabInfo(si, ii)!.value }}{{ getLastLabInfo(si, ii)!.unit ? ' ' + getLastLabInfo(si, ii)!.unit : '' }}
+            </span>
+            <span v-if="getLastLabInfo(si, ii)!.sample_date" class="text-xs text-gray-600 shrink-0">
+              {{ getLastLabInfo(si, ii)!.sample_date }}
+            </span>
+          </template>
         </template>
       </div>
     </div>

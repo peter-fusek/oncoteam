@@ -91,7 +91,11 @@ const tabs = computed(() => [
       <!-- Pre-Cycle Checklist -->
       <div v-if="activeTab === 'checklist'">
         <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-          <PreCycleChecklist :current-cycle="protocol.current_cycle" />
+          <PreCycleChecklist
+            :current-cycle="protocol.current_cycle"
+            :last-lab-values="protocol.last_lab_values"
+            :lab-thresholds="protocol.lab_thresholds"
+          />
         </div>
 
         <!-- Previous cycles -->

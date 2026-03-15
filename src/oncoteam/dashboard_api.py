@@ -816,6 +816,43 @@ async def api_protocol(request: Request) -> JSONResponse:
     elif isinstance(lab_result, Exception):
         record_suppressed_error("api_protocol", "fetch_last_labs", lab_result)
 
+    # Fallback: if no lab_result treatment events, try get_lab_trends_data (#72)
+    _fallback_params = ("ANC", "PLT", "WBC", "HGB")
+    if not last_lab_values:
+        try:
+            fallback_tasks = [
+                oncofiles_client.get_lab_trends_data(parameter=p, limit=1) for p in _fallback_params
+            ]
+            fallback_results = await asyncio.wait_for(
+                asyncio.gather(*fallback_tasks, return_exceptions=True),
+                timeout=5.0,
+            )
+            for param, result in zip(_fallback_params, fallback_results, strict=True):
+                if isinstance(result, BaseException):
+                    continue
+                points = _extract_list(result, "data_points")
+                if not points:
+                    continue
+                latest = points[0]
+                val = latest.get("value")
+                if not isinstance(val, (int, float)):
+                    continue
+                threshold = LAB_SAFETY_THRESHOLDS.get(param, {})
+                status = "safe"
+                if "min" in threshold:
+                    if val < threshold["min"]:
+                        status = "critical"
+                    elif val < threshold["min"] * 1.2:
+                        status = "warning"
+                last_lab_values[param] = {
+                    "value": val,
+                    "sample_date": latest.get("lab_date", ""),
+                    "sync_date": latest.get("created_at", ""),
+                    "status": status,
+                }
+        except (TimeoutError, Exception) as e:
+            record_suppressed_error("api_protocol", "fallback_lab_trends", e)
+
     data["last_lab_values"] = last_lab_values
 
     # Process real values for other tabs (#54)
@@ -1465,12 +1502,38 @@ async def api_diagnostics(request: Request) -> JSONResponse:
         except Exception as e:
             checks.append({"name": name, "ok": False, "error": str(e)})
 
+    # Check if lab_result data is stale (>48h since last lab_result event)
+    lab_sync_stale = False
+    te_check = next((c for c in checks if c["name"] == "treatment_events"), None)
+    if te_check and te_check.get("ok"):
+        try:
+            lab_events = await oncofiles_client.list_treatment_events(
+                event_type="lab_result", limit=1
+            )
+            events = _extract_list(lab_events, "events")
+            if events:
+                from datetime import UTC, datetime
+
+                created = events[0].get("created_at", "")
+                if created:
+                    # Parse ISO timestamp (with or without Z suffix)
+                    ts = created.replace("Z", "+00:00")
+                    last_sync = datetime.fromisoformat(ts)
+                    age_hours = (datetime.now(UTC) - last_sync).total_seconds() / 3600
+                    lab_sync_stale = age_hours > 48
+            else:
+                # No lab_result events at all — stale
+                lab_sync_stale = True
+        except Exception as e:
+            record_suppressed_error("api_diagnostics", "lab_sync_check", e)
+
     return _cors_json(
         {
             "healthy": all(c["ok"] for c in checks),
             "checks": checks,
             "oncofiles_url": (ONCOFILES_MCP_URL[:30] + "...") if ONCOFILES_MCP_URL else "NOT SET",
             "autonomous_enabled": AUTONOMOUS_ENABLED,
+            "lab_sync_stale": lab_sync_stale,
             "suppressed_errors": get_suppressed_errors()[-10:],
         }
     )
