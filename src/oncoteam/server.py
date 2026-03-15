@@ -31,6 +31,7 @@ from .dashboard_api import (
     api_detail,
     api_diagnostics,
     api_family_update,
+    api_health_deep,
     api_labs,
     api_medications,
     api_patient,
@@ -54,7 +55,7 @@ from .patient_context import (
     get_patient_profile_text,
     get_research_terms_text,
 )
-from .scheduler import autonomous_lifespan, start_scheduler
+from .scheduler import start_scheduler
 
 # ── Auth ────────────────────────────────────────
 auth = None
@@ -80,7 +81,6 @@ elif MCP_TRANSPORT != "stdio":
 
 mcp = FastMCP(
     "Oncoteam",
-    lifespan=autonomous_lifespan,
     instructions=(
         "Oncoteam is a persistent AI agent for cancer treatment management. "
         "It searches PubMed and ClinicalTrials.gov for relevant research, "
@@ -851,6 +851,9 @@ async def health(request: Request) -> JSONResponse:
     )
 
 
+mcp.custom_route("/health/deep", methods=["GET"])(api_health_deep)
+
+
 # ── Dashboard API routes ────────────────────────
 
 _API_ROUTES = [
@@ -914,6 +917,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     if MCP_TRANSPORT == "stdio":
+        start_scheduler()
         mcp.run()
     else:
         import asyncio

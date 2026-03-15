@@ -28,9 +28,26 @@ jobs:
       - run: uv sync --extra dev
       - run: uv run pytest
 
+  dashboard-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: dashboard
+      - run: pnpm build
+        working-directory: dashboard
+
   smoke-test:
     if: github.event_name == 'pull_request'
-    needs: [lint, test]
+    needs: [lint, test, dashboard-build]
     runs-on: ubuntu-latest
     environment: preview
     steps:
@@ -56,7 +73,7 @@ jobs:
           echo "Backend health check failed after 5 attempts"
           exit 1
 
-      - name: Check backend API
+      - name: Validate backend API responses
         run: |
           DEPLOY_URL="${{ vars.RAILWAY_PR_BACKEND_URL }}"
           API_KEY="${{ secrets.DASHBOARD_API_KEY }}"
@@ -64,11 +81,43 @@ jobs:
             echo "Missing RAILWAY_PR_BACKEND_URL or DASHBOARD_API_KEY, skipping"
             exit 0
           fi
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $API_KEY" "$DEPLOY_URL/api/status")
-          if [ "$STATUS" = "200" ]; then
-            echo "API /api/status OK"
+
+          ERRORS=0
+
+          # /api/status — check structure
+          BODY=$(curl -sf -H "Authorization: Bearer $API_KEY" "$DEPLOY_URL/api/status" || true)
+          STATUS=$(echo "$BODY" | jq -r '.status // empty' 2>/dev/null || true)
+          TOOLS=$(echo "$BODY" | jq -r '.tools_count // 0' 2>/dev/null || true)
+          if [ "$STATUS" = "ok" ] && [ "$TOOLS" -gt 0 ] 2>/dev/null; then
+            echo "✓ /api/status: status=ok, tools=$TOOLS"
           else
-            echo "API /api/status returned $STATUS"
+            echo "✗ /api/status: unexpected response"
+            echo "$BODY" | head -5
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          # /api/labs — check entries key
+          BODY=$(curl -sf -H "Authorization: Bearer $API_KEY" "$DEPLOY_URL/api/labs" || true)
+          HAS_ENTRIES=$(echo "$BODY" | jq 'has("entries")' 2>/dev/null || echo "false")
+          if [ "$HAS_ENTRIES" = "true" ]; then
+            echo "✓ /api/labs: has entries key"
+          else
+            echo "✗ /api/labs: missing entries key"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          # /api/briefings — check briefings key
+          BODY=$(curl -sf -H "Authorization: Bearer $API_KEY" "$DEPLOY_URL/api/briefings" || true)
+          HAS_BRIEFINGS=$(echo "$BODY" | jq 'has("briefings")' 2>/dev/null || echo "false")
+          if [ "$HAS_BRIEFINGS" = "true" ]; then
+            echo "✓ /api/briefings: has briefings key"
+          else
+            echo "✗ /api/briefings: missing briefings key"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "API validation failed with $ERRORS errors"
             exit 1
           fi
 
@@ -112,6 +161,42 @@ jobs:
           done
           echo "Backend health check failed after 5 attempts"
           exit 1
+
+      - name: Validate production API responses
+        env:
+          PROD_BACKEND_URL: https://oncoteam-production.up.railway.app
+        run: |
+          API_KEY="${{ secrets.PROD_DASHBOARD_API_KEY }}"
+          if [ -z "$API_KEY" ]; then
+            echo "PROD_DASHBOARD_API_KEY not set, skipping response validation"
+            exit 0
+          fi
+
+          ERRORS=0
+
+          BODY=$(curl -sf -H "Authorization: Bearer $API_KEY" "$PROD_BACKEND_URL/api/status" || true)
+          STATUS=$(echo "$BODY" | jq -r '.status // empty' 2>/dev/null || true)
+          TOOLS=$(echo "$BODY" | jq -r '.tools_count // 0' 2>/dev/null || true)
+          if [ "$STATUS" = "ok" ] && [ "$TOOLS" -gt 0 ] 2>/dev/null; then
+            echo "✓ /api/status: status=ok, tools=$TOOLS"
+          else
+            echo "✗ /api/status: unexpected response"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          BODY=$(curl -sf -H "Authorization: Bearer $API_KEY" "$PROD_BACKEND_URL/api/labs" || true)
+          HAS_ENTRIES=$(echo "$BODY" | jq 'has("entries")' 2>/dev/null || echo "false")
+          if [ "$HAS_ENTRIES" = "true" ]; then
+            echo "✓ /api/labs: has entries key"
+          else
+            echo "✗ /api/labs: missing entries key"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "Production API validation failed with $ERRORS errors"
+            exit 1
+          fi
 
       - name: Check dashboard
         env:

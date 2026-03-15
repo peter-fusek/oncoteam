@@ -291,6 +291,41 @@ async def api_status(request: Request) -> JSONResponse:
     )
 
 
+async def api_health_deep(request: Request) -> JSONResponse:
+    """GET /health/deep — deep health check with dependency status."""
+    from .scheduler import _standalone_scheduler
+
+    checks: dict = {"backend": "ok"}
+
+    # Oncofiles connectivity
+    try:
+        await asyncio.wait_for(
+            oncofiles_client.search_activity_log(agent_id="oncoteam", limit=1),
+            timeout=5,
+        )
+        checks["oncofiles"] = "ok"
+    except Exception as e:
+        checks["oncofiles"] = f"error: {e}"
+
+    # Scheduler status
+    if _standalone_scheduler is not None and _standalone_scheduler.running:
+        jobs = _standalone_scheduler.get_jobs()
+        checks["scheduler"] = {"running": True, "job_count": len(jobs)}
+    else:
+        checks["scheduler"] = {"running": False, "job_count": 0}
+
+    overall = "ok" if checks["oncofiles"] == "ok" else "degraded"
+
+    return _cors_json(
+        {
+            "status": overall,
+            "version": VERSION,
+            "commit": GIT_COMMIT,
+            **checks,
+        }
+    )
+
+
 async def api_activity(request: Request) -> JSONResponse:
     """GET /api/activity — recent activity log entries."""
     limit = int(request.query_params.get("limit", "50"))

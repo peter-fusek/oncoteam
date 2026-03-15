@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { fetchApi, apiUrl, authHeaders } = useOncoteamApi()
+const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
 const lang = ref<'sk' | 'en'>('sk')
@@ -43,10 +43,9 @@ async function generateUpdate() {
   latestGenerated.value = ''
   try {
     const result = await $fetch<{ created: boolean; content: string; lang: string }>(
-      apiUrl('/family-update'),
+      '/api/oncoteam/family-update',
       {
         method: 'POST',
-        headers: authHeaders,
         body: { lang: lang.value },
       },
     )

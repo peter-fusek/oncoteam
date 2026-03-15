@@ -19,10 +19,9 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
-    public: {
-      oncoteamApiUrl: process.env.NUXT_PUBLIC_ONCOTEAM_API_URL || 'http://oncoteam-backend.railway.internal:8000',
-      oncoteamApiKey: process.env.NUXT_PUBLIC_ONCOTEAM_API_KEY || '',
-    },
+    oncoteamApiUrl: process.env.NUXT_PUBLIC_ONCOTEAM_API_URL || 'http://oncoteam-backend.railway.internal:8000',
+    oncoteamApiKey: process.env.NUXT_PUBLIC_ONCOTEAM_API_KEY || '',
+    public: {},
     session: {
       maxAge: 60 * 60 * 24 * 7, // 7 days
     },
