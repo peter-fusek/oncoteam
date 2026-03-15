@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
     return data
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Backend unavailable'
+    console.error(`[oncoteam-proxy] ${method} ${url} failed: ${message}`)
     setResponseStatus(event, 502)
     return { error: message, data: [] }
   }
