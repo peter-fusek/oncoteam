@@ -24,15 +24,6 @@ from .patient_context import PATIENT, RESEARCH_TERMS, get_patient_profile_text
 
 logger = logging.getLogger("oncoteam.autonomous")
 
-# Tools whose output should be wrapped as citable documents
-_CITABLE_TOOLS = {
-    "search_pubmed",
-    "search_trials",
-    "search_documents",
-    "view_document",
-    "get_treatment_timeline",
-}
-
 # Cost per million tokens (Sonnet 4.6 defaults)
 _COST_INPUT = 3.0 / 1_000_000
 _COST_OUTPUT = 15.0 / 1_000_000
@@ -609,20 +600,6 @@ async def run_autonomous_task(
                         "content": tool_output,
                     }
                 )
-                # Wrap citable tool output as document for citations
-                if block.name in _CITABLE_TOOLS:
-                    tool_results.append(
-                        {
-                            "type": "document",
-                            "source": {
-                                "type": "text",
-                                "media_type": "text/plain",
-                                "data": tool_output[:50000],
-                            },
-                            "title": f"{block.name} result",
-                            "citations": {"enabled": True},
-                        }
-                    )
         messages.append({"role": "user", "content": tool_results})
 
         # Check cost limit mid-run
