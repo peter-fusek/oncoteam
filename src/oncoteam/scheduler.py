@@ -41,6 +41,7 @@ def _create_scheduler():
     from apscheduler.triggers.interval import IntervalTrigger
 
     from .autonomous_tasks import (
+        run_daily_cost_report,
         run_daily_research,
         run_family_update,
         run_file_scan,
@@ -191,6 +192,15 @@ def _create_scheduler():
         id="family_update",
         next_run_time=now + timedelta(minutes=14),
         misfire_grace_time=86400 * 2,
+        coalesce=True,
+    )
+
+    # Daily cost report via WhatsApp: 6:30 UTC (7:30 CET, before morning briefing)
+    scheduler.add_job(
+        run_daily_cost_report,
+        CronTrigger(hour=6, minute=30),
+        id="daily_cost_report",
+        misfire_grace_time=86400,
         coalesce=True,
     )
 

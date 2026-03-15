@@ -593,3 +593,78 @@ Structure for MDT presentation:
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
+
+
+async def run_daily_cost_report() -> dict:
+    """Send daily cost summary via WhatsApp (lightweight, no Claude API call)."""
+    import httpx
+
+    from .autonomous import get_daily_cost
+    from .config import AUTONOMOUS_COST_LIMIT
+
+    logger.info(">>> Starting task: daily_cost_report")
+    try:
+        # Get cost data
+        today_spend = get_daily_cost()
+        now = datetime.now(UTC)
+        month_key = now.strftime("%Y-%m")
+
+        mtd_spend = 0.0
+        remaining = 0.0
+        days_remaining = 0.0
+        try:
+            raw = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
+            state = raw if isinstance(raw, dict) else {}
+            if "value" in state:
+                v = state["value"]
+                if isinstance(v, str):
+                    v = json.loads(v)
+                state = v if isinstance(v, dict) else {}
+            if state.get("month") == month_key:
+                mtd_spend = float(state.get("cost_usd", 0.0))
+        except Exception:
+            pass
+
+        from .config import ANTHROPIC_CREDIT_BALANCE
+
+        remaining = max(0, ANTHROPIC_CREDIT_BALANCE - mtd_spend)
+        daily_avg = mtd_spend / now.day if now.day > 0 and mtd_spend > 0 else 0
+        days_remaining = remaining / daily_avg if daily_avg > 0 else 999
+
+        # Format WhatsApp message
+        msg = (
+            f"*Oncoteam Daily Cost Report*\n"
+            f"{now.strftime('%Y-%m-%d')}\n\n"
+            f"Today: ${today_spend:.2f} / ${AUTONOMOUS_COST_LIMIT:.2f}\n"
+            f"Month (MTD): ${mtd_spend:.2f}\n"
+            f"Remaining: ${remaining:.2f} (~{days_remaining:.0f} days)\n"
+        )
+        if remaining < 5:
+            msg += "\n⚠️ Low balance!"
+
+        # Send via dashboard internal endpoint
+        from .config import MCP_BASE_URL
+
+        dashboard_url = MCP_BASE_URL.replace("oncoteam-production", "valiant-reprieve-production")
+        if "dashboard.oncoteam.cloud" not in dashboard_url:
+            dashboard_url = "https://dashboard.oncoteam.cloud"
+
+        from .config import DASHBOARD_API_KEY
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{dashboard_url}/api/internal/whatsapp-notify",
+                json={"message": msg},
+                headers={"Authorization": f"Bearer {DASHBOARD_API_KEY}"},
+            )
+            resp.raise_for_status()
+            result_data = resp.json()
+
+        sent = result_data.get("sent", 0)
+        logger.info("<<< Completed task: daily_cost_report — sent to %d", sent)
+        return {"ok": True, "message": msg, "sent": result_data.get("sent", 0)}
+
+    except Exception as e:
+        logger.error("!!! Failed task: daily_cost_report — %s", e)
+        record_suppressed_error("daily_cost_report", "send", e)
+        return {"ok": False, "error": str(e)}
