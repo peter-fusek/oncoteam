@@ -3,7 +3,7 @@ const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
 
-const { data: labs, status: labsStatus, refresh } = fetchApi<{
+const { data: labs, status: labsStatus, error: labsError, refresh } = fetchApi<{
   entries: Array<{
     id: number
     date: string
@@ -201,7 +201,7 @@ async function submitLab() {
       </div>
     </div>
 
-    <ApiErrorBanner :error="labs?.error" />
+    <ApiErrorBanner :error="labs?.error || labsError?.message" />
 
     <SkeletonLoader v-if="!labs && labsStatus === 'pending'" variant="table" />
 
