@@ -200,7 +200,7 @@ jobs:
 
       - name: Check dashboard
         env:
-          PROD_DASHBOARD_URL: https://valiant-reprieve-production.up.railway.app
+          PROD_DASHBOARD_URL: https://dashboard.oncoteam.cloud
         run: |
           STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L "$PROD_DASHBOARD_URL")
           if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
