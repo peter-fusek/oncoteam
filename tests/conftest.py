@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 _TEST_ALLOWED_ORIGINS = [
-    "https://oncoteam-dashboard.onrender.com",
-    "https://oncoteam-dashboard-test.onrender.com",
+    "https://dashboard.oncoteam.cloud",
+    "https://valiant-reprieve-production.up.railway.app",
 ]
 
 
@@ -25,7 +25,7 @@ def _set_cors_and_origins():
     import oncoteam.dashboard_api as mod
 
     class FakeCorsRequest:
-        headers = Headers({"origin": "https://oncoteam-dashboard.onrender.com"})
+        headers = Headers({"origin": "https://dashboard.oncoteam.cloud"})
 
     mod._CURRENT_REQUEST = FakeCorsRequest()
     with patch("oncoteam.dashboard_api.DASHBOARD_ALLOWED_ORIGINS", _TEST_ALLOWED_ORIGINS):

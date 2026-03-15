@@ -2,8 +2,8 @@ const MAX_REPLY_LENGTH = 1500
 
 type Lang = 'sk' | 'en'
 
-const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka'])
-const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help'])
+const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady'])
+const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost'])
 
 const COMMAND_MAP: Record<string, string> = {
   // Slovak
@@ -12,6 +12,7 @@ const COMMAND_MAP: Record<string, string> = {
   stav: 'status',
   pomoc: 'help',
   casovka: 'timeline',
+  naklady: 'cost',
   // English
   labs: 'labs',
   meds: 'meds',
@@ -20,6 +21,7 @@ const COMMAND_MAP: Record<string, string> = {
   briefing: 'briefing',
   timeline: 'timeline',
   help: 'help',
+  cost: 'cost',
 }
 
 function detectLang(input: string): Lang {
@@ -143,6 +145,25 @@ function formatStatus(data: Record<string, unknown>, lang: Lang): string {
   return truncate(text)
 }
 
+function formatCost(data: Record<string, unknown>, lang: Lang): string {
+  const today = data.today_spend as number ?? 0
+  const cap = data.daily_cap as number ?? 0
+  const mtd = data.mtd_spend as number ?? 0
+  const remaining = data.remaining_credit as number ?? 0
+  const daysLeft = data.days_remaining as number ?? 0
+  const alert = data.budget_alert as boolean ?? false
+
+  const header = t(L('*Náklady autonómneho agenta*', '*Autonomous Agent Cost*'), lang)
+  let text = `${header}\n\n`
+  text += `${t(L('Dnes', 'Today'), lang)}: $${today.toFixed(2)} / $${cap.toFixed(2)}\n`
+  text += `${t(L('Mesiac (MTD)', 'Month (MTD)'), lang)}: $${mtd.toFixed(2)}\n`
+  text += `${t(L('Zostatok', 'Remaining'), lang)}: $${remaining.toFixed(2)}\n`
+  text += `${t(L('Odhad dní', 'Est. days left'), lang)}: ${daysLeft.toFixed(0)}\n`
+  if (alert) text += `\n⚠️ ${t(L('Nízky zostatok!', 'Low balance!'), lang)}`
+
+  return truncate(text)
+}
+
 function helpText(lang: Lang): string {
   if (lang === 'en') {
     return `*Oncoteam WhatsApp*
@@ -152,6 +173,7 @@ Commands:
 • *meds* / *lieky* — Medications and compliance
 • *timeline* / *casovka* — Treatment events
 • *briefing* — Latest briefing
+• *cost* / *naklady* — AI agent cost & budget
 • *status* / *stav* — System status
 • *help* / *pomoc* — This help
 
@@ -165,6 +187,7 @@ Prikazy:
 • *lieky* / *meds* — Lieky a compliance
 • *casovka* / *timeline* — Udalosti liecby
 • *briefing* — Posledny briefing
+• *naklady* / *cost* — Náklady a rozpočet AI agenta
 • *stav* / *status* — Stav systemu
 • *pomoc* / *help* — Tento help
 
@@ -186,6 +209,7 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
     briefing: '/api/briefings?limit=1',
     timeline: '/api/timeline?limit=5',
     status: '/api/status',
+    cost: '/api/autonomous/cost',
   }
 
   const endpoint = apiMap[command]
@@ -204,6 +228,7 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
       case 'briefing': return formatBriefing(data, lang)
       case 'timeline': return formatTimeline(data, lang)
       case 'status': return formatStatus(data, lang)
+      case 'cost': return formatCost(data, lang)
       default: return helpText(lang)
     }
   }

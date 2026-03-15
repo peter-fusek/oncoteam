@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
     requestUrl,
     body || {},
   )
-  // Render proxy may reconstruct URL differently — try with explicit https
+  // Reverse proxy may reconstruct URL differently — try with explicit https
   if (!isValid) {
     const httpsUrl = requestUrl.replace(/^http:/, 'https:')
     if (httpsUrl !== requestUrl) {
@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Phone allowlist is enforced below — log signature failure but don't block
-  // (Render reverse proxy URL reconstruction may not match Twilio's expected URL)
+  // (Reverse proxy URL reconstruction may not match Twilio's expected URL)
   if (!isValid) {
     console.warn('[whatsapp-webhook] Twilio signature validation failed, relying on phone allowlist')
   }

@@ -16,7 +16,7 @@ def _make_request(query_string: str = "") -> object:
     class FakeRequest:
         def __init__(self, query: str):
             self.query_params = QueryParams(query)
-            self.headers = Headers({"origin": "https://oncoteam-dashboard.onrender.com"})
+            self.headers = Headers({"origin": "https://dashboard.oncoteam.cloud"})
 
     return FakeRequest(query_string)
 
@@ -45,9 +45,7 @@ async def test_api_protocol_returns_all_sections():
 async def test_api_protocol_has_cors():
     request = _make_request()
     response = await api_protocol(request)
-    assert (
-        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
-    )
+    assert response.headers["access-control-allow-origin"] == "https://dashboard.oncoteam.cloud"
 
 
 @pytest.mark.anyio
@@ -206,9 +204,7 @@ async def test_api_briefings_has_cors(mock_search):
     mock_search.return_value = {"entries": []}
     request = _make_request()
     response = await api_briefings(request)
-    assert (
-        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
-    )
+    assert response.headers["access-control-allow-origin"] == "https://dashboard.oncoteam.cloud"
 
 
 # ── _briefing_summary unit tests ─────────────────────────────────

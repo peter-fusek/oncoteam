@@ -14,8 +14,8 @@ export function useDb() {
     throw new Error('DATABASE_URL is not configured')
   }
 
-  const isExternal = !databaseUrl.includes('localhost')
-  const client = postgres(databaseUrl, isExternal ? { ssl: 'require' } : {})
+  const isLocal = databaseUrl.includes('localhost') || databaseUrl.includes('.railway.internal')
+  const client = postgres(databaseUrl, isLocal ? {} : { ssl: 'require' })
   _db = drizzle(client, { schema })
   return _db
 }

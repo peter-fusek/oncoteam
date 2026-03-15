@@ -29,7 +29,7 @@ from oncoteam.dashboard_api import (
 def _make_request(
     path: str = "/api/test",
     query_string: str = "",
-    origin: str = "https://oncoteam-dashboard.onrender.com",
+    origin: str = "https://dashboard.oncoteam.cloud",
 ) -> object:
     """Create a minimal Starlette-like Request stub."""
     from starlette.datastructures import Headers, QueryParams
@@ -64,9 +64,7 @@ async def test_api_status_returns_ok():
 async def test_api_status_has_cors_headers():
     request = _make_request("/api/status")
     response = await api_status(request)
-    assert (
-        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
-    )
+    assert response.headers["access-control-allow-origin"] == "https://dashboard.oncoteam.cloud"
     assert "GET" in response.headers["access-control-allow-methods"]
 
 
@@ -255,9 +253,7 @@ async def test_api_patient_returns_profile():
 async def test_api_patient_has_cors():
     request = _make_request("/api/patient")
     response = await api_patient(request)
-    assert (
-        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
-    )
+    assert response.headers["access-control-allow-origin"] == "https://dashboard.oncoteam.cloud"
 
 
 @pytest.mark.anyio
@@ -548,9 +544,7 @@ async def test_cors_preflight_returns_headers():
     response = await api_cors_preflight(request)
 
     assert response.status_code == 200
-    assert (
-        response.headers["access-control-allow-origin"] == "https://oncoteam-dashboard.onrender.com"
-    )
+    assert response.headers["access-control-allow-origin"] == "https://dashboard.oncoteam.cloud"
     assert "GET" in response.headers["access-control-allow-methods"]
     assert "OPTIONS" in response.headers["access-control-allow-methods"]
 
@@ -674,7 +668,7 @@ class TestCorsOrigin:
         from oncoteam.dashboard_api import _get_cors_origin
 
         request = _make_request()
-        assert _get_cors_origin(request) == "https://oncoteam-dashboard.onrender.com"
+        assert _get_cors_origin(request) == "https://dashboard.oncoteam.cloud"
 
     def test_localhost_allowed(self):
         from oncoteam.dashboard_api import _get_cors_origin
