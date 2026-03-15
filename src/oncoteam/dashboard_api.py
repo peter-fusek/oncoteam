@@ -61,6 +61,9 @@ def _is_test_entry(entry: dict) -> bool:
     title = (entry.get("title") or "").lower()
     if any(p in title for p in _TEST_TITLE_PATTERNS):
         return True
+    notes = (entry.get("notes") or "").lower()
+    if any(p in notes for p in _TEST_TITLE_PATTERNS):
+        return True
     tool = (entry.get("tool_name") or entry.get("tool") or "").lower()
     if tool in _TEST_TOOL_NAMES:
         return True
