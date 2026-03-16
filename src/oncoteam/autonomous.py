@@ -120,6 +120,25 @@ TOOLS = [
         },
     },
     {
+        "name": "search_trials_eu",
+        "description": (
+            "Search ClinicalTrials.gov across EU countries with major CRC trial "
+            "activity (SK, CZ, AT, HU, DE, PL, IT, NL, BE, FR, DK, SE, ES, CH)"
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "condition": {"type": "string", "description": "Medical condition"},
+                "intervention": {"type": "string", "description": "Optional intervention filter"},
+                "max_per_country": {
+                    "type": "integer",
+                    "description": "Max per country (default 3)",
+                },
+            },
+            "required": ["condition"],
+        },
+    },
+    {
         "name": "check_trial_eligibility",
         "description": "Check if a trial is eligible for this patient",
         "input_schema": {
@@ -270,6 +289,14 @@ async def execute_tool(name: str, inputs: dict) -> str:
                 condition=inputs["condition"],
                 intervention=inputs.get("intervention"),
                 max_per_country=inputs.get("max_per_country", 5),
+            )
+            return json.dumps([t.model_dump() for t in trials])
+
+        if name == "search_trials_eu":
+            trials = await clinicaltrials_client.search_trials_eu(
+                condition=inputs["condition"],
+                intervention=inputs.get("intervention"),
+                max_per_country=inputs.get("max_per_country", 3),
             )
             return json.dumps([t.model_dump() for t in trials])
 

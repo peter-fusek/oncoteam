@@ -10,6 +10,41 @@ from .models import ClinicalTrial
 # Adjacent countries for SK patient (ordered by proximity to Bratislava)
 ADJACENT_COUNTRIES = ["Slovakia", "Czech Republic", "Austria", "Hungary"]
 
+# Broader EU countries with major CRC trial activity (accessible from SK)
+EU_TRIAL_COUNTRIES = [
+    *ADJACENT_COUNTRIES,
+    "Germany",
+    "Poland",
+    "Italy",
+    "Netherlands",
+    "Belgium",
+    "France",
+    "Denmark",
+    "Sweden",
+    "Spain",
+    "Switzerland",
+]
+
+# Major comprehensive cancer centers in EU (NCCN-affiliated / OECI-accredited)
+# Used as location keywords for targeted trial search
+EU_CANCER_CENTERS = [
+    "Charite",  # Berlin
+    "Heidelberg University Hospital",  # NCT Heidelberg
+    "LMU Munich",  # CCC Munich
+    "Gustave Roussy",  # Paris
+    "Institut Curie",  # Paris
+    "Vall d'Hebron",  # Barcelona
+    "Netherlands Cancer Institute",  # Amsterdam (NKI-AVL)
+    "Erasmus MC",  # Rotterdam
+    "KU Leuven",  # Belgium
+    "Karolinska",  # Stockholm
+    "Rigshospitalet",  # Copenhagen
+    "Istituto Nazionale Tumori",  # Milan
+    "AKH Wien",  # Vienna
+    "Masaryk Memorial Cancer Institute",  # Brno
+    "National Cancer Institute Bratislava",  # NOÚ
+]
+
 # CRC relevance filter — exclude non-CRC conditions and G12C-specific interventions
 _EXCLUDE_CONDITIONS = {
     "pediatric",
@@ -118,6 +153,35 @@ async def search_trials_adjacent(
     tasks = [
         search_trials(condition, intervention, max_per_country, country)
         for country in ADJACENT_COUNTRIES
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    seen_nct: set[str] = set()
+    combined: list[ClinicalTrial] = []
+    for result in results:
+        if isinstance(result, Exception):
+            continue
+        for trial in result:
+            if trial.nct_id not in seen_nct:
+                seen_nct.add(trial.nct_id)
+                combined.append(trial)
+
+    return [t for t in combined if _is_crc_relevant(t)]
+
+
+async def search_trials_eu(
+    condition: str,
+    intervention: str | None = None,
+    max_per_country: int = 3,
+) -> list[ClinicalTrial]:
+    """Search recruiting trials across all EU countries with major CRC trial activity.
+
+    Searches EU_TRIAL_COUNTRIES in parallel, deduplicates by NCT ID.
+    Lower per-country limit than adjacent search to manage API load.
+    """
+    tasks = [
+        search_trials(condition, intervention, max_per_country, country)
+        for country in EU_TRIAL_COUNTRIES
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 

@@ -238,26 +238,54 @@ novel targets, clinical trial results.
 
 
 async def run_trial_monitor() -> dict:
-    """Monitor clinical trials across SK, CZ, AT, HU."""
+    """Monitor clinical trials across EU (14 countries incl. major CRC centers)."""
     logger.info(">>> Starting task: trial_monitor")
     watched = "\n".join(f"- {t}" for t in WATCHED_TRIALS)
+
+    # Load previously seen NCT IDs to detect new trials
+    prev_state = await _get_state("trial_monitor_seen_ncts")
+    prev_ncts_raw = prev_state.get("value", prev_state) if isinstance(prev_state, dict) else {}
+    if isinstance(prev_ncts_raw, str):
+        try:
+            prev_ncts_raw = json.loads(prev_ncts_raw)
+        except (json.JSONDecodeError, TypeError):
+            prev_ncts_raw = {}
+    prev_ncts = prev_ncts_raw.get("nct_ids", []) if isinstance(prev_ncts_raw, dict) else []
+
     prompt = f"""\
-Monitor clinical trials for new eligible options.
+Monitor clinical trials for new eligible options across the EU.
 
 Watched trials:
 {watched}
 
-Instructions:
-1. Search ClinicalTrials.gov for mCRC trials across SK, CZ, AT, HU
-2. For each new trial found, check eligibility (KRAS G12S, active VTE, ECOG)
-3. Look specifically for watched trials and report any status changes
-4. Flag newly eligible or newly opened trials
-5. Store findings as a briefing
+Previously seen NCT IDs (skip these unless status changed):
+{json.dumps(prev_ncts[:50]) if prev_ncts else "None — first scan"}
 
-Search terms: "KRAS mutant colorectal cancer", "pan-KRAS inhibitor", "MSS colorectal immunotherapy"
+Major EU cancer centers to check (NCCN-affiliated / OECI-accredited):
+Charite Berlin, NCT Heidelberg, LMU Munich, Gustave Roussy, Institut Curie,
+Vall d'Hebron Barcelona, NKI-AVL Amsterdam, Erasmus MC, KU Leuven,
+Karolinska Stockholm, Rigshospitalet Copenhagen, INT Milan, AKH Wien,
+Masaryk Brno, NOÚ Bratislava
+
+Instructions:
+1. Use search_trials_eu (covers SK, CZ, AT, HU, DE, PL, IT, NL, BE, FR, DK, SE, ES, CH):
+   - Search "KRAS mutant colorectal cancer"
+   - Search "pan-KRAS inhibitor"
+   - Search "MSS colorectal immunotherapy"
+2. Use search_trials for targeted center searches if relevant
+3. For each NEW trial not in previously seen list, check eligibility (KRAS G12S, active VTE, ECOG)
+4. Look specifically for watched trials and report any status changes
+5. Flag newly eligible or newly opened trials — note the country and center
+6. Store findings as a briefing, clearly marking NEW vs KNOWN trials
+7. Use set_agent_state to save "trial_monitor_seen_ncts" with all current NCT IDs
+
+Prioritize trials at centers within practical travel distance from Bratislava:
+- Tier 1 (< 2h): Vienna, Brno, Budapest, Bratislava
+- Tier 2 (< 4h): Prague, Munich, Krakow
+- Tier 3 (rest of EU): flag but note travel burden
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=10, task_name="trial_monitor")
+        result = await run_autonomous_task(prompt, max_turns=12, task_name="trial_monitor")
     except Exception as e:
         logger.error("!!! Failed task: trial_monitor — %s", e)
         raise
@@ -271,6 +299,22 @@ Search terms: "KRAS mutant colorectal cancer", "pan-KRAS inhibitor", "MSS colore
         "last_trial_monitor",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
+
+    # Send WhatsApp digest if there are findings
+    try:
+        response_text = result.get("response", "")
+        if response_text and not result.get("error"):
+            # Build a concise WhatsApp summary
+            lines = ["*Klinické štúdie — EU sken*\n"]
+            # Extract key info — truncate for WhatsApp
+            summary = response_text[:1500]
+            if len(response_text) > 1500:
+                summary += "\n\n... (plná správa na dashboarde)"
+            lines.append(summary)
+            await _send_whatsapp("\n".join(lines))
+    except Exception as e:
+        record_suppressed_error("trial_monitor", "whatsapp_notify", e)
+
     return result
 
 

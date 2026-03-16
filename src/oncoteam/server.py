@@ -344,6 +344,56 @@ async def search_clinical_trials_adjacent(
 
 @mcp.tool()
 @log_activity
+async def search_clinical_trials_eu(
+    condition: str = "colorectal cancer",
+    intervention: str | None = None,
+    max_per_country: int = 3,
+) -> str:
+    """Search ClinicalTrials.gov across EU countries with major CRC trial activity.
+
+    Covers: SK, CZ, AT, HU, DE, PL, IT, NL, BE, FR, DK, SE, CH.
+    Searches in parallel and deduplicates by NCT ID.
+
+    Args:
+        condition: Medical condition to search for
+        intervention: Optional intervention/treatment filter
+        max_per_country: Maximum results per country (default 3)
+
+    Returns:
+        JSON with deduplicated trials from EU countries.
+    """
+    trials = await clinicaltrials_client.search_trials_eu(
+        condition,
+        intervention,
+        max_per_country,
+    )
+
+    for trial in trials:
+        try:
+            await oncofiles_client.add_research_entry(
+                source=ResearchSource.CLINICALTRIALS,
+                external_id=trial.nct_id,
+                title=trial.title,
+                summary=trial.summary[:500] if trial.summary else "",
+                tags=["eu_trials", *trial.conditions[:3]],
+                raw_data=trial.model_dump_json(),
+            )
+        except Exception as e:
+            record_suppressed_error("search_clinical_trials_eu", "store_research", e)
+
+    return json.dumps(
+        {
+            "condition": condition,
+            "intervention": intervention,
+            "countries": clinicaltrials_client.EU_TRIAL_COUNTRIES,
+            "count": len(trials),
+            "trials": [t.model_dump() for t in trials],
+        }
+    )
+
+
+@mcp.tool()
+@log_activity
 async def fetch_pubmed_article(pmid: str) -> str:
     """Fetch a specific PubMed article by PMID.
 

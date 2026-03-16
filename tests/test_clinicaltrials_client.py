@@ -4,11 +4,13 @@ from httpx import Response
 
 from oncoteam.clinicaltrials_client import (
     ADJACENT_COUNTRIES,
+    EU_TRIAL_COUNTRIES,
     _is_crc_relevant,
     _parse_studies,
     fetch_trial,
     search_trials,
     search_trials_adjacent,
+    search_trials_eu,
 )
 from oncoteam.config import CTGOV_BASE_URL
 from oncoteam.models import ClinicalTrial
@@ -173,6 +175,56 @@ class TestSearchTrialsAdjacent:
 
         # Should not raise; partial results returned
         trials = await search_trials_adjacent("CRC")
+        assert len(trials) >= 1
+
+
+class TestSearchTrialsEU:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_searches_all_eu_countries(self):
+        route = respx.get(f"{CTGOV_BASE_URL}/studies").mock(
+            return_value=Response(200, json=CTGOV_RESPONSE)
+        )
+
+        trials = await search_trials_eu("colorectal cancer")
+        # Should have called the API once per EU country
+        assert route.call_count == len(EU_TRIAL_COUNTRIES)
+        # Deduplication: same NCT IDs returned each time → only 2 unique
+        assert len(trials) == 2
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_eu_includes_adjacent_countries(self):
+        """EU country list must be a superset of adjacent countries."""
+        for country in ADJACENT_COUNTRIES:
+            assert country in EU_TRIAL_COUNTRIES
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_eu_deduplicates(self):
+        respx.get(f"{CTGOV_BASE_URL}/studies").mock(
+            return_value=Response(200, json=CTGOV_RESPONSE)
+        )
+
+        trials = await search_trials_eu("CRC")
+        nct_ids = [t.nct_id for t in trials]
+        assert len(nct_ids) == len(set(nct_ids))
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_eu_handles_partial_failures(self):
+        call_count = 0
+
+        def side_effect(request, route):
+            nonlocal call_count
+            call_count += 1
+            if call_count % 3 == 0:
+                return Response(500, text="Server Error")
+            return Response(200, json=CTGOV_RESPONSE)
+
+        respx.get(f"{CTGOV_BASE_URL}/studies").mock(side_effect=side_effect)
+
+        trials = await search_trials_eu("CRC")
         assert len(trials) >= 1
 
 
