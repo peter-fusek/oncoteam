@@ -816,40 +816,56 @@ async def api_protocol(request: Request) -> JSONResponse:
     elif isinstance(lab_result, Exception):
         record_suppressed_error("api_protocol", "fetch_last_labs", lab_result)
 
-    # Fallback: if no lab_result treatment events, try get_lab_trends_data (#72)
-    _fallback_params = ("ANC", "PLT", "WBC", "HGB")
+    # Fallback: if no lab_result treatment events, try lab_values table (#72/#73)
+    # Map stored parameter names → threshold keys
+    _param_to_threshold = {
+        "ABS_NEUT": "ANC",
+        "ANC": "ANC",
+        "PLT": "PLT",
+        "CREATININE": "creatinine",
+        "creatinine": "creatinine",
+        "ALT": "ALT",
+        "AST": "AST",
+        "HGB": "HGB",
+        "WBC": "WBC",
+        "bilirubin": "bilirubin",
+    }
     if not last_lab_values:
         try:
-            fallback_tasks = [
-                oncofiles_client.get_lab_trends_data(parameter=p, limit=1) for p in _fallback_params
-            ]
-            fallback_results = await asyncio.wait_for(
-                asyncio.gather(*fallback_tasks, return_exceptions=True),
+            trends = await asyncio.wait_for(
+                oncofiles_client.get_lab_trends_data(limit=200),
                 timeout=5.0,
             )
-            for param, result in zip(_fallback_params, fallback_results, strict=True):
-                if isinstance(result, BaseException):
-                    continue
-                points = _extract_list(result, "data_points")
-                if not points:
-                    continue
-                latest = points[0]
-                val = latest.get("value")
-                if not isinstance(val, (int, float)):
-                    continue
-                threshold = LAB_SAFETY_THRESHOLDS.get(param, {})
-                status = "safe"
-                if "min" in threshold:
-                    if val < threshold["min"]:
-                        status = "critical"
-                    elif val < threshold["min"] * 1.2:
-                        status = "warning"
-                last_lab_values[param] = {
-                    "value": val,
-                    "sample_date": latest.get("lab_date", ""),
-                    "sync_date": latest.get("created_at", ""),
-                    "status": status,
-                }
+            values_list = _extract_list(trends, "values")
+            if values_list:
+                # Group by date, pick latest
+                from collections import defaultdict
+
+                by_date: dict[str, dict] = defaultdict(dict)
+                for v in values_list:
+                    d = v.get("lab_date", "")
+                    if d:
+                        by_date[d][v.get("parameter", "")] = v.get("value")
+                if by_date:
+                    latest_date = max(by_date.keys())
+                    latest_vals = by_date[latest_date]
+                    for stored_name, val in latest_vals.items():
+                        threshold_key = _param_to_threshold.get(stored_name)
+                        if not threshold_key or not isinstance(val, (int, float)):
+                            continue
+                        threshold = LAB_SAFETY_THRESHOLDS.get(threshold_key, {})
+                        status = "safe"
+                        if "min" in threshold:
+                            if val < threshold["min"]:
+                                status = "critical"
+                            elif val < threshold["min"] * 1.2:
+                                status = "warning"
+                        last_lab_values[threshold_key] = {
+                            "value": val,
+                            "sample_date": latest_date,
+                            "sync_date": "",
+                            "status": status,
+                        }
         except (TimeoutError, Exception) as e:
             record_suppressed_error("api_protocol", "fallback_lab_trends", e)
 
