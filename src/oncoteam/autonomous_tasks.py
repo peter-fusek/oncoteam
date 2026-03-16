@@ -10,7 +10,51 @@ from . import oncofiles_client
 from .activity_logger import get_session_id, record_suppressed_error
 from .autonomous import run_autonomous_task
 from .clinical_protocol import WATCHED_TRIALS, format_pre_cycle_checklist, get_milestones_for_cycle
+from .config import AUTONOMOUS_MODEL_LIGHT
 from .patient_context import PATIENT, RESEARCH_TERMS
+
+# Minimum cooldown periods per task (hours). Prevents cold-start stampede
+# where all tasks fire within minutes after a redeploy.
+TASK_COOLDOWNS: dict[str, float] = {
+    "file_scan": 1.5,
+    "lab_sync": 5.0,
+    "toxicity_extraction": 20.0,
+    "weight_extraction": 20.0,
+    "daily_research": 20.0,
+    "trial_monitor": 5.0,
+    "pre_cycle_check": 288.0,       # 12 days
+    "tumor_marker_review": 600.0,    # 25 days
+    "response_assessment": 1200.0,   # 50 days
+    "weekly_briefing": 144.0,        # 6 days
+    "mtb_preparation": 144.0,
+    "family_update": 144.0,
+    "medication_adherence_check": 20.0,
+}
+
+
+async def _should_skip(task_name: str) -> bool:
+    """Check if task ran recently enough to skip this execution."""
+    cooldown_hours = TASK_COOLDOWNS.get(task_name)
+    if cooldown_hours is None:
+        return False
+    state = await _get_state(f"last_{task_name}")
+    ts = _extract_timestamp(state)
+    if not ts:
+        return False  # Never ran — let it run
+    try:
+        last_run = datetime.fromisoformat(ts)
+        elapsed = (datetime.now(UTC) - last_run).total_seconds() / 3600
+        if elapsed < cooldown_hours:
+            logger.info(
+                "Skipping %s: ran %.1fh ago (cooldown: %.1fh)",
+                task_name,
+                elapsed,
+                cooldown_hours,
+            )
+            return True
+    except (ValueError, TypeError):
+        pass
+    return False
 
 logger = logging.getLogger("oncoteam.autonomous_tasks")
 
@@ -76,6 +120,8 @@ async def _log_task(task_name: str, result: dict) -> None:
 
 async def run_pre_cycle_check() -> dict:
     """Pre-cycle safety check before each FOLFOX infusion."""
+    if await _should_skip("pre_cycle_check"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: pre_cycle_check")
     cycle = PATIENT.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
@@ -125,6 +171,8 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
 
 async def run_tumor_marker_review() -> dict:
     """Review CEA and CA 19-9 tumor marker trends."""
+    if await _should_skip("tumor_marker_review"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: tumor_marker_review")
     prompt = """\
 Review tumor marker trends (CEA, CA 19-9).
@@ -159,6 +207,8 @@ Reference ESMO guidelines for marker interpretation in mCRC monitoring.
 
 async def run_response_assessment() -> dict:
     """Check if response imaging is due and prepare assessment template."""
+    if await _should_skip("response_assessment"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: response_assessment")
     cycle = PATIENT.current_cycle or 2
     prompt = f"""\
@@ -197,6 +247,8 @@ RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressi
 
 async def run_daily_research() -> dict:
     """Daily PubMed research scan with all curated search terms."""
+    if await _should_skip("daily_research"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: daily_research")
     terms_text = "\n".join(f"- {t}" for t in RESEARCH_TERMS)
     prompt = f"""\
@@ -239,6 +291,8 @@ novel targets, clinical trial results.
 
 async def run_trial_monitor() -> dict:
     """Monitor clinical trials across EU (14 countries incl. major CRC centers)."""
+    if await _should_skip("trial_monitor"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: trial_monitor")
     watched = "\n".join(f"- {t}" for t in WATCHED_TRIALS)
 
@@ -320,6 +374,8 @@ Prioritize trials at centers within practical travel distance from Bratislava:
 
 async def run_file_scan() -> dict:
     """Scan oncofiles for new document uploads."""
+    if await _should_skip("file_scan"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: file_scan")
     state = await _get_state("last_file_scan")
     last_scan = _extract_timestamp(state)
@@ -337,7 +393,9 @@ Instructions:
 Search categories: "pathology", "genetics", "labs", "imaging"
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=8, task_name="file_scan")
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="file_scan", model=AUTONOMOUS_MODEL_LIGHT
+        )
     except Exception as e:
         logger.error("!!! Failed task: file_scan — %s", e)
         raise
@@ -361,6 +419,8 @@ Search categories: "pathology", "genetics", "labs", "imaging"
 
 async def run_weekly_briefing() -> dict:
     """Compile weekly briefing: research, trials, labs, treatment progress."""
+    if await _should_skip("weekly_briefing"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: weekly_briefing")
     cycle = PATIENT.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
@@ -413,6 +473,8 @@ Structure the briefing with clear sections:
 
 async def run_lab_sync() -> dict:
     """Extract lab values from oncofiles documents and store as structured lab data."""
+    if await _should_skip("lab_sync"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: lab_sync")
     prompt = """\
 Extract structured lab data from uploaded documents and store as lab values.
@@ -433,7 +495,9 @@ Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
 creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=8, task_name="lab_sync")
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="lab_sync", model=AUTONOMOUS_MODEL_LIGHT
+        )
     except Exception as e:
         logger.error("!!! Failed task: lab_sync — %s", e)
         raise
@@ -452,6 +516,8 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 
 async def run_toxicity_extraction() -> dict:
     """Extract toxicity grades from doctor visit notes/reports."""
+    if await _should_skip("toxicity_extraction"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: toxicity_extraction")
     prompt = """\
 Search for doctor visit notes and extract NCI-CTCAE toxicity assessments.
@@ -467,7 +533,9 @@ Instructions:
 This creates the baseline toxicity history from existing medical documents.
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=8, task_name="toxicity_extraction")
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="toxicity_extraction", model=AUTONOMOUS_MODEL_LIGHT
+        )
     except Exception as e:
         logger.error("!!! Failed task: toxicity_extraction — %s", e)
         raise
@@ -486,6 +554,8 @@ This creates the baseline toxicity history from existing medical documents.
 
 async def run_weight_extraction() -> dict:
     """Extract weight/BMI from doctor visit notes and store as weight_measurement events."""
+    if await _should_skip("weight_extraction"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: weight_extraction")
     prompt = """\
 Search for doctor visit notes and extract weight/BMI data.
@@ -504,7 +574,9 @@ Instructions:
 Focus on creating structured weight history from existing medical documents.
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=8, task_name="weight_extraction")
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="weight_extraction", model=AUTONOMOUS_MODEL_LIGHT
+        )
     except Exception as e:
         logger.error("!!! Failed task: weight_extraction — %s", e)
         raise
@@ -523,6 +595,8 @@ Focus on creating structured weight history from existing medical documents.
 
 async def run_family_update() -> dict:
     """Generate weekly family update in Slovak from current clinical data."""
+    if await _should_skip("family_update"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: family_update")
     cycle = PATIENT.current_cycle or 2
     prompt = f"""\
@@ -563,6 +637,8 @@ Vyhni sa zbytočným odborným detailom.
 
 async def run_medication_adherence_check() -> dict:
     """Check if today's medication adherence was logged. Flag missing Clexane."""
+    if await _should_skip("medication_adherence_check"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: medication_adherence_check")
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     prompt = f"""\
@@ -600,6 +676,8 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
 
 async def run_mtb_preparation() -> dict:
     """Prepare tumor board (MTB) presentation summary."""
+    if await _should_skip("mtb_preparation"):
+        return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: mtb_preparation")
     prompt = """\
 Prepare a multidisciplinary tumor board (MTB) summary.

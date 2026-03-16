@@ -173,6 +173,88 @@ class TestCostTracking:
         cost2 = _track_cost(2000, 1000)
         assert get_daily_cost() == pytest.approx(cost1 + cost2)
 
+    def test_track_cost_sonnet_rates(self):
+        import oncoteam.autonomous as mod
+
+        mod._daily_cost = 0.0
+        mod._daily_cost_reset_date = ""
+
+        cost = _track_cost(1_000_000, 1_000_000, "claude-sonnet-4-6")
+        # $3 input + $15 output = $18
+        assert cost == pytest.approx(18.0)
+
+    def test_track_cost_haiku_rates(self):
+        import oncoteam.autonomous as mod
+
+        mod._daily_cost = 0.0
+        mod._daily_cost_reset_date = ""
+
+        cost = _track_cost(1_000_000, 1_000_000, "claude-haiku-4-5-20251001")
+        # $0.80 input + $4.0 output = $4.80
+        assert cost == pytest.approx(4.8)
+
+    def test_haiku_cheaper_than_sonnet(self):
+        import oncoteam.autonomous as mod
+
+        mod._daily_cost = 0.0
+        mod._daily_cost_reset_date = ""
+        haiku_cost = _track_cost(1000, 500, "claude-haiku-4-5-20251001")
+
+        mod._daily_cost = 0.0
+        sonnet_cost = _track_cost(1000, 500, "claude-sonnet-4-6")
+
+        assert haiku_cost < sonnet_cost
+
+
+class TestCooldownGuard:
+    """Tests for _should_skip cooldown logic (#75)."""
+
+    @pytest.mark.asyncio
+    async def test_skip_when_recently_run(self):
+        from oncoteam.autonomous_tasks import _should_skip
+
+        now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        recent_ts = now.isoformat()
+
+        with patch("oncoteam.autonomous_tasks._get_state") as mock:
+            mock.return_value = {"timestamp": recent_ts}
+            assert await _should_skip("file_scan") is True
+
+    @pytest.mark.asyncio
+    async def test_no_skip_when_never_run(self):
+        from oncoteam.autonomous_tasks import _should_skip
+
+        with patch("oncoteam.autonomous_tasks._get_state") as mock:
+            mock.return_value = {}
+            assert await _should_skip("file_scan") is False
+
+    @pytest.mark.asyncio
+    async def test_no_skip_when_cooldown_expired(self):
+        from oncoteam.autonomous_tasks import _should_skip
+
+        old_ts = "2020-01-01T00:00:00+00:00"
+
+        with patch("oncoteam.autonomous_tasks._get_state") as mock:
+            mock.return_value = {"timestamp": old_ts}
+            assert await _should_skip("file_scan") is False
+
+    @pytest.mark.asyncio
+    async def test_no_skip_for_unknown_task(self):
+        from oncoteam.autonomous_tasks import _should_skip
+
+        with patch("oncoteam.autonomous_tasks._get_state") as mock:
+            mock.return_value = {}
+            assert await _should_skip("unknown_task") is False
+
+    @pytest.mark.asyncio
+    async def test_task_returns_skipped_dict(self):
+        from oncoteam.autonomous_tasks import run_file_scan
+
+        with patch("oncoteam.autonomous_tasks._should_skip", return_value=True):
+            result = await run_file_scan()
+            assert result["skipped"] is True
+            assert result["reason"] == "cooldown"
+
 
 class TestExtractTimestamp:
     """Tests for _extract_timestamp, fixing the NoneType.get crash."""

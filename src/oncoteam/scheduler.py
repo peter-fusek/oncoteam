@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
 
 import httpx
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
@@ -35,7 +34,11 @@ async def _keepalive_ping():
 
 
 def _create_scheduler():
-    """Create and configure the async scheduler with all jobs."""
+    """Create and configure the async scheduler with all jobs.
+
+    No next_run_time overrides — tasks use cooldown guards in
+    autonomous_tasks.py to prevent cold-start stampede (#75).
+    """
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from apscheduler.triggers.cron import CronTrigger
     from apscheduler.triggers.interval import IntervalTrigger
@@ -62,83 +65,74 @@ def _create_scheduler():
     # Event listeners for observability
     scheduler.add_listener(_job_listener, EVENT_JOB_ERROR | EVENT_JOB_EXECUTED | EVENT_JOB_MISSED)
 
-    now = datetime.now(UTC)
-
     # === Keep-alive: prevent oncofiles Railway cold start ===
     scheduler.add_job(_keepalive_ping, IntervalTrigger(minutes=5), id="keepalive_ping")
 
-    # === Data pipeline — run first (populate labs, documents) ===
+    # === Data pipeline (Haiku model — cheap) ===
 
-    # File scan (new oncofiles documents): every 2 hours
+    # File scan: every 4 hours (was 2h)
     scheduler.add_job(
         run_file_scan,
-        IntervalTrigger(hours=2),
+        IntervalTrigger(hours=4),
         id="file_scan",
-        next_run_time=now + timedelta(minutes=2),
-        misfire_grace_time=7200,
+        misfire_grace_time=14400,
         coalesce=True,
     )
 
-    # Lab sync: every 6 hours (extract lab values from documents)
+    # Lab sync: every 12 hours (was 6h)
     scheduler.add_job(
         run_lab_sync,
-        IntervalTrigger(hours=6),
+        IntervalTrigger(hours=12),
         id="lab_sync",
-        next_run_time=now + timedelta(minutes=3),
-        misfire_grace_time=21600,
+        misfire_grace_time=43200,
         coalesce=True,
     )
 
-    # Toxicity extraction: daily at 08:00 UTC
+    # Toxicity extraction: every 2 days at 08:00 UTC (was daily)
     scheduler.add_job(
         run_toxicity_extraction,
-        CronTrigger(hour=8, minute=0),
+        CronTrigger(hour=8, minute=0, day="*/2"),
         id="toxicity_extraction",
-        next_run_time=now + timedelta(minutes=4),
         misfire_grace_time=86400,
         coalesce=True,
     )
 
-    # Weight extraction: daily at 09:00 UTC
+    # Weight extraction: every 3 days at 09:00 UTC (was daily)
     scheduler.add_job(
         run_weight_extraction,
-        CronTrigger(hour=9, minute=0),
+        CronTrigger(hour=9, minute=0, day="*/3"),
         id="weight_extraction",
-        next_run_time=now + timedelta(minutes=5),
         misfire_grace_time=86400,
         coalesce=True,
     )
 
-    # === Research — after data pipeline ===
+    # === Research (Sonnet model) ===
 
-    # Daily research scan: 7:00 UTC (8:00 CET)
+    # Daily research scan: every 2 days at 07:00 UTC (was daily)
     scheduler.add_job(
         run_daily_research,
-        CronTrigger(hour=7, minute=0),
+        CronTrigger(hour=7, minute=0, day="*/2"),
         id="daily_research",
-        next_run_time=now + timedelta(minutes=7),
         misfire_grace_time=86400,
         coalesce=True,
     )
 
-    # Trial monitor: every 6 hours
+    # Trial monitor: every 6 hours (keep — important for EU trial tracking)
     scheduler.add_job(
         run_trial_monitor,
         IntervalTrigger(hours=6),
         id="trial_monitor",
-        next_run_time=now + timedelta(minutes=8),
         misfire_grace_time=21600,
         coalesce=True,
     )
 
-    # === Clinical — after research ===
+    # === Clinical (Sonnet model) ===
 
     # Pre-cycle check: every 13 days (1 day before each 14-day FOLFOX cycle)
     scheduler.add_job(
         run_pre_cycle_check,
         IntervalTrigger(days=13),
         id="pre_cycle_check",
-        next_run_time=now + timedelta(minutes=9),
         misfire_grace_time=86400 * 2,
         coalesce=True,
     )
@@ -148,7 +142,6 @@ def _create_scheduler():
         run_tumor_marker_review,
         IntervalTrigger(weeks=4),
         id="tumor_marker_review",
-        next_run_time=now + timedelta(minutes=10),
         misfire_grace_time=86400 * 7,
         coalesce=True,
     )
@@ -158,19 +151,17 @@ def _create_scheduler():
         run_response_assessment,
         IntervalTrigger(weeks=8),
         id="response_assessment",
-        next_run_time=now + timedelta(minutes=11),
         misfire_grace_time=86400 * 14,
         coalesce=True,
     )
 
-    # === Reporting — last (depends on data from above) ===
+    # === Reporting (Sonnet model) ===
 
     # Weekly briefing: Monday 6:00 UTC (7:00 CET)
     scheduler.add_job(
         run_weekly_briefing,
         CronTrigger(day_of_week="mon", hour=6),
         id="weekly_briefing",
-        next_run_time=now + timedelta(minutes=12),
         misfire_grace_time=86400 * 2,
         coalesce=True,
     )
@@ -180,7 +171,6 @@ def _create_scheduler():
         run_mtb_preparation,
         CronTrigger(day_of_week="fri", hour=14),
         id="mtb_preparation",
-        next_run_time=now + timedelta(minutes=13),
         misfire_grace_time=86400 * 2,
         coalesce=True,
     )
@@ -190,12 +180,11 @@ def _create_scheduler():
         run_family_update,
         CronTrigger(day_of_week="sun", hour=18),
         id="family_update",
-        next_run_time=now + timedelta(minutes=14),
         misfire_grace_time=86400 * 2,
         coalesce=True,
     )
 
-    # Daily cost report via WhatsApp: 6:30 UTC (7:30 CET, before morning briefing)
+    # Daily cost report via WhatsApp: 6:30 UTC (7:30 CET) — no API cost
     scheduler.add_job(
         run_daily_cost_report,
         CronTrigger(hour=6, minute=30),
@@ -204,12 +193,11 @@ def _create_scheduler():
         coalesce=True,
     )
 
-    # Medication adherence check: daily 20:00 UTC
+    # Medication adherence check: daily 20:00 UTC (safety-critical, keep daily)
     scheduler.add_job(
         run_medication_adherence_check,
         CronTrigger(hour=20, minute=0),
         id="medication_adherence_check",
-        next_run_time=now + timedelta(minutes=15),
         misfire_grace_time=86400,
         coalesce=True,
     )

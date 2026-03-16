@@ -24,9 +24,12 @@ from .patient_context import PATIENT, RESEARCH_TERMS, get_patient_profile_text
 
 logger = logging.getLogger("oncoteam.autonomous")
 
-# Cost per million tokens (Sonnet 4.6 defaults)
-_COST_INPUT = 3.0 / 1_000_000
-_COST_OUTPUT = 15.0 / 1_000_000
+# Cost per million tokens by model
+_MODEL_COSTS: dict[str, tuple[float, float]] = {
+    "claude-sonnet-4-6": (3.0 / 1_000_000, 15.0 / 1_000_000),
+    "claude-haiku-4-5-20251001": (0.80 / 1_000_000, 4.0 / 1_000_000),
+}
+_DEFAULT_COST = (3.0 / 1_000_000, 15.0 / 1_000_000)  # fallback
 
 # Daily cost accumulator (reset by scheduler at midnight)
 _daily_cost: float = 0.0
@@ -365,7 +368,7 @@ async def execute_tool(name: str, inputs: dict) -> str:
         return json.dumps({"error": str(e)})
 
 
-def _track_cost(input_tokens: int, output_tokens: int) -> float:
+def _track_cost(input_tokens: int, output_tokens: int, model: str = "") -> float:
     """Track cost and return the cost for this call."""
     global _daily_cost, _daily_cost_reset_date
     today = datetime.now(UTC).strftime("%Y-%m-%d")
@@ -373,7 +376,8 @@ def _track_cost(input_tokens: int, output_tokens: int) -> float:
         _daily_cost = 0.0
         _daily_cost_reset_date = today
 
-    cost = (input_tokens * _COST_INPUT) + (output_tokens * _COST_OUTPUT)
+    cost_in, cost_out = _MODEL_COSTS.get(model, _DEFAULT_COST)
+    cost = (input_tokens * cost_in) + (output_tokens * cost_out)
     _daily_cost += cost
     return cost
 
@@ -527,8 +531,15 @@ async def run_autonomous_task(
     task_prompt: str,
     max_turns: int = 15,
     task_name: str = "autonomous",
+    model: str | None = None,
+    thinking_budget: int | None = None,
 ) -> dict:
     """Run an autonomous agent loop with extended thinking.
+
+    Args:
+        model: Override model (default: AUTONOMOUS_MODEL from config).
+        thinking_budget: Extended thinking budget. None = auto (10000 for
+            Sonnet, disabled for Haiku). Set to 0 to disable thinking.
 
     Returns dict with thinking, tool_calls, response, token counts, cost.
     """
@@ -549,6 +560,11 @@ async def run_autonomous_task(
             "cost": 0.0,
         }
 
+    effective_model = model or AUTONOMOUS_MODEL
+    # Auto-detect thinking support: Haiku doesn't support extended thinking
+    use_thinking = thinking_budget != 0 and "haiku" not in effective_model
+    effective_thinking_budget = thinking_budget if thinking_budget else 10000
+
     client = _get_client()
     messages: list[dict] = [{"role": "user", "content": task_prompt}]
     result = {
@@ -560,6 +576,7 @@ async def run_autonomous_task(
         "output_tokens": 0,
         "cost": 0.0,
         "task_name": task_name,
+        "model": effective_model,
         "started_at": datetime.now(UTC).isoformat(),
     }
 
@@ -567,17 +584,19 @@ async def run_autonomous_task(
 
     for turn in range(max_turns):
         try:
-            response = await client.messages.create(
-                model=AUTONOMOUS_MODEL,
-                max_tokens=16000,
-                thinking={
+            create_kwargs: dict = {
+                "model": effective_model,
+                "max_tokens": 16000 if use_thinking else 8192,
+                "system": AUTONOMOUS_SYSTEM_PROMPT,
+                "tools": TOOLS,
+                "messages": messages,
+            }
+            if use_thinking:
+                create_kwargs["thinking"] = {
                     "type": "enabled",
-                    "budget_tokens": 10000,
-                },
-                system=AUTONOMOUS_SYSTEM_PROMPT,
-                tools=TOOLS,
-                messages=messages,
-            )
+                    "budget_tokens": effective_thinking_budget,
+                }
+            response = await client.messages.create(**create_kwargs)
         except Exception as e:
             logger.error("Claude API error on turn %d: %s", turn, e)
             result["error"] = str(e)
@@ -585,7 +604,9 @@ async def run_autonomous_task(
 
         result["input_tokens"] += response.usage.input_tokens
         result["output_tokens"] += response.usage.output_tokens
-        call_cost = _track_cost(response.usage.input_tokens, response.usage.output_tokens)
+        call_cost = _track_cost(
+            response.usage.input_tokens, response.usage.output_tokens, effective_model
+        )
         result["cost"] += call_cost
 
         # Extract content and citations

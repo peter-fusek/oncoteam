@@ -46,6 +46,7 @@ AUTONOMOUS_ENABLED: bool = os.environ.get("AUTONOMOUS_ENABLED", "").lower() in (
     "yes",
 )
 AUTONOMOUS_MODEL: str = os.environ.get("AUTONOMOUS_MODEL", "claude-sonnet-4-6")
+AUTONOMOUS_MODEL_LIGHT: str = os.environ.get("AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
 AUTONOMOUS_COST_LIMIT: float = float(os.environ.get("AUTONOMOUS_COST_LIMIT", "5.0"))
 
 # Anthropic API credit balance (set in Railway env, updated manually or via billing API)
