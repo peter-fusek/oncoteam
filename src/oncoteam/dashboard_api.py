@@ -56,6 +56,19 @@ _TEST_AGENT_IDS = ("oncoteam-e2e",)
 _TEST_TAGS = ("e2e-test",)
 
 
+def _normalize_lab_values(meta: dict) -> dict:
+    """Normalize lab parameter names and units.
+
+    - Maps ABS_NEUT → ANC (canonical name)
+    - Detects ANC in G/L (< 30) and converts to /µL (* 1000)
+    """
+    if "ABS_NEUT" in meta and "ANC" not in meta:
+        meta["ANC"] = meta.pop("ABS_NEUT")
+    if "ANC" in meta and isinstance(meta["ANC"], (int, float)) and meta["ANC"] < 30:
+        meta["ANC"] = round(meta["ANC"] * 1000)  # G/L → /µL
+    return meta
+
+
 def _is_test_entry(entry: dict) -> bool:
     """Return True if the entry looks like test/E2E data."""
     title = (entry.get("title") or "").lower()
@@ -858,6 +871,7 @@ async def api_protocol(request: Request) -> JSONResponse:
                 if by_date:
                     latest_date = max(by_date.keys())
                     latest_vals = by_date[latest_date]
+                    _normalize_lab_values(latest_vals)
                     for stored_name, val in latest_vals.items():
                         threshold_key = _param_to_threshold.get(stored_name)
                         if not threshold_key or not isinstance(val, (int, float)):
@@ -1216,6 +1230,7 @@ async def api_labs(request: Request) -> JSONResponse:
                         by_date[d]["metadata"][v["parameter"]] = v["value"]
                         by_date[d]["document_id"] = v.get("document_id")
                     for d, data in by_date.items():
+                        _normalize_lab_values(data["metadata"])
                         events.append(
                             {
                                 "event_date": d,
@@ -1236,14 +1251,16 @@ async def api_labs(request: Request) -> JSONResponse:
                     if isinstance(lab_sets, list):
                         for lab in lab_sets:
                             if isinstance(lab, dict) and lab.get("date"):
+                                meta = {
+                                    k: v
+                                    for k, v in lab.items()
+                                    if k not in ("date", "id", "document_id")
+                                }
+                                _normalize_lab_values(meta)
                                 events.append(
                                     {
                                         "event_date": lab["date"],
-                                        "metadata": {
-                                            k: v
-                                            for k, v in lab.items()
-                                            if k not in ("date", "id", "document_id")
-                                        },
+                                        "metadata": meta,
                                         "notes": lab.get("notes", "From document analysis"),
                                         "id": lab.get("id"),
                                     }
@@ -1263,6 +1280,7 @@ async def api_labs(request: Request) -> JSONResponse:
                     meta = json.loads(meta)
                 except (json.JSONDecodeError, TypeError):
                     meta = {}
+            meta = _normalize_lab_values(meta)
             alerts = []
             value_statuses = {}
             for param, threshold in LAB_SAFETY_THRESHOLDS.items():

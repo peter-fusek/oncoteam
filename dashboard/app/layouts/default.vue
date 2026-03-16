@@ -38,6 +38,7 @@ const allNavItems = computed(() => [
   { label: t('nav.timeline'), icon: 'i-lucide-calendar-clock', to: '/timeline' },
   { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
   { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
+  { label: t('nav.dictionary'), icon: 'i-lucide-book-open', to: '/dictionary' },
 ])
 
 const navigation = computed(() => allNavItems.value.filter(item => canAccess(item.to)))

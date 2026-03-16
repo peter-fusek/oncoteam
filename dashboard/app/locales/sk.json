@@ -14,7 +14,8 @@
     "research": "Výskum",
     "timeline": "Časová os",
     "sessions": "Sedenia",
-    "familyUpdate": "Správa pre rodinu"
+    "familyUpdate": "Správa pre rodinu",
+    "dictionary": "Slovník"
   },
   "common": {
     "save": "Uložiť",
@@ -364,6 +365,18 @@
     "previousUpdates": "Predchádzajúce správy",
     "printTitle": "Oncoteam — Správa pre rodinu",
     "noUpdates": "Zatiaľ žiadne správy — kliknite na Generovať"
+  },
+  "dictionary": {
+    "title": "Medicínsky slovník",
+    "subtitle": "Vysvetlenie medicínskych skratiek a terminológie",
+    "search": "Hľadať pojem...",
+    "simple": "Jednoduché",
+    "professional": "Odborné",
+    "all": "Všetky",
+    "results": "pojmov",
+    "range": "Rozsah",
+    "unit": "Jednotka",
+    "noResults": "Žiadne zodpovedajúce pojmy"
   },
   "roles": {
     "advocate": "Zástupca",

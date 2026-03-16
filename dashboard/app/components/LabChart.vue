@@ -64,6 +64,7 @@ const chartData = computed(() => {
     backgroundColor: (props.color || '#14b8a6') + '20',
     tension: 0.3,
     fill: false,
+    spanGaps: true,
     pointRadius: 4,
     pointHoverRadius: 6,
     pointBackgroundColor: props.values.map((v) => {

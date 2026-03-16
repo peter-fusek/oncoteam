@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from oncoteam.dashboard_api import api_labs, api_toxicity
+from oncoteam.dashboard_api import _normalize_lab_values, api_labs, api_toxicity
 
 
 class FakeRequest:
@@ -414,3 +414,46 @@ async def test_api_labs_fallback_error_handled(mock_list, mock_trends, mock_anal
 
     assert response.status_code == 200
     assert data["total"] == 0
+
+
+# ── _normalize_lab_values unit tests ─────────────
+
+
+def test_normalize_maps_abs_neut_to_anc():
+    """ABS_NEUT should be renamed to ANC."""
+    meta = {"ABS_NEUT": 2400, "PLT": 180000}
+    result = _normalize_lab_values(meta)
+    assert "ANC" in result
+    assert "ABS_NEUT" not in result
+    assert result["ANC"] == 2400
+
+
+def test_normalize_converts_gl_to_ul():
+    """ANC in G/L (< 30) should be multiplied by 1000 to get /µL."""
+    meta = {"ANC": 1.15}
+    result = _normalize_lab_values(meta)
+    assert result["ANC"] == 1150
+
+
+def test_normalize_leaves_ul_unchanged():
+    """ANC already in /µL (>= 30) should not be changed."""
+    meta = {"ANC": 2400}
+    result = _normalize_lab_values(meta)
+    assert result["ANC"] == 2400
+
+
+def test_normalize_abs_neut_gl_combined():
+    """ABS_NEUT in G/L should be renamed AND converted."""
+    meta = {"ABS_NEUT": 3.5}
+    result = _normalize_lab_values(meta)
+    assert "ANC" in result
+    assert "ABS_NEUT" not in result
+    assert result["ANC"] == 3500
+
+
+def test_normalize_does_not_overwrite_existing_anc():
+    """If both ABS_NEUT and ANC exist, keep ANC."""
+    meta = {"ABS_NEUT": 1.5, "ANC": 2400}
+    result = _normalize_lab_values(meta)
+    assert result["ANC"] == 2400
+    assert "ABS_NEUT" in result  # not removed since ANC already existed

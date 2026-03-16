@@ -167,6 +167,20 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
             "cost": result.get("cost", 0),
         },
     )
+
+    # Send WhatsApp summary
+    try:
+        response_text = result.get("response", "")
+        if response_text and not result.get("error"):
+            lines = [f"*Pre-cycle check (cyklus {cycle})*\n"]
+            summary = response_text[:1500]
+            if len(response_text) > 1500:
+                summary += "\n\n... (plná správa na dashboarde)"
+            lines.append(summary)
+            await _send_whatsapp("\n".join(lines))
+    except Exception as e:
+        record_suppressed_error("pre_cycle_check", "whatsapp_notify", e)
+
     return result
 
 
@@ -469,6 +483,20 @@ Structure the briefing with clear sections:
         "last_weekly_briefing",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
+
+    # Send WhatsApp summary
+    try:
+        response_text = result.get("response", "")
+        if response_text and not result.get("error"):
+            lines = ["*Týždenný briefing*\n"]
+            summary = response_text[:1500]
+            if len(response_text) > 1500:
+                summary += "\n\n... (plná správa na dashboarde)"
+            lines.append(summary)
+            await _send_whatsapp("\n".join(lines))
+    except Exception as e:
+        record_suppressed_error("weekly_briefing", "whatsapp_notify", e)
+
     return result
 
 
@@ -512,6 +540,38 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
         "last_lab_sync",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
+
+    # Check latest labs for safety alerts and send WhatsApp if breached
+    try:
+        if not result.get("error"):
+            trends = await oncofiles_client.get_lab_trends_data(limit=200)
+            values_list = trends.get("values", []) if isinstance(trends, dict) else []
+            if values_list:
+                from collections import defaultdict
+
+                by_date: dict[str, dict] = defaultdict(dict)
+                for v in values_list:
+                    d = v.get("lab_date", "")
+                    if d:
+                        by_date[d][v.get("parameter", "")] = v.get("value")
+                if by_date:
+                    latest_date = max(by_date.keys())
+                    vals = by_date[latest_date]
+                    alerts: list[str] = []
+                    anc = vals.get("ABS_NEUT", vals.get("ANC"))
+                    plt = vals.get("PLT")
+                    if anc is not None and anc < 1500:
+                        alerts.append(f"ANC = {anc} (< 1500) — hold chemo")
+                    if plt is not None and plt < 75000:
+                        alerts.append(f"PLT = {plt:.0f} (< 75000) — hold chemo")
+                    if alerts:
+                        msg = f"*Lab Safety Alert ({latest_date})*\n\n" + "\n".join(
+                            f"- {a}" for a in alerts
+                        )
+                        await _send_whatsapp(msg)
+    except Exception as e:
+        record_suppressed_error("lab_sync", "whatsapp_safety_alert", e)
+
     return result
 
 
@@ -633,6 +693,20 @@ Vyhni sa zbytočným odborným detailom.
         "last_family_update",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
+
+    # Send family update via WhatsApp (already in Slovak)
+    try:
+        response_text = result.get("response", "")
+        if response_text and not result.get("error"):
+            lines = ["*Týždenná správa pre rodinu*\n"]
+            summary = response_text[:1500]
+            if len(response_text) > 1500:
+                summary += "\n\n... (plná správa na dashboarde)"
+            lines.append(summary)
+            await _send_whatsapp("\n".join(lines))
+    except Exception as e:
+        record_suppressed_error("family_update", "whatsapp_notify", e)
+
     return result
 
 
@@ -672,6 +746,15 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
         "last_medication_adherence_check",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
+
+    # Send WhatsApp notification
+    try:
+        response_text = result.get("response", "")
+        if response_text and not result.get("error"):
+            await _send_whatsapp(f"*Kontrola liekov*\n\n{response_text[:1500]}")
+    except Exception as e:
+        record_suppressed_error("medication_adherence_check", "whatsapp_notify", e)
+
     return result
 
 
@@ -761,13 +844,18 @@ async def run_daily_cost_report() -> dict:
                 if by_date:
                     latest_date = max(by_date.keys())
                     vals = by_date[latest_date]
-                    anc = vals.get("ABS_NEUT", vals.get("ANC"))
+                    # Normalize ABS_NEUT → ANC and G/L → /µL
+                    if "ABS_NEUT" in vals and "ANC" not in vals:
+                        vals["ANC"] = vals.pop("ABS_NEUT")
+                    anc = vals.get("ANC")
+                    if anc is not None and isinstance(anc, (int, float)) and anc < 30:
+                        anc = round(anc * 1000)
                     plt = vals.get("PLT")
                     wbc = vals.get("WBC")
                     hgb = vals.get("HGB")
                     lines.append(f"*Labky ({latest_date})*")
                     if anc is not None:
-                        flag = " ⚠️" if anc < 1.5 else ""
+                        flag = " ⚠️" if anc < 1500 else ""
                         lines.append(f"  ANC: {anc}{flag}")
                     if plt is not None:
                         lines.append(f"  PLT: {plt:.0f}")

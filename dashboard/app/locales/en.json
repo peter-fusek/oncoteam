@@ -14,7 +14,8 @@
     "research": "Research",
     "timeline": "Timeline",
     "sessions": "Sessions",
-    "familyUpdate": "Family Update"
+    "familyUpdate": "Family Update",
+    "dictionary": "Dictionary"
   },
   "common": {
     "save": "Save",
@@ -364,6 +365,18 @@
     "previousUpdates": "Previous Updates",
     "printTitle": "Oncoteam — Family Update",
     "noUpdates": "No updates yet — click Generate"
+  },
+  "dictionary": {
+    "title": "Medical Dictionary",
+    "subtitle": "Medical abbreviations and terminology explained",
+    "search": "Search terms...",
+    "simple": "Simple",
+    "professional": "Professional",
+    "all": "All",
+    "results": "terms",
+    "range": "Range",
+    "unit": "Unit",
+    "noResults": "No matching terms found"
   },
   "roles": {
     "advocate": "Advocate",
