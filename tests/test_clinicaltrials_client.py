@@ -202,9 +202,7 @@ class TestSearchTrialsEU:
     @respx.mock
     @pytest.mark.asyncio
     async def test_eu_deduplicates(self):
-        respx.get(f"{CTGOV_BASE_URL}/studies").mock(
-            return_value=Response(200, json=CTGOV_RESPONSE)
-        )
+        respx.get(f"{CTGOV_BASE_URL}/studies").mock(return_value=Response(200, json=CTGOV_RESPONSE))
 
         trials = await search_trials_eu("CRC")
         nct_ids = [t.nct_id for t in trials]

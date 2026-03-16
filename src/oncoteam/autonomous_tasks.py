@@ -22,10 +22,10 @@ TASK_COOLDOWNS: dict[str, float] = {
     "weight_extraction": 20.0,
     "daily_research": 20.0,
     "trial_monitor": 5.0,
-    "pre_cycle_check": 288.0,       # 12 days
-    "tumor_marker_review": 600.0,    # 25 days
-    "response_assessment": 1200.0,   # 50 days
-    "weekly_briefing": 144.0,        # 6 days
+    "pre_cycle_check": 288.0,  # 12 days
+    "tumor_marker_review": 600.0,  # 25 days
+    "response_assessment": 1200.0,  # 50 days
+    "weekly_briefing": 144.0,  # 6 days
     "mtb_preparation": 144.0,
     "family_update": 144.0,
     "medication_adherence_check": 20.0,
@@ -55,6 +55,7 @@ async def _should_skip(task_name: str) -> bool:
     except (ValueError, TypeError):
         pass
     return False
+
 
 logger = logging.getLogger("oncoteam.autonomous_tasks")
 
