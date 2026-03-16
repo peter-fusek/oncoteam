@@ -197,12 +197,17 @@ def _extract_list(result: dict | list | str, key: str) -> list[dict]:
     return []
 
 
-def _build_external_url(source: str, external_id: str) -> str | None:
-    """Build external URL for PubMed/ClinicalTrials.gov entries."""
+def _build_external_url(source: str, external_id: str, raw_data: str = "") -> str | None:
+    """Build external URL for PubMed/ClinicalTrials.gov/ESMO entries."""
     if source == "pubmed" and external_id:
         return f"https://pubmed.ncbi.nlm.nih.gov/{external_id}/"
     if source == "clinicaltrials" and external_id:
         return f"https://clinicaltrials.gov/study/{external_id}"
+    # Fallback: extract first URL from raw_data (e.g. ESMO entries)
+    if raw_data:
+        m = re.search(r"https?://[^\s|]+", raw_data)
+        if m:
+            return m.group(0)
     return None
 
 
@@ -470,7 +475,9 @@ async def api_research(request: Request) -> JSONResponse:
                 e.get("title", ""),
                 e.get("summary"),
             )
-            ext_url = _build_external_url(e.get("source", ""), e.get("external_id", ""))
+            ext_url = _build_external_url(
+                e.get("source", ""), e.get("external_id", ""), e.get("raw_data", "")
+            )
             items.append(
                 {
                     "id": e.get("id"),
@@ -578,10 +585,27 @@ async def api_autonomous(request: Request) -> JSONResponse:
         asyncio.create_task(_run_with_capture())
         return _cors_json({"triggered": trigger, "status": "started"})
 
-    # Default: return scheduler status
+    # Default: return scheduler status — prefer persisted cost over in-memory
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    daily_cost = get_daily_cost()
+    cost_last_updated: str | None = None
+    with contextlib.suppress(Exception):
+        state = await oncofiles_client.get_agent_state("autonomous_daily_cost")
+        if isinstance(state, dict):
+            val = state.get("value", state)
+            if isinstance(val, dict):
+                val = val.get("value", val)
+            persisted_date = val.get("date", "") if isinstance(val, dict) else ""
+            today_str = _dt.now(UTC).strftime("%Y-%m-%d")
+            if persisted_date == today_str:
+                daily_cost = float(val.get("cost_usd", daily_cost))
+                cost_last_updated = val.get("updated_at") or state.get("updated_at")
     data: dict = {
         "enabled": AUTONOMOUS_ENABLED,
-        "daily_cost": round(get_daily_cost(), 4),
+        "daily_cost": round(daily_cost, 4),
+        "last_updated": cost_last_updated,
     }
 
     if AUTONOMOUS_ENABLED:
@@ -1088,6 +1112,16 @@ async def api_briefings(request: Request) -> JSONResponse:
         alerts = _extract_list(alerts_res, "entries") if isinstance(alerts_res, dict) else []
         entries = _filter_test(briefings + alerts, request)
         entries.sort(key=lambda e: e.get("created_at", ""), reverse=True)
+        # Deduplicate cost_alert entries by (title, date)
+        seen_alerts: set[tuple[str, str]] = set()
+        deduped: list[dict] = []
+        for e in entries:
+            if e.get("entry_type") == "cost_alert":
+                key = (e.get("title", ""), (e.get("created_at") or "")[:10])
+                if key in seen_alerts:
+                    continue
+                seen_alerts.add(key)
+            deduped.append(e)
         return _cors_json(
             {
                 "briefings": [
@@ -1101,9 +1135,9 @@ async def api_briefings(request: Request) -> JSONResponse:
                         **_briefing_summary(e.get("content", "")),
                         "source": _build_source_ref(e, "briefing"),
                     }
-                    for e in entries[:limit]
+                    for e in deduped[:limit]
                 ],
-                "total": len(entries),
+                "total": len(deduped),
             }
         )
     except Exception as e:
