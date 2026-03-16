@@ -816,8 +816,8 @@ async def api_protocol(request: Request) -> JSONResponse:
     elif isinstance(lab_result, Exception):
         record_suppressed_error("api_protocol", "fetch_last_labs", lab_result)
 
-    # Fallback: if no lab_result treatment events, try lab_values table (#72/#73)
-    # Map stored parameter names → threshold keys
+    # Fallback: fill missing threshold params from lab_values table (#72/#73)
+    # Triggers when primary path has partial data or no data at all
     _param_to_threshold = {
         "ABS_NEUT": "ANC",
         "ANC": "ANC",
@@ -830,7 +830,8 @@ async def api_protocol(request: Request) -> JSONResponse:
         "WBC": "WBC",
         "bilirubin": "bilirubin",
     }
-    if not last_lab_values:
+    _missing = set(LAB_SAFETY_THRESHOLDS.keys()) - set(last_lab_values.keys())
+    if _missing:
         try:
             trends = await asyncio.wait_for(
                 oncofiles_client.get_lab_trends_data(limit=200),
@@ -853,6 +854,8 @@ async def api_protocol(request: Request) -> JSONResponse:
                         threshold_key = _param_to_threshold.get(stored_name)
                         if not threshold_key or not isinstance(val, (int, float)):
                             continue
+                        if threshold_key in last_lab_values:
+                            continue  # don't overwrite fresher data from primary path
                         threshold = LAB_SAFETY_THRESHOLDS.get(threshold_key, {})
                         status = "safe"
                         if "min" in threshold:
