@@ -2,7 +2,7 @@
 const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
-const { data: timeline, status: timelineStatus, refresh } = fetchApi<{
+const { data: timeline, status: timelineStatus, error: timelineError, refresh } = fetchApi<{
   events: Array<{
     id: number
     date: string
@@ -95,7 +95,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <ApiErrorBanner :error="timeline?.error" />
+    <ApiErrorBanner :error="timeline?.error || timelineError?.message" />
     <SkeletonLoader v-if="!timeline && timelineStatus === 'pending'" variant="cards" />
 
     <div v-else-if="timeline?.events?.length" class="relative pl-6">
@@ -142,7 +142,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else-if="!timeline?.error" class="text-gray-600 text-center py-16 text-sm">
+    <div v-else-if="!timeline?.error && !timelineError" class="text-gray-600 text-center py-16 text-sm">
       {{ $t('timeline.noEvents') }}
     </div>
   </div>

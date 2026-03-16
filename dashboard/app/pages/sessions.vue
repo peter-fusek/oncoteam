@@ -2,7 +2,7 @@
 const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
-const { data: sessions, status: sessionsStatus, refresh } = fetchApi<{
+const { data: sessions, status: sessionsStatus, error: sessionsError, refresh } = fetchApi<{
   sessions: Array<{
     id: number
     title: string
@@ -27,7 +27,7 @@ const drilldown = useDrilldown()
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
 
-    <ApiErrorBanner :error="sessions?.error" />
+    <ApiErrorBanner :error="sessions?.error || sessionsError?.message" />
     <SkeletonLoader v-if="!sessions && sessionsStatus === 'pending'" variant="cards" />
 
     <div v-else-if="sessions?.sessions?.length" class="space-y-3">
@@ -54,7 +54,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else-if="!sessions?.error" class="text-gray-600 text-center py-16 text-sm">
+    <div v-else-if="!sessions?.error && !sessionsError" class="text-gray-600 text-center py-16 text-sm">
       {{ $t('sessions.noSessions') }}
     </div>
   </div>

@@ -4,7 +4,7 @@ const { formatDate } = useFormatDate()
 
 const lang = ref<'sk' | 'en'>('sk')
 
-const { data: updates, status: updatesStatus, refresh } = fetchApi<{
+const { data: updates, status: updatesStatus, error: updatesError, refresh } = fetchApi<{
   updates: Array<{
     id: number
     title: string
@@ -110,7 +110,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <ApiErrorBanner :error="updates?.error" />
+    <ApiErrorBanner :error="updates?.error || updatesError?.message" />
 
     <!-- Print header -->
     <div class="hidden print:block">
@@ -198,7 +198,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else-if="!updates?.error && !latestGenerated" class="text-gray-600 text-center py-8 text-sm">
+    <div v-else-if="!updates?.error && !updatesError && !latestGenerated" class="text-gray-600 text-center py-8 text-sm">
       {{ $t('familyUpdate.noUpdates') }}
     </div>
   </div>

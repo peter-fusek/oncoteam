@@ -4,7 +4,7 @@ const { activeRole } = useUserRole()
 const { t } = useI18n()
 const { formatDate } = useFormatDate()
 
-const { data: toxicity, status: toxicityStatus, refresh } = fetchApi<{
+const { data: toxicity, status: toxicityStatus, error: toxicityError, refresh } = fetchApi<{
   entries: Array<{
     id: number
     date: string
@@ -124,7 +124,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
 
-    <ApiErrorBanner :error="toxicity?.error" />
+    <ApiErrorBanner :error="toxicity?.error || toxicityError?.message" />
 
     <!-- Log Form -->
     <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
@@ -281,7 +281,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       </div>
     </div>
 
-    <div v-else-if="!toxicity?.error" class="text-gray-600 text-center py-8 text-sm">
+    <div v-else-if="!toxicity?.error && !toxicityError" class="text-gray-600 text-center py-8 text-sm">
       {{ $t('toxicity.noEntries') }}
     </div>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 
-const { data: research, status: researchStatus, refresh } = fetchApi<{
+const { data: research, status: researchStatus, error: researchError, refresh } = fetchApi<{
   entries: Array<{
     id: number
     source: string
@@ -73,7 +73,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <ApiErrorBanner :error="research?.error" />
+    <ApiErrorBanner :error="research?.error || researchError?.message" />
     <SkeletonLoader v-if="!research && researchStatus === 'pending'" variant="cards" />
 
     <div v-if="filtered.length" class="space-y-2">
@@ -127,7 +127,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else-if="!research?.error" class="text-gray-600 text-center py-16 text-sm">
+    <div v-else-if="!research?.error && !researchError" class="text-gray-600 text-center py-16 text-sm">
       {{ $t('research.noResearch') }}
     </div>
   </div>

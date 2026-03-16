@@ -3,7 +3,7 @@ const { fetchApi } = useOncoteamApi()
 const { t } = useI18n()
 const { formatDate, formatDateShort } = useFormatDate()
 
-const { data: meds, status: medsStatus, refresh } = fetchApi<{
+const { data: meds, status: medsStatus, error: medsError, refresh } = fetchApi<{
   medications: Array<{
     id: number
     date: string
@@ -121,7 +121,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <ApiErrorBanner :error="meds?.error" />
+    <ApiErrorBanner :error="meds?.error || medsError?.message" />
 
     <SkeletonLoader v-if="!meds && medsStatus === 'pending'" variant="cards" />
     <template v-else>
@@ -309,7 +309,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else-if="!meds?.error" class="text-gray-600 text-center py-8 text-sm">
+    <div v-else-if="!meds?.error && !medsError" class="text-gray-600 text-center py-8 text-sm">
       {{ $t('medications.noEntries') }}
     </div>
 

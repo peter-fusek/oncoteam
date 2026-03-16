@@ -11,7 +11,7 @@ const {
 
 // ── Data fetching ────────────────────────────────
 
-const { data: status, status: statusFetch, refresh: refreshStatus } = fetchApi<{
+const { data: status, status: statusFetch, error: statusError, refresh: refreshStatus } = fetchApi<{
   status: string; version: string; session_id: string; tools_count: number
 }>('/status', { lazy: true })
 
@@ -335,6 +335,7 @@ onUnmounted(() => {
 <template>
   <div class="space-y-6">
     <SkeletonLoader v-if="!status && statusFetch === 'pending'" variant="stat-grid" />
+    <ApiErrorBanner v-else-if="!status && statusFetch === 'error'" :error="statusError?.message" />
     <template v-else>
     <!-- Header -->
     <div class="flex items-center justify-between">

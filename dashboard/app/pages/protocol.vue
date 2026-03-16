@@ -2,7 +2,7 @@
 const { fetchApi } = useOncoteamApi()
 const drilldown = useDrilldown()
 
-const { data: protocol, status: protocolStatus, refresh } = fetchApi<{
+const { data: protocol, status: protocolStatus, error: protocolError, refresh } = fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; note?: string; action: string }>
   dose_modifications: Record<string, string>
   milestones: Array<{ cycle: number; action: string; description: string }>
@@ -86,7 +86,7 @@ const tabs = computed(() => [
     </div>
 
     <SkeletonLoader v-if="!protocol && protocolStatus === 'pending'" variant="card" />
-    <ApiErrorBanner v-else-if="!protocol && protocolStatus === 'error'" error="Failed to load protocol" />
+    <ApiErrorBanner v-else-if="!protocol && protocolStatus === 'error'" :error="protocolError?.message || 'Failed to load protocol'" />
     <div v-else-if="protocol">
       <!-- Pre-Cycle Checklist -->
       <div v-if="activeTab === 'checklist'">

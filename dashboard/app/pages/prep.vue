@@ -3,7 +3,7 @@ const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
 // Fetch all data in parallel (lazy, non-blocking)
-const { data: patient, status: patientStatus } = fetchApi<Record<string, any>>('/patient', { lazy: true })
+const { data: patient, status: patientStatus, error: patientError } = fetchApi<Record<string, any>>('/patient', { lazy: true })
 const { data: protocol } = fetchApi<Record<string, any>>('/protocol', { lazy: true })
 const { data: toxicity } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/toxicity?limit=5', { lazy: true })
 const { data: labs } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/labs?limit=5', { lazy: true })
@@ -94,7 +94,7 @@ function printPrep() {
     </div>
 
     <SkeletonLoader v-if="!patient && patientStatus === 'pending'" variant="card" />
-    <ApiErrorBanner v-else-if="patientStatus === 'error'" error="Failed to load prep data" />
+    <ApiErrorBanner v-else-if="patientStatus === 'error'" :error="patientError?.message || 'Failed to load prep data'" />
     <template v-else>
     <!-- Patient Summary -->
     <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white">
