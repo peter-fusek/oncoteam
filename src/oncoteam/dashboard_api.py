@@ -313,7 +313,15 @@ async def api_health_deep(request: Request) -> JSONResponse:
     # Scheduler status
     if _standalone_scheduler is not None and _standalone_scheduler.running:
         jobs = _standalone_scheduler.get_jobs()
-        checks["scheduler"] = {"running": True, "job_count": len(jobs)}
+        next_runs = {}
+        for j in jobs:
+            if j.next_run_time:
+                next_runs[j.id] = j.next_run_time.isoformat()
+        checks["scheduler"] = {
+            "running": True,
+            "job_count": len(jobs),
+            "next_runs": next_runs,
+        }
     else:
         checks["scheduler"] = {"running": False, "job_count": 0}
 
