@@ -50,10 +50,12 @@ _logger = logging.getLogger("oncoteam.dashboard_api")
 _last_trigger_result: dict | None = None
 
 # Patterns that identify test/E2E data created by automated tests
-_TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test ", "testovacia")
+_TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test", "testovacia")
 _TEST_TOOL_NAMES = ("e2e_test",)
 _TEST_AGENT_IDS = ("oncoteam-e2e",)
 _TEST_TAGS = ("e2e-test",)
+# Known contaminated event IDs (E2E test data that leaked into production — #85)
+_CONTAMINATED_EVENT_IDS = {22, 23, 24}
 
 
 def _normalize_lab_values(meta: dict) -> dict:
@@ -71,6 +73,10 @@ def _normalize_lab_values(meta: dict) -> dict:
 
 def _is_test_entry(entry: dict) -> bool:
     """Return True if the entry looks like test/E2E data."""
+    # Blocklist of known contaminated event IDs (#85)
+    eid = entry.get("id")
+    if isinstance(eid, int) and eid in _CONTAMINATED_EVENT_IDS:
+        return True
     title = (entry.get("title") or "").lower()
     if any(p in title for p in _TEST_TITLE_PATTERNS):
         return True
