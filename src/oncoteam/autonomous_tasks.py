@@ -595,23 +595,74 @@ Structure for MDT presentation:
     return result
 
 
-async def run_daily_cost_report() -> dict:
-    """Send daily cost summary via WhatsApp (lightweight, no Claude API call)."""
+async def _send_whatsapp(msg: str) -> dict:
+    """Send a WhatsApp message via dashboard internal endpoint."""
     import httpx
 
+    from .config import DASHBOARD_API_KEY
+
+    dashboard_url = "https://dashboard.oncoteam.cloud"
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{dashboard_url}/api/internal/whatsapp-notify",
+            json={"message": msg},
+            headers={"Authorization": f"Bearer {DASHBOARD_API_KEY}"},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def run_daily_cost_report() -> dict:
+    """Send morning clinical summary + cost via WhatsApp (no Claude API call)."""
     from .autonomous import get_daily_cost
-    from .config import AUTONOMOUS_COST_LIMIT
+    from .config import ANTHROPIC_CREDIT_BALANCE, AUTONOMOUS_COST_LIMIT
 
     logger.info(">>> Starting task: daily_cost_report")
     try:
-        # Get cost data
-        today_spend = get_daily_cost()
         now = datetime.now(UTC)
         month_key = now.strftime("%Y-%m")
+        lines = [f"*Oncoteam Ranný prehľad*\n{now.strftime('%Y-%m-%d')}\n"]
 
+        # --- Labs section ---
+        try:
+            trends = await oncofiles_client.get_lab_trends_data(limit=200)
+            values_list = trends.get("values", []) if isinstance(trends, dict) else []
+            if values_list:
+                from collections import defaultdict
+
+                by_date: dict[str, dict] = defaultdict(dict)
+                for v in values_list:
+                    d = v.get("lab_date", "")
+                    if d:
+                        by_date[d][v.get("parameter", "")] = v.get("value")
+                if by_date:
+                    latest_date = max(by_date.keys())
+                    vals = by_date[latest_date]
+                    anc = vals.get("ABS_NEUT", vals.get("ANC"))
+                    plt = vals.get("PLT")
+                    wbc = vals.get("WBC")
+                    hgb = vals.get("HGB")
+                    lines.append(f"*Labky ({latest_date})*")
+                    if anc is not None:
+                        flag = " ⚠️" if anc < 1.5 else ""
+                        lines.append(f"  ANC: {anc}{flag}")
+                    if plt is not None:
+                        lines.append(f"  PLT: {plt:.0f}")
+                    if wbc is not None:
+                        lines.append(f"  WBC: {wbc}")
+                    if hgb is not None:
+                        lines.append(f"  HGB: {hgb}")
+                    lines.append("")
+        except Exception:
+            lines.append("Labky: nedostupné\n")
+
+        # --- Cycle section ---
+        lines.append(f"*Cyklus {PATIENT.get('current_cycle', 3)}* — mFOLFOX6")
+        lines.append("")
+
+        # --- Cost section ---
+        today_spend = get_daily_cost()
         mtd_spend = 0.0
-        remaining = 0.0
-        days_remaining = 0.0
         try:
             raw = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
             state = raw if isinstance(raw, dict) else {}
@@ -625,44 +676,20 @@ async def run_daily_cost_report() -> dict:
         except Exception:
             pass
 
-        from .config import ANTHROPIC_CREDIT_BALANCE
-
         remaining = max(0, ANTHROPIC_CREDIT_BALANCE - mtd_spend)
-        daily_avg = mtd_spend / now.day if now.day > 0 and mtd_spend > 0 else 0
-        days_remaining = remaining / daily_avg if daily_avg > 0 else 999
-
-        # Format WhatsApp message
-        msg = (
-            f"*Oncoteam Daily Cost Report*\n"
-            f"{now.strftime('%Y-%m-%d')}\n\n"
-            f"Today: ${today_spend:.2f} / ${AUTONOMOUS_COST_LIMIT:.2f}\n"
-            f"Month (MTD): ${mtd_spend:.2f}\n"
-            f"Remaining: ${remaining:.2f} (~{days_remaining:.0f} days)\n"
+        lines.append(
+            f"*Agent*: ${today_spend:.2f}/${AUTONOMOUS_COST_LIMIT:.2f} dnes"
+            f" | ${mtd_spend:.2f} MTD | ${remaining:.2f} zostatok"
         )
         if remaining < 5:
-            msg += "\n⚠️ Low balance!"
+            lines.append("⚠️ Nízky zostatok!")
 
-        # Send via dashboard internal endpoint
-        from .config import MCP_BASE_URL
-
-        dashboard_url = MCP_BASE_URL.replace("oncoteam-production", "valiant-reprieve-production")
-        if "dashboard.oncoteam.cloud" not in dashboard_url:
-            dashboard_url = "https://dashboard.oncoteam.cloud"
-
-        from .config import DASHBOARD_API_KEY
-
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                f"{dashboard_url}/api/internal/whatsapp-notify",
-                json={"message": msg},
-                headers={"Authorization": f"Bearer {DASHBOARD_API_KEY}"},
-            )
-            resp.raise_for_status()
-            result_data = resp.json()
+        msg = "\n".join(lines)
+        result_data = await _send_whatsapp(msg)
 
         sent = result_data.get("sent", 0)
         logger.info("<<< Completed task: daily_cost_report — sent to %d", sent)
-        return {"ok": True, "message": msg, "sent": result_data.get("sent", 0)}
+        return {"ok": True, "message": msg, "sent": sent}
 
     except Exception as e:
         logger.error("!!! Failed task: daily_cost_report — %s", e)
