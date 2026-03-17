@@ -33,7 +33,7 @@ async def _keepalive_ping():
             resp = await client.get(health_url)
             logger.debug("Keep-alive ping %s -> %d", health_url, resp.status_code)
     except Exception as e:
-        logger.debug("Keep-alive ping failed: %s", e)
+        logger.warning("Keep-alive ping failed: %s", e)
 
 
 def _get_task_functions() -> dict:

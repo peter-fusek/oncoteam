@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -34,6 +35,15 @@ _DEFAULT_COST = (3.0 / 1_000_000, 15.0 / 1_000_000)  # fallback
 # Daily cost accumulator (reset by scheduler at midnight)
 _daily_cost: float = 0.0
 _daily_cost_reset_date: str = ""
+_cost_lock: asyncio.Lock | None = None  # lazy init to avoid event loop issues
+
+
+def _get_cost_lock() -> asyncio.Lock:
+    """Get or create the cost lock (lazy init for event loop compatibility)."""
+    global _cost_lock
+    if _cost_lock is None:
+        _cost_lock = asyncio.Lock()
+    return _cost_lock
 
 
 def _get_client():
