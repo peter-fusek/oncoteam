@@ -76,15 +76,16 @@ const chartData = computed(() => {
     }),
     datalabels: {
       display: (ctx: any) => {
-        // Show labels on first, last, and out-of-range points
         const idx = ctx.dataIndex
         const val = ctx.dataset.data[idx]
         if (val == null) return false
-        const len = ctx.dataset.data.filter((v: any) => v != null).length
-        if (len <= 4) return true
-        if (idx === 0 || idx === ctx.dataset.data.length - 1) return true
-        if (props.referenceMax != null && val > props.referenceMax) return true
-        if (props.referenceMin != null && val < props.referenceMin) return true
+        const nonNullIndices = ctx.dataset.data
+          .map((v: any, i: number) => v != null ? i : -1)
+          .filter((i: number) => i >= 0)
+        if (!nonNullIndices.length) return false
+        // Show on first, last, and critical values only
+        if (idx === nonNullIndices[0] || idx === nonNullIndices[nonNullIndices.length - 1]) return true
+        // Show on critical values (below threshold)
         if (props.thresholdMin != null && val < props.thresholdMin) return true
         return false
       },
@@ -98,7 +99,9 @@ const chartData = computed(() => {
       },
       anchor: 'end' as const,
       align: 'top' as const,
-      font: { size: 10, weight: 'bold' as const },
+      offset: 8,
+      padding: 4,
+      font: { size: 9, weight: 'bold' as const },
       formatter: (val: number) => val?.toLocaleString() ?? '',
     },
   })

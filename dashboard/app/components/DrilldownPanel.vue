@@ -182,7 +182,12 @@ function isActivityType(): boolean {
             <!-- Simple key-value -->
             <div v-else class="flex items-start gap-2 text-sm px-1">
               <span class="text-gray-500 font-mono text-xs min-w-24 shrink-0">{{ String(key).replace(/_/g, ' ') }}</span>
-              <span class="text-gray-300 break-all">{{ formatValue(val) }}</span>
+              <NuxtLink
+                v-if="String(key) === 'document_id'"
+                :to="'/documents?id=' + val"
+                class="text-teal-400 hover:text-teal-300 break-all"
+              >Doc #{{ val }}</NuxtLink>
+              <span v-else class="text-gray-300 break-all">{{ formatValue(val) }}</span>
             </div>
           </template>
         </template>
