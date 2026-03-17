@@ -68,6 +68,33 @@ async def test_api_status_has_cors_headers():
     assert "GET" in response.headers["access-control-allow-methods"]
 
 
+# ── _cors_json last_updated injection ─────────────
+
+
+@pytest.mark.anyio
+async def test_cors_json_injects_last_updated():
+    """Every API response should have a last_updated ISO timestamp."""
+    request = _make_request("/api/status")
+    response = await api_status(request)
+    data = json.loads(response.body)
+    assert "last_updated" in data
+    # Should be a valid ISO timestamp
+    from datetime import datetime
+
+    datetime.fromisoformat(data["last_updated"])
+
+
+@pytest.mark.anyio
+async def test_cors_json_does_not_overwrite_existing_last_updated():
+    """If data already has last_updated, _cors_json should not overwrite it."""
+    from oncoteam.dashboard_api import _cors_json
+
+    data = {"foo": "bar", "last_updated": "2025-01-01T00:00:00+00:00"}
+    response = _cors_json(data)
+    result = json.loads(response.body)
+    assert result["last_updated"] == "2025-01-01T00:00:00+00:00"
+
+
 # ── /api/activity ─────────────────────────────────
 
 

@@ -318,6 +318,11 @@ def _cors_json(
     data: dict, status_code: int = 200, *, request: Request | None = None
 ) -> JSONResponse:
     """Return JSONResponse with CORS headers for dashboard access."""
+    if isinstance(data, dict) and "last_updated" not in data:
+        from datetime import UTC
+        from datetime import datetime as _dt
+
+        data["last_updated"] = _dt.now(UTC).isoformat()
     response = JSONResponse(data, status_code=status_code)
     req = request or _CURRENT_REQUEST
     origin = _get_cors_origin(req) if req else ""

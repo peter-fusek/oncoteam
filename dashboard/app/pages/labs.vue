@@ -169,6 +169,7 @@ async function submitLab() {
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('labs.title') }}</h1>
         <p class="text-sm text-gray-400">{{ $t('labs.subtitle', { count: labs?.total ?? 0 }) }}</p>
+        <LastUpdated :timestamp="labs?.last_updated" />
       </div>
       <div class="flex items-center gap-2">
         <!-- Rookie/Pro toggle -->

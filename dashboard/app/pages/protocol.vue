@@ -66,6 +66,7 @@ const tabs = computed(() => [
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('protocol.title') }}</h1>
         <p class="text-sm text-gray-400">{{ $t('protocol.subtitle') }}</p>
+        <LastUpdated :timestamp="protocol?.last_updated" />
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>

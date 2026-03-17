@@ -53,6 +53,7 @@ const allQuestions = computed(() => {
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('briefings.title') }}</h1>
         <p class="text-sm text-gray-400">{{ $t('briefings.count', { count: briefings?.total ?? 0 }) }}</p>
+        <LastUpdated :timestamp="briefings?.last_updated" />
       </div>
       <div class="flex items-center gap-3">
         <div v-if="autonomous" class="flex items-center gap-2 text-xs">

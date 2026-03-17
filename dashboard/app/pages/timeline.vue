@@ -62,6 +62,7 @@ const drilldown = useDrilldown()
       <div>
         <h1 class="text-2xl font-bold text-white">{{ $t('timeline.title') }}</h1>
         <p class="text-sm text-gray-400">{{ $t('timeline.count', { count: timeline?.total ?? 0 }) }}</p>
+        <LastUpdated :timestamp="timeline?.last_updated" />
       </div>
       <div class="flex items-center gap-2">
         <UBadge v-if="protocol?.current_cycle" variant="subtle" color="info" size="xs">

@@ -88,6 +88,7 @@ const drilldown = useDrilldown()
             {{ $t('research.count', { count: research?.total ?? 0 }) }}
           </template>
         </p>
+        <LastUpdated :timestamp="research?.last_updated" />
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <!-- Sort dropdown -->
