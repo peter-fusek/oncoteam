@@ -362,7 +362,12 @@
     "title": "Sedenia",
     "subtitle": "História konverzácií s agentom",
     "noSessions": "Zatiaľ žiadne sedenia",
-    "count": "{count} sedení"
+    "count": "{count} sedení",
+    "filterAll": "Všetky",
+    "filterClinical": "Klinické",
+    "filterTechnical": "Technické",
+    "typeClinical": "Klinické",
+    "typeTechnical": "Technické"
   },
   "familyUpdate": {
     "title": "Správa pre rodinu",

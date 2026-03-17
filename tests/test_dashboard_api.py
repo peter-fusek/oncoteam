@@ -437,6 +437,9 @@ async def test_api_sessions_returns_entries(mock_search):
     assert response.status_code == 200
     assert data["total"] == 1
     assert data["sessions"][0]["title"] == "Session: Reviewed lab results"
+    assert data["sessions"][0]["session_type"] == "clinical"
+    assert "type_counts" in data
+    assert data["type_counts"]["clinical"] == 1
     mock_search.assert_called_once_with(entry_type="session_summary", limit=20)
 
 
@@ -878,3 +881,89 @@ async def test_api_sessions_includes_source(mock_search):
 
     assert "source" in data["sessions"][0]
     assert data["sessions"][0]["source"]["type"] == "session"
+
+
+# ── Session type classification tests ─────────────
+
+
+MOCK_SESSIONS_MIXED = {
+    "entries": [
+        {
+            "id": 10,
+            "title": "Session: Lab review and chemo cycle 2",
+            "content": "Reviewed CBC trends, ANC values, and toxicity grades.",
+            "created_at": "2026-03-10T10:00:00Z",
+            "tags": ["session"],
+        },
+        {
+            "id": 11,
+            "title": "Session: Sprint 34 deploy and CI fix",
+            "content": "Fixed Railway deploy pipeline and refactored tests.",
+            "created_at": "2026-03-10T11:00:00Z",
+            "tags": ["session"],
+        },
+    ]
+}
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_classifies_types(mock_search):
+    mock_search.return_value = MOCK_SESSIONS_MIXED
+    request = _make_request("/api/sessions")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 2
+    assert data["type_counts"] == {"clinical": 1, "technical": 1}
+    types = {s["title"]: s["session_type"] for s in data["sessions"]}
+    assert types["Session: Lab review and chemo cycle 2"] == "clinical"
+    assert types["Session: Sprint 34 deploy and CI fix"] == "technical"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_filters_by_type(mock_search):
+    mock_search.return_value = MOCK_SESSIONS_MIXED
+    request = _make_request("/api/sessions", query_string="type=clinical")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 1
+    assert data["sessions"][0]["session_type"] == "clinical"
+    # type_counts should reflect ALL sessions, not just filtered
+    assert data["type_counts"] == {"clinical": 1, "technical": 1}
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_filters_technical(mock_search):
+    mock_search.return_value = MOCK_SESSIONS_MIXED
+    request = _make_request("/api/sessions", query_string="type=technical")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    assert data["total"] == 1
+    assert data["sessions"][0]["session_type"] == "technical"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_defaults_clinical_for_ambiguous(mock_search):
+    mock_search.return_value = {
+        "entries": [
+            {
+                "id": 20,
+                "title": "Session: General discussion",
+                "content": "Talked about various topics.",
+                "created_at": "2026-03-10T10:00:00Z",
+                "tags": ["session"],
+            }
+        ]
+    }
+    request = _make_request("/api/sessions")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    # Ambiguous session defaults to clinical
+    assert data["sessions"][0]["session_type"] == "clinical"

@@ -59,10 +59,10 @@ export default defineEventHandler(async (event) => {
   }
 
   const db = useDb()
-  const apiUrl = config.public.oncoteamApiUrl
+  const apiUrl = config.oncoteamApiUrl
 
   // Fetch recent activity from oncoteam backend
-  const apiKey = config.public.oncoteamApiKey || ''
+  const apiKey = config.oncoteamApiKey || ''
   const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
   const response = await $fetch<{ entries: Array<{ tool: string; timestamp: string }> }>(
     `${apiUrl}/api/activity?limit=50`,

@@ -119,6 +119,9 @@ async def test_sessions_has_sessions_key(mock):
     data = _parse(await api_sessions(_make_request()))
     assert "sessions" in data
     assert isinstance(data["sessions"], list)
+    assert "type_counts" in data
+    assert "clinical" in data["type_counts"]
+    assert "technical" in data["type_counts"]
 
 
 @pytest.mark.anyio

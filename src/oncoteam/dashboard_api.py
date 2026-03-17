@@ -169,6 +169,71 @@ _NON_ONCOLOGY_PATTERNS = (
 )
 
 
+# Keywords for classifying sessions as technical vs clinical
+_TECHNICAL_KEYWORDS = (
+    "deploy",
+    "sprint",
+    "debug",
+    "fix",
+    "ci/cd",
+    "ci pipeline",
+    "test",
+    "version",
+    "migration",
+    "refactor",
+    "infra",
+    "railway",
+    "render",
+    "dockerfile",
+    "eslint",
+    "ruff",
+    "github action",
+    "pipeline",
+    "pr review",
+    "pull request",
+)
+_CLINICAL_KEYWORDS = (
+    "chemo",
+    "lab",
+    "toxicity",
+    "briefing",
+    "cycle",
+    "folfox",
+    "cea",
+    "anc",
+    "onkolog",
+    "vysetrenie",
+    "kontrola",
+    "patient",
+    "pacient",
+    "treatment",
+    "liecba",
+    "neuropathy",
+    "nausea",
+    "diarrhea",
+    "pubmed",
+    "trial",
+    "biomarker",
+    "dose",
+    "safety",
+)
+
+
+def _classify_session_type(entry: dict) -> str:
+    """Classify a session as 'clinical' or 'technical'."""
+    title = (entry.get("title") or "").lower()
+    content = (entry.get("content") or "").lower()
+    text = f"{title} {content[:300]}"
+
+    tech_hits = sum(1 for kw in _TECHNICAL_KEYWORDS if kw in text)
+    clin_hits = sum(1 for kw in _CLINICAL_KEYWORDS if kw in text)
+
+    if tech_hits > clin_hits:
+        return "technical"
+    # Default to clinical when unclear or tied
+    return "clinical"
+
+
 def _is_oncology_session(entry: dict) -> bool:
     """Return True if the session is oncology-relevant."""
     title = (entry.get("title") or "").lower()
@@ -542,14 +607,33 @@ async def api_research(request: Request) -> JSONResponse:
 
 
 async def api_sessions(request: Request) -> JSONResponse:
-    """GET /api/sessions — session summaries from conversations."""
+    """GET /api/sessions — session summaries from conversations.
+
+    Query params:
+        limit: max entries (default 20)
+        type: filter by session type — 'clinical', 'technical', or 'all' (default 'all')
+    """
     limit = int(request.query_params.get("limit", "20"))
+    type_filter = request.query_params.get("type", "all").lower()
     try:
         result = await oncofiles_client.search_conversations(
             entry_type="session_summary", limit=limit
         )
         entries = _filter_test(_extract_list(result, "entries"), request)
         entries = [e for e in entries if _is_oncology_session(e)]
+
+        # Classify each session
+        classified = []
+        type_counts = {"clinical": 0, "technical": 0}
+        for e in entries:
+            session_type = _classify_session_type(e)
+            type_counts[session_type] += 1
+            classified.append((e, session_type))
+
+        # Filter by type if requested
+        if type_filter in ("clinical", "technical"):
+            classified = [(e, st) for e, st in classified if st == type_filter]
+
         return _cors_json(
             {
                 "sessions": [
@@ -560,15 +644,21 @@ async def api_sessions(request: Request) -> JSONResponse:
                         "date": e.get("created_at"),
                         "tags": e.get("tags"),
                         "source": _build_source_ref(e, "session"),
+                        "session_type": session_type,
                     }
-                    for e in entries
+                    for e, session_type in classified
                 ],
-                "total": len(entries),
+                "total": len(classified),
+                "type_counts": type_counts,
             }
         )
     except Exception as e:
         record_suppressed_error("api_sessions", "fetch", e)
-        return _cors_json({"error": str(e), "sessions": [], "total": 0}, status_code=502)
+        empty_counts = {"clinical": 0, "technical": 0}
+        return _cors_json(
+            {"error": str(e), "sessions": [], "total": 0, "type_counts": empty_counts},
+            status_code=502,
+        )
 
 
 async def api_autonomous(request: Request) -> JSONResponse:

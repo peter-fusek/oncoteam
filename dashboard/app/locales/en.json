@@ -362,7 +362,12 @@
     "title": "Chat Sessions",
     "subtitle": "Agent conversation history",
     "noSessions": "No sessions logged yet",
-    "count": "{count} sessions"
+    "count": "{count} sessions",
+    "filterAll": "All",
+    "filterClinical": "Clinical",
+    "filterTechnical": "Technical",
+    "typeClinical": "Clinical",
+    "typeTechnical": "Technical"
   },
   "familyUpdate": {
     "title": "Family Update",

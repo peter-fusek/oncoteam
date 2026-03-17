@@ -94,7 +94,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Process command and respond
-  const oncoteamApiUrl = config.public.oncoteamApiUrl as string
+  const oncoteamApiUrl = config.oncoteamApiUrl as string
   const reply = await handleWhatsAppCommand(messageBody, oncoteamApiUrl)
 
   setResponseHeader(event, 'content-type', 'text/xml')
