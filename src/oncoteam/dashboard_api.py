@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import math
 import re
 import time
 
@@ -463,9 +464,20 @@ _RELEVANCE_SORT_ORDER = {"high": 0, "medium": 1, "low": 2, "not_applicable": 3}
 
 
 async def api_research(request: Request) -> JSONResponse:
-    """GET /api/research — research entries from oncofiles."""
-    limit = int(request.query_params.get("limit", "20"))
+    """GET /api/research — research entries from oncofiles.
+
+    Query params:
+      - limit: max entries to fetch from oncofiles (default 100)
+      - source: filter by source (pubmed, clinicaltrials)
+      - sort: relevance (default), date, source
+      - page: page number (default 1)
+      - per_page: entries per page (default 10)
+    """
+    limit = int(request.query_params.get("limit", "100"))
     source = request.query_params.get("source")
+    sort = request.query_params.get("sort", "relevance")
+    page = max(1, int(request.query_params.get("page", "1")))
+    per_page = max(1, min(100, int(request.query_params.get("per_page", "10"))))
     try:
         result = await oncofiles_client.list_research_entries(source=source, limit=limit)
         entries = _filter_test(_extract_list(result, "entries"), request)
@@ -492,16 +504,41 @@ async def api_research(request: Request) -> JSONResponse:
                     "source_ref": _build_source_ref(e, "research"),
                 }
             )
-        items.sort(
-            key=lambda x: _RELEVANCE_SORT_ORDER.get(
-                x["relevance"],
-                2,
-            )
+        # Sort
+        if sort == "date":
+            items.sort(key=lambda x: x.get("date") or "", reverse=True)
+        elif sort == "source":
+            items.sort(key=lambda x: x.get("source") or "")
+        else:
+            items.sort(key=lambda x: _RELEVANCE_SORT_ORDER.get(x["relevance"], 2))
+        # Paginate
+        total = len(items)
+        total_pages = max(1, math.ceil(total / per_page))
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated = items[start:end]
+        return _cors_json(
+            {
+                "entries": paginated,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
+            }
         )
-        return _cors_json({"entries": items, "total": len(items)})
     except Exception as e:
         record_suppressed_error("api_research", "fetch", e)
-        return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
+        return _cors_json(
+            {
+                "error": str(e),
+                "entries": [],
+                "total": 0,
+                "page": 1,
+                "per_page": per_page,
+                "total_pages": 0,
+            },
+            status_code=502,
+        )
 
 
 async def api_sessions(request: Request) -> JSONResponse:

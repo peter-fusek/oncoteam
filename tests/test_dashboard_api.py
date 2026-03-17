@@ -312,7 +312,10 @@ async def test_api_research_returns_entries(mock_list):
     assert entry["source"] == "pubmed"
     assert entry["relevance"] == "high"  # "KRAS G12S" matches patient
     assert entry["relevance_reason"]
-    mock_list.assert_called_once_with(source=None, limit=20)
+    assert data["page"] == 1
+    assert data["per_page"] == 10
+    assert data["total_pages"] == 1
+    mock_list.assert_called_once_with(source=None, limit=100)
 
 
 @pytest.mark.anyio
