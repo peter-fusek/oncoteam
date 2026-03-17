@@ -499,6 +499,7 @@ def resolve_protocol(lang: str = "sk") -> dict:
     return {
         "lab_thresholds": LAB_SAFETY_THRESHOLDS,
         "reference_ranges": LAB_REFERENCE_RANGES,
+        "health_direction": PARAMETER_HEALTH_DIRECTION,
         "dose_modifications": resolve(DOSE_MODIFICATION_RULES, lang),
         "milestones": resolve(TREATMENT_MILESTONES, lang),
         "monitoring_schedule": resolve(MONITORING_SCHEDULE, lang),
@@ -510,3 +511,20 @@ def resolve_protocol(lang: str = "sk") -> dict:
         "safety_flags": resolve(SAFETY_FLAGS, lang),
         "current_cycle": 3,
     }
+
+
+# Section name aliases for the MCP tool
+PROTOCOL_SECTIONS = {
+    "lab_thresholds",
+    "reference_ranges",
+    "health_direction",
+    "dose_modifications",
+    "milestones",
+    "monitoring_schedule",
+    "watched_trials",
+    "second_line_options",
+    "cumulative_dose",
+    "cycle_delay_rules",
+    "nutrition_escalation",
+    "safety_flags",
+}

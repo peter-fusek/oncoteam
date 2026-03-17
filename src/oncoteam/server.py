@@ -895,6 +895,34 @@ async def get_precycle_checklist(cycle_number: int = 3) -> str:
     return json.dumps(result) if isinstance(result, dict) else str(result)
 
 
+@mcp.tool()
+@log_activity
+async def get_clinical_protocol(section: str | None = None, lang: str = "en") -> str:
+    """Get the clinical protocol data (thresholds, dose mods, milestones, etc.).
+
+    Returns the full mFOLFOX6 protocol as structured JSON, or a single section.
+    Useful for external agents and clients that need protocol data without
+    importing Python code.
+
+    Args:
+        section: Optional section filter. One of: lab_thresholds, reference_ranges,
+            health_direction, dose_modifications, milestones, monitoring_schedule,
+            watched_trials, second_line_options, cumulative_dose, cycle_delay_rules,
+            nutrition_escalation, safety_flags. Returns all sections if not specified.
+        lang: Language for bilingual content ('sk' or 'en', default 'en').
+    """
+    from .clinical_protocol import PROTOCOL_SECTIONS, resolve_protocol
+
+    protocol = resolve_protocol(lang)
+    if section:
+        if section not in PROTOCOL_SECTIONS:
+            return json.dumps(
+                {"error": f"Unknown section: {section}", "available": sorted(PROTOCOL_SECTIONS)}
+            )
+        return json.dumps({section: protocol[section]}, default=str)
+    return json.dumps(protocol, default=str)
+
+
 # ── Health check ────────────────────────────────
 
 
