@@ -97,6 +97,20 @@ export default defineEventHandler(async (event) => {
   const oncoteamApiUrl = config.oncoteamApiUrl as string
   const reply = await handleWhatsAppCommand(messageBody, oncoteamApiUrl)
 
+  // Log the WhatsApp exchange to oncofiles (fire-and-forget)
+  try {
+    const apiKey = config.oncoteamApiKey || ''
+    const logHeaders: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+    $fetch(`${oncoteamApiUrl}/api/internal/log-whatsapp`, {
+      method: 'POST',
+      body: { phone: from, user_message: messageBody, bot_response: reply },
+      headers: logHeaders,
+    }).catch(() => {})
+  }
+  catch {
+    // Logging failure must not block the response
+  }
+
   setResponseHeader(event, 'content-type', 'text/xml')
   return twiml(reply)
 })

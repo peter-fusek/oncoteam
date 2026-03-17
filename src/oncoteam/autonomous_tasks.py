@@ -826,6 +826,51 @@ async def _send_whatsapp(msg: str) -> dict:
         return resp.json()
 
 
+async def run_self_improvement() -> dict:
+    """Analyze recent conversations and activity to suggest improvements."""
+    if await _should_skip("self_improvement"):
+        return {"skipped": True, "reason": "cooldown"}
+    logger.info(">>> Starting task: self_improvement")
+    prompt = """\
+Analyze recent oncoteam activity and conversations to identify improvement opportunities.
+
+Instructions:
+1. Search for recent conversation entries (search "session", "briefing", "error")
+2. Search for recent activity log entries to find error patterns
+3. Look for:
+   - Frequently occurring errors or suppressed errors
+   - Data gaps (parameters with no values, missing documents)
+   - Repeated queries that could be automated
+   - Tool calls that consistently fail or timeout
+4. For each finding, suggest a concrete improvement:
+   - New autonomous task or modified schedule
+   - New dashboard feature or alert
+   - Data quality fix needed
+5. Store findings as a briefing with actionable recommendations
+6. If any finding is critical (patient safety), flag it prominently
+
+Focus on patterns, not individual events. Be specific and actionable.
+"""
+    try:
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="self_improvement", model=AUTONOMOUS_MODEL_LIGHT
+        )
+    except Exception as e:
+        logger.error("!!! Failed task: self_improvement — %s", e)
+        raise
+    logger.info(
+        "<<< Completed task: self_improvement (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
+    await _log_task("self_improvement", result)
+    await _set_state(
+        "last_self_improvement",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
+    return result
+
+
 async def run_protocol_review() -> dict:
     """Review clinical protocol against latest evidence from oncofiles research."""
     if await _should_skip("protocol_review"):

@@ -81,6 +81,43 @@ _AGENTS: list[AgentConfig] = [
         max_turns=0,
         prompt_template="[No prompt — direct data aggregation, no Claude API call]",
     ),
+    AgentConfig(
+        id="self_improvement",
+        name=L("Analýza zlepšení", "Self-improvement analysis"),
+        description=L(
+            "Analýza konverzácií a aktivity pre návrhy zlepšení",
+            "Analyze conversations and activity for improvement suggestions",
+        ),
+        schedule_display=L("nedeľa 08:00 UTC", "Sunday 08:00 UTC"),
+        category=AgentCategory.SYSTEM,
+        model="light",
+        schedule_type=ScheduleType.CRON,
+        schedule_params={"day_of_week": "sun", "hour": 8},
+        misfire_grace_time=86400 * 2,
+        cooldown_hours=144.0,
+        max_turns=8,
+        assigned_tool="search_documents",
+        prompt_template="""\
+Analyze recent oncoteam activity and conversations to identify improvement opportunities.
+
+Instructions:
+1. Search for recent conversation entries (search "session", "briefing", "error")
+2. Search for recent activity log entries to find error patterns
+3. Look for:
+   - Frequently occurring errors or suppressed errors
+   - Data gaps (parameters with no values, missing documents)
+   - Repeated queries that could be automated
+   - Tool calls that consistently fail or timeout
+4. For each finding, suggest a concrete improvement:
+   - New autonomous task or modified schedule
+   - New dashboard feature or alert
+   - Data quality fix needed
+5. Store findings as a briefing with actionable recommendations
+6. If any finding is critical (patient safety), flag it prominently
+
+Focus on patterns, not individual events. Be specific and actionable.\
+""",
+    ),
     # === Data Pipeline (Haiku) ===
     AgentConfig(
         id="file_scan",

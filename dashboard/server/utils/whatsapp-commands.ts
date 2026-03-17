@@ -250,8 +250,26 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
   const lang = detectLang(input)
   const command = COMMAND_MAP[input]
 
-  if (!command || command === 'help') {
+  if (command === 'help') {
     return helpText(lang)
+  }
+
+  // Conversational fallback — pass unrecognized messages to Claude API
+  if (!command) {
+    try {
+      const config = useRuntimeConfig()
+      const apiKey = config.oncoteamApiKey || ''
+      const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+      const result = await $fetch<{ response: string }>(`${oncoteamApiUrl}/api/internal/whatsapp-chat`, {
+        method: 'POST',
+        body: { message: body, lang },
+        headers,
+      })
+      return truncate(result.response || helpText(lang))
+    }
+    catch {
+      return helpText(lang)
+    }
   }
 
   const apiMap: Record<string, string> = {

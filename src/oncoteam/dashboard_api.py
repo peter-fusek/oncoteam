@@ -15,6 +15,7 @@ from starlette.responses import JSONResponse
 
 from . import oncofiles_client
 from .activity_logger import get_session_id, get_suppressed_errors, record_suppressed_error
+from .autonomous import run_autonomous_task
 from .clinical_protocol import (
     CUMULATIVE_DOSE_THRESHOLDS,
     DOSE_MODIFICATION_RULES,
@@ -29,10 +30,12 @@ from .clinical_protocol import (
     WATCHED_TRIALS,
 )
 from .config import (
+    ANTHROPIC_API_KEY,
     ANTHROPIC_BUDGET_ALERT_THRESHOLD,
     ANTHROPIC_CREDIT_BALANCE,
     AUTONOMOUS_COST_LIMIT,
     AUTONOMOUS_ENABLED,
+    AUTONOMOUS_MODEL_LIGHT,
     DASHBOARD_ALLOWED_ORIGINS,
     DASHBOARD_API_KEY,
     GIT_COMMIT,
@@ -2396,6 +2399,83 @@ async def api_agent_runs(request: Request) -> JSONResponse:
             }
         )
     return _cors_json({"agent_id": agent_id, "runs": runs, "total": len(runs)})
+
+
+async def api_log_whatsapp(request: Request) -> JSONResponse:
+    """POST /api/internal/log-whatsapp — log WhatsApp message exchange."""
+    auth = _check_api_auth(request)
+    if auth:
+        return auth
+    try:
+        body = json.loads(await request.body())
+        phone = body.get("phone", "unknown")
+        user_msg = body.get("user_message", "")
+        bot_response = body.get("bot_response", "")
+
+        await oncofiles_client.log_conversation(
+            title=f"WhatsApp: {user_msg[:50]}",
+            content=(
+                f"**From**: {phone}\n**Message**: {user_msg}\n\n**Response**:\n{bot_response}"
+            ),
+            entry_type="whatsapp",
+            tags="sys:whatsapp,src:twilio",
+        )
+        return _cors_json({"logged": True})
+    except Exception as e:
+        record_suppressed_error("api_log_whatsapp", "log", e)
+        return _cors_json({"error": str(e)}, status_code=502)
+
+
+async def api_whatsapp_chat(request: Request) -> JSONResponse:
+    """POST /api/internal/whatsapp-chat — conversational Claude response."""
+    auth = _check_api_auth(request)
+    if auth:
+        return auth
+    try:
+        body = json.loads(await request.body())
+        message = body.get("message", "")
+        phone = body.get("phone", "unknown")
+        lang = body.get("lang", "sk")
+
+        if not ANTHROPIC_API_KEY:
+            return _cors_json({"error": "AI not configured"}, status_code=500)
+
+        prompt = (
+            f"User message via WhatsApp (phone: {phone}, lang: {lang}):\n\n"
+            f"{message}\n\n"
+            f"Respond helpfully and concisely in {'Slovak' if lang == 'sk' else 'English'}. "
+            f"Use patient context from your system prompt. Max 1500 chars."
+        )
+
+        result = await run_autonomous_task(
+            prompt,
+            max_turns=3,
+            task_name="whatsapp_chat",
+            model=AUTONOMOUS_MODEL_LIGHT,
+        )
+
+        response_text = result.get("response", "")
+        if not response_text:
+            response_text = (
+                "Prepáčte, nepodarilo sa spracovať správu. Skúste 'pomoc'."
+                if lang == "sk"
+                else "Sorry, I couldn't process that. Try 'help' for available commands."
+            )
+
+        return _cors_json(
+            {
+                "response": response_text[:1500],
+                "cost": result.get("cost", 0),
+            }
+        )
+    except Exception as e:
+        record_suppressed_error("api_whatsapp_chat", "chat", e)
+        return _cors_json(
+            {
+                "response": "Error processing message. Try 'help'.",
+                "error": str(e),
+            }
+        )
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

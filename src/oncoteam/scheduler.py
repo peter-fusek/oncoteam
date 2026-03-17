@@ -49,6 +49,7 @@ def _get_task_functions() -> dict:
         run_pre_cycle_check,
         run_protocol_review,
         run_response_assessment,
+        run_self_improvement,
         run_toxicity_extraction,
         run_trial_monitor,
         run_tumor_marker_review,
@@ -73,6 +74,7 @@ def _get_task_functions() -> dict:
         "family_update": run_family_update,
         "medication_adherence_check": run_medication_adherence_check,
         "daily_cost_report": run_daily_cost_report,
+        "self_improvement": run_self_improvement,
     }
 
 

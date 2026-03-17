@@ -37,6 +37,7 @@ from .dashboard_api import (
     api_family_update,
     api_health_deep,
     api_labs,
+    api_log_whatsapp,
     api_medications,
     api_patient,
     api_protocol,
@@ -48,6 +49,7 @@ from .dashboard_api import (
     api_timeline,
     api_toxicity,
     api_weight,
+    api_whatsapp_chat,
 )
 from .eligibility import check_eligibility
 from .models import ResearchSource
@@ -996,6 +998,12 @@ mcp.custom_route("/api/agents/{id}/runs", methods=["GET"])(_auth_wrap(api_agent_
 mcp.custom_route("/api/agents/{id}/runs", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/agents/{id}/config", methods=["GET"])(_auth_wrap(api_agent_config))
 mcp.custom_route("/api/agents/{id}/config", methods=["OPTIONS"])(api_cors_preflight)
+
+# Internal API routes (POST-only, used by dashboard webhook)
+mcp.custom_route("/api/internal/log-whatsapp", methods=["POST"])(_auth_wrap(api_log_whatsapp))
+mcp.custom_route("/api/internal/log-whatsapp", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/internal/whatsapp-chat", methods=["POST"])(_auth_wrap(api_whatsapp_chat))
+mcp.custom_route("/api/internal/whatsapp-chat", methods=["OPTIONS"])(api_cors_preflight)
 
 
 # ── Entry point ─────────────────────────────────
