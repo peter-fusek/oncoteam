@@ -325,7 +325,7 @@ async def search_clinical_trials_adjacent(
                 external_id=trial.nct_id,
                 title=trial.title,
                 summary=trial.summary[:500] if trial.summary else "",
-                tags=["adjacent_countries", *trial.conditions[:3]],
+                tags=["res:adjacent-countries", *trial.conditions[:3]],
                 raw_data=trial.model_dump_json(),
             )
         except Exception as e:
@@ -375,7 +375,7 @@ async def search_clinical_trials_eu(
                 external_id=trial.nct_id,
                 title=trial.title,
                 summary=trial.summary[:500] if trial.summary else "",
-                tags=["eu_trials", *trial.conditions[:3]],
+                tags=["res:eu-trials", *trial.conditions[:3]],
                 raw_data=trial.model_dump_json(),
             )
         except Exception as e:
@@ -478,7 +478,7 @@ async def daily_briefing() -> str:
                         external_id=article.pmid,
                         title=article.title,
                         summary=article.abstract[:500] if article.abstract else "",
-                        tags=["daily_briefing"],
+                        tags=["task:daily-briefing"],
                         raw_data=article.model_dump_json(),
                     )
                 except Exception as e:
@@ -502,7 +502,7 @@ async def daily_briefing() -> str:
                     external_id=trial.nct_id,
                     title=trial.title,
                     summary=trial.summary[:500] if trial.summary else "",
-                    tags=["daily_briefing", "adjacent_countries"],
+                    tags=["task:daily-briefing", "res:adjacent-countries"],
                     raw_data=trial.model_dump_json(),
                 )
             except Exception as e:
@@ -746,7 +746,7 @@ async def summarize_session(
         title=f"Session: {summary[:80]}",
         content=content,
         entry_type="session_summary",
-        tags=["session"],
+        tags=["sys:session"],
     )
     return "Session summary logged."
 

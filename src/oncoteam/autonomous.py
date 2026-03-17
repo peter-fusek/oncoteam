@@ -327,7 +327,7 @@ async def execute_tool(name: str, inputs: dict) -> str:
                 title=inputs["title"],
                 content=inputs["content"],
                 entry_type="autonomous_briefing",
-                tags=inputs.get("tags", ["autonomous"]),
+                tags=inputs.get("tags", ["sys:autonomous"]),
             )
             return json.dumps({"stored": True})
 
@@ -465,7 +465,7 @@ async def _notify_cost_cap_reached() -> None:
                 f"To increase the cap, set `AUTONOMOUS_COST_LIMIT` env var on Railway."
             ),
             entry_type="cost_alert",
-            tags=["cost_alert", f"date:{today}"],
+            tags=["sys:cost-alert", f"date:{today}"],
         )
         logger.warning("Cost cap alert stored: $%.2f / $%.2f", _daily_cost, AUTONOMOUS_COST_LIMIT)
     except Exception as e:
@@ -517,7 +517,7 @@ async def _check_budget_alert(task_cost: float) -> None:
                 f"Current balance: ${ANTHROPIC_CREDIT_BALANCE:.2f}\n"
             ),
             entry_type="cost_alert",
-            tags=["cost_alert", "budget_low", f"month:{month_key}"],
+            tags=["sys:cost-alert", "sys:budget-low", f"month:{month_key}"],
         )
         await oncofiles_client.set_agent_state(
             "budget_alert_sent", {"month": month_key, "remaining": remaining}

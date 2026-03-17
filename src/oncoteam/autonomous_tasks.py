@@ -93,7 +93,7 @@ async def _log_task(task_name: str, result: dict) -> None:
             duration_ms=result.get("duration_ms", 0),
             status="error" if result.get("error") else "ok",
             error_message=result.get("error"),
-            tags=["autonomous"],
+            tags=["sys:autonomous"],
         )
     except Exception as e:
         record_suppressed_error(task_name, "log_activity", e)

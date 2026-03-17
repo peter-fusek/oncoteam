@@ -248,9 +248,9 @@ class TestDailyBriefingTool:
 
         # 2 unique articles (deduped across 3 searches) + 1 trial = 3 storage calls
         assert mock_store.call_count == 3
-        # All storage calls should have "daily_briefing" tag
+        # All storage calls should have "task:daily-briefing" tag
         for call in mock_store.call_args_list:
-            assert "daily_briefing" in call.kwargs["tags"]
+            assert "task:daily-briefing" in call.kwargs["tags"]
 
 
 # ── get_lab_trends ─────────────────────────────────
@@ -406,7 +406,7 @@ class TestSummarizeSessionTool:
         mock_diary.assert_called_once()
         kwargs = mock_diary.call_args.kwargs
         assert kwargs["entry_type"] == "session_summary"
-        assert "session" in kwargs["tags"]
+        assert "sys:session" in kwargs["tags"]
         assert "Reviewed lab results" in kwargs["content"]
 
     @pytest.mark.asyncio
