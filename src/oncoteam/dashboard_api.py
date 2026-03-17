@@ -1652,6 +1652,50 @@ async def api_diagnostics(request: Request) -> JSONResponse:
     )
 
 
+async def api_documents(request: Request) -> JSONResponse:
+    """GET /api/documents — document status matrix from oncofiles."""
+    filter_param = request.query_params.get("filter", "all")
+    try:
+        result = await oncofiles_client.call_oncofiles(
+            "get_document_status_matrix", {"filter": filter_param}
+        )
+        docs = result if isinstance(result, list) else result.get("documents", [])
+        # Compute summary counts
+        total = len(docs)
+        ocr_complete = sum(1 for d in docs if d.get("ocr_status") == "complete")
+        missing_ocr = sum(
+            1 for d in docs if d.get("ocr_status") in ("missing", "not_attempted", None)
+        )
+        missing_metadata = sum(
+            1 for d in docs if d.get("metadata_status") in ("missing", "incomplete", None)
+        )
+        return _cors_json(
+            {
+                "documents": docs,
+                "total": total,
+                "filter": filter_param,
+                "summary": {
+                    "total": total,
+                    "ocr_complete": ocr_complete,
+                    "missing_ocr": missing_ocr,
+                    "missing_metadata": missing_metadata,
+                },
+            }
+        )
+    except Exception as e:
+        record_suppressed_error("api_documents", "fetch", e)
+        return _cors_json(
+            {
+                "error": str(e),
+                "documents": [],
+                "total": 0,
+                "filter": filter_param,
+                "summary": {"total": 0, "ocr_complete": 0, "missing_ocr": 0, "missing_metadata": 0},
+            },
+            status_code=502,
+        )
+
+
 # ── Default medications (FOLFOX regimen) ──────
 
 _DEFAULT_MEDICATIONS = [

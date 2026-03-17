@@ -11,6 +11,7 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/timeline': ['advocate', 'patient', 'doctor'],
   '/sessions': ['advocate'],
   '/family-update': ['advocate', 'patient'],
+  '/documents': ['advocate'],
 }
 
 const LANDING_PAGES: Record<string, string> = {
