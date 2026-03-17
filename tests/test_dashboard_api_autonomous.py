@@ -24,7 +24,7 @@ def _make_request(query_string: str = "") -> object:
 @pytest.mark.anyio
 @patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_returns_jobs():
-    """Should return 13 jobs with assigned_tool field."""
+    """Should return 14 jobs with assigned_tool field."""
     request = _make_request()
     response = await api_autonomous(request)
     data = json.loads(response.body)
@@ -32,8 +32,8 @@ async def test_autonomous_returns_jobs():
     assert response.status_code == 200
     assert data["enabled"] is True
     assert "daily_cost" in data
-    assert len(data["jobs"]) == 13
-    assert data["job_count"] == 13
+    assert len(data["jobs"]) == 14
+    assert data["job_count"] == 14
 
 
 @pytest.mark.anyio

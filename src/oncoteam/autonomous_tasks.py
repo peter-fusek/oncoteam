@@ -826,6 +826,49 @@ async def _send_whatsapp(msg: str) -> dict:
         return resp.json()
 
 
+async def run_protocol_review() -> dict:
+    """Review clinical protocol against latest evidence from oncofiles research."""
+    if await _should_skip("protocol_review"):
+        return {"skipped": True, "reason": "cooldown"}
+    logger.info(">>> Starting task: protocol_review")
+    prompt = """\
+Review the current clinical protocol against latest evidence stored in oncofiles.
+
+Instructions:
+1. Search documents for recent ESMO, NCCN guidelines and research entries
+   (search "ESMO", "NCCN", "guideline", "protocol", "recommendation")
+2. Compare key thresholds against current protocol:
+   - ANC threshold for chemo hold (current: 1500/µL)
+   - PLT threshold for chemo hold (current: 75000/µL)
+   - Oxaliplatin cumulative dose thresholds (current: 850 mg/m²)
+   - Neuropathy dose modification rules
+   - 2nd line options ranking
+3. Flag any discrepancies between current protocol and latest evidence
+4. Note any new treatment options or trials relevant to KRAS G12S mCRC
+5. Store findings as a briefing with recommendations
+
+Focus on actionable changes that would affect current patient management.
+"""
+    try:
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="protocol_review", model=AUTONOMOUS_MODEL_LIGHT
+        )
+    except Exception as e:
+        logger.error("!!! Failed task: protocol_review — %s", e)
+        raise
+    logger.info(
+        "<<< Completed task: protocol_review (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
+    await _log_task("protocol_review", result)
+    await _set_state(
+        "last_protocol_review",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
+    return result
+
+
 async def run_daily_cost_report() -> dict:
     """Send morning clinical summary + cost via WhatsApp (no Claude API call)."""
     from .autonomous import get_daily_cost

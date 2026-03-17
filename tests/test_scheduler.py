@@ -32,7 +32,7 @@ class TestSchedulerStandalone:
 
             assert _standalone_scheduler is not None
             jobs = _standalone_scheduler.get_jobs()
-            assert len(jobs) == 15  # 14 tasks + 1 keepalive ping
+            assert len(jobs) == 16  # 15 tasks + 1 keepalive ping
 
             job_ids = {j.id for j in jobs}
             assert "keepalive_ping" in job_ids

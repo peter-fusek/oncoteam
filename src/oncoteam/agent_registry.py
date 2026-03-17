@@ -291,6 +291,41 @@ Reference ESMO guidelines for marker interpretation in mCRC monitoring.\
             "for RECIST 1.1 response evaluation timing]"
         ),
     ),
+    AgentConfig(
+        id="protocol_review",
+        name=L("Revízia protokolu", "Protocol review"),
+        description=L(
+            "Porovnanie protokolu s najnovšími dôkazmi",
+            "Compare protocol with latest evidence",
+        ),
+        schedule_display=L("týždenne streda 10:00 UTC", "weekly Wednesday 10:00 UTC"),
+        category=AgentCategory.CLINICAL,
+        model="light",
+        schedule_type=ScheduleType.CRON,
+        schedule_params={"day_of_week": "wed", "hour": 10},
+        misfire_grace_time=86400 * 2,
+        cooldown_hours=144.0,
+        max_turns=8,
+        assigned_tool="search_documents",
+        prompt_template="""\
+Review the current clinical protocol against latest evidence stored in oncofiles.
+
+Instructions:
+1. Search documents for recent ESMO, NCCN guidelines and research entries
+   (search "ESMO", "NCCN", "guideline", "protocol", "recommendation")
+2. Compare key thresholds against current protocol:
+   - ANC threshold for chemo hold (current: 1500/uL)
+   - PLT threshold for chemo hold (current: 75000/uL)
+   - Oxaliplatin cumulative dose thresholds (current: 850 mg/m2)
+   - Neuropathy dose modification rules
+   - 2nd line options ranking
+3. Flag any discrepancies between current protocol and latest evidence
+4. Note any new treatment options or trials relevant to KRAS G12S mCRC
+5. Store findings as a briefing with recommendations
+
+Focus on actionable changes that would affect current patient management.\
+""",
+    ),
     # === Reporting (Sonnet) ===
     AgentConfig(
         id="weekly_briefing",
