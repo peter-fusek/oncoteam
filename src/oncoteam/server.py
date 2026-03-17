@@ -22,6 +22,7 @@ from .dashboard_api import (
     VERSION,
     _check_api_auth,
     api_activity,
+    api_agent_config,
     api_agent_runs,
     api_agents,
     api_autonomous,
@@ -965,6 +966,8 @@ mcp.custom_route("/api/detail/{type}/{id}", methods=["GET"])(_auth_wrap(api_deta
 mcp.custom_route("/api/detail/{type}/{id}", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/agents/{id}/runs", methods=["GET"])(_auth_wrap(api_agent_runs))
 mcp.custom_route("/api/agents/{id}/runs", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/agents/{id}/config", methods=["GET"])(_auth_wrap(api_agent_config))
+mcp.custom_route("/api/agents/{id}/config", methods=["OPTIONS"])(api_cors_preflight)
 
 
 # ── Entry point ─────────────────────────────────

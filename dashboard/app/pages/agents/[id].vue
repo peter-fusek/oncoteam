@@ -19,6 +19,15 @@ const agent = computed(() =>
   agentsData.value?.agents?.find((a: any) => a.id === agentId.value),
 )
 
+// Fetch agent config (includes prompt_template)
+const { data: configData } = fetchApi<{
+  id: string; prompt_template: string
+  [key: string]: any
+}>(`/agents/${agentId.value}/config`, { lazy: true })
+
+const promptTemplate = computed(() => configData.value?.prompt_template || '')
+const isDynamicPrompt = computed(() => promptTemplate.value.startsWith('[Dynamic'))
+
 // Fetch run history
 const { data: runsData, status: runsStatus } = fetchApi<{
   runs: Array<{
@@ -105,6 +114,19 @@ const modelLabels: Record<string, string> = {
         <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium" :class="categoryColors[agent.category] || 'bg-gray-500/20 text-gray-400'">
           {{ agent.category }}
         </span>
+      </div>
+    </div>
+
+    <!-- Prompt Template -->
+    <div v-if="promptTemplate">
+      <h2 class="text-sm font-semibold text-gray-300 mb-2">
+        Prompt Template
+        <span v-if="isDynamicPrompt" class="text-gray-500 font-normal text-xs ml-2">
+          (variables injected at runtime)
+        </span>
+      </h2>
+      <div class="rounded-lg border border-gray-800 bg-gray-950 p-4 overflow-x-auto max-h-80 overflow-y-auto">
+        <pre class="text-xs text-gray-300 font-mono whitespace-pre-wrap">{{ promptTemplate }}</pre>
       </div>
     </div>
 

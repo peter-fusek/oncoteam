@@ -2285,6 +2285,17 @@ async def api_agents(request: Request) -> JSONResponse:
     return _cors_json({"agents": agents, "total": len(agents)})
 
 
+async def api_agent_config(request: Request) -> JSONResponse:
+    """Return full config for a single agent including prompt_template (#92 Phase 4)."""
+    agent_id = request.path_params.get("id", "")
+    from .agent_registry import AGENT_REGISTRY
+
+    config = AGENT_REGISTRY.get(agent_id)
+    if not config:
+        return _cors_json({"error": f"Agent {agent_id} not found"}, status_code=404)
+    return _cors_json(config.model_dump())
+
+
 async def api_agent_runs(request: Request) -> JSONResponse:
     """Return recent run traces for a specific agent (#92)."""
     agent_id = request.path_params.get("id", "")
