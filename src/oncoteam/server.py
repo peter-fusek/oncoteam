@@ -22,6 +22,8 @@ from .dashboard_api import (
     VERSION,
     _check_api_auth,
     api_activity,
+    api_agent_runs,
+    api_agents,
     api_autonomous,
     api_autonomous_cost,
     api_autonomous_status,
@@ -927,6 +929,7 @@ _API_ROUTES = [
     ("/api/weight", api_weight),
     ("/api/family-update", api_family_update),
     ("/api/cumulative-dose", api_cumulative_dose),
+    ("/api/agents", api_agents),
 ]
 
 _POST_ROUTES = {"/api/toxicity", "/api/labs", "/api/medications", "/api/family-update"}
@@ -955,9 +958,11 @@ for _path, _handler in _API_ROUTES:
         mcp.custom_route(_path, methods=["POST"])(_auth_wrap(_handler))
     mcp.custom_route(_path, methods=["OPTIONS"])(api_cors_preflight)
 
-# Parameterized detail route (can't go in the loop above)
+# Parameterized routes (can't go in the loop above)
 mcp.custom_route("/api/detail/{type}/{id}", methods=["GET"])(_auth_wrap(api_detail))
 mcp.custom_route("/api/detail/{type}/{id}", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/agents/{id}/runs", methods=["GET"])(_auth_wrap(api_agent_runs))
+mcp.custom_route("/api/agents/{id}/runs", methods=["OPTIONS"])(api_cors_preflight)
 
 
 # ── Entry point ─────────────────────────────────

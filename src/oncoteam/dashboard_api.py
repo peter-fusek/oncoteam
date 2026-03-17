@@ -2208,6 +2208,84 @@ async def api_family_update(request: Request) -> JSONResponse:
         return _cors_json({"error": str(e), "updates": [], "total": 0}, status_code=502)
 
 
+async def api_agents(request: Request) -> JSONResponse:
+    """Return agent registry with last-run status for each agent (#92)."""
+    from .agent_registry import AGENT_REGISTRY, AgentCategory
+    from .autonomous_tasks import _extract_timestamp, _get_state
+
+    lang = get_lang(request)
+    agents = []
+    for agent_id, config in AGENT_REGISTRY.items():
+        if config.category == AgentCategory.SYSTEM:
+            continue
+        state = await _get_state(f"last_{agent_id}")
+        ts = _extract_timestamp(state)
+        agents.append(
+            resolve(
+                {
+                    "id": config.id,
+                    "name": config.name,
+                    "description": config.description,
+                    "category": config.category.value,
+                    "model": config.model or "sonnet",
+                    "schedule": config.schedule_display,
+                    "cooldown_hours": config.cooldown_hours,
+                    "max_turns": config.max_turns,
+                    "whatsapp_enabled": config.whatsapp_enabled,
+                    "last_run": ts or None,
+                    "enabled": config.enabled,
+                },
+                lang,
+            )
+        )
+    return _cors_json({"agents": agents, "total": len(agents)})
+
+
+async def api_agent_runs(request: Request) -> JSONResponse:
+    """Return recent run traces for a specific agent (#92)."""
+    agent_id = request.path_params.get("id", "")
+    limit = int(request.query_params.get("limit", "10"))
+
+    try:
+        result = await oncofiles_client.search_conversations(
+            tags=f"task:{agent_id},sys:agent-run",
+            limit=limit,
+        )
+    except Exception as e:
+        record_suppressed_error("api_agent_runs", f"fetch:{agent_id}", e)
+        return _cors_json(
+            {"agent_id": agent_id, "runs": [], "total": 0, "error": str(e)},
+            status_code=502,
+        )
+
+    entries = _extract_list(result, "entries")
+
+    runs = []
+    for e in entries:
+        content = e.get("content", "")
+        try:
+            trace = json.loads(content) if isinstance(content, str) else content
+        except (json.JSONDecodeError, TypeError):
+            trace = {}
+        runs.append(
+            {
+                "id": e.get("id"),
+                "timestamp": e.get("created_at"),
+                "task_name": trace.get("task_name", agent_id),
+                "model": trace.get("model", ""),
+                "cost": trace.get("cost", 0),
+                "duration_ms": trace.get("duration_ms", 0),
+                "tool_calls": trace.get("tool_calls", []),
+                "thinking": trace.get("thinking", []),
+                "response": (trace.get("response", "") or "")[:500],
+                "error": trace.get("error"),
+                "input_tokens": trace.get("input_tokens", 0),
+                "output_tokens": trace.get("output_tokens", 0),
+            }
+        )
+    return _cors_json({"agent_id": agent_id, "runs": runs, "total": len(runs)})
+
+
 async def api_cors_preflight(request: Request) -> JSONResponse:
     """OPTIONS handler for CORS preflight on all /api/* routes."""
     return _cors_json({}, request=request)

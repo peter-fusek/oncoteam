@@ -80,7 +80,7 @@ async def _set_state(key: str, value: dict) -> None:
 
 
 async def _log_task(task_name: str, result: dict) -> None:
-    """Log task completion to activity log and diary."""
+    """Log task completion to activity log, diary, and store full run trace."""
     try:
         await oncofiles_client.add_activity_log(
             session_id=get_session_id(),
@@ -97,6 +97,31 @@ async def _log_task(task_name: str, result: dict) -> None:
         )
     except Exception as e:
         record_suppressed_error(task_name, "log_activity", e)
+
+    # Store full run trace for dashboard observability (#92)
+    try:
+        await oncofiles_client.log_conversation(
+            title=f"Agent run: {task_name}",
+            content=json.dumps(
+                {
+                    "task_name": task_name,
+                    "model": result.get("model", ""),
+                    "thinking": result.get("thinking", []),
+                    "tool_calls": result.get("tool_calls", []),
+                    "response": result.get("response", ""),
+                    "cost": result.get("cost", 0),
+                    "duration_ms": result.get("duration_ms", 0),
+                    "input_tokens": result.get("input_tokens", 0),
+                    "output_tokens": result.get("output_tokens", 0),
+                    "error": result.get("error"),
+                },
+                ensure_ascii=False,
+            ),
+            entry_type="agent_run",
+            tags=f"task:{task_name},sys:agent-run",
+        )
+    except Exception as e:
+        record_suppressed_error(task_name, "store_trace", e)
 
 
 # ── Clinical Protocol Tasks ───────────────────
