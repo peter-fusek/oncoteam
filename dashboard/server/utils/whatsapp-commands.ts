@@ -2,8 +2,8 @@ const MAX_REPLY_LENGTH = 1500
 
 type Lang = 'sk' | 'en'
 
-const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady'])
-const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost'])
+const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus'])
+const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle'])
 
 const COMMAND_MAP: Record<string, string> = {
   // Slovak
@@ -13,6 +13,8 @@ const COMMAND_MAP: Record<string, string> = {
   pomoc: 'help',
   casovka: 'timeline',
   naklady: 'cost',
+  studie: 'trials',
+  cyklus: 'cycle',
   // English
   labs: 'labs',
   meds: 'meds',
@@ -22,6 +24,8 @@ const COMMAND_MAP: Record<string, string> = {
   timeline: 'timeline',
   help: 'help',
   cost: 'cost',
+  trials: 'trials',
+  cycle: 'cycle',
 }
 
 function detectLang(input: string): Lang {
@@ -164,6 +168,49 @@ function formatCost(data: Record<string, unknown>, lang: Lang): string {
   return truncate(text)
 }
 
+function formatTrials(data: Record<string, unknown>, lang: Lang): string {
+  const entries = (data.entries || []) as Array<Record<string, unknown>>
+  const high = entries.filter(e => e.relevance_tier === 'high')
+  if (!entries.length) return t(L('Ziadne studie v systeme.', 'No trials in the system.'), lang)
+
+  const header = t(
+    L(`*Klinické štúdie* (${high.length} vysoko relevantných z ${entries.length})`,
+      `*Clinical Trials* (${high.length} high relevance of ${entries.length})`),
+    lang,
+  )
+  let text = `${header}\n`
+  for (const e of high.slice(0, 5)) {
+    const src = e.source === 'clinicaltrials' ? '🧪' : '📄'
+    text += `\n${src} *${e.external_id || 'N/A'}*\n${String(e.title || '').slice(0, 100)}\n`
+  }
+  text += `\n${t(L('Viac na dashboarde: /research', 'More on dashboard: /research'), lang)}`
+  return truncate(text)
+}
+
+function formatCycle(data: Record<string, unknown>, lang: Lang): string {
+  const protocol = data as Record<string, unknown>
+  const cycle = protocol.current_cycle || 3
+  const regimen = protocol.regimen || 'mFOLFOX6'
+
+  let text = t(
+    L(`*Cyklus ${cycle}* — ${regimen}\n`, `*Cycle ${cycle}* — ${regimen}\n`),
+    lang,
+  )
+
+  const labs = protocol.last_lab_values as Record<string, Record<string, unknown>> | undefined
+  if (labs) {
+    text += `\n${t(L('Posledné labky:', 'Latest labs:'), lang)}\n`
+    for (const [param, info] of Object.entries(labs)) {
+      if (info?.value != null) {
+        const status = info.status === 'critical' ? '🔴' : info.status === 'warning' ? '🟡' : '🟢'
+        text += `${status} ${param}: ${info.value}\n`
+      }
+    }
+  }
+
+  return truncate(text)
+}
+
 function helpText(lang: Lang): string {
   if (lang === 'en') {
     return `*Oncoteam WhatsApp*
@@ -171,6 +218,8 @@ function helpText(lang: Lang): string {
 Commands:
 • *labs* / *labky* — Latest lab results
 • *meds* / *lieky* — Medications and compliance
+• *cycle* / *cyklus* — Current cycle status
+• *trials* / *studie* — Clinical trial matches
 • *timeline* / *casovka* — Treatment events
 • *briefing* — Latest briefing
 • *cost* / *naklady* — AI agent cost & budget
@@ -185,6 +234,8 @@ Send a command to get a response.`
 Prikazy:
 • *labky* / *labs* — Posledne labky
 • *lieky* / *meds* — Lieky a compliance
+• *cyklus* / *cycle* — Stav aktualneho cyklu
+• *studie* / *trials* — Klinicke studie
 • *casovka* / *timeline* — Udalosti liecby
 • *briefing* — Posledny briefing
 • *naklady* / *cost* — Náklady a rozpočet AI agenta
@@ -210,6 +261,8 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
     timeline: '/api/timeline?limit=5',
     status: '/api/status',
     cost: '/api/autonomous/cost',
+    trials: '/api/research?sort=relevance&per_page=20',
+    cycle: '/api/protocol',
   }
 
   const endpoint = apiMap[command]
@@ -229,6 +282,8 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
       case 'timeline': return formatTimeline(data, lang)
       case 'status': return formatStatus(data, lang)
       case 'cost': return formatCost(data, lang)
+      case 'trials': return formatTrials(data, lang)
+      case 'cycle': return formatCycle(data, lang)
       default: return helpText(lang)
     }
   }
