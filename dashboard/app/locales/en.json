@@ -454,7 +454,8 @@
       "viewOnPubMed": "View on PubMed",
       "viewOnClinicalTrials": "View on ClinicalTrials.gov",
       "related": "Related",
-      "document": "Document"
+      "document": "Document",
+      "structuredOutput": "Structured Output"
     },
     "xp": {
       "level": "Level {level}",

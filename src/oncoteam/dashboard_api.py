@@ -101,6 +101,48 @@ def _show_test(request: Request) -> bool:
     return request.query_params.get("show_test", "").lower() in ("true", "1", "yes")
 
 
+def _extract_output_data(tool_name: str | None, output_str: str | None) -> dict | None:
+    """Parse structured output_data from a tool's output_summary string.
+
+    Returns a summary dict for known tools, or the parsed JSON for others.
+    Returns None if the output cannot be parsed as JSON.
+    """
+    if not output_str or not isinstance(output_str, str):
+        return None
+
+    # Try to parse JSON from the output string
+    parsed = None
+    # Some outputs are plain JSON
+    with contextlib.suppress(json.JSONDecodeError, TypeError, ValueError):
+        parsed = json.loads(output_str)
+
+    tool = (tool_name or "").lower()
+
+    if tool == "search_pubmed" and parsed:
+        articles = parsed if isinstance(parsed, list) else parsed.get("articles", [])
+        if isinstance(articles, list):
+            top_title = articles[0].get("title", "") if articles else ""
+            return {"articles_count": len(articles), "top_title": top_title}
+
+    trial_tools = ("search_trials", "search_clinical_trials_adjacent", "search_clinical_trials_eu")
+    if tool in trial_tools and parsed:
+        trials = parsed if isinstance(parsed, list) else parsed.get("trials", [])
+        if isinstance(trials, list):
+            return {"trials_count": len(trials)}
+
+    if tool == "check_trial_eligibility" and parsed and isinstance(parsed, dict):
+        return {
+            "eligible": parsed.get("eligible"),
+            "reason": parsed.get("reason", parsed.get("summary", "")),
+        }
+
+    # For any other tool with valid parsed JSON, return it directly
+    if parsed is not None:
+        return parsed
+
+    return None
+
+
 def _filter_test(entries: list[dict], request: Request) -> list[dict]:
     """Filter out test entries unless ?show_test=true."""
     if _show_test(request):
@@ -438,21 +480,25 @@ async def api_activity(request: Request) -> JSONResponse:
     try:
         result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=limit)
         entries = _filter_test(_extract_list(result, "entries"), request)
+        enriched = []
+        for e in entries:
+            entry = {
+                "tool": e.get("tool_name"),
+                "status": e.get("status"),
+                "duration_ms": e.get("duration_ms"),
+                "timestamp": e.get("created_at"),
+                "input": e.get("input_summary"),
+                "output": e.get("output_summary"),
+                "error": e.get("error_message"),
+            }
+            output_data = _extract_output_data(e.get("tool_name"), e.get("output_summary"))
+            if output_data is not None:
+                entry["output_data"] = output_data
+            enriched.append(entry)
         return _cors_json(
             {
-                "entries": [
-                    {
-                        "tool": e.get("tool_name"),
-                        "status": e.get("status"),
-                        "duration_ms": e.get("duration_ms"),
-                        "timestamp": e.get("created_at"),
-                        "input": e.get("input_summary"),
-                        "output": e.get("output_summary"),
-                        "error": e.get("error_message"),
-                    }
-                    for e in entries
-                ],
-                "total": len(entries),
+                "entries": enriched,
+                "total": len(enriched),
             }
         )
     except Exception as e:
@@ -1568,6 +1614,10 @@ async def api_detail(request: Request) -> JSONResponse:
             match = [e for e in entries if str(e.get("id")) == str(detail_id)]
             data = match[0] if match else {"error": "not found"}
             source["oncofiles_id"] = data.get("id")
+            # Enrich with structured output_data (#31)
+            output_data = _extract_output_data(data.get("tool_name"), data.get("output_summary"))
+            if output_data is not None:
+                data["output_data"] = output_data
 
         elif detail_type == "medication":
             # Fetch medication log entry (treatment event)

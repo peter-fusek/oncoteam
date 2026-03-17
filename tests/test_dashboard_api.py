@@ -12,6 +12,7 @@ from oncoteam.dashboard_api import (
     _build_external_url,
     _build_source_ref,
     _extract_list,
+    _extract_output_data,
     _is_test_entry,
     api_activity,
     api_cors_preflight,
@@ -160,6 +161,79 @@ async def test_api_activity_handles_oncofiles_error(mock_search):
     assert response.status_code == 502
     assert "error" in data
     assert data["entries"] == []
+
+
+# ── _extract_output_data (#31) ───────────────────
+
+
+def test_extract_output_data_pubmed():
+    output = json.dumps([{"title": "KRAS G12S study", "pmid": "123"}])
+    result = _extract_output_data("search_pubmed", output)
+    assert result == {"articles_count": 1, "top_title": "KRAS G12S study"}
+
+
+def test_extract_output_data_trials():
+    output = json.dumps({"trials": [{"nctId": "NCT001"}, {"nctId": "NCT002"}]})
+    result = _extract_output_data("search_trials", output)
+    assert result == {"trials_count": 2}
+
+
+def test_extract_output_data_eligibility():
+    output = json.dumps({"eligible": False, "reason": "KRAS mutant excluded"})
+    result = _extract_output_data("check_trial_eligibility", output)
+    assert result == {"eligible": False, "reason": "KRAS mutant excluded"}
+
+
+def test_extract_output_data_generic_json():
+    output = json.dumps({"status": "ok", "count": 5})
+    result = _extract_output_data("some_other_tool", output)
+    assert result == {"status": "ok", "count": 5}
+
+
+def test_extract_output_data_plain_text():
+    result = _extract_output_data("search_pubmed", "3 articles found")
+    assert result is None
+
+
+def test_extract_output_data_none():
+    assert _extract_output_data("tool", None) is None
+    assert _extract_output_data("tool", "") is None
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+async def test_api_activity_includes_output_data(mock_search):
+    mock_search.return_value = {
+        "entries": [
+            {
+                "tool_name": "search_pubmed",
+                "status": "ok",
+                "duration_ms": 100,
+                "created_at": "2026-03-06T10:00:00Z",
+                "input_summary": "query='KRAS'",
+                "output_summary": json.dumps([{"title": "Study A", "pmid": "1"}]),
+                "error_message": None,
+            },
+            {
+                "tool_name": "daily_briefing",
+                "status": "ok",
+                "duration_ms": 200,
+                "created_at": "2026-03-06T09:00:00Z",
+                "input_summary": "",
+                "output_summary": "5 articles",
+                "error_message": None,
+            },
+        ]
+    }
+    request = _make_request("/api/activity")
+    response = await api_activity(request)
+    data = json.loads(response.body)
+
+    # First entry has JSON output → output_data present
+    assert "output_data" in data["entries"][0]
+    assert data["entries"][0]["output_data"]["articles_count"] == 1
+    # Second entry has plain text → no output_data
+    assert "output_data" not in data["entries"][1]
 
 
 # ── /api/stats ────────────────────────────────────

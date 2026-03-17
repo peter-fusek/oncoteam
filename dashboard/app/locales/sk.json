@@ -454,7 +454,8 @@
       "viewOnPubMed": "Zobraziť na PubMed",
       "viewOnClinicalTrials": "Zobraziť na ClinicalTrials.gov",
       "related": "Súvisiace",
-      "document": "Dokument"
+      "document": "Dokument",
+      "structuredOutput": "Štruktúrovaný výstup"
     },
     "xp": {
       "level": "Úroveň {level}",

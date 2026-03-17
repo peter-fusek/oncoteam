@@ -155,6 +155,17 @@ function isActivityType(): boolean {
               </div>
             </div>
 
+            <!-- Activity structured output_data (#31) -->
+            <div v-else-if="isActivityType() && String(key) === 'output_data' && isObject(val)" class="rounded-lg border border-teal-500/20 bg-teal-500/5 p-3">
+              <div class="text-xs text-teal-400 uppercase tracking-wider mb-2">{{ t('components.drilldown.structuredOutput') }}</div>
+              <div class="space-y-1.5">
+                <div v-for="(subVal, subKey) in (val as Record<string, unknown>)" :key="subKey" class="flex items-start gap-2 text-sm">
+                  <span class="text-gray-500 font-mono text-xs min-w-28 shrink-0">{{ String(subKey).replace(/_/g, ' ') }}</span>
+                  <span class="text-gray-300 break-all">{{ formatValue(subVal) }}</span>
+                </div>
+              </div>
+            </div>
+
             <!-- Activity output: full display with collapsible section -->
             <div v-else-if="isActivityType() && ['output', 'input'].includes(String(key)) && String(val).length > 100" class="rounded-lg border border-gray-800 p-3">
               <div class="flex items-center justify-between mb-2">
