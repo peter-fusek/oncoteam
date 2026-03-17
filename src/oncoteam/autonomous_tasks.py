@@ -8,34 +8,17 @@ from datetime import UTC, datetime
 
 from . import oncofiles_client
 from .activity_logger import get_session_id, record_suppressed_error
+from .agent_registry import get_cooldown
 from .autonomous import run_autonomous_task
 from .clinical_protocol import WATCHED_TRIALS, format_pre_cycle_checklist, get_milestones_for_cycle
 from .config import AUTONOMOUS_MODEL_LIGHT
 from .patient_context import PATIENT, RESEARCH_TERMS
 
-# Minimum cooldown periods per task (hours). Prevents cold-start stampede
-# where all tasks fire within minutes after a redeploy.
-TASK_COOLDOWNS: dict[str, float] = {
-    "file_scan": 1.5,
-    "lab_sync": 5.0,
-    "toxicity_extraction": 20.0,
-    "weight_extraction": 20.0,
-    "daily_research": 20.0,
-    "trial_monitor": 5.0,
-    "pre_cycle_check": 288.0,  # 12 days
-    "tumor_marker_review": 600.0,  # 25 days
-    "response_assessment": 1200.0,  # 50 days
-    "weekly_briefing": 144.0,  # 6 days
-    "mtb_preparation": 144.0,
-    "family_update": 144.0,
-    "medication_adherence_check": 20.0,
-}
-
 
 async def _should_skip(task_name: str) -> bool:
     """Check if task ran recently enough to skip this execution."""
-    cooldown_hours = TASK_COOLDOWNS.get(task_name)
-    if cooldown_hours is None:
+    cooldown_hours = get_cooldown(task_name)
+    if cooldown_hours <= 0:
         return False
     state = await _get_state(f"last_{task_name}")
     ts = _extract_timestamp(state)

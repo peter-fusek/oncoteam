@@ -1,4 +1,7 @@
-"""APScheduler lifespan for autonomous task scheduling."""
+"""APScheduler lifespan for autonomous task scheduling.
+
+Reads agent configurations from agent_registry.py — no hardcoded schedules.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +10,7 @@ import logging
 import httpx
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
 
+from .agent_registry import AGENT_REGISTRY, ScheduleType
 from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
 
 logger = logging.getLogger("oncoteam.scheduler")
@@ -22,7 +26,6 @@ def _job_listener(event):
 
 async def _keepalive_ping():
     """Ping oncofiles /health to prevent Railway cold start."""
-    # Derive health URL from MCP URL (e.g. .../mcp -> .../health)
     base = ONCOFILES_MCP_URL.rsplit("/", 1)[0] if "/" in ONCOFILES_MCP_URL else ONCOFILES_MCP_URL
     health_url = f"{base}/health"
     try:
@@ -33,16 +36,8 @@ async def _keepalive_ping():
         logger.debug("Keep-alive ping failed: %s", e)
 
 
-def _create_scheduler():
-    """Create and configure the async scheduler with all jobs.
-
-    No next_run_time overrides — tasks use cooldown guards in
-    autonomous_tasks.py to prevent cold-start stampede (#75).
-    """
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
-    from apscheduler.triggers.cron import CronTrigger
-    from apscheduler.triggers.interval import IntervalTrigger
-
+def _get_task_functions() -> dict:
+    """Map agent IDs to their callable functions."""
     from .autonomous_tasks import (
         run_daily_cost_report,
         run_daily_research,
@@ -60,147 +55,56 @@ def _create_scheduler():
         run_weight_extraction,
     )
 
-    scheduler = AsyncIOScheduler()
+    return {
+        "keepalive_ping": _keepalive_ping,
+        "file_scan": run_file_scan,
+        "lab_sync": run_lab_sync,
+        "toxicity_extraction": run_toxicity_extraction,
+        "weight_extraction": run_weight_extraction,
+        "daily_research": run_daily_research,
+        "trial_monitor": run_trial_monitor,
+        "pre_cycle_check": run_pre_cycle_check,
+        "tumor_marker_review": run_tumor_marker_review,
+        "response_assessment": run_response_assessment,
+        "weekly_briefing": run_weekly_briefing,
+        "mtb_preparation": run_mtb_preparation,
+        "family_update": run_family_update,
+        "medication_adherence_check": run_medication_adherence_check,
+        "daily_cost_report": run_daily_cost_report,
+    }
 
-    # Event listeners for observability
+
+def _create_scheduler():
+    """Create scheduler with jobs from agent registry."""
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from apscheduler.triggers.cron import CronTrigger
+    from apscheduler.triggers.interval import IntervalTrigger
+
+    scheduler = AsyncIOScheduler()
     scheduler.add_listener(_job_listener, EVENT_JOB_ERROR | EVENT_JOB_EXECUTED | EVENT_JOB_MISSED)
 
-    # === Keep-alive: prevent oncofiles Railway cold start ===
-    scheduler.add_job(_keepalive_ping, IntervalTrigger(minutes=5), id="keepalive_ping")
+    task_functions = _get_task_functions()
 
-    # === Data pipeline (Haiku model — cheap) ===
+    for agent_id, config in AGENT_REGISTRY.items():
+        if not config.enabled:
+            continue
+        func = task_functions.get(agent_id)
+        if func is None:
+            logger.warning("No function for agent %s, skipping", agent_id)
+            continue
 
-    # File scan: every 4 hours (was 2h)
-    scheduler.add_job(
-        run_file_scan,
-        IntervalTrigger(hours=4),
-        id="file_scan",
-        misfire_grace_time=14400,
-        coalesce=True,
-    )
+        trigger_cls = (
+            IntervalTrigger if config.schedule_type == ScheduleType.INTERVAL else CronTrigger
+        )
+        trigger = trigger_cls(**config.schedule_params)
 
-    # Lab sync: every 12 hours (was 6h)
-    scheduler.add_job(
-        run_lab_sync,
-        IntervalTrigger(hours=12),
-        id="lab_sync",
-        misfire_grace_time=43200,
-        coalesce=True,
-    )
-
-    # Toxicity extraction: every 2 days at 08:00 UTC (was daily)
-    scheduler.add_job(
-        run_toxicity_extraction,
-        CronTrigger(hour=8, minute=0, day="*/2"),
-        id="toxicity_extraction",
-        misfire_grace_time=86400,
-        coalesce=True,
-    )
-
-    # Weight extraction: every 3 days at 09:00 UTC (was daily)
-    scheduler.add_job(
-        run_weight_extraction,
-        CronTrigger(hour=9, minute=0, day="*/3"),
-        id="weight_extraction",
-        misfire_grace_time=86400,
-        coalesce=True,
-    )
-
-    # === Research (Sonnet model) ===
-
-    # Daily research scan: every 2 days at 07:00 UTC (was daily)
-    scheduler.add_job(
-        run_daily_research,
-        CronTrigger(hour=7, minute=0, day="*/2"),
-        id="daily_research",
-        misfire_grace_time=86400,
-        coalesce=True,
-    )
-
-    # Trial monitor: every 6 hours (keep — important for EU trial tracking)
-    scheduler.add_job(
-        run_trial_monitor,
-        IntervalTrigger(hours=6),
-        id="trial_monitor",
-        misfire_grace_time=21600,
-        coalesce=True,
-    )
-
-    # === Clinical (Sonnet model) ===
-
-    # Pre-cycle check: every 13 days (1 day before each 14-day FOLFOX cycle)
-    scheduler.add_job(
-        run_pre_cycle_check,
-        IntervalTrigger(days=13),
-        id="pre_cycle_check",
-        misfire_grace_time=86400 * 2,
-        coalesce=True,
-    )
-
-    # Tumor marker review: every 4 weeks
-    scheduler.add_job(
-        run_tumor_marker_review,
-        IntervalTrigger(weeks=4),
-        id="tumor_marker_review",
-        misfire_grace_time=86400 * 7,
-        coalesce=True,
-    )
-
-    # Response assessment prep: every 8 weeks
-    scheduler.add_job(
-        run_response_assessment,
-        IntervalTrigger(weeks=8),
-        id="response_assessment",
-        misfire_grace_time=86400 * 14,
-        coalesce=True,
-    )
-
-    # === Reporting (Sonnet model) ===
-
-    # Weekly briefing: Monday 6:00 UTC (7:00 CET)
-    scheduler.add_job(
-        run_weekly_briefing,
-        CronTrigger(day_of_week="mon", hour=6),
-        id="weekly_briefing",
-        misfire_grace_time=86400 * 2,
-        coalesce=True,
-    )
-
-    # MTB preparation: Friday 14:00 UTC (prepare for Monday MTB)
-    scheduler.add_job(
-        run_mtb_preparation,
-        CronTrigger(day_of_week="fri", hour=14),
-        id="mtb_preparation",
-        misfire_grace_time=86400 * 2,
-        coalesce=True,
-    )
-
-    # Family update: Sunday 18:00 UTC (weekly family summary in Slovak)
-    scheduler.add_job(
-        run_family_update,
-        CronTrigger(day_of_week="sun", hour=18),
-        id="family_update",
-        misfire_grace_time=86400 * 2,
-        coalesce=True,
-    )
-
-    # Daily cost report via WhatsApp: 6:30 UTC (7:30 CET) — no API cost
-    scheduler.add_job(
-        run_daily_cost_report,
-        CronTrigger(hour=6, minute=30),
-        id="daily_cost_report",
-        misfire_grace_time=86400,
-        coalesce=True,
-    )
-
-    # Medication adherence check: daily 20:00 UTC (safety-critical, keep daily)
-    scheduler.add_job(
-        run_medication_adherence_check,
-        CronTrigger(hour=20, minute=0),
-        id="medication_adherence_check",
-        misfire_grace_time=86400,
-        coalesce=True,
-    )
+        scheduler.add_job(
+            func,
+            trigger,
+            id=agent_id,
+            misfire_grace_time=config.misfire_grace_time,
+            coalesce=True,
+        )
 
     return scheduler
 
