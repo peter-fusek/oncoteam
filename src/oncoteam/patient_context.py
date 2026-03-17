@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import contextlib
+import asyncio
 import re
 from datetime import date
 
 from . import oncofiles_client
+from .activity_logger import record_suppressed_error
 from .locale import L, resolve
 from .models import PatientProfile
 
@@ -429,24 +430,46 @@ _GENETIC_SEARCH_TERMS = ["genetik", "HER2", "FISH", "NGS", "KRAS", "BRAF", "MSI"
 
 
 async def get_genetic_profile() -> dict[str, str]:
-    """Fetch genetic/biomarker data from oncofiles documents."""
+    """Fetch genetic/biomarker data from oncofiles documents.
+
+    Uses asyncio.gather to batch search and view calls (fix N+1 #96).
+    """
     profile = dict(PATIENT.biomarkers)
 
-    seen_ids: set[str] = set()
-    for term in _GENETIC_SEARCH_TERMS:
-        with contextlib.suppress(Exception):
+    # Batch all search calls in parallel
+    async def _search(term: str) -> list[dict]:
+        try:
             result = await oncofiles_client.search_documents(text=term)
-            docs = result.get("documents", []) if isinstance(result, dict) else []
+            return result.get("documents", []) if isinstance(result, dict) else []
+        except Exception as e:
+            record_suppressed_error("patient_context", f"search_{term}", e)
+            return []
 
-            for doc in docs:
-                doc_id = str(doc.get("id", ""))
-                if doc_id in seen_ids:
-                    continue
+    search_results = await asyncio.gather(*[_search(t) for t in _GENETIC_SEARCH_TERMS])
+
+    # Collect unique doc IDs
+    seen_ids: set[str] = set()
+    doc_ids: list[str] = []
+    for docs in search_results:
+        for doc in docs:
+            doc_id = str(doc.get("id", ""))
+            if doc_id and doc_id not in seen_ids:
                 seen_ids.add(doc_id)
-                with contextlib.suppress(Exception):
-                    content = await oncofiles_client.view_document(doc_id)
-                    text = _extract_text(content)
-                    _update_biomarkers(profile, text)
+                doc_ids.append(doc_id)
+
+    # Batch all view calls in parallel
+    async def _view(doc_id: str) -> str:
+        try:
+            content = await oncofiles_client.view_document(doc_id)
+            return _extract_text(content)
+        except Exception as e:
+            record_suppressed_error("patient_context", f"view_{doc_id}", e)
+            return ""
+
+    texts = await asyncio.gather(*[_view(d) for d in doc_ids])
+    for text in texts:
+        if text:
+            _update_biomarkers(profile, text)
 
     return profile
 

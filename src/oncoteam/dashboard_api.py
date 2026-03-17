@@ -718,7 +718,7 @@ async def api_autonomous(request: Request) -> JSONResponse:
 
     daily_cost = get_daily_cost()
     cost_last_updated: str | None = None
-    with contextlib.suppress(Exception):
+    try:
         state = await oncofiles_client.get_agent_state("autonomous_daily_cost")
         if isinstance(state, dict):
             val = state.get("value", state)
@@ -729,6 +729,8 @@ async def api_autonomous(request: Request) -> JSONResponse:
             if persisted_date == today_str:
                 daily_cost = float(val.get("cost_usd", daily_cost))
                 cost_last_updated = val.get("updated_at") or state.get("updated_at")
+    except Exception as e:
+        record_suppressed_error("api_autonomous", "get_daily_cost_state", e)
     data: dict = {
         "enabled": AUTONOMOUS_ENABLED,
         "daily_cost": round(daily_cost, 4),

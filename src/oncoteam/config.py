@@ -54,3 +54,9 @@ ANTHROPIC_CREDIT_BALANCE: float = float(os.environ.get("ANTHROPIC_CREDIT_BALANCE
 ANTHROPIC_BUDGET_ALERT_THRESHOLD: float = float(
     os.environ.get("ANTHROPIC_BUDGET_ALERT_THRESHOLD", "15.0")
 )
+
+# HTTP timeouts (seconds)
+TIMEOUT_EXTERNAL_API: int = 30  # PubMed, ClinicalTrials.gov
+TIMEOUT_GITHUB_API: int = 15
+TIMEOUT_INTERNAL_MCP: int = 10  # oncofiles keepalive
+TIMEOUT_DASHBOARD_API: int = 5  # internal API calls
