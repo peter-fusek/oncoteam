@@ -611,103 +611,12 @@ async def api_autonomous(request: Request) -> JSONResponse:
     if AUTONOMOUS_ENABLED:
         try:
             lang = get_lang(request)
-            # Jobs are registered at startup, we report their config
-            jobs_raw = [
-                {
-                    "id": "pre_cycle_check",
-                    "assigned_tool": "pre_cycle_check",
-                    "schedule": L("každých 13 dní", "every 13 days"),
-                    "description": L(
-                        "Kontrola bezpečnosti pred cyklom FOLFOX", "Pre-cycle FOLFOX safety check"
-                    ),
-                },
-                {
-                    "id": "tumor_marker_review",
-                    "assigned_tool": "tumor_marker_review",
-                    "schedule": L("každé 4 týždne", "every 4 weeks"),
-                    "description": L("Analýza trendu CEA/CA 19-9", "CEA/CA 19-9 trend analysis"),
-                },
-                {
-                    "id": "response_assessment",
-                    "assigned_tool": "response_assessment",
-                    "schedule": L("každých 8 týždňov", "every 8 weeks"),
-                    "description": L("Hodnotenie odpovede RECIST", "RECIST response evaluation"),
-                },
-                {
-                    "id": "daily_research",
-                    "assigned_tool": "search_pubmed",
-                    "schedule": L("denne 07:00 UTC", "daily 07:00 UTC"),
-                    "description": L("Prehľad výskumu PubMed", "PubMed research scan"),
-                },
-                {
-                    "id": "trial_monitor",
-                    "assigned_tool": "search_clinical_trials",
-                    "schedule": L("každých 6 hodín", "every 6 hours"),
-                    "description": L(
-                        "Monitorovanie klinických štúdií", "Clinical trial monitoring"
-                    ),
-                },
-                {
-                    "id": "file_scan",
-                    "assigned_tool": "search_documents",
-                    "schedule": L("každé 2 hodiny", "every 2 hours"),
-                    "description": L("Skenovanie nových dokumentov", "New document scan"),
-                },
-                {
-                    "id": "weekly_briefing",
-                    "assigned_tool": "daily_briefing",
-                    "schedule": L("pondelok 06:00 UTC", "Monday 06:00 UTC"),
-                    "description": L("Týždenný briefing pre lekára", "Weekly physician briefing"),
-                },
-                {
-                    "id": "mtb_preparation",
-                    "assigned_tool": "review_session",
-                    "schedule": L("piatok 14:00 UTC", "Friday 14:00 UTC"),
-                    "description": L("Príprava na tumor board", "Tumor board preparation"),
-                },
-                {
-                    "id": "lab_sync",
-                    "assigned_tool": "analyze_labs",
-                    "schedule": L("každých 6 hodín", "every 6 hours"),
-                    "description": L(
-                        "Extrakcia lab. hodnôt z dokumentov", "Extract lab values from documents"
-                    ),
-                },
-                {
-                    "id": "toxicity_extraction",
-                    "assigned_tool": "compare_labs",
-                    "schedule": L("denne 08:00 UTC", "daily 08:00 UTC"),
-                    "description": L(
-                        "Extrakcia toxicity zo správ z vyšetrení",
-                        "Extract toxicity from visit reports",
-                    ),
-                },
-                {
-                    "id": "weight_extraction",
-                    "assigned_tool": "get_lab_trends",
-                    "schedule": L("denne 09:00 UTC", "daily 09:00 UTC"),
-                    "description": L(
-                        "Extrakcia hmotnosti/BMI zo správ", "Extract weight/BMI from visit notes"
-                    ),
-                },
-                {
-                    "id": "family_update",
-                    "assigned_tool": "summarize_session",
-                    "schedule": L("nedeľa 18:00 UTC", "Sunday 18:00 UTC"),
-                    "description": L("Týždenná správa pre rodinu", "Weekly family update"),
-                },
-                {
-                    "id": "medication_adherence_check",
-                    "assigned_tool": "log_session_note",
-                    "schedule": L("denne 20:00 UTC", "daily 20:00 UTC"),
-                    "description": L(
-                        "Kontrola dennej adherencie liekov (Clexane kritický)",
-                        "Check daily medication adherence (Clexane critical)",
-                    ),
-                },
-            ]
-            data["jobs"] = resolve(jobs_raw, lang)
-            data["job_count"] = len(jobs_raw)
+            # Jobs read from agent registry — single source of truth (#92)
+            from .agent_registry import get_dashboard_jobs
+
+            jobs = get_dashboard_jobs(lang)
+            data["jobs"] = jobs
+            data["job_count"] = len(jobs)
         except Exception:
             data["jobs"] = []
             data["job_count"] = 0
@@ -717,23 +626,11 @@ async def api_autonomous(request: Request) -> JSONResponse:
 
 async def api_autonomous_status(request: Request) -> JSONResponse:
     """GET /api/autonomous/status — per-task last-run timestamps."""
+    # Read task names from agent registry (#92)
+    from .agent_registry import get_enabled_agents
     from .autonomous_tasks import _extract_timestamp, _get_state
 
-    task_names = [
-        "pre_cycle_check",
-        "daily_research",
-        "file_scan",
-        "tumor_marker_review",
-        "response_assessment",
-        "trial_monitor",
-        "weekly_briefing",
-        "lab_sync",
-        "toxicity_extraction",
-        "weight_extraction",
-        "family_update",
-        "medication_adherence_check",
-        "mtb_preparation",
-    ]
+    task_names = [a.id for a in get_enabled_agents(exclude_system=True)]
     tasks = {}
     for name in task_names:
         try:
@@ -841,6 +738,7 @@ async def api_protocol(request: Request) -> JSONResponse:
                 if isinstance(meta, str):
                     with contextlib.suppress(json.JSONDecodeError, TypeError):
                         meta = json.loads(meta)
+                meta = _normalize_lab_values(meta)
                 lab_date = latest.get("event_date", "")
                 for param, threshold in LAB_SAFETY_THRESHOLDS.items():
                     if param not in meta:
@@ -924,6 +822,9 @@ async def api_protocol(request: Request) -> JSONResponse:
         except (TimeoutError, Exception) as e:
             record_suppressed_error("api_protocol", "fallback_lab_trends", e)
 
+    # Data freshness timestamp
+    lab_dates = [v.get("sample_date", "") for v in last_lab_values.values() if v.get("sample_date")]
+    data["lab_data_last_updated"] = max(lab_dates) if lab_dates else None
     data["last_lab_values"] = last_lab_values
 
     # Process real values for other tabs (#54)

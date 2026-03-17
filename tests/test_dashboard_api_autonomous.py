@@ -62,7 +62,7 @@ async def test_autonomous_lang_en():
     # Check first job is in English
     daily_research = next(j for j in data["jobs"] if j["id"] == "daily_research")
     assert daily_research["description"] == "PubMed research scan"
-    assert daily_research["schedule"] == "daily 07:00 UTC"
+    assert daily_research["schedule"] == "every 2 days 07:00 UTC"
 
 
 @pytest.mark.anyio
@@ -153,4 +153,4 @@ async def test_autonomous_job_tool_mapping():
     assert jobs_map["lab_sync"] == "analyze_labs"
     assert jobs_map["file_scan"] == "search_documents"
     assert jobs_map["weekly_briefing"] == "daily_briefing"
-    assert jobs_map["medication_adherence_check"] == "log_session_note"
+    assert jobs_map["medication_adherence_check"] == "search_documents"
