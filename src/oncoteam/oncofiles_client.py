@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import logging
 
@@ -15,8 +17,19 @@ if not ONCOFILES_MCP_URL:
 if ONCOFILES_MCP_URL and not ONCOFILES_MCP_TOKEN:
     _logger.warning("ONCOFILES_MCP_TOKEN not set — connecting to oncofiles without auth")
 
+# Persistent connection — reused across all calls to avoid per-call TCP+TLS+SSE overhead.
+_persistent_client: Client | None = None
+_client_lock: asyncio.Lock | None = None
 
-def _get_transport() -> StreamableHttpTransport:
+
+def _get_lock() -> asyncio.Lock:
+    global _client_lock
+    if _client_lock is None:
+        _client_lock = asyncio.Lock()
+    return _client_lock
+
+
+def _make_transport() -> StreamableHttpTransport:
     if not ONCOFILES_MCP_URL:
         raise RuntimeError(
             "ONCOFILES_MCP_URL not configured. Set the env var to connect to oncofiles."
@@ -25,18 +38,51 @@ def _get_transport() -> StreamableHttpTransport:
     return StreamableHttpTransport(ONCOFILES_MCP_URL, auth=auth)
 
 
+async def _get_client() -> Client:
+    """Return the persistent client, creating it if necessary."""
+    global _persistent_client
+    async with _get_lock():
+        if _persistent_client is None:
+            c = Client(_make_transport())
+            await c.__aenter__()
+            _persistent_client = c
+            _logger.debug("Opened persistent oncofiles connection")
+        return _persistent_client
+
+
+async def _invalidate_client() -> None:
+    """Close and discard the persistent client so the next call reconnects."""
+    global _persistent_client
+    async with _get_lock():
+        if _persistent_client is not None:
+            with contextlib.suppress(Exception):
+                await _persistent_client.__aexit__(None, None, None)
+            _persistent_client = None
+            _logger.debug("Closed persistent oncofiles connection (will reconnect)")
+
+
+def _parse_result(result: object) -> dict | list | str:
+    if result.content and hasattr(result.content[0], "text"):  # type: ignore[union-attr]
+        try:
+            return json.loads(result.content[0].text)  # type: ignore[union-attr]
+        except (json.JSONDecodeError, TypeError):
+            return result.content[0].text  # type: ignore[union-attr]
+    return str(result)
+
+
 async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
-    """Call an oncofiles MCP tool and return parsed result."""
-    transport = _get_transport()
-    async with Client(transport) as client:
-        result = await client.call_tool(tool_name, arguments)
-        # FastMCP 3.x returns CallToolResult with .content list
-        if result.content and hasattr(result.content[0], "text"):
-            try:
-                return json.loads(result.content[0].text)
-            except (json.JSONDecodeError, TypeError):
-                return result.content[0].text
-        return str(result)
+    """Call an oncofiles MCP tool, reusing a persistent connection."""
+    for attempt in range(2):
+        try:
+            client = await _get_client()
+            result = await client.call_tool(tool_name, arguments)
+            return _parse_result(result)
+        except Exception:
+            if attempt == 0:
+                # Connection may have dropped — invalidate and retry once.
+                await _invalidate_client()
+                continue
+            raise
 
 
 async def search_documents(
