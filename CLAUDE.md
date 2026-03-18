@@ -40,6 +40,11 @@ uv run oncoteam-mcp    # stdio mode
 - No local database — all persistence via oncofiles MCP
 - ruff for linting/formatting
 - All suppressed exceptions must call `record_suppressed_error()` for QA visibility
+- Protocol cache (`_protocol_cache` dict in `dashboard_api.py`) must be cleared in tests: add `@pytest.fixture(autouse=True) def _clear_protocol_cache()` to any test module touching `/api/protocol`
+- `lru_cache` on `_resolve_protocol_cached(lang)` — call `_resolve_protocol_cached.cache_clear()` in tests, not just the dict
+- `dashboard_api.py` parallel MCP fetches use `asyncio.gather` with 2s per-task timeout — add mocks for ALL gathered calls in tests or they'll fail
+- Nuxt `useFetch` query must use `computed()` (not plain object) for locale-reactive API calls
+- `xp/sync.post.ts` uses dual auth (API key OR session) — don't add a second `const apiKey` declaration
 
 ## Key commands
 
@@ -47,6 +52,7 @@ uv run oncoteam-mcp    # stdio mode
 - `MCP_TRANSPORT=streamable-http uv run oncoteam-mcp` — run HTTP server
 - `uv run pytest` — run tests
 - `uv run ruff check --fix` — lint and auto-fix
+- `uv run ruff format src/oncoteam/dashboard_api.py` — run after editing dashboard_api.py (long lines trigger format failures)
 
 ## Deployment
 
