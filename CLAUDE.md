@@ -45,6 +45,8 @@ uv run oncoteam-mcp    # stdio mode
 - `dashboard_api.py` parallel MCP fetches use `asyncio.gather` with 2s per-task timeout — add mocks for ALL gathered calls in tests or they'll fail
 - Nuxt `useFetch` query must use `computed()` (not plain object) for locale-reactive API calls
 - `xp/sync.post.ts` uses dual auth (API key OR session) — don't add a second `const apiKey` declaration
+- `oncofiles_client.py` uses a persistent module-level MCP client singleton — `_get_client()` / `_invalidate_client()`. Tests mock wrapper functions (e.g. `oncofiles_client.list_treatment_events`), not `call_oncofiles` directly.
+- `import collections` is at top of `dashboard_api.py`; rate limiter uses `collections.deque` — don't add a second import mid-file (E402)
 
 ## Key commands
 
