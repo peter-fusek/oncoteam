@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
 
   // API key auth (same as oncoteam backend uses for dashboard API)
   const auth = getHeader(event, 'authorization')
-  const apiKey = config.public?.oncoteamApiKey || ''
+  const apiKey = config.oncoteamApiKey || ''
   if (!auth || !apiKey || auth !== `Bearer ${apiKey}`) {
     throw createError({ statusCode: 401, message: 'Invalid API key' })
   }

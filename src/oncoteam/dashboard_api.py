@@ -753,13 +753,10 @@ async def api_autonomous(request: Request) -> JSONResponse:
                 }
                 _logger.info("Trigger %s completed: %s", trigger, _last_trigger_result)
             except Exception as e:
-                import traceback
-
                 _last_trigger_result = {
                     "task": trigger,
                     "status": "failed",
                     "error": str(e),
-                    "traceback": traceback.format_exc(),
                 }
                 _logger.error("Trigger %s failed: %s", trigger, e, exc_info=True)
 
@@ -814,14 +811,19 @@ async def api_autonomous_status(request: Request) -> JSONResponse:
     from .autonomous_tasks import _extract_timestamp, _get_state
 
     task_names = [a.id for a in get_enabled_agents(exclude_system=True)]
-    tasks = {}
-    for name in task_names:
+
+    # Parallel state fetches (was sequential N+1, #harden)
+    async def _safe_ts(name: str):
         try:
-            state = await _get_state(f"last_{name}")
-            ts = _extract_timestamp(state)
-            tasks[name] = {"last_run": ts or None}
+            state = await asyncio.wait_for(_get_state(f"last_{name}"), timeout=2.0)
+            return _extract_timestamp(state)
         except Exception:
-            tasks[name] = {"last_run": None}
+            return None
+
+    timestamps = await asyncio.gather(*[_safe_ts(n) for n in task_names])
+    tasks = {
+        name: {"last_run": ts or None} for name, ts in zip(task_names, timestamps, strict=True)
+    }
     return _cors_json({"tasks": tasks})
 
 

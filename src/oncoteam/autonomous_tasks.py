@@ -68,7 +68,8 @@ def _extract_timestamp(state: dict | None) -> str:
 async def _get_state(key: str) -> dict:
     try:
         return await oncofiles_client.get_agent_state(key)
-    except Exception:
+    except Exception as e:
+        record_suppressed_error("autonomous_tasks", f"get_state:{key}", e)
         return {}
 
 
