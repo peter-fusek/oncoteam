@@ -2336,8 +2336,7 @@ async def api_agents(request: Request) -> JSONResponse:
 
     # Build agent list (excluding system agents)
     non_system = [
-        (aid, cfg) for aid, cfg in AGENT_REGISTRY.items()
-        if cfg.category != AgentCategory.SYSTEM
+        (aid, cfg) for aid, cfg in AGENT_REGISTRY.items() if cfg.category != AgentCategory.SYSTEM
     ]
 
     # Fetch all last-run states concurrently (#105 perf fix)
