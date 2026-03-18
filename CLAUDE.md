@@ -30,6 +30,8 @@ uv run oncoteam-mcp    # stdio mode
 - `src/oncoteam/models.py` — Pydantic models
 - `src/oncoteam/config.py` — Environment variable configuration
 - `tests/` — pytest tests with respx mocks
+- `landing/` — Static landing page (nginx, Railway). robots.txt, sitemap.xml, llms.txt, og-image.png
+- `dashboard/` — Nuxt 4 dashboard (SSR, Railway). `dashboard.oncoteam.cloud`
 
 ## Conventions
 
@@ -40,6 +42,9 @@ uv run oncoteam-mcp    # stdio mode
 - No local database — all persistence via oncofiles MCP
 - ruff for linting/formatting
 - All suppressed exceptions must call `record_suppressed_error()` for QA visibility
+
+### Gotchas (from real incidents)
+
 - Protocol cache (`_protocol_cache` dict in `dashboard_api.py`) must be cleared in tests: add `@pytest.fixture(autouse=True) def _clear_protocol_cache()` to any test module touching `/api/protocol`
 - `lru_cache` on `_resolve_protocol_cached(lang)` — call `_resolve_protocol_cached.cache_clear()` in tests, not just the dict
 - `dashboard_api.py` parallel MCP fetches use `asyncio.gather` with 2s per-task timeout — add mocks for ALL gathered calls in tests or they'll fail
@@ -53,8 +58,18 @@ uv run oncoteam-mcp    # stdio mode
 - `uv run oncoteam-mcp` — run MCP server (stdio)
 - `MCP_TRANSPORT=streamable-http uv run oncoteam-mcp` — run HTTP server
 - `uv run pytest` — run tests
+- `uv run pytest tests/test_file.py::test_name` — run single test
 - `uv run ruff check --fix` — lint and auto-fix
 - `uv run ruff format src/oncoteam/dashboard_api.py` — run after editing dashboard_api.py (long lines trigger format failures)
+- `cd dashboard && pnpm dev` — run dashboard dev server
+- `cd dashboard && pnpm build` — build dashboard (catches TS errors)
+
+## Testing
+
+- `uv run pytest` — full suite (569 tests, ~2.3s)
+- Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
+- Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
+- PostToolUse hook auto-runs tests after editing `src/oncoteam/`
 
 ## Deployment
 
