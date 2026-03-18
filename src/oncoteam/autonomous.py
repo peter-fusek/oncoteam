@@ -528,6 +528,43 @@ async def _check_budget_alert(task_cost: float) -> None:
         logger.error("Failed to store budget alert: %s", e)
 
 
+def _serialize_messages(messages: list[dict]) -> list[dict]:
+    """Convert messages to JSON-serializable format (strip SDK content blocks)."""
+    serialized = []
+    for msg in messages:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if isinstance(content, str):
+            serialized.append({"role": role, "content": content})
+        elif isinstance(content, list):
+            parts = []
+            for item in content:
+                if isinstance(item, dict):
+                    parts.append(item)
+                elif hasattr(item, "type"):
+                    # Anthropic SDK content block
+                    if item.type == "text":
+                        parts.append({"type": "text", "text": item.text})
+                    elif item.type == "tool_use":
+                        parts.append({"type": "tool_use", "name": item.name, "input": item.input})
+                    elif item.type == "tool_result":
+                        parts.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": getattr(item, "tool_use_id", ""),
+                                "content": str(getattr(item, "content", ""))[:2000],
+                            }
+                        )
+                    elif item.type == "thinking":
+                        parts.append({"type": "thinking", "text": item.thinking[:500]})
+                else:
+                    parts.append(str(item)[:500])
+            serialized.append({"role": role, "content": parts})
+        else:
+            serialized.append({"role": role, "content": str(content)[:2000]})
+    return serialized
+
+
 async def run_autonomous_task(
     task_prompt: str,
     max_turns: int = 15,
@@ -641,8 +678,10 @@ async def run_autonomous_task(
                     block.name,
                     json.dumps(block.input)[:200],
                 )
-                result["tool_calls"].append({"tool": block.name, "input": block.input})
                 tool_output = await execute_tool(block.name, block.input)
+                result["tool_calls"].append(
+                    {"tool": block.name, "input": block.input, "output": tool_output}
+                )
                 tool_results.append(
                     {
                         "type": "tool_result",
@@ -662,6 +701,10 @@ async def run_autonomous_task(
 
     result["duration_ms"] = int((time.monotonic() - start_time) * 1000)
     result["completed_at"] = datetime.now(UTC).isoformat()
+    # Turn count excludes the initial user prompt
+    result["turns"] = len([m for m in messages if m["role"] == "user"]) - 1
+    # Store serializable message history (strip non-JSON content blocks)
+    result["messages"] = _serialize_messages(messages)
 
     # Persist cost after every task completion
     await _persist_daily_cost()

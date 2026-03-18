@@ -34,8 +34,10 @@ const { data: runsData, status: runsStatus } = fetchApi<{
   runs: Array<{
     id: number; timestamp: string; task_name: string; model: string
     cost: number; duration_ms: number; input_tokens: number; output_tokens: number
-    tool_calls: Array<{ tool: string; input: any }>
+    tool_calls: Array<{ tool: string; input: any; output: string; has_full_output: boolean }>
     thinking: string[]; response: string; prompt: string; error: string | null
+    messages: Array<{ role: string; content: any }>
+    turns: number; started_at: string | null; completed_at: string | null
   }>
 }>(`/agents/${agentId.value}/runs?limit=20`, { lazy: true })
 
@@ -175,6 +177,7 @@ const modelLabels: Record<string, string> = {
               <span class="text-xs text-gray-500">{{ formatDuration(run.duration_ms) }}</span>
             </div>
             <div class="flex items-center gap-3 text-xs text-gray-500">
+              <span v-if="run.turns">{{ run.turns }} turns</span>
               <span>{{ run.tool_calls?.length || 0 }} tools</span>
               <span>{{ formatCost(run.cost) }}</span>
               <span class="text-gray-600">{{ run.model === 'light' ? 'H' : 'S' }}</span>
@@ -215,16 +218,17 @@ const modelLabels: Record<string, string> = {
               </div>
             </div>
 
-            <!-- Tool calls -->
-            <div v-if="run.tool_calls?.length" class="space-y-1">
+            <!-- Tool calls with I/O -->
+            <div v-if="run.tool_calls?.length" class="space-y-2">
               <p class="text-[10px] text-gray-500 uppercase tracking-wider">Tool Calls ({{ run.tool_calls.length }})</p>
-              <div class="space-y-1">
-                <div
-                  v-for="(tc, i) in run.tool_calls"
-                  :key="i"
-                  class="text-xs text-gray-400 bg-gray-950 rounded px-2 py-1 font-mono"
-                >
-                  <span class="text-teal-400">{{ tc.tool }}</span>({{ JSON.stringify(tc.input).slice(0, 100) }}{{ JSON.stringify(tc.input).length > 100 ? '...' : '' }})
+              <div v-for="(tc, i) in run.tool_calls" :key="i" class="rounded border border-gray-800 bg-gray-950 overflow-hidden">
+                <div class="px-2 py-1 text-xs font-mono border-b border-gray-800 flex items-center gap-2">
+                  <span class="text-teal-400 font-semibold">{{ tc.tool }}</span>
+                  <span class="text-gray-500">{{ JSON.stringify(tc.input).slice(0, 120) }}{{ JSON.stringify(tc.input).length > 120 ? '...' : '' }}</span>
+                </div>
+                <div v-if="tc.output" class="px-2 py-1 text-xs text-gray-400 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
+                  {{ tc.output }}
+                  <span v-if="tc.has_full_output" class="text-yellow-500 text-[10px]"> [truncated]</span>
                 </div>
               </div>
             </div>

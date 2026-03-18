@@ -119,12 +119,19 @@ async def test_agent_runs_returns_traces():
             "task_name": "daily_research",
             "model": "claude-sonnet-4-20250514",
             "thinking": ["step1"],
-            "tool_calls": [{"name": "search_pubmed"}],
+            "tool_calls": [
+                {"tool": "search_pubmed", "input": {"query": "CRC"}, "output": "3 results"},
+            ],
             "response": "Found 3 articles",
+            "prompt": "Search for CRC research",
             "cost": 0.012,
             "duration_ms": 5000,
             "input_tokens": 1000,
             "output_tokens": 500,
+            "turns": 1,
+            "started_at": "2026-03-18T10:00:00+00:00",
+            "completed_at": "2026-03-18T10:00:05+00:00",
+            "messages": [{"role": "user", "content": "Search for CRC research"}],
             "error": None,
         }
     )
@@ -158,7 +165,12 @@ async def test_agent_runs_returns_traces():
     assert run["duration_ms"] == 5000
     assert run["input_tokens"] == 1000
     assert run["output_tokens"] == 500
-    assert run["tool_calls"] == [{"name": "search_pubmed"}]
+    assert run["tool_calls"][0]["tool"] == "search_pubmed"
+    assert run["tool_calls"][0]["output"] == "3 results"
+    assert run["tool_calls"][0]["has_full_output"] is False
+    assert run["prompt"] == "Search for CRC research"
+    assert run["turns"] == 1
+    assert run["messages"] == [{"role": "user", "content": "Search for CRC research"}]
     assert run["error"] is None
 
 

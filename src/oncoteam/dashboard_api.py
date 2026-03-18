@@ -2454,6 +2454,15 @@ async def api_agent_runs(request: Request) -> JSONResponse:
             trace = json.loads(content) if isinstance(content, str) else content
         except (json.JSONDecodeError, TypeError):
             trace = {}
+        # Truncate tool outputs in list view (full available in detail endpoint)
+        tool_calls_summary = []
+        for tc in trace.get("tool_calls", []):
+            summary = {"tool": tc.get("tool", ""), "input": tc.get("input", {})}
+            output = tc.get("output", "")
+            summary["output"] = output[:500] if isinstance(output, str) else str(output)[:500]
+            summary["has_full_output"] = len(str(output)) > 500
+            tool_calls_summary.append(summary)
+
         runs.append(
             {
                 "id": e.get("id"),
@@ -2463,12 +2472,16 @@ async def api_agent_runs(request: Request) -> JSONResponse:
                 "prompt": trace.get("prompt", ""),
                 "cost": trace.get("cost", 0),
                 "duration_ms": trace.get("duration_ms", 0),
-                "tool_calls": trace.get("tool_calls", []),
+                "tool_calls": tool_calls_summary,
                 "thinking": trace.get("thinking", []),
+                "messages": trace.get("messages", []),
                 "response": trace.get("response", ""),
                 "error": trace.get("error"),
                 "input_tokens": trace.get("input_tokens", 0),
                 "output_tokens": trace.get("output_tokens", 0),
+                "turns": trace.get("turns", 0),
+                "started_at": trace.get("started_at"),
+                "completed_at": trace.get("completed_at"),
             }
         )
     return _cors_json({"agent_id": agent_id, "runs": runs, "total": len(runs)})

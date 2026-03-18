@@ -36,6 +36,7 @@ const allNavItems = computed(() => [
   { label: t('nav.prep'), icon: 'i-lucide-file-check', to: '/prep' },
   { label: t('nav.research'), icon: 'i-lucide-microscope', to: '/research' },
   { label: t('nav.timeline'), icon: 'i-lucide-calendar-clock', to: '/timeline' },
+  { label: t('nav.prompts'), icon: 'i-lucide-terminal', to: '/prompts' },
   { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
   { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
   { label: t('nav.documents'), icon: 'i-lucide-file-scan', to: '/documents' },
