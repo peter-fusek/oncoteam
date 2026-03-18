@@ -416,7 +416,7 @@ async def _persist_daily_cost() -> None:
             {"date": today, "cost_usd": round(_daily_cost, 4)},
         )
     except Exception as e:
-        logger.debug("Failed to persist daily cost: %s", e)
+        logger.warning("Failed to persist daily cost: %s", e)
 
 
 async def _persist_mtd_cost(task_cost: float) -> None:
@@ -432,7 +432,7 @@ async def _persist_mtd_cost(task_cost: float) -> None:
             {"month": month_key, "cost_usd": round(prev + task_cost, 4)},
         )
     except Exception as e:
-        logger.debug("Failed to persist MTD cost: %s", e)
+        logger.warning("Failed to persist MTD cost: %s", e)
 
 
 async def _restore_daily_cost() -> None:

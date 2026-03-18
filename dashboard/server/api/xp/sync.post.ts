@@ -52,7 +52,16 @@ function getLevel(xp: number): string {
 }
 
 export default defineEventHandler(async (event) => {
+  // Auth: API key for server-to-server calls, session for browser calls
+  const auth = getHeader(event, 'authorization')
   const config = useRuntimeConfig()
+  const apiKey = config.oncoteamApiKey || ''
+  if (apiKey && auth === `Bearer ${apiKey}`) {
+    // Server-to-server: OK
+  } else {
+    const session = await getUserSession(event)
+    if (!session.user) throw createError({ statusCode: 401, message: 'Not authenticated' })
+  }
 
   if (!config.databaseUrl) {
     return { error: 'Database not configured', synced: 0 }

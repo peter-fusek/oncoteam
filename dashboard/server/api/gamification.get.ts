@@ -18,7 +18,9 @@ function getNextLevel(xp: number) {
   return { name: 'Max', xpRequired: xp }
 }
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  const session = await getUserSession(event)
+  if (!session.user) throw createError({ statusCode: 401, message: 'Not authenticated' })
   const config = useRuntimeConfig()
 
   if (!config.databaseUrl) {

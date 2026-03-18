@@ -359,6 +359,14 @@ def _get_cors_origin(request: Request) -> str:
 _CURRENT_REQUEST: Request | None = None
 
 
+def _parse_limit(request: Request, default: int = 50, max_val: int = 500) -> int:
+    """Parse and cap `limit` query param. Safe against non-integer values."""
+    try:
+        return max(1, min(max_val, int(request.query_params.get("limit", str(default)))))
+    except (ValueError, TypeError):
+        return default
+
+
 def _cors_json(
     data: dict, status_code: int = 200, *, request: Request | None = None
 ) -> JSONResponse:
@@ -479,7 +487,7 @@ async def api_health_deep(request: Request) -> JSONResponse:
 
 async def api_activity(request: Request) -> JSONResponse:
     """GET /api/activity — recent activity log entries."""
-    limit = int(request.query_params.get("limit", "50"))
+    limit = _parse_limit(request, default=50)
     try:
         result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=limit)
         entries = _filter_test(_extract_list(result, "entries"), request)
@@ -541,7 +549,7 @@ async def api_stats(request: Request) -> JSONResponse:
 
 async def api_timeline(request: Request) -> JSONResponse:
     """GET /api/timeline — treatment events timeline."""
-    limit = int(request.query_params.get("limit", "50"))
+    limit = _parse_limit(request, default=50)
     try:
         result = await oncofiles_client.list_treatment_events(limit=limit)
         events = _filter_test(_extract_list(result, "events"), request)
@@ -592,7 +600,7 @@ async def api_research(request: Request) -> JSONResponse:
       - page: page number (default 1)
       - per_page: entries per page (default 10)
     """
-    limit = int(request.query_params.get("limit", "100"))
+    limit = _parse_limit(request, default=100)
     source = request.query_params.get("source")
     sort = request.query_params.get("sort", "relevance")
     page = max(1, int(request.query_params.get("page", "1")))
@@ -667,7 +675,7 @@ async def api_sessions(request: Request) -> JSONResponse:
         limit: max entries (default 20)
         type: filter by session type — 'clinical', 'technical', or 'all' (default 'all')
     """
-    limit = int(request.query_params.get("limit", "20"))
+    limit = _parse_limit(request, default=20)
     type_filter = request.query_params.get("type", "all").lower()
     try:
         result = await oncofiles_client.search_conversations(
@@ -1200,7 +1208,7 @@ def _briefing_summary(content: str) -> dict:
 
 async def api_briefings(request: Request) -> JSONResponse:
     """GET /api/briefings — autonomous briefings + cost alerts from oncofiles diary."""
-    limit = int(request.query_params.get("limit", "20"))
+    limit = _parse_limit(request, default=20)
     try:
         briefings_res, alerts_res = await asyncio.gather(
             oncofiles_client.search_conversations(entry_type="autonomous_briefing", limit=limit),
@@ -1293,7 +1301,7 @@ async def api_toxicity(request: Request) -> JSONResponse:
             return _cors_json({"error": str(e)}, status_code=502)
 
     # GET: list toxicity logs
-    limit = int(request.query_params.get("limit", "50"))
+    limit = _parse_limit(request, default=50)
     try:
         result = await oncofiles_client.list_treatment_events(
             event_type="toxicity_log", limit=limit
@@ -1349,7 +1357,7 @@ async def api_labs(request: Request) -> JSONResponse:
             return _cors_json({"error": str(e)}, status_code=502)
 
     # GET: list lab results
-    limit = int(request.query_params.get("limit", "50"))
+    limit = _parse_limit(request, default=50)
     try:
         result = await oncofiles_client.list_treatment_events(event_type="lab_result", limit=limit)
         events = _filter_test(_extract_list(result, "events"), request)
@@ -1865,7 +1873,7 @@ async def api_medications(request: Request) -> JSONResponse:
             return _cors_json({"error": str(e)}, status_code=502)
 
     # GET: list medication logs + adherence data
-    limit = int(request.query_params.get("limit", "50"))
+    limit = _parse_limit(request, default=50)
     try:
         med_result, adh_result = await asyncio.gather(
             oncofiles_client.list_treatment_events(event_type="medication_log", limit=limit),
@@ -1957,7 +1965,7 @@ async def api_weight(request: Request) -> JSONResponse:
     Aggregates weight from weight_measurement and toxicity_log events.
     Calculates % change from baseline and flags >5% loss.
     """
-    limit = int(request.query_params.get("limit", "50"))
+    limit = _parse_limit(request, default=50)
     baseline = PATIENT.baseline_weight_kg or 72.0
 
     try:
@@ -2307,7 +2315,7 @@ async def api_family_update(request: Request) -> JSONResponse:
             return _cors_json({"error": str(e)}, status_code=502)
 
     # GET: list past family updates
-    limit = int(request.query_params.get("limit", "20"))
+    limit = _parse_limit(request, default=20)
     try:
         result = await oncofiles_client.search_conversations(
             entry_type="family_update", limit=limit
@@ -2393,7 +2401,7 @@ async def api_agent_config(request: Request) -> JSONResponse:
 async def api_agent_runs(request: Request) -> JSONResponse:
     """Return recent run traces for a specific agent (#92)."""
     agent_id = request.path_params.get("id", "")
-    limit = int(request.query_params.get("limit", "10"))
+    limit = _parse_limit(request, default=10)
 
     try:
         result = await oncofiles_client.search_conversations(
