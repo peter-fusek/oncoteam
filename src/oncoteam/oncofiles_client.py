@@ -62,11 +62,12 @@ async def _invalidate_client() -> None:
 
 
 def _parse_result(result: object) -> dict | list | str:
-    if result.content and hasattr(result.content[0], "text"):  # type: ignore[union-attr]
+    content = getattr(result, "content", None)
+    if content and len(content) > 0 and hasattr(content[0], "text"):
         try:
-            return json.loads(result.content[0].text)  # type: ignore[union-attr]
+            return json.loads(content[0].text)
         except (json.JSONDecodeError, TypeError):
-            return result.content[0].text  # type: ignore[union-attr]
+            return content[0].text
     return str(result)
 
 
@@ -83,6 +84,7 @@ async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
                 await _invalidate_client()
                 continue
             raise
+    raise RuntimeError("call_oncofiles: unreachable")
 
 
 async def search_documents(
