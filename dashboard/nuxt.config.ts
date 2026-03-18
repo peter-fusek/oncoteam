@@ -13,7 +13,11 @@ export default defineNuxtConfig({
     langDir: '../app/locales',
     lazy: false,
     strategy: 'no_prefix',
-    detectBrowserLanguage: false,
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_locale',
+      redirectOn: 'root',
+    },
   },
 
   css: ['~/assets/css/main.css'],

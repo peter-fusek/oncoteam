@@ -9,6 +9,9 @@ Use resolve_protocol(lang) to get locale-resolved copies.
 
 from __future__ import annotations
 
+import copy
+import functools
+
 from .locale import L, resolve
 
 # FOLFOX dose modification rules (NCCN)
@@ -494,8 +497,9 @@ def format_pre_cycle_checklist(
     )
 
 
-def resolve_protocol(lang: str = "sk") -> dict:
-    """Return all protocol data with bilingual values resolved to requested language."""
+@functools.lru_cache(maxsize=2)
+def _resolve_protocol_cached(lang: str) -> dict:
+    """Resolve bilingual protocol data — cached per language."""
     return {
         "lab_thresholds": LAB_SAFETY_THRESHOLDS,
         "reference_ranges": LAB_REFERENCE_RANGES,
@@ -511,6 +515,11 @@ def resolve_protocol(lang: str = "sk") -> dict:
         "safety_flags": resolve(SAFETY_FLAGS, lang),
         "current_cycle": 3,
     }
+
+
+def resolve_protocol(lang: str = "sk") -> dict:
+    """Return all protocol data with bilingual values resolved to requested language."""
+    return copy.deepcopy(_resolve_protocol_cached(lang))
 
 
 # Section name aliases for the MCP tool

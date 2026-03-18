@@ -893,14 +893,16 @@ async def api_protocol(request: Request) -> JSONResponse:
     lang = get_lang(request)
     data = resolve_protocol(lang)
 
-    # Fetch lab values + treatment events concurrently with 5s timeout (#63 perf fix)
+    # Fetch lab values + treatment events + lab trends concurrently (#106 perf fix)
+    # All 3 calls in parallel to avoid sequential fallback penalty
     import asyncio
 
     try:
-        lab_result, events_result = await asyncio.wait_for(
+        lab_result, events_result, trends_result = await asyncio.wait_for(
             asyncio.gather(
                 oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
-                oncofiles_client.list_treatment_events(limit=50),
+                oncofiles_client.list_treatment_events(limit=20),
+                oncofiles_client.get_lab_trends_data(limit=200),
                 return_exceptions=True,
             ),
             timeout=5.0,
@@ -909,6 +911,7 @@ async def api_protocol(request: Request) -> JSONResponse:
         record_suppressed_error("api_protocol", "oncofiles_timeout", TimeoutError("5s"))
         lab_result = TimeoutError("oncofiles timeout")
         events_result = TimeoutError("oncofiles timeout")
+        trends_result = TimeoutError("oncofiles timeout")
 
     # Process lab values for threshold status display
     last_lab_values: dict[str, dict] = {}
@@ -949,7 +952,7 @@ async def api_protocol(request: Request) -> JSONResponse:
         record_suppressed_error("api_protocol", "fetch_last_labs", lab_result)
 
     # Fallback: fill missing threshold params from lab_values table (#72/#73)
-    # Triggers when primary path has partial data or no data at all
+    # Uses pre-fetched trends_result (parallel call above, #106 perf fix)
     _param_to_threshold = {
         "ABS_NEUT": "ANC",
         "ANC": "ANC",
@@ -963,13 +966,9 @@ async def api_protocol(request: Request) -> JSONResponse:
         "bilirubin": "bilirubin",
     }
     _missing = set(LAB_SAFETY_THRESHOLDS.keys()) - set(last_lab_values.keys())
-    if _missing:
+    if _missing and not isinstance(trends_result, BaseException):
         try:
-            trends = await asyncio.wait_for(
-                oncofiles_client.get_lab_trends_data(limit=200),
-                timeout=5.0,
-            )
-            values_list = _extract_list(trends, "values")
+            values_list = _extract_list(trends_result, "values")
             if values_list:
                 # Group by date, pick latest
                 from collections import defaultdict
@@ -1002,8 +1001,10 @@ async def api_protocol(request: Request) -> JSONResponse:
                             "sync_date": "",
                             "status": status,
                         }
-        except (TimeoutError, Exception) as e:
+        except Exception as e:
             record_suppressed_error("api_protocol", "fallback_lab_trends", e)
+    elif isinstance(trends_result, Exception):
+        record_suppressed_error("api_protocol", "fallback_lab_trends", trends_result)
 
     # Data freshness timestamp
     lab_dates = [v.get("sample_date", "") for v in last_lab_values.values() if v.get("sample_date")]
@@ -2313,7 +2314,7 @@ async def api_family_update(request: Request) -> JSONResponse:
 
 
 async def api_agents(request: Request) -> JSONResponse:
-    """Return agent registry with last-run status for each agent (#92)."""
+    """Return agent registry with last-run status for each agent (#92, #105)."""
     from .agent_registry import AGENT_REGISTRY, AgentCategory
     from .autonomous_tasks import _extract_timestamp, _get_state
 
@@ -2322,8 +2323,12 @@ async def api_agents(request: Request) -> JSONResponse:
     for agent_id, config in AGENT_REGISTRY.items():
         if config.category == AgentCategory.SYSTEM:
             continue
-        state = await _get_state(f"last_{agent_id}")
-        ts = _extract_timestamp(state)
+        ts = None
+        try:
+            state = await asyncio.wait_for(_get_state(f"last_{agent_id}"), timeout=2.0)
+            ts = _extract_timestamp(state)
+        except Exception:
+            pass  # gracefully skip — show agent without last_run
         agents.append(
             resolve(
                 {

@@ -4,7 +4,6 @@ const { t, locale } = useI18n()
 const { fetchApi } = useOncoteamApi()
 
 const agentId = computed(() => route.params.id as string)
-const lang = computed(() => locale.value)
 
 // Fetch agent list to get this agent's config
 const { data: agentsData } = fetchApi<{
@@ -13,7 +12,7 @@ const { data: agentsData } = fetchApi<{
     model: string; schedule: string; cooldown_hours: number; max_turns: number
     whatsapp_enabled: boolean; last_run: string | null; enabled: boolean
   }>
-}>(`/agents?lang=${lang.value}`, { lazy: true })
+}>('/agents', { lazy: true })
 
 const agent = computed(() =>
   agentsData.value?.agents?.find((a: any) => a.id === agentId.value),
