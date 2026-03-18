@@ -35,8 +35,8 @@ async def _should_skip(task_name: str) -> bool:
                 cooldown_hours,
             )
             return True
-    except (ValueError, TypeError):
-        pass
+    except (ValueError, TypeError) as e:
+        logger.debug("_should_skip(%s): could not parse timestamp %r: %s", task_name, ts, e)
     return False
 
 

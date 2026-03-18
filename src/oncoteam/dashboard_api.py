@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import contextlib
 import json
 import logging
@@ -399,8 +400,30 @@ def _check_api_auth(request: Request) -> JSONResponse | None:
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
     if token == DASHBOARD_API_KEY:
+        if not _check_rate_limit():
+            return _cors_json({"error": "Rate limit exceeded"}, status_code=429, request=request)
         return None  # Authorized
     return _cors_json({"error": "Unauthorized"}, status_code=401, request=request)
+
+
+# ── Rate limiter ─────────────────────────────────
+# Simple in-memory sliding window: max 120 authenticated requests per 60s.
+# Protects against runaway dashboard clients or misconfigured cron jobs.
+_RATE_LIMIT_WINDOW = 60  # seconds
+_RATE_LIMIT_MAX = 120  # requests per window
+_rate_timestamps: collections.deque = collections.deque()
+
+
+def _check_rate_limit() -> bool:
+    """Return True if within rate limit, False if exceeded."""
+    now = time.time()
+    cutoff = now - _RATE_LIMIT_WINDOW
+    while _rate_timestamps and _rate_timestamps[0] < cutoff:
+        _rate_timestamps.popleft()
+    if len(_rate_timestamps) >= _RATE_LIMIT_MAX:
+        return False
+    _rate_timestamps.append(now)
+    return True
 
 
 async def api_status(request: Request) -> JSONResponse:
@@ -1683,22 +1706,24 @@ async def api_detail(request: Request) -> JSONResponse:
 
 async def api_diagnostics(request: Request) -> JSONResponse:
     """GET /api/diagnostics — probe oncofiles connectivity and report health."""
-    checks: list[dict] = []
     probes = [
         ("treatment_events", oncofiles_client.list_treatment_events, {"limit": 1}, "events"),
         ("research_entries", oncofiles_client.list_research_entries, {"limit": 1}, "entries"),
         ("conversations", oncofiles_client.search_conversations, {"limit": 1}, "entries"),
         ("activity_log", oncofiles_client.search_activity_log, {"limit": 1}, "entries"),
     ]
-    for name, fn, kwargs, key in probes:
+
+    async def _run_probe(name: str, fn, kwargs: dict, key: str) -> dict:
         try:
             t0 = time.time()
             result = await fn(**kwargs)
             ms = int((time.time() - t0) * 1000)
             count = len(_extract_list(result, key))
-            checks.append({"name": name, "ok": True, "ms": ms, "sample_count": count})
+            return {"name": name, "ok": True, "ms": ms, "sample_count": count}
         except Exception as e:
-            checks.append({"name": name, "ok": False, "error": str(e)})
+            return {"name": name, "ok": False, "error": str(e)}
+
+    checks = list(await asyncio.gather(*[_run_probe(*p) for p in probes]))
 
     # Check if lab_result data is stale (>48h since last lab_result event)
     lab_sync_stale = False
