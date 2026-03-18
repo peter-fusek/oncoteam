@@ -186,6 +186,31 @@ body {
   border-left: 4px solid var(--primary);
 }
 
+/* Stats */
+.stats { padding: 48px 0; background: var(--bg-dark); }
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  text-align: center;
+}
+.stat-num {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+@media (max-width: 640px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+}
+
 /* Features */
 .features { padding: 80px 0; background: var(--bg-alt); }
 
