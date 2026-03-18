@@ -573,6 +573,7 @@ async def run_autonomous_task(
         "tool_calls": [],
         "citations": [],
         "response": "",
+        "prompt": task_prompt,
         "input_tokens": 0,
         "output_tokens": 0,
         "cost": 0.0,

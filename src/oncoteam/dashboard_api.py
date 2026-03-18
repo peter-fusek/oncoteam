@@ -2420,7 +2420,12 @@ async def api_agent_config(request: Request) -> JSONResponse:
     config = AGENT_REGISTRY.get(agent_id)
     if not config:
         return _cors_json({"error": f"Agent {agent_id} not found"}, status_code=404)
-    return _cors_json(config.model_dump())
+    data = config.model_dump()
+    # Include system prompt for full observability
+    from .autonomous import AUTONOMOUS_SYSTEM_PROMPT
+
+    data["system_prompt"] = AUTONOMOUS_SYSTEM_PROMPT
+    return _cors_json(data)
 
 
 async def api_agent_runs(request: Request) -> JSONResponse:
@@ -2455,11 +2460,12 @@ async def api_agent_runs(request: Request) -> JSONResponse:
                 "timestamp": e.get("created_at"),
                 "task_name": trace.get("task_name", agent_id),
                 "model": trace.get("model", ""),
+                "prompt": trace.get("prompt", ""),
                 "cost": trace.get("cost", 0),
                 "duration_ms": trace.get("duration_ms", 0),
                 "tool_calls": trace.get("tool_calls", []),
                 "thinking": trace.get("thinking", []),
-                "response": (trace.get("response", "") or "")[:500],
+                "response": trace.get("response", ""),
                 "error": trace.get("error"),
                 "input_tokens": trace.get("input_tokens", 0),
                 "output_tokens": trace.get("output_tokens", 0),

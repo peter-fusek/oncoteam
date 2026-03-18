@@ -107,6 +107,7 @@ async def _log_task(task_name: str, result: dict) -> None:
                 {
                     "task_name": task_name,
                     "model": result.get("model", ""),
+                    "prompt": result.get("prompt", ""),
                     "thinking": result.get("thinking", []),
                     "tool_calls": result.get("tool_calls", []),
                     "response": result.get("response", ""),

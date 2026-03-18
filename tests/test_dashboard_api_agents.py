@@ -208,10 +208,12 @@ async def test_agent_runs_error_returns_502():
 
 
 @pytest.mark.anyio
-async def test_agent_runs_truncates_response():
-    """Should truncate response to 500 chars."""
+async def test_agent_runs_returns_full_response():
+    """Should return full response without truncation (prompt observability)."""
     long_response = "x" * 1000
-    trace_content = json.dumps({"response": long_response, "task_name": "test"})
+    trace_content = json.dumps(
+        {"response": long_response, "task_name": "test", "prompt": "test prompt"}
+    )
     mock_result = {
         "entries": [{"id": 1, "created_at": "2026-03-17T10:00:00+00:00", "content": trace_content}]
     }
@@ -224,4 +226,5 @@ async def test_agent_runs_truncates_response():
         response = await api_agent_runs(request)
         data = json.loads(response.body)
 
-    assert len(data["runs"][0]["response"]) == 500
+    assert len(data["runs"][0]["response"]) == 1000
+    assert data["runs"][0]["prompt"] == "test prompt"

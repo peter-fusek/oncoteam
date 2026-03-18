@@ -26,6 +26,8 @@ const { data: configData } = fetchApi<{
 
 const promptTemplate = computed(() => configData.value?.prompt_template || '')
 const isDynamicPrompt = computed(() => promptTemplate.value.startsWith('[Dynamic'))
+const systemPrompt = computed(() => configData.value?.system_prompt || '')
+const showSystemPrompt = ref(false)
 
 // Fetch run history
 const { data: runsData, status: runsStatus } = fetchApi<{
@@ -33,7 +35,7 @@ const { data: runsData, status: runsStatus } = fetchApi<{
     id: number; timestamp: string; task_name: string; model: string
     cost: number; duration_ms: number; input_tokens: number; output_tokens: number
     tool_calls: Array<{ tool: string; input: any }>
-    thinking: string[]; response: string; error: string | null
+    thinking: string[]; response: string; prompt: string; error: string | null
   }>
 }>(`/agents/${agentId.value}/runs?limit=20`, { lazy: true })
 
@@ -116,10 +118,22 @@ const modelLabels: Record<string, string> = {
       </div>
     </div>
 
+    <!-- System Prompt (collapsible) -->
+    <div v-if="systemPrompt">
+      <button class="flex items-center gap-2 text-sm font-semibold text-gray-300 mb-2 hover:text-white transition-colors" @click="showSystemPrompt = !showSystemPrompt">
+        <UIcon name="i-lucide-chevron-down" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showSystemPrompt }" />
+        System Prompt
+        <span class="text-gray-500 font-normal text-xs">({{ systemPrompt.length.toLocaleString() }} chars)</span>
+      </button>
+      <div v-if="showSystemPrompt" class="rounded-lg border border-gray-800 bg-gray-950 p-4 overflow-x-auto max-h-96 overflow-y-auto">
+        <pre class="text-xs text-gray-300 font-mono whitespace-pre-wrap">{{ systemPrompt }}</pre>
+      </div>
+    </div>
+
     <!-- Prompt Template -->
     <div v-if="promptTemplate">
       <h2 class="text-sm font-semibold text-gray-300 mb-2">
-        Prompt Template
+        Task Prompt Template
         <span v-if="isDynamicPrompt" class="text-gray-500 font-normal text-xs ml-2">
           (variables injected at runtime)
         </span>
@@ -179,6 +193,14 @@ const modelLabels: Record<string, string> = {
               <span>Input: {{ run.input_tokens?.toLocaleString() }} tokens</span>
               <span>Output: {{ run.output_tokens?.toLocaleString() }} tokens</span>
               <span>Cost: {{ formatCost(run.cost) }}</span>
+            </div>
+
+            <!-- Prompt (what was asked) -->
+            <div v-if="run.prompt" class="space-y-1">
+              <p class="text-[10px] text-gray-500 uppercase tracking-wider">Prompt Sent</p>
+              <div class="text-xs text-gray-300 bg-blue-950/30 border border-blue-900/30 rounded p-2 max-h-60 overflow-y-auto font-mono whitespace-pre-wrap">
+                {{ run.prompt }}
+              </div>
             </div>
 
             <!-- Thinking -->

@@ -1,0 +1,36 @@
+# Oncoteam
+
+> Oncoteam is an autonomous AI agent for cancer treatment management. It helps patients, caregivers, and healthcare advocates navigate cancer treatment by analyzing lab results, matching clinical trials, tracking treatment protocols, and providing proactive safety alerts.
+
+## What Oncoteam Does
+
+- Analyzes lab results with trend tracking, inflammation indices (SII, Ne/Ly ratio), and pre-cycle safety checks
+- Matches clinical trials from ClinicalTrials.gov and PubMed across 14 European countries based on molecular profile (KRAS, NRAS, BRAF, HER2, MSI/MMR status)
+- Tracks treatment protocols with dose modification rules, cumulative dose thresholds, and cycle delay criteria
+- Sends proactive WhatsApp safety alerts and weekly briefings
+- Processes medical documents (lab reports, pathology, imaging, genetics) with OCR and structured data extraction
+- Provides bilingual interface (Slovak/English) for patients and families
+- Generates family-friendly treatment summaries
+
+## Architecture
+
+- Built on the Model Context Protocol (MCP) — open, interoperable standard for AI tool use
+- 17 specialized autonomous agents running clinical and research tasks
+- 22 MCP tools for PubMed search, clinical trial matching, lab analysis, and document processing
+- Two-layer architecture: Oncofiles (data/persistence layer) + Oncoteam (intelligence layer)
+- Patient data stored in patient-owned Google Drive (GDPR compliant)
+- Dashboard built with Nuxt 4, backend with Python/FastMCP
+
+## Who It's For
+
+- Cancer patients managing their own treatment data
+- Family caregivers coordinating care
+- Patient advocates navigating the healthcare system
+- Healthcare professionals seeking AI-assisted treatment management
+
+## Links
+
+- Website: https://oncoteam.cloud
+- Dashboard: https://dashboard.oncoteam.cloud
+- GitHub: https://github.com/instarea-sk
+- Author: Peter Fusek (https://www.linkedin.com/in/peterfusek/)
