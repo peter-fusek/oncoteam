@@ -12,7 +12,7 @@ from oncoteam.clinical_protocol import (
     LAB_REFERENCE_RANGES,
     PARAMETER_HEALTH_DIRECTION,
 )
-from oncoteam.dashboard_api import api_labs, api_protocol
+from oncoteam.dashboard_api import _protocol_cache, api_labs, api_protocol
 from oncoteam.models import PatientProfile
 from oncoteam.patient_context import PATIENT
 
@@ -206,12 +206,25 @@ async def test_api_labs_oldest_entry_has_no_direction(mock_list):
 # ── Protocol Last Lab Values (Session 2D) ──
 
 
+@pytest.fixture(autouse=True)
+def _clear_protocol_cache():
+    """Clear protocol response cache between tests to avoid cache poisoning."""
+    _protocol_cache.clear()
+    yield
+    _protocol_cache.clear()
+
+
 @pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+    return_value={"values": []},
+)
 @patch(
     "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
     new_callable=AsyncMock,
 )
-async def test_api_protocol_includes_last_lab_values(mock_list):
+async def test_api_protocol_includes_last_lab_values(mock_list, _mock_trends):
     mock_list.return_value = [
         {
             "id": 10,
@@ -236,10 +249,15 @@ async def test_api_protocol_includes_last_lab_values(mock_list):
 
 @pytest.mark.anyio
 @patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+    return_value={"values": []},
+)
+@patch(
     "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
     new_callable=AsyncMock,
 )
-async def test_api_protocol_last_lab_warning_status(mock_list):
+async def test_api_protocol_last_lab_warning_status(mock_list, _mock_trends):
     # ANC = 1700: above min (1500) but within 20% → warning
     mock_list.return_value = [
         {
@@ -258,10 +276,15 @@ async def test_api_protocol_last_lab_warning_status(mock_list):
 
 @pytest.mark.anyio
 @patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+    return_value={"values": []},
+)
+@patch(
     "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
     new_callable=AsyncMock,
 )
-async def test_api_protocol_last_lab_critical_status(mock_list):
+async def test_api_protocol_last_lab_critical_status(mock_list, _mock_trends):
     # ANC = 800: below min (1500) → critical
     mock_list.return_value = [
         {
@@ -280,10 +303,15 @@ async def test_api_protocol_last_lab_critical_status(mock_list):
 
 @pytest.mark.anyio
 @patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+    return_value={"values": []},
+)
+@patch(
     "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
     new_callable=AsyncMock,
 )
-async def test_api_protocol_last_lab_empty_when_no_events(mock_list):
+async def test_api_protocol_last_lab_empty_when_no_events(mock_list, _mock_trends):
     mock_list.return_value = []
     request = FakeRequest("GET")
     response = await api_protocol(request)
@@ -294,10 +322,15 @@ async def test_api_protocol_last_lab_empty_when_no_events(mock_list):
 
 @pytest.mark.anyio
 @patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+    return_value={"values": []},
+)
+@patch(
     "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
     new_callable=AsyncMock,
 )
-async def test_api_protocol_last_lab_handles_error(mock_list):
+async def test_api_protocol_last_lab_handles_error(mock_list, _mock_trends):
     mock_list.side_effect = Exception("connection refused")
     request = FakeRequest("GET")
     response = await api_protocol(request)

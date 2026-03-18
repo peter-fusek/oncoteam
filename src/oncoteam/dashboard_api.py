@@ -886,11 +886,23 @@ async def api_autonomous_cost(request: Request) -> JSONResponse:
     )
 
 
+_protocol_cache: dict[str, tuple[float, JSONResponse]] = {}
+_PROTOCOL_CACHE_TTL = 30  # seconds
+
+
 async def api_protocol(request: Request) -> JSONResponse:
     """GET /api/protocol — clinical protocol data (thresholds, milestones, dose mods)."""
     from .clinical_protocol import resolve_protocol
 
     lang = get_lang(request)
+
+    # Short-lived response cache to avoid repeated MCP calls (#106 perf fix)
+    cache_key = f"{lang}:{request.query_params}"
+    if cache_key in _protocol_cache:
+        cached_time, cached_response = _protocol_cache[cache_key]
+        if time.time() - cached_time < _PROTOCOL_CACHE_TTL:
+            return cached_response
+
     data = resolve_protocol(lang)
 
     # Fetch lab values + treatment events + lab trends concurrently (#106 perf fix)
@@ -1058,7 +1070,9 @@ async def api_protocol(request: Request) -> JSONResponse:
         record_suppressed_error("api_protocol", "fetch_real_values", events_result)
 
     data["real_values"] = real_values
-    return _cors_json(data)
+    response = _cors_json(data)
+    _protocol_cache[cache_key] = (time.time(), response)
+    return response
 
 
 async def api_protocol_cycles(request: Request) -> JSONResponse:
@@ -2319,16 +2333,30 @@ async def api_agents(request: Request) -> JSONResponse:
     from .autonomous_tasks import _extract_timestamp, _get_state
 
     lang = get_lang(request)
-    agents = []
-    for agent_id, config in AGENT_REGISTRY.items():
-        if config.category == AgentCategory.SYSTEM:
-            continue
-        ts = None
+
+    # Build agent list (excluding system agents)
+    non_system = [
+        (aid, cfg) for aid, cfg in AGENT_REGISTRY.items()
+        if cfg.category != AgentCategory.SYSTEM
+    ]
+
+    # Fetch all last-run states concurrently (#105 perf fix)
+    async def _safe_get_state(agent_id: str):
         try:
             state = await asyncio.wait_for(_get_state(f"last_{agent_id}"), timeout=2.0)
-            ts = _extract_timestamp(state)
+            return _extract_timestamp(state)
         except Exception:
-            pass  # gracefully skip — show agent without last_run
+            return None
+
+    timestamps = await asyncio.gather(
+        *[_safe_get_state(aid) for aid, _ in non_system],
+        return_exceptions=True,
+    )
+
+    agents = []
+    for (_agent_id, config), ts in zip(non_system, timestamps, strict=True):
+        if isinstance(ts, BaseException):
+            ts = None
         agents.append(
             resolve(
                 {
