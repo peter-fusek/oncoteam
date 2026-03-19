@@ -2470,28 +2470,10 @@ async def api_agent_runs(request: Request) -> JSONResponse:
 
     entries = _extract_list(result, "entries")
 
-    # search_conversations returns metadata only — fetch full content per run (with timeout)
-    async def _fetch_full(entry: dict) -> dict:
-        eid = entry.get("id")
-        if not eid:
-            return entry
-        try:
-            full = await asyncio.wait_for(oncofiles_client.get_conversation(eid), timeout=8.0)
-            if isinstance(full, dict) and "data" in full:
-                return full["data"]
-            if isinstance(full, dict) and "content" in full:
-                return full
-        except Exception:
-            pass
-        return entry
-
-    # Limit parallel fetches to avoid MCP overload
-    full_entries = await asyncio.gather(*[_fetch_full(e) for e in entries[:5]])
-    # Append remaining entries without full content
-    full_entries = list(full_entries) + entries[5:]
-
+    # List view uses tag metadata only (fast, no MCP round-trips).
+    # Full content available via /api/detail/conversation/{id}.
     runs = []
-    for e in full_entries:
+    for e in entries:
         content = e.get("content", "")
         try:
             trace = json.loads(content) if isinstance(content, str) else content
