@@ -2470,8 +2470,25 @@ async def api_agent_runs(request: Request) -> JSONResponse:
 
     entries = _extract_list(result, "entries")
 
+    # search_conversations returns metadata only — fetch full content for each run
+    async def _fetch_full(entry: dict) -> dict:
+        eid = entry.get("id")
+        if not eid:
+            return entry
+        try:
+            full = await oncofiles_client.get_conversation(eid)
+            if isinstance(full, dict) and "data" in full:
+                return full["data"]
+            if isinstance(full, dict) and "content" in full:
+                return full
+        except Exception:
+            pass
+        return entry
+
+    full_entries = await asyncio.gather(*[_fetch_full(e) for e in entries])
+
     runs = []
-    for e in entries:
+    for e in full_entries:
         content = e.get("content", "")
         try:
             trace = json.loads(content) if isinstance(content, str) else content
