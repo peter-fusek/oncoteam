@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const method = event.method
-  const fetchOpts: RequestInit = { method, headers, signal: AbortSignal.timeout(12_000) }
+  const fetchOpts: RequestInit = { method, headers, signal: AbortSignal.timeout(25_000) }
 
   if (method === 'POST') {
     const body = await readBody(event)
