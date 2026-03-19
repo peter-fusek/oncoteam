@@ -33,7 +33,7 @@ async def test_agent_config_returns_full_config():
     assert "prompt_template" in data
     assert "CEA" in data["prompt_template"]
     assert data["category"] == "clinical"
-    assert data["cooldown_hours"] == 600.0
+    assert data["cooldown_hours"] == 0.5
 
 
 @pytest.mark.anyio
