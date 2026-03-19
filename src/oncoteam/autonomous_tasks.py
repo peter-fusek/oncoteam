@@ -101,30 +101,42 @@ async def _log_task(task_name: str, result: dict) -> None:
 
     # Store full run trace for dashboard observability (#92)
     try:
+        cost = result.get("cost", 0)
+        n_tools = len(result.get("tool_calls", []))
+        model = result.get("model", "")
+        dur = result.get("duration_ms", 0)
+        err = result.get("error")
+        title_suffix = f" | ${cost:.4f} | {n_tools} tools | {dur}ms"
+        if err:
+            title_suffix += " | ERROR"
+        tags = (
+            f"task:{task_name},sys:agent-run,"
+            f"cost:{cost:.4f},tools:{n_tools},model:{model},dur:{dur}"
+        )
         await oncofiles_client.log_conversation(
-            title=f"Agent run: {task_name}",
+            title=f"Agent run: {task_name}{title_suffix}",
             content=json.dumps(
                 {
                     "task_name": task_name,
-                    "model": result.get("model", ""),
+                    "model": model,
                     "prompt": result.get("prompt", ""),
                     "thinking": result.get("thinking", []),
                     "tool_calls": result.get("tool_calls", []),
                     "messages": result.get("messages", []),
                     "response": result.get("response", ""),
-                    "cost": result.get("cost", 0),
-                    "duration_ms": result.get("duration_ms", 0),
+                    "cost": cost,
+                    "duration_ms": dur,
                     "input_tokens": result.get("input_tokens", 0),
                     "output_tokens": result.get("output_tokens", 0),
                     "turns": result.get("turns", 0),
                     "started_at": result.get("started_at"),
                     "completed_at": result.get("completed_at"),
-                    "error": result.get("error"),
+                    "error": err,
                 },
                 ensure_ascii=False,
             ),
             entry_type="agent_run",
-            tags=f"task:{task_name},sys:agent-run",
+            tags=tags,
         )
     except Exception as e:
         record_suppressed_error(task_name, "store_trace", e)

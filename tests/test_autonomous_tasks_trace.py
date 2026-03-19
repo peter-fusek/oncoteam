@@ -39,10 +39,11 @@ async def test_log_task_stores_trace():
     # Verify trace was stored
     mock_conversation.assert_called_once()
     call_kwargs = mock_conversation.call_args
-    assert call_kwargs.kwargs["title"] == "Agent run: daily_research"
+    assert call_kwargs.kwargs["title"].startswith("Agent run: daily_research")
     assert call_kwargs.kwargs["entry_type"] == "agent_run"
     assert "task:daily_research" in call_kwargs.kwargs["tags"]
     assert "sys:agent-run" in call_kwargs.kwargs["tags"]
+    assert "cost:0.0100" in call_kwargs.kwargs["tags"]
 
     import json
 

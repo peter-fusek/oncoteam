@@ -2470,13 +2470,13 @@ async def api_agent_runs(request: Request) -> JSONResponse:
 
     entries = _extract_list(result, "entries")
 
-    # search_conversations returns metadata only — fetch full content for each run
+    # search_conversations returns metadata only — fetch full content per run (with timeout)
     async def _fetch_full(entry: dict) -> dict:
         eid = entry.get("id")
         if not eid:
             return entry
         try:
-            full = await oncofiles_client.get_conversation(eid)
+            full = await asyncio.wait_for(oncofiles_client.get_conversation(eid), timeout=8.0)
             if isinstance(full, dict) and "data" in full:
                 return full["data"]
             if isinstance(full, dict) and "content" in full:
@@ -2485,7 +2485,10 @@ async def api_agent_runs(request: Request) -> JSONResponse:
             pass
         return entry
 
-    full_entries = await asyncio.gather(*[_fetch_full(e) for e in entries])
+    # Limit parallel fetches to avoid MCP overload
+    full_entries = await asyncio.gather(*[_fetch_full(e) for e in entries[:5]])
+    # Append remaining entries without full content
+    full_entries = list(full_entries) + entries[5:]
 
     runs = []
     for e in full_entries:
@@ -2494,6 +2497,24 @@ async def api_agent_runs(request: Request) -> JSONResponse:
             trace = json.loads(content) if isinstance(content, str) else content
         except (json.JSONDecodeError, TypeError):
             trace = {}
+
+        # If no content (search_conversations metadata only), parse from tags
+        if not trace:
+            tags = e.get("tags", [])
+            tag_map = {}
+            for t in tags if isinstance(tags, list) else []:
+                if ":" in t:
+                    k, v = t.split(":", 1)
+                    tag_map[k] = v
+            trace = {
+                "task_name": tag_map.get("task", agent_id),
+                "model": tag_map.get("model", ""),
+                "cost": float(tag_map["cost"]) if "cost" in tag_map else 0,
+                "duration_ms": int(tag_map["dur"]) if "dur" in tag_map else 0,
+            }
+            # Indicate this is a summary-only entry
+            trace["_summary_only"] = True
+
         # Truncate tool outputs in list view (full available in detail endpoint)
         tool_calls_summary = []
         for tc in trace.get("tool_calls", []):
