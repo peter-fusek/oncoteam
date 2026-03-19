@@ -2470,59 +2470,43 @@ async def api_agent_runs(request: Request) -> JSONResponse:
 
     entries = _extract_list(result, "entries")
 
-    # List view uses tag metadata only (fast, no MCP round-trips).
-    # Full content available via /api/detail/conversation/{id}.
+    # List view: lightweight summary from tags or content header fields.
+    # Full content (prompt, messages, thinking, tool outputs) via /api/detail/agent_run/{id}.
     runs = []
     for e in entries:
+        # Parse tags into a lookup for fast metadata extraction
+        tags = e.get("tags", [])
+        tag_map = {}
+        for t in tags if isinstance(tags, list) else []:
+            if ":" in t:
+                k, v = t.split(":", 1)
+                tag_map[k] = v
+
+        # Try to extract summary fields from content (if available)
         content = e.get("content", "")
+        trace: dict = {}
         try:
             trace = json.loads(content) if isinstance(content, str) else content
+            if not isinstance(trace, dict):
+                trace = {}
         except (json.JSONDecodeError, TypeError):
             trace = {}
 
-        # If no content (search_conversations metadata only), parse from tags
-        if not trace:
-            tags = e.get("tags", [])
-            tag_map = {}
-            for t in tags if isinstance(tags, list) else []:
-                if ":" in t:
-                    k, v = t.split(":", 1)
-                    tag_map[k] = v
-            trace = {
-                "task_name": tag_map.get("task", agent_id),
-                "model": tag_map.get("model", ""),
-                "cost": float(tag_map["cost"]) if "cost" in tag_map else 0,
-                "duration_ms": int(tag_map["dur"]) if "dur" in tag_map else 0,
-            }
-            # Indicate this is a summary-only entry
-            trace["_summary_only"] = True
-
-        # Truncate tool outputs in list view (full available in detail endpoint)
-        tool_calls_summary = []
-        for tc in trace.get("tool_calls", []):
-            summary = {"tool": tc.get("tool", ""), "input": tc.get("input", {})}
-            output = tc.get("output", "")
-            summary["output"] = output[:500] if isinstance(output, str) else str(output)[:500]
-            summary["has_full_output"] = len(str(output)) > 500
-            tool_calls_summary.append(summary)
+        n_tool_calls = len(trace.get("tool_calls", []))
 
         runs.append(
             {
                 "id": e.get("id"),
                 "timestamp": e.get("created_at"),
-                "task_name": trace.get("task_name", agent_id),
-                "model": trace.get("model", ""),
-                "prompt": trace.get("prompt", ""),
-                "cost": trace.get("cost", 0),
-                "duration_ms": trace.get("duration_ms", 0),
-                "tool_calls": tool_calls_summary,
-                "thinking": trace.get("thinking", []),
-                "messages": trace.get("messages", []),
-                "response": trace.get("response", ""),
+                "task_name": tag_map.get("task", trace.get("task_name", agent_id)),
+                "model": tag_map.get("model", trace.get("model", "")),
+                "cost": float(tag_map.get("cost", trace.get("cost", 0))),
+                "duration_ms": int(tag_map.get("dur", trace.get("duration_ms", 0))),
                 "error": trace.get("error"),
                 "input_tokens": trace.get("input_tokens", 0),
                 "output_tokens": trace.get("output_tokens", 0),
                 "turns": trace.get("turns", 0),
+                "tool_call_count": int(tag_map.get("tools", n_tool_calls)),
                 "started_at": trace.get("started_at"),
                 "completed_at": trace.get("completed_at"),
             }

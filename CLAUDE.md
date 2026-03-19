@@ -54,6 +54,9 @@ uv run oncoteam-mcp    # stdio mode
 - `import collections` is at top of `dashboard_api.py`; rate limiter uses `collections.deque` — don't add a second import mid-file (E402)
 - `landing/Dockerfile` must explicitly COPY every static file — new files (robots.txt, llms.txt, og-image.png) won't be served unless added to COPY line
 - `autonomous.py` stores `prompt` (task_prompt) in result dict → persisted in run traces via `_log_task()`. The `api_agent_runs` endpoint returns full prompt + response without truncation.
+- `autonomous_tasks._log_task()` stores agent_run entries with enriched tags: `cost:{cost},tools:{n},model:{model},dur:{ms}`. The `api_agent_runs` list view parses these tags — never fetches full content (oncofiles `get_conversation` is too slow for list views).
+- Dashboard proxy timeout (`dashboard/server/api/oncoteam/[...path].ts`) is 25s. Oncofiles MCP `search_conversations` takes ~15s per query — don't reduce below 20s.
+- `agent_registry.py` schedules are currently **temporary 5h intervals** for overnight testing. Revert to production schedules (13d/4w/8w/cron) after review.
 
 ## Key commands
 
@@ -81,7 +84,7 @@ uv run oncoteam-mcp    # stdio mode
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 573 tests, ruff clean
+- 569 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
