@@ -1,0 +1,13 @@
+[deploy]
+# Keep old instance alive for 15s during new deploy startup.
+# Prevents 502s during deployment swaps (same fix as oncofiles 063b1e2).
+overlapSeconds = 15
+
+# Railway health check — wait up to 60s for /health to return 200
+# before routing traffic. Prevents 502 during cold start.
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+
+# Auto-restart on crash (default, but explicit for clarity)
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
