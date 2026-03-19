@@ -6,19 +6,19 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 569 tests
+uv run pytest          # 573 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
 
 ## Project structure
 
-- `src/oncoteam/server.py` — MCP server, 22 tools + 18 dashboard API routes (4 POST, 1 parameterized), system instructions with biomarker rules + QA protocol
+- `src/oncoteam/server.py` — MCP server, 24 tools + 18 dashboard API routes (4 POST, 1 parameterized), system instructions with biomarker rules + QA protocol
 - `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,detail/{type}/{id}}
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
-- `src/oncoteam/autonomous_tasks.py` — 17 autonomous task wrappers with cooldown guards and WhatsApp notifications
-- `src/oncoteam/agent_registry.py` — AgentConfig Pydantic model, all 17 agent definitions, schedule/cooldown/model config
+- `src/oncoteam/autonomous_tasks.py` — 18 autonomous task wrappers with cooldown guards and WhatsApp notifications
+- `src/oncoteam/agent_registry.py` — AgentConfig Pydantic model, all 18 agent definitions, schedule/cooldown/model config
 - `src/oncoteam/tags.py` — Canonical tag vocabulary with prefix:value format (sys:, clin:, bio:, tx:, res:, task:, safety:, src:)
 - `src/oncoteam/activity_logger.py` — @log_activity decorator, suppressed error buffer, diary helpers
 - `src/oncoteam/eligibility.py` — biomarker-aware trial eligibility checker
@@ -68,7 +68,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Testing
 
-- `uv run pytest` — full suite (569 tests, ~2.3s)
+- `uv run pytest` — full suite (573 tests, ~2.3s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -81,7 +81,7 @@ uv run oncoteam-mcp    # stdio mode
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 569 tests, ruff clean
+- 573 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
