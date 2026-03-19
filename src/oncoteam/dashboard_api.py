@@ -1599,6 +1599,29 @@ async def api_detail(request: Request) -> JSONResponse:
             data["relevance"] = rel.score
             data["relevance_reason"] = rel.reason
 
+        elif detail_type == "agent_run":
+            # Full agent run trace — no truncation on tool outputs
+            try:
+                raw = await oncofiles_client.get_conversation(int(detail_id))
+                entry = raw if isinstance(raw, dict) else {"raw": raw}
+            except Exception:
+                result = await oncofiles_client.search_conversations(limit=100)
+                entries = _extract_list(result, "entries")
+                match = [e for e in entries if e.get("id") == int(detail_id)]
+                entry = match[0] if match else {"error": "not found"}
+            source["oncofiles_id"] = int(detail_id)
+            # Parse the JSON content to expose the full trace
+            content = entry.get("content", "")
+            try:
+                trace = json.loads(content) if isinstance(content, str) else content
+            except (json.JSONDecodeError, TypeError):
+                trace = {}
+            data = {
+                "id": entry.get("id"),
+                "timestamp": entry.get("created_at"),
+                **trace,
+            }
+
         elif detail_type == "conversation":
             try:
                 raw = await oncofiles_client.get_conversation(int(detail_id))

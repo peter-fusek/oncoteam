@@ -52,6 +52,8 @@ watch([selectedAgent, agents], () => {
   if (agents.value.length > 0) fetchRuns()
 }, { immediate: true })
 
+const showMessages = ref<Record<number, boolean>>({})
+
 function toggleRun(id: number) {
   expandedRunId.value = expandedRunId.value === id ? null : id
 }
@@ -186,6 +188,20 @@ function formatCost(cost: number): string {
               <div v-if="tc.output" class="px-2 py-1 text-xs text-gray-400 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
                 {{ tc.output }}
                 <span v-if="tc.has_full_output" class="text-yellow-500 text-[10px]"> [truncated]</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Message History (collapsible) -->
+          <div v-if="run.messages?.length > 1">
+            <button class="flex items-center gap-1 text-[10px] text-gray-500 uppercase tracking-wider hover:text-gray-300" @click="showMessages[run.id] = !showMessages[run.id]">
+              <UIcon name="i-lucide-chevron-right" class="w-3 h-3 transition-transform" :class="{ 'rotate-90': showMessages[run.id] }" />
+              Message History ({{ run.messages.length }} messages)
+            </button>
+            <div v-if="showMessages[run.id]" class="mt-1 space-y-1">
+              <div v-for="(msg, mi) in run.messages" :key="mi" class="text-xs rounded p-2 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto" :class="msg.role === 'user' ? 'bg-blue-950/20 text-blue-300' : 'bg-gray-950 text-gray-400'">
+                <span class="text-[10px] uppercase font-semibold" :class="msg.role === 'user' ? 'text-blue-500' : 'text-gray-600'">{{ msg.role }}</span>
+                {{ typeof msg.content === 'string' ? msg.content.slice(0, 500) : JSON.stringify(msg.content).slice(0, 500) }}
               </div>
             </div>
           </div>

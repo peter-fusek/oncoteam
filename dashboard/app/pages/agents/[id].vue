@@ -28,6 +28,7 @@ const promptTemplate = computed(() => configData.value?.prompt_template || '')
 const isDynamicPrompt = computed(() => promptTemplate.value.startsWith('[Dynamic'))
 const systemPrompt = computed(() => configData.value?.system_prompt || '')
 const showSystemPrompt = ref(false)
+const showMessages = ref<Record<number, boolean>>({})
 
 // Fetch run history
 const { data: runsData, status: runsStatus } = fetchApi<{
@@ -238,6 +239,20 @@ const modelLabels: Record<string, string> = {
               <p class="text-[10px] text-gray-500 uppercase tracking-wider">Response</p>
               <div class="text-xs text-gray-300 bg-gray-950 rounded p-2 max-h-60 overflow-y-auto whitespace-pre-wrap">
                 {{ run.response }}
+              </div>
+            </div>
+
+            <!-- Message History (collapsible) -->
+            <div v-if="run.messages?.length > 1">
+              <button class="flex items-center gap-1 text-[10px] text-gray-500 uppercase tracking-wider hover:text-gray-300" @click="showMessages[run.id] = !showMessages[run.id]">
+                <UIcon name="i-lucide-chevron-right" class="w-3 h-3 transition-transform" :class="{ 'rotate-90': showMessages[run.id] }" />
+                Message History ({{ run.messages.length }} messages)
+              </button>
+              <div v-if="showMessages[run.id]" class="mt-1 space-y-1">
+                <div v-for="(msg, mi) in run.messages" :key="mi" class="text-xs rounded p-2 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto" :class="msg.role === 'user' ? 'bg-blue-950/20 text-blue-300' : 'bg-gray-950 text-gray-400'">
+                  <span class="text-[10px] uppercase font-semibold" :class="msg.role === 'user' ? 'text-blue-500' : 'text-gray-600'">{{ msg.role }}</span>
+                  {{ typeof msg.content === 'string' ? msg.content.slice(0, 500) : JSON.stringify(msg.content).slice(0, 500) }}
+                </div>
               </div>
             </div>
 
