@@ -83,7 +83,7 @@ class TestGetAgent:
 
 class TestGetCooldown:
     def test_known_agent(self):
-        assert get_cooldown("file_scan") == 0.5
+        assert get_cooldown("file_scan") == 1.5
         assert get_cooldown("pre_cycle_check") == 0.5
 
     def test_unknown_agent(self):

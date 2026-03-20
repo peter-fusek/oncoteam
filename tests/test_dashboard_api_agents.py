@@ -165,12 +165,8 @@ async def test_agent_runs_returns_traces():
     assert run["duration_ms"] == 5000
     assert run["input_tokens"] == 1000
     assert run["output_tokens"] == 500
-    assert run["tool_calls"][0]["tool"] == "search_pubmed"
-    assert run["tool_calls"][0]["output"] == "3 results"
-    assert run["tool_calls"][0]["has_full_output"] is False
-    assert run["prompt"] == "Search for CRC research"
+    assert run["tool_call_count"] == 1
     assert run["turns"] == 1
-    assert run["messages"] == [{"role": "user", "content": "Search for CRC research"}]
     assert run["error"] is None
 
 
@@ -220,11 +216,15 @@ async def test_agent_runs_error_returns_502():
 
 
 @pytest.mark.anyio
-async def test_agent_runs_returns_full_response():
-    """Should return full response without truncation (prompt observability)."""
-    long_response = "x" * 1000
+async def test_agent_runs_list_view_lightweight():
+    """List view should return lightweight summary fields (no full response/prompt/messages)."""
     trace_content = json.dumps(
-        {"response": long_response, "task_name": "test", "prompt": "test prompt"}
+        {
+            "response": "x" * 1000,
+            "task_name": "test",
+            "prompt": "test prompt",
+            "tool_calls": [{"tool": "a"}],
+        }
     )
     mock_result = {
         "entries": [{"id": 1, "created_at": "2026-03-17T10:00:00+00:00", "content": trace_content}]
@@ -238,5 +238,11 @@ async def test_agent_runs_returns_full_response():
         response = await api_agent_runs(request)
         data = json.loads(response.body)
 
-    assert len(data["runs"][0]["response"]) == 1000
-    assert data["runs"][0]["prompt"] == "test prompt"
+    run = data["runs"][0]
+    assert run["task_name"] == "test"
+    assert run["tool_call_count"] == 1
+    # Full content fields should NOT be in list view
+    assert "response" not in run
+    assert "prompt" not in run
+    assert "messages" not in run
+    assert "tool_calls" not in run
