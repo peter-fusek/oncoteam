@@ -45,14 +45,17 @@
       "priceCurrency": "EUR"
     },
     "featureList": [
-      "Lab result tracking and trend analysis",
+      "18 autonomous AI agents for treatment management",
+      "Multi-channel access: Claude.ai, ChatGPT, WhatsApp, dashboard",
       "Clinical trial matching across 14 EU countries",
-      "Molecular profile-aware eligibility checking",
-      "Proactive WhatsApp safety alerts",
-      "Autonomous document processing",
-      "GDPR-compliant patient-owned data storage",
-      "18 autonomous AI agents",
-      "24 MCP tools",
+      "Molecular profile-aware eligibility checking (KRAS, NRAS, BRAF, HER2, MSI)",
+      "Lab result tracking with trend analysis and safety checks",
+      "Medical knowledge base: DeVita textbook, NCCN protocols",
+      "Dose tracking and cumulative toxicity monitoring",
+      "Proactive WhatsApp safety alerts and family updates",
+      "Autonomous document processing with OCR",
+      "GDPR-compliant patient-owned Google Drive storage",
+      "Full AI transparency: see every prompt, tool call, and decision",
       "Bilingual interface (Slovak/English)"
     ]
   },
@@ -200,6 +203,21 @@
           <p data-i18n="features.family.text">Generate easy-to-understand treatment summaries for family members. Available in Slovak and English, shareable via WhatsApp or print.</p>
         </div>
         <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3 data-i18n="features.multichannel.title">Chat Anywhere</h3>
+          <p data-i18n="features.multichannel.text">Access your crew via Claude.ai, ChatGPT, or WhatsApp — same data, any device. Ask questions on the go, get instant notifications when it matters.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📚</div>
+          <h3 data-i18n="features.knowledge.title">Medical Knowledge Base</h3>
+          <p data-i18n="features.knowledge.text">DeVita textbooks, NCCN protocols, and latest research automatically applied to your case as a second opinion. Top-notch medical standards, always up to date.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💊</div>
+          <h3 data-i18n="features.doses.title">Dose Tracking & Doctor Prep</h3>
+          <p data-i18n="features.doses.text">Register doses, track cumulative toxicity, and get the right questions for your next appointment. Understand your situation and prognosis — challenge your doctor with confidence.</p>
+        </div>
+        <div class="feature-card">
           <div class="feature-icon">🔗</div>
           <h3 data-i18n="features.mcp.title">MCP-Native Architecture</h3>
           <p data-i18n="features.mcp.text">Built on the Model Context Protocol — open, interoperable, and designed to work with any AI assistant. Your data stays yours.</p>
@@ -215,18 +233,18 @@
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
-          <h3 data-i18n="how.step1.title">Connect Your Documents</h3>
-          <p data-i18n="how.step1.text">Upload lab results, pathology reports, imaging, and genetic tests to your secure Google Drive folder.</p>
+          <h3 data-i18n="how.step1.title">Your Data, Organized</h3>
+          <p data-i18n="how.step1.text">Your medical data lives in Google Drive, Gmail, and Calendar. Oncofiles organizes it — OCR, structure, metadata, bilingual support. GDrive stays your single source of truth.</p>
         </div>
         <div class="step">
           <div class="step-num">2</div>
-          <h3 data-i18n="how.step2.title">AI Reads & Understands</h3>
-          <p data-i18n="how.step2.text">Oncoteam extracts structured data, identifies biomarkers, tracks trends, and builds your complete treatment profile.</p>
+          <h3 data-i18n="how.step2.title">AI Works for You 24/7</h3>
+          <p data-i18n="how.step2.text">18 autonomous agents scan documents, extract biomarkers, match clinical trials, check protocols, and track trends — even when you're not looking.</p>
         </div>
         <div class="step">
           <div class="step-num">3</div>
-          <h3 data-i18n="how.step3.title">Stay Informed & Prepared</h3>
-          <p data-i18n="how.step3.text">Get daily briefings, pre-cycle checklists, trial recommendations, and safety alerts — via dashboard and WhatsApp, backed by your actual data.</p>
+          <h3 data-i18n="how.step3.title">Stay in Control</h3>
+          <p data-i18n="how.step3.text">Get briefings, safety alerts, and appointment prep via dashboard, Claude.ai, ChatGPT, or WhatsApp. Your family gets plain-language updates. No medical degree required.</p>
         </div>
       </div>
     </div>
@@ -239,11 +257,13 @@
       <div class="tech-badges">
         <span class="badge">Model Context Protocol (MCP)</span>
         <span class="badge">Claude AI</span>
+        <span class="badge">ChatGPT Compatible</span>
+        <span class="badge">WhatsApp</span>
         <span class="badge">PubMed API</span>
         <span class="badge">ClinicalTrials.gov API</span>
         <span class="badge">Google Drive</span>
         <span class="badge">Python / FastMCP</span>
-        <span class="badge">Nuxt.js Dashboard</span>
+        <span class="badge">Nuxt 4 Dashboard</span>
       </div>
     </div>
   </section>
@@ -301,7 +321,7 @@
     <div class="container">
       <p>&copy; 2026 Oncoteam. <span data-i18n="footer.rights">Built with care for cancer patients and their families.</span></p>
       <p class="footer-note" data-i18n="footer.disclaimer">Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.</p>
-      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.34.0</p>
+      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.38.0</p>
     </div>
   </footer>
 
