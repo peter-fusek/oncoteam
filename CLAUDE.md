@@ -6,15 +6,15 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 590 tests
+uv run pytest          # 592 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
 
 ## Project structure
 
-- `src/oncoteam/server.py` — MCP server, 24 tools + 19 dashboard API routes (5 POST, 1 parameterized), system instructions with biomarker rules + QA protocol
-- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,detail/{type}/{id},internal/document-webhook}
+- `src/oncoteam/server.py` — MCP server, 24 tools + 20 dashboard API routes (5 POST, 2 parameterized), system instructions with biomarker rules + QA protocol
+- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,agent-runs,detail/{type}/{id},internal/document-webhook}
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
 - `src/oncoteam/autonomous_tasks.py` — 18 autonomous task wrappers + document pipeline orchestrator with cooldown guards and WhatsApp notifications
@@ -73,7 +73,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Testing
 
-- `uv run pytest` — full suite (590 tests, ~2.3s)
+- `uv run pytest` — full suite (592 tests, ~2.3s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -86,7 +86,7 @@ uv run oncoteam-mcp    # stdio mode
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 590 tests, ruff clean
+- 592 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables

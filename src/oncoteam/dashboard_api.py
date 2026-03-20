@@ -479,7 +479,9 @@ async def api_health_deep(request: Request) -> JSONResponse:
         )
         checks["oncofiles"] = "ok"
     except Exception as e:
-        checks["oncofiles"] = f"error: {e}"
+        checks["oncofiles"] = (
+            f"error: {type(e).__name__}: {e}" if str(e) else f"error: {type(e).__name__}"
+        )
 
     # Scheduler status
     if _standalone_scheduler is not None and _standalone_scheduler.running:
@@ -2512,6 +2514,64 @@ async def api_agent_runs(request: Request) -> JSONResponse:
             }
         )
     return _cors_json({"agent_id": agent_id, "runs": runs, "total": len(runs)})
+
+
+async def api_agent_runs_all(request: Request) -> JSONResponse:
+    """Return recent run traces across ALL agents — single MCP call (#113)."""
+    limit = _parse_limit(request, default=50)
+
+    try:
+        result = await oncofiles_client.search_conversations(
+            tags="sys:agent-run",
+            limit=limit,
+        )
+    except Exception as e:
+        record_suppressed_error("api_agent_runs_all", "fetch", e)
+        return _cors_json(
+            {"runs": [], "total": 0, "error": str(e)},
+            status_code=502,
+        )
+
+    entries = _extract_list(result, "entries")
+
+    runs = []
+    for e in entries:
+        tags = e.get("tags", [])
+        tag_map = {}
+        for t in tags if isinstance(tags, list) else []:
+            if ":" in t:
+                k, v = t.split(":", 1)
+                tag_map[k] = v
+
+        content = e.get("content", "")
+        trace: dict = {}
+        try:
+            trace = json.loads(content) if isinstance(content, str) else content
+            if not isinstance(trace, dict):
+                trace = {}
+        except (json.JSONDecodeError, TypeError):
+            trace = {}
+
+        n_tool_calls = len(trace.get("tool_calls", []))
+
+        runs.append(
+            {
+                "id": e.get("id"),
+                "timestamp": e.get("created_at"),
+                "task_name": tag_map.get("task", trace.get("task_name", "unknown")),
+                "model": tag_map.get("model", trace.get("model", "")),
+                "cost": float(tag_map.get("cost", trace.get("cost", 0))),
+                "duration_ms": int(tag_map.get("dur", trace.get("duration_ms", 0))),
+                "error": trace.get("error"),
+                "input_tokens": trace.get("input_tokens", 0),
+                "output_tokens": trace.get("output_tokens", 0),
+                "turns": trace.get("turns", 0),
+                "tool_call_count": int(tag_map.get("tools", n_tool_calls)),
+                "started_at": trace.get("started_at"),
+                "completed_at": trace.get("completed_at"),
+            }
+        )
+    return _cors_json({"runs": runs, "total": len(runs)})
 
 
 async def api_log_whatsapp(request: Request) -> JSONResponse:

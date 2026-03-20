@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from oncoteam.dashboard_api import api_agent_runs, api_agents
+from oncoteam.dashboard_api import api_agent_runs, api_agent_runs_all, api_agents
 
 
 def _make_request(query_string: str = "", path_params: dict | None = None) -> object:
@@ -246,3 +246,63 @@ async def test_agent_runs_list_view_lightweight():
     assert "prompt" not in run
     assert "messages" not in run
     assert "tool_calls" not in run
+
+
+# ── /api/agent-runs (aggregated) ────────────────────
+
+
+@pytest.mark.anyio
+async def test_agent_runs_all_returns_traces():
+    """Aggregated endpoint returns runs across all agents with single MCP call."""
+    trace1 = json.dumps({"task_name": "daily_research", "cost": 0.01, "tool_calls": []})
+    trace2 = json.dumps({"task_name": "trial_monitor", "cost": 0.02, "tool_calls": [{"tool": "x"}]})
+    mock_result = {
+        "entries": [
+            {
+                "id": 1,
+                "created_at": "2026-03-20T10:00:00+00:00",
+                "tags": ["sys:agent-run", "task:daily_research"],
+                "content": trace1,
+            },
+            {
+                "id": 2,
+                "created_at": "2026-03-20T09:00:00+00:00",
+                "tags": ["sys:agent-run", "task:trial_monitor"],
+                "content": trace2,
+            },
+        ]
+    }
+    with patch(
+        "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+        new_callable=AsyncMock,
+        return_value=mock_result,
+    ) as mock_search:
+        request = _make_request("limit=50")
+        response = await api_agent_runs_all(request)
+        data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert len(data["runs"]) == 2
+    assert data["total"] == 2
+    assert data["runs"][0]["task_name"] == "daily_research"
+    assert data["runs"][1]["task_name"] == "trial_monitor"
+    assert data["runs"][1]["tool_call_count"] == 1
+    # Should use sys:agent-run tag only (no agent-specific filter)
+    mock_search.assert_called_once_with(tags="sys:agent-run", limit=50)
+
+
+@pytest.mark.anyio
+async def test_agent_runs_all_error_returns_502():
+    """Aggregated endpoint returns 502 when oncofiles is unreachable."""
+    with patch(
+        "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+        new_callable=AsyncMock,
+        side_effect=ConnectionError("timeout"),
+    ):
+        request = _make_request()
+        response = await api_agent_runs_all(request)
+        data = json.loads(response.body)
+
+    assert response.status_code == 502
+    assert data["runs"] == []
+    assert "error" in data

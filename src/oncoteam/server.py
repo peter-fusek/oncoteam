@@ -24,6 +24,7 @@ from .dashboard_api import (
     api_activity,
     api_agent_config,
     api_agent_runs,
+    api_agent_runs_all,
     api_agents,
     api_autonomous,
     api_autonomous_cost,
@@ -995,6 +996,8 @@ for _path, _handler in _API_ROUTES:
 # Parameterized routes (can't go in the loop above)
 mcp.custom_route("/api/detail/{type}/{id}", methods=["GET"])(_auth_wrap(api_detail))
 mcp.custom_route("/api/detail/{type}/{id}", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/agent-runs", methods=["GET"])(_auth_wrap(api_agent_runs_all))
+mcp.custom_route("/api/agent-runs", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/agents/{id}/runs", methods=["GET"])(_auth_wrap(api_agent_runs))
 mcp.custom_route("/api/agents/{id}/runs", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/agents/{id}/config", methods=["GET"])(_auth_wrap(api_agent_config))

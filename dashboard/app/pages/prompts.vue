@@ -20,30 +20,26 @@ async function fetchRuns() {
   loading.value = true
   allRuns.value = []
 
-  const agentsToFetch = selectedAgent.value
-    ? [selectedAgent.value]
-    : agents.value.map((a: any) => a.id)
-
-  const { $fetch } = useNuxtApp()
-  const config = useRuntimeConfig()
-
-  const results = await Promise.allSettled(
-    agentsToFetch.map(async (agentId: string) => {
-      const data = await $fetch(`/api/oncoteam/agents/${agentId}/runs?limit=10&lang=${locale.value}`, {
+  try {
+    if (selectedAgent.value) {
+      // Single agent — use per-agent endpoint
+      const data = await $fetch(`/api/oncoteam/agents/${selectedAgent.value}/runs?limit=50&lang=${locale.value}`, {
         timeout: 8000,
       })
-      return (data as any)?.runs || []
-    })
-  )
-
-  const merged: any[] = []
-  for (const r of results) {
-    if (r.status === 'fulfilled') merged.push(...r.value)
+      allRuns.value = (data as any)?.runs || []
+    } else {
+      // All agents — single aggregated MCP call
+      const data = await $fetch(`/api/oncoteam/agent-runs?limit=50&lang=${locale.value}`, {
+        timeout: 20000,
+      })
+      allRuns.value = (data as any)?.runs || []
+    }
+  } catch {
+    allRuns.value = []
   }
 
   // Sort by timestamp descending
-  merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
-  allRuns.value = merged
+  allRuns.value.sort((a: any, b: any) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
   loading.value = false
 }
 
