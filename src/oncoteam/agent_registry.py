@@ -120,6 +120,23 @@ Focus on patterns, not individual events. Be specific and actionable.\
     ),
     # === Data Pipeline (Haiku) ===
     AgentConfig(
+        id="document_pipeline",
+        name=L("Spracovanie dokumentu", "Document processing pipeline"),
+        description=L(
+            "Automatické spracovanie nového dokumentu z oncofiles",
+            "Automatic processing of new document from oncofiles",
+        ),
+        schedule_display=L("pri nahratí dokumentu", "on document upload"),
+        category=AgentCategory.DATA_PIPELINE,
+        model="light",
+        schedule_type=ScheduleType.INTERVAL,
+        schedule_params={"hours": 999},  # Never fires — event-driven only
+        cooldown_hours=0,  # No cooldown — each doc is unique
+        max_turns=8,
+        assigned_tool="view_document",
+        prompt_template="[Event-driven — triggered by document upload webhook, not scheduled]",
+    ),
+    AgentConfig(
         id="file_scan",
         name=L("Skenovanie dokumentov", "Document scan"),
         description=L(

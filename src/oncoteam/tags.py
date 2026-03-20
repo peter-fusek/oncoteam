@@ -33,6 +33,8 @@ DAILY_RESEARCH = tag(TASK, "daily-research")
 TRIAL_MONITOR = tag(TASK, "trial-monitor")
 WEEKLY_BRIEFING = tag(TASK, "weekly-briefing")
 DOCUMENT_SCAN = tag(TASK, "document-scan")
+DOCUMENT_PIPELINE = tag(TASK, "document-pipeline")
+PIPELINE_STEP = tag(TASK, "pipeline-step")
 
 ADJACENT_COUNTRIES = tag(RES, "adjacent-countries")
 EU_TRIALS = tag(RES, "eu-trials")

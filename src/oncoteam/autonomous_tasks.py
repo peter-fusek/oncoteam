@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from datetime import UTC, datetime
 
 from . import oncofiles_client
@@ -678,6 +679,265 @@ Focus on creating structured weight history from existing medical documents.
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
+
+
+async def _run_single_doc_task(task_name: str, document_id: int, prompt: str) -> dict:
+    """Run a single-document autonomous task with standard logging."""
+    logger.info(">>> Starting task: %s (doc %d)", task_name, document_id)
+    try:
+        result = await run_autonomous_task(
+            prompt, max_turns=6, task_name=task_name, model=AUTONOMOUS_MODEL_LIGHT
+        )
+    except Exception as e:
+        logger.error("!!! Failed task: %s (doc %d) — %s", task_name, document_id, e)
+        raise
+    logger.info(
+        "<<< Completed task: %s (doc %d, cost=$%.4f, tools=%d)",
+        task_name,
+        document_id,
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
+    return result
+
+
+async def run_file_scan_single(document_id: int) -> dict:
+    """Classify a single document by ID (no broad search)."""
+    return await _run_single_doc_task("file_scan_single", document_id, f"""\
+View document {document_id} using view_document tool, then classify it.
+
+Instructions:
+1. Use view_document to read document {document_id}
+2. Classify the document type: lab_report, visit_note, discharge_summary,
+   pathology, genetics, imaging, or other
+3. For pathology/genetics docs: check if biomarker data matches known profile
+4. For lab docs: check values against safety thresholds
+5. Flag any new information or discrepancies
+6. Report the classification and key findings
+
+This is a single-document scan triggered by a new upload webhook.
+""")
+
+
+async def run_lab_sync_single(document_id: int) -> dict:
+    """Extract lab values from a single document by ID."""
+    return await _run_single_doc_task("lab_sync_single", document_id, f"""\
+Extract structured lab data from document {document_id}.
+
+Instructions:
+1. Use view_document to read document {document_id}
+2. Extract numeric lab values: WBC, ANC, PLT, hemoglobin, creatinine,
+   ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH
+3. Use get_treatment_timeline to check if data already exists for that date
+4. For NEW data only, use store_lab_values with the document_id, lab_date, and extracted values
+5. Also create a lab_result treatment event via add_treatment_event with the values in metadata
+6. Report what was extracted and stored
+
+IMPORTANT: Use store_lab_values for structured persistence (enables trends/charts).
+Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
+creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
+""")
+
+
+async def run_toxicity_extraction_single(document_id: int) -> dict:
+    """Extract toxicity grades from a single document by ID."""
+    return await _run_single_doc_task("toxicity_extraction_single", document_id, f"""\
+Extract NCI-CTCAE toxicity assessments from document {document_id}.
+
+Instructions:
+1. Use view_document to read document {document_id}
+2. Extract toxicity grades for:
+   - Peripheral neuropathy, diarrhea, mucositis, fatigue, HFS, nausea/vomiting
+3. Note ECOG and weight if mentioned
+4. Report extracted toxicity data with dates
+
+This is a single-document extraction triggered by a new upload webhook.
+""")
+
+
+async def run_weight_extraction_single(document_id: int) -> dict:
+    """Extract weight/BMI from a single document by ID."""
+    return await _run_single_doc_task("weight_extraction_single", document_id, f"""\
+Extract weight/BMI data from document {document_id}.
+
+Instructions:
+1. Use view_document to read document {document_id}
+2. Extract weight in kg and BMI if mentioned
+3. Extract date of measurement
+4. Check if a weight_measurement event already exists for that date
+5. If not, store as a treatment event with event_type="weight_measurement"
+6. Report what was extracted
+
+This is a single-document extraction triggered by a new upload webhook.
+""")
+
+
+async def run_document_pipeline(document_id: int, metadata: dict | None = None) -> dict:
+    """Process a single document through the data pipeline.
+
+    Steps:
+    1. Cost cap check (via run_autonomous_task)
+    2. Dedup check via agent_state
+    3. file_scan_single → classify document type
+    4. Dispatch downstream based on classification
+    5. Log combined pipeline result for dashboard observability
+    """
+    metadata = metadata or {}
+    logger.info(">>> Starting document_pipeline for doc %d (meta=%s)", document_id, metadata)
+    start = time.monotonic()
+
+    # Dedup: check if we already processed this document
+    state_key = f"pipeline:{document_id}"
+    existing = await _get_state(state_key)
+    if _extract_timestamp(existing):
+        logger.info("Skipping document_pipeline for doc %d: already processed", document_id)
+        return {"skipped": True, "reason": "already_processed", "document_id": document_id}
+
+    steps: list[dict] = []
+    total_cost = 0.0
+    pipeline_error = None
+
+    # Step 1: file_scan_single — classify the document
+    try:
+        scan_result = await run_file_scan_single(document_id)
+        scan_cost = scan_result.get("cost", 0)
+        total_cost += scan_cost
+        steps.append({
+            "step": "file_scan",
+            "cost": scan_cost,
+            "error": scan_result.get("error"),
+        })
+        await _log_task("file_scan_single", scan_result)
+    except Exception as e:
+        pipeline_error = f"file_scan_single failed: {e}"
+        logger.error("document_pipeline: %s", pipeline_error)
+        steps.append({"step": "file_scan", "error": str(e)})
+        # If scan fails, we can't classify → skip downstream
+        scan_result = {"response": "", "error": str(e)}
+
+    # Step 2: Classify document type from scan response
+    doc_type = _classify_doc_type(scan_result.get("response", ""), metadata)
+    logger.info("document_pipeline doc %d classified as: %s", document_id, doc_type)
+
+    # Step 3: Dispatch downstream agents based on classification
+    if not pipeline_error:
+        downstream_tasks = []
+        if doc_type == "lab_report":
+            downstream_tasks.append(("lab_sync", run_lab_sync_single))
+        elif doc_type in ("visit_note", "discharge_summary"):
+            downstream_tasks.append(("toxicity_extraction", run_toxicity_extraction_single))
+            downstream_tasks.append(("weight_extraction", run_weight_extraction_single))
+        # pathology/genetics: file_scan already handles biomarker check
+        # imaging/other: no downstream processing needed
+
+        for step_name, step_fn in downstream_tasks:
+            try:
+                step_result = await step_fn(document_id)
+                step_cost = step_result.get("cost", 0)
+                total_cost += step_cost
+                steps.append({
+                    "step": step_name,
+                    "cost": step_cost,
+                    "error": step_result.get("error"),
+                })
+                await _log_task(f"{step_name}_single", step_result)
+            except Exception as e:
+                logger.error("document_pipeline step %s failed: %s", step_name, e)
+                steps.append({"step": step_name, "error": str(e)})
+
+    duration_ms = int((time.monotonic() - start) * 1000)
+
+    # Build combined pipeline result
+    combined = {
+        "task_name": "document_pipeline",
+        "document_id": document_id,
+        "doc_type": doc_type,
+        "steps": steps,
+        "cost": total_cost,
+        "duration_ms": duration_ms,
+        "error": pipeline_error,
+        "metadata": metadata,
+        "model": "haiku",
+        "prompt": f"[Document pipeline for doc {document_id}]",
+        "response": (
+            f"Processed document {document_id} as {doc_type}. "
+            f"Steps: {', '.join(s['step'] for s in steps)}. "
+            f"Total cost: ${total_cost:.4f}."
+        ),
+        "tool_calls": [],
+        "thinking": [],
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "turns": len(steps),
+        "started_at": datetime.now(UTC).isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
+    }
+    await _log_task("document_pipeline", combined)
+
+    # Store dedup state
+    await _set_state(state_key, {
+        "timestamp": datetime.now(UTC).isoformat(),
+        "doc_type": doc_type,
+        "steps": [s["step"] for s in steps],
+        "cost": total_cost,
+    })
+
+    # WhatsApp notification for safety-critical findings
+    if not pipeline_error and doc_type in ("lab_report", "pathology", "genetics"):
+        try:
+            scan_response = scan_result.get("response", "")
+            if any(kw in scan_response.lower() for kw in ("safety", "alert", "hold", "critical")):
+                await _send_whatsapp(
+                    f"*Nový dokument (pipeline)*\n\n"
+                    f"Dokument {document_id} ({doc_type}) — nájdené bezpečnostné upozornenie.\n"
+                    f"Pozrite dashboard pre detaily."
+                )
+        except Exception as e:
+            record_suppressed_error("document_pipeline", "whatsapp_notify", e)
+
+    logger.info(
+        "<<< Completed document_pipeline for doc %d (type=%s, cost=$%.4f, %dms)",
+        document_id,
+        doc_type,
+        total_cost,
+        duration_ms,
+    )
+    return combined
+
+
+def _classify_doc_type(response_text: str, metadata: dict) -> str:
+    """Classify document type from file_scan response and webhook metadata.
+
+    Returns one of: lab_report, visit_note, discharge_summary, pathology,
+    genetics, imaging, or other.
+    """
+    # Check webhook metadata first (oncofiles may provide category)
+    category = (metadata.get("category") or "").lower()
+    category_map = {
+        "lab": "lab_report",
+        "labs": "lab_report",
+        "pathology": "pathology",
+        "genetics": "genetics",
+        "imaging": "imaging",
+    }
+    if category in category_map:
+        return category_map[category]
+
+    # Fall back to parsing the AI response
+    text = response_text.lower()
+    if any(kw in text for kw in ("lab report", "lab_report", "krvný obraz", "biochemia", "odber")):
+        return "lab_report"
+    if any(kw in text for kw in ("visit note", "visit_note", "vizita", "konzultacia", "kontrola")):
+        return "visit_note"
+    if any(kw in text for kw in ("discharge", "prepustenie")):
+        return "discharge_summary"
+    if "pathology" in text or "patológia" in text:
+        return "pathology"
+    if "genetics" in text or "genetik" in text:
+        return "genetics"
+    if "imaging" in text or "ct scan" in text or "mri" in text:
+        return "imaging"
+    return "other"
 
 
 async def run_family_update() -> dict:

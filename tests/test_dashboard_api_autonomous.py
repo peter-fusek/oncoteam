@@ -32,8 +32,8 @@ async def test_autonomous_returns_jobs():
     assert response.status_code == 200
     assert data["enabled"] is True
     assert "daily_cost" in data
-    assert len(data["jobs"]) == 14
-    assert data["job_count"] == 14
+    assert len(data["jobs"]) == 15
+    assert data["job_count"] == 15
 
 
 @pytest.mark.anyio

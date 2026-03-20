@@ -2591,6 +2591,46 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
         )
 
 
+async def api_document_webhook(request: Request) -> JSONResponse:
+    """POST /api/internal/document-webhook — triggered by oncofiles on new upload.
+
+    Expects JSON body: {document_id: int, filename?: str, category?: str, uploaded_at?: str}
+    Launches the document pipeline as a background task.
+    """
+    import asyncio
+
+    from .autonomous_tasks import _extract_timestamp, _get_state, run_document_pipeline
+
+    try:
+        body = await request.json()
+    except Exception:
+        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
+
+    document_id = body.get("document_id")
+    if not isinstance(document_id, int) or document_id <= 0:
+        return _cors_json(
+            {"error": "document_id must be a positive integer"}, status_code=400, request=request
+        )
+
+    # Quick dedup check before launching background task
+    existing = await _get_state(f"pipeline:{document_id}")
+    if _extract_timestamp(existing):
+        return _cors_json(
+            {"status": "already_processed", "document_id": document_id}, request=request
+        )
+
+    metadata = {
+        "filename": body.get("filename", ""),
+        "category": body.get("category", ""),
+        "uploaded_at": body.get("uploaded_at", ""),
+    }
+
+    asyncio.create_task(run_document_pipeline(document_id, metadata))
+    _logger.info("Document pipeline started for doc %d", document_id)
+
+    return _cors_json({"status": "pipeline_started", "document_id": document_id}, request=request)
+
+
 async def api_cors_preflight(request: Request) -> JSONResponse:
     """OPTIONS handler for CORS preflight on all /api/* routes."""
     return _cors_json({}, request=request)
