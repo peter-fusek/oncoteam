@@ -50,25 +50,7 @@ function toggleRun(id: number) {
   expandedRunId.value = expandedRunId.value === id ? null : id
 }
 
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-  return `${(ms / 60000).toFixed(1)}m`
-}
-
-function formatCost(cost: number): string {
-  return `$${cost.toFixed(4)}`
-}
-
-function timeAgo(ts: string): string {
-  if (!ts) return '-'
-  const diff = Date.now() - new Date(ts).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
-}
+const { timeAgo, formatDuration, formatCost } = useAgentFormatters()
 
 const categoryColors: Record<string, string> = {
   data_pipeline: 'bg-blue-500/20 text-blue-400',

@@ -2519,7 +2519,7 @@ async def api_agent_runs(request: Request) -> JSONResponse:
             status_code=502,
         )
 
-    entries = _extract_list(result, "entries")
+    entries = _filter_test(_extract_list(result, "entries"), request)
 
     # List view: lightweight summary from tags or content header fields.
     # Full content (prompt, messages, thinking, tool outputs) via /api/detail/agent_run/{id}.
@@ -2543,7 +2543,7 @@ async def api_agent_runs_all(request: Request) -> JSONResponse:
             status_code=502,
         )
 
-    entries = _extract_list(result, "entries")
+    entries = _filter_test(_extract_list(result, "entries"), request)
     runs = [_parse_agent_run_entry(e) for e in entries]
     return _cors_json({"runs": runs, "total": len(runs)})
 
