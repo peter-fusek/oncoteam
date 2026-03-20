@@ -1,16 +1,25 @@
 # Oncoteam
 
-> Oncoteam is an autonomous AI agent for cancer treatment management. It helps patients, caregivers, and healthcare advocates navigate cancer treatment by analyzing lab results, matching clinical trials, tracking treatment protocols, and providing proactive safety alerts.
+> Your always-ready AI team for cancer treatment management. Your data lives in Google Drive, Gmail, and Calendar — Oncofiles organizes it, Oncoteam makes it work for you. 18 autonomous agents find treatments, check protocols, explain everything in patient and doctor language, prepare you for appointments, inform your family, and search compatible clinical trials. Stay in control, even as a medicine amateur.
 
 ## What Oncoteam Does
 
 - Analyzes lab results with trend tracking, inflammation indices (SII, Ne/Ly ratio), and pre-cycle safety checks
 - Matches clinical trials from ClinicalTrials.gov and PubMed across 14 European countries based on molecular profile (KRAS, NRAS, BRAF, HER2, MSI/MMR status)
 - Tracks treatment protocols with dose modification rules, cumulative dose thresholds, and cycle delay criteria
-- Sends proactive WhatsApp safety alerts and weekly briefings
+- Sends proactive WhatsApp safety alerts and weekly briefings to you and your family
 - Processes medical documents (lab reports, pathology, imaging, genetics) with OCR and structured data extraction
-- Provides bilingual interface (Slovak/English) for patients and families
+- Provides bilingual interface (Slovak/English) with medical dictionary and plain-language explanations
 - Generates family-friendly treatment summaries
+- Applies medical standards (DeVita textbook, NCCN protocols) as automatic second opinion
+- Prepares you for doctor appointments with the right questions and situation understanding
+
+## Multi-Channel Access
+
+- **Dashboard**: Full data view, dose tracking, dictionary, trends, agent observatory
+- **Claude.ai / ChatGPT**: Deep analysis, Q&A, research via MCP protocol
+- **WhatsApp**: Quick alerts, briefings, ask-on-the-go for patient and family
+- **Autonomous agents**: 18 background agents monitoring, researching, and notifying 24/7
 
 ## Architecture
 
