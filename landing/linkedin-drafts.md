@@ -1,56 +1,64 @@
-# LinkedIn Post Drafts — Oncoteam Launch
+# LinkedIn Post Drafts — Oncoteam
+
+> DO NOT publish without explicit user approval
 
 ## Post 1: Launch Announcement (Personal Profile)
 
-**When my wife was diagnosed with colorectal cancer, I did what any engineer would do — I built an AI system to help us fight it.**
+**When my wife was diagnosed with colorectal cancer, I did what any engineer would do — I built an AI team to help us fight it.**
 
-Oncoteam is a persistent AI agent that manages cancer treatment alongside the patient and caregiver. It:
+Oncoteam is your always-ready crew of 18 AI agents that work alongside you to manage cancer treatment. They:
 
-- Reads every lab result, pathology report, and imaging study
-- Tracks treatment protocols with dose modification rules
-- Searches PubMed and ClinicalTrials.gov for relevant research
-- Checks clinical trial eligibility against the patient's molecular profile
-- Prepares pre-cycle checklists and questions for the oncologist
-- Runs autonomously — scanning new documents and flagging anything critical
+- Read every lab result, pathology report, and imaging study
+- Search PubMed and ClinicalTrials.gov for compatible treatments
+- Check trial eligibility against YOUR molecular profile
+- Track protocols with dose modification rules and toxicity grading
+- Prepare you for every oncologist appointment with the right questions
+- Apply DeVita textbook and NCCN protocols as a second opinion
+- Inform your family with plain-language updates via WhatsApp
 
-Built on Anthropic's Model Context Protocol (MCP), it's designed to be open and interoperable — not a locked-in platform.
+Chat with your crew via Claude.ai, ChatGPT (thanks to MCP), or WhatsApp. View everything in a full dashboard. No medical degree required.
 
-This isn't a theoretical project. It's been running in production for a real patient since February 2026, tracking real labs, real biomarkers, and real treatment decisions.
+Built on the Model Context Protocol — open, interoperable, designed to work with any AI assistant. Your data stays in your Google Drive.
 
-435 automated tests. 18 MCP tools. Bilingual dashboard. Security-audited. GDPR compliant.
+This isn't a theoretical project. Running in production for a real patient since February 2026, tracking real labs, real biomarkers, real treatment decisions.
 
-If you're working in health AI, oncology informatics, or patient advocacy — I'd love to connect.
+592 automated tests. 18 agents. 24 tools. GDPR compliant.
 
-oncoteam.ai
+Upgrade yourself with an always-ready team to stay in control — even if you're a medicine amateur.
 
-#HealthAI #Oncology #MCP #CancerTreatment #PatientAdvocacy #AI #OpenSource
+https://oncoteam.cloud
+
+#HealthAI #Oncology #MCP #CancerTreatment #PatientAdvocacy #AI #Claude
 
 ---
 
 ## Post 2: Technical Deep-Dive (Company Page — instarea)
 
-**How we built a cancer treatment management AI on the Model Context Protocol**
+**How we built a cancer treatment AI with 18 autonomous agents on the Model Context Protocol**
 
-When we needed an AI system to help manage real cancer treatment, we chose MCP (Model Context Protocol) as the foundation. Here's why — and what we learned.
+When we needed an AI system to manage real cancer treatment, we chose MCP as the foundation. Here's why — and what we learned.
 
-Architecture:
-- Oncofiles (data layer): MCP server bridging Google Drive patient documents to AI tools. OCR, metadata extraction, lab parsing.
-- Oncoteam (intelligence layer): 18 MCP tools for clinical trial search, lab analysis, protocol tracking, eligibility checking.
-- Dashboard: Nuxt.js bilingual interface with 13 pages of treatment data visualization.
-- Autonomous agent: Claude API with extended thinking for document scanning and data extraction.
+Two-layer architecture:
+- **Oncofiles** (data layer): MCP server bridging Google Drive, Gmail, and Calendar to AI. OCR, metadata, lab parsing. GDrive = single source of truth.
+- **Oncoteam** (intelligence layer): 18 autonomous agents + 24 MCP tools. Clinical trial search, lab analysis, protocol tracking, eligibility checking, document processing.
+
+Multi-channel access:
+- **Dashboard**: Nuxt 4 bilingual interface — labs, timeline, medications, dictionary, dose tracking, agent observatory
+- **Claude.ai / ChatGPT**: Deep analysis and Q&A via MCP protocol
+- **WhatsApp**: Proactive safety alerts and family updates
+- **Autonomous agents**: 18 scheduled tasks running 24/7
 
 Key technical decisions:
-1. MCP over custom APIs — interoperability with any AI assistant
+1. MCP over custom APIs — works with Claude, ChatGPT, any MCP-compatible assistant
 2. Google Drive as source of truth — patients keep control of their data
-3. FastMCP 3.1 for server framework — Python async, OpenTelemetry built-in
-4. No local database — all persistence through MCP tools (data sovereignty)
+3. FastMCP 3.1 server framework — Python async, OpenTelemetry built-in
+4. No local database — all persistence through MCP (data sovereignty)
 5. Embedded clinical protocol — dose thresholds, toxicity grading, cycle rules in code
+6. Full prompt transparency — see every AI decision, prompt, tool call
 
-Security: Bearer-only auth, fail-safe startup (no auth = no start), no hardcoded production URLs, GDPR audit trail on every data access.
+592 tests. Railway deployment. Real patient, real data, real decisions.
 
-435 tests. Railway + Render deployment. Real patient, real data, real decisions.
-
-The full stack is at github.com/instarea-sk.
+https://oncoteam.cloud
 
 #MCP #ModelContextProtocol #HealthTech #Claude #AI #Python #FastMCP
 
@@ -60,25 +68,25 @@ The full stack is at github.com/instarea-sk.
 
 **Cancer doesn't wait for your next appointment.**
 
-Between oncology visits, patients and caregivers are left alone with lab results they can't fully interpret, treatment protocols they struggle to understand, and clinical trial options they don't know exist.
+Between oncology visits, patients and caregivers are left alone with lab results they can't interpret, protocols they struggle to understand, and clinical trials they don't know exist.
 
-The information asymmetry in cancer care is staggering. The patient has 15 minutes with their oncologist every 2-3 weeks. The rest of the time? Google, forums, and anxiety.
+The information asymmetry in cancer care is staggering. You get 15 minutes with your oncologist every 2-3 weeks. The rest? Google, forums, and anxiety.
 
-We built Oncoteam to close that gap.
+We built Oncoteam to close that gap. It's not a chatbot — it's your always-ready AI team:
 
-It's not a chatbot. It's a persistent AI agent that:
-- Understands your specific molecular profile (KRAS, BRAF, MSI, HER2)
-- Knows which treatments are contraindicated for YOU
-- Monitors clinical trials in your region matching YOUR biomarkers
+- Knows your molecular profile (KRAS, BRAF, MSI, HER2) and which treatments are compatible
+- Monitors clinical trials across 14 EU countries matching YOUR biomarkers
 - Tracks YOUR lab trends and flags deviations before your doctor sees them
-- Prepares YOU for every oncologist visit with specific, data-backed questions
+- Applies DeVita textbook standards as a second opinion on YOUR case
+- Prepares YOU for every visit with specific, data-backed questions
+- Keeps your family informed with plain-language WhatsApp updates
 
-Every data point is traceable to its source document. Every recommendation cites PubMed or ClinicalTrials.gov. No hallucinations — just your actual medical data, analyzed continuously.
+Chat via Claude.ai or ChatGPT. Get alerts on WhatsApp. See everything in a dashboard. Even top-notch medical standards are automatically applied — so you walk in prepared, not overwhelmed.
 
-This is what AI should be doing — empowering patients and caregivers with the same information quality that institutions have.
+Every data point traceable. Every recommendation cited. No hallucinations — just your actual medical data, analyzed by 18 AI agents continuously.
 
-Built for a real patient. Running in production. Open architecture.
+Stay in control, even if you're a medicine amateur.
 
-oncoteam.ai
+https://oncoteam.cloud
 
 #PatientAdvocacy #CancerCare #Oncology #AI #Caregiver #HealthEquity
