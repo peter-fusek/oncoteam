@@ -6,19 +6,19 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 573 tests
+uv run pytest          # 590 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
 
 ## Project structure
 
-- `src/oncoteam/server.py` — MCP server, 24 tools + 18 dashboard API routes (4 POST, 1 parameterized), system instructions with biomarker rules + QA protocol
-- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,detail/{type}/{id}}
+- `src/oncoteam/server.py` — MCP server, 24 tools + 19 dashboard API routes (5 POST, 1 parameterized), system instructions with biomarker rules + QA protocol
+- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,detail/{type}/{id},internal/document-webhook}
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
-- `src/oncoteam/autonomous_tasks.py` — 18 autonomous task wrappers with cooldown guards and WhatsApp notifications
-- `src/oncoteam/agent_registry.py` — AgentConfig Pydantic model, all 18 agent definitions, schedule/cooldown/model config
+- `src/oncoteam/autonomous_tasks.py` — 18 autonomous task wrappers + document pipeline orchestrator with cooldown guards and WhatsApp notifications
+- `src/oncoteam/agent_registry.py` — AgentConfig Pydantic model, all 18 agent definitions + document_pipeline, schedule/cooldown/model config
 - `src/oncoteam/tags.py` — Canonical tag vocabulary with prefix:value format (sys:, clin:, bio:, tx:, res:, task:, safety:, src:)
 - `src/oncoteam/activity_logger.py` — @log_activity decorator, suppressed error buffer, diary helpers
 - `src/oncoteam/eligibility.py` — biomarker-aware trial eligibility checker
@@ -56,6 +56,8 @@ uv run oncoteam-mcp    # stdio mode
 - `autonomous.py` stores `prompt` (task_prompt) in result dict → persisted in run traces via `_log_task()`. The `api_agent_runs` endpoint returns full prompt + response without truncation.
 - `autonomous_tasks._log_task()` stores agent_run entries with enriched tags: `cost:{cost},tools:{n},model:{model},dur:{ms}`. The `api_agent_runs` list view parses these tags — never fetches full content (oncofiles `get_conversation` is too slow for list views).
 - Dashboard proxy timeout (`dashboard/server/api/oncoteam/[...path].ts`) is 25s. Oncofiles MCP `search_conversations` takes ~15s per query — don't reduce below 20s.
+- `document_pipeline` agent in registry has `schedule_params={"hours": 999}` — never fires on schedule. It's event-driven only, triggered by `POST /api/internal/document-webhook`.
+- `api_document_webhook` imports `_get_state`, `_extract_timestamp`, `run_document_pipeline` lazily from `autonomous_tasks` — test patches must target `oncoteam.autonomous_tasks`, not `oncoteam.dashboard_api`.
 
 
 ## Key commands
@@ -71,7 +73,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Testing
 
-- `uv run pytest` — full suite (573 tests, ~2.3s)
+- `uv run pytest` — full suite (590 tests, ~2.3s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -84,7 +86,7 @@ uv run oncoteam-mcp    # stdio mode
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 569 tests, ruff clean
+- 590 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
