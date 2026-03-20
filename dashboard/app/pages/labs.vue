@@ -116,6 +116,18 @@ function formValueStatus(key: string): string {
   return 'border-green-500/30'
 }
 
+// Human-readable action labels
+const ACTION_LABELS: Record<string, string> = {
+  hold_chemo: 'Hold Chemotherapy',
+  dose_reduce: 'Reduce Dose',
+  monitor: 'Monitor Closely',
+  transfuse: 'Consider Transfusion',
+  urgent: 'Urgent Review',
+}
+function actionLabel(action: string): string {
+  return ACTION_LABELS[action] || action.replace(/_/g, ' ')
+}
+
 // All alerts across entries
 const drilldown = useDrilldown()
 
@@ -215,10 +227,10 @@ async function submitLab() {
       <div class="space-y-1">
         <div v-for="(alert, i) in allAlerts" :key="i" class="text-xs text-red-400 flex items-center gap-2">
           <span class="text-gray-500">{{ alert.date }}</span>
-          <span class="font-mono">{{ alert.param }}</span>
-          <span>= {{ alert.value.toLocaleString() }}</span>
-          <span class="text-gray-600">(min: {{ alert.threshold.toLocaleString() }})</span>
-          <UBadge color="error" variant="subtle" size="xs">{{ alert.action }}</UBadge>
+          <NuxtLink :to="`/dictionary?q=${alert.param}`" class="font-mono hover:text-red-300 underline decoration-dotted">{{ alert.param }}</NuxtLink>
+          <span>= {{ Number(alert.value).toLocaleString('en-US', { maximumFractionDigits: 1 }) }}</span>
+          <span class="text-gray-600">(min: {{ Number(alert.threshold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }})</span>
+          <UBadge color="error" variant="subtle" size="xs">{{ actionLabel(alert.action) }}</UBadge>
         </div>
       </div>
     </div>
@@ -299,7 +311,7 @@ async function submitLab() {
                 <div>{{ $t('labs.sampleDate') }}</div>
               </th>
               <th v-for="p in labParams" :key="p.key" class="px-3 py-2">
-                <div>{{ p.label }}</div>
+                <NuxtLink :to="`/dictionary?q=${p.label}`" class="hover:text-teal-400 underline decoration-dotted transition-colors" :title="`Look up ${p.label} in dictionary`">{{ p.label }}</NuxtLink>
                 <div v-if="refRangeText(p.key)" class="text-[10px] text-gray-600 font-normal">{{ refRangeText(p.key) }}</div>
               </th>
               <th class="px-3 py-2">{{ $t('common.notes') }}</th>
