@@ -284,4 +284,20 @@ async function logout() {
 .slide-leave-to {
   transform: translateX(-100%);
 }
+
+/* Sidebar polish */
+aside :deep(.relative a[aria-current="page"]) {
+  background: rgba(20, 184, 166, 0.08) !important;
+  box-shadow: inset 3px 0 0 rgb(20, 184, 166);
+}
+
+aside :deep(.relative a) {
+  transition: all 0.15s ease;
+  border-radius: 8px;
+  margin: 1px 0;
+}
+
+aside :deep(.relative a:hover) {
+  background: rgba(255, 255, 255, 0.04);
+}
 </style>
