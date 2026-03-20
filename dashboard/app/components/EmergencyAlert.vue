@@ -17,6 +17,18 @@ function isCritical(param: string, value: number): boolean {
   }
   return param in criticals && value < criticals[param]
 }
+
+// Human-readable action labels
+const ACTION_LABELS: Record<string, string> = {
+  hold_chemo: 'Hold Chemotherapy',
+  dose_reduce: 'Reduce Dose',
+  monitor: 'Monitor Closely',
+  transfuse: 'Consider Transfusion',
+  urgent: 'Urgent Review',
+}
+function actionLabel(action: string): string {
+  return ACTION_LABELS[action] || action.replace(/_/g, ' ')
+}
 </script>
 
 <template>
@@ -43,15 +55,15 @@ function isCritical(param: string, value: number): boolean {
           class="w-2 h-2 rounded-full shrink-0"
           :class="isCritical(alert.param, alert.value) ? 'bg-red-500' : 'bg-amber-500'"
         />
-        <span class="font-mono text-white">{{ alert.param }}</span>
-        <span class="text-gray-400">= {{ alert.value.toLocaleString() }}</span>
-        <span class="text-gray-600">(min: {{ alert.threshold.toLocaleString() }})</span>
+        <NuxtLink :to="`/dictionary?q=${alert.param}`" class="font-mono text-white hover:text-teal-400 underline decoration-dotted">{{ alert.param }}</NuxtLink>
+        <span class="text-gray-400">= {{ Number(alert.value).toLocaleString('en-US', { maximumFractionDigits: 1 }) }}</span>
+        <span class="text-gray-600">(min: {{ Number(alert.threshold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }})</span>
         <UBadge
           :color="isCritical(alert.param, alert.value) ? 'error' : 'warning'"
           variant="subtle"
           size="xs"
         >
-          {{ isCritical(alert.param, alert.value) ? $t('components.emergency.critical') : alert.action }}
+          {{ isCritical(alert.param, alert.value) ? $t('components.emergency.critical') : actionLabel(alert.action) }}
         </UBadge>
         <span v-if="alert.date" class="text-xs text-gray-600 ml-auto">{{ alert.date }}</span>
       </div>
