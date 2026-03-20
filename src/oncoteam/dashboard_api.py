@@ -360,6 +360,55 @@ def _get_cors_origin(request: Request) -> str:
 _CURRENT_REQUEST: Request | None = None
 
 
+def _parse_agent_run_entry(e: dict, default_task_name: str = "unknown") -> dict:
+    """Parse an oncofiles agent_run entry into a lightweight summary dict."""
+    tags = e.get("tags", [])
+    tag_map = {}
+    for t in tags if isinstance(tags, list) else []:
+        if ":" in t:
+            k, v = t.split(":", 1)
+            tag_map[k] = v
+
+    content = e.get("content", "")
+    trace: dict = {}
+    try:
+        trace = json.loads(content) if isinstance(content, str) else content
+        if not isinstance(trace, dict):
+            trace = {}
+    except (json.JSONDecodeError, TypeError):
+        trace = {}
+
+    n_tool_calls = len(trace.get("tool_calls", []))
+
+    def _safe_float(val: object, default: float = 0.0) -> float:
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return default
+
+    def _safe_int(val: object, default: int = 0) -> int:
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
+
+    return {
+        "id": e.get("id"),
+        "timestamp": e.get("created_at"),
+        "task_name": tag_map.get("task", trace.get("task_name", default_task_name)),
+        "model": tag_map.get("model", trace.get("model", "")),
+        "cost": _safe_float(tag_map.get("cost", trace.get("cost", 0))),
+        "duration_ms": _safe_int(tag_map.get("dur", trace.get("duration_ms", 0))),
+        "error": trace.get("error"),
+        "input_tokens": trace.get("input_tokens", 0),
+        "output_tokens": trace.get("output_tokens", 0),
+        "turns": trace.get("turns", 0),
+        "tool_call_count": _safe_int(tag_map.get("tools", n_tool_calls)),
+        "started_at": trace.get("started_at"),
+        "completed_at": trace.get("completed_at"),
+    }
+
+
 def _parse_limit(request: Request, default: int = 50, max_val: int = 500) -> int:
     """Parse and cap `limit` query param. Safe against non-integer values."""
     try:
@@ -2474,45 +2523,7 @@ async def api_agent_runs(request: Request) -> JSONResponse:
 
     # List view: lightweight summary from tags or content header fields.
     # Full content (prompt, messages, thinking, tool outputs) via /api/detail/agent_run/{id}.
-    runs = []
-    for e in entries:
-        # Parse tags into a lookup for fast metadata extraction
-        tags = e.get("tags", [])
-        tag_map = {}
-        for t in tags if isinstance(tags, list) else []:
-            if ":" in t:
-                k, v = t.split(":", 1)
-                tag_map[k] = v
-
-        # Try to extract summary fields from content (if available)
-        content = e.get("content", "")
-        trace: dict = {}
-        try:
-            trace = json.loads(content) if isinstance(content, str) else content
-            if not isinstance(trace, dict):
-                trace = {}
-        except (json.JSONDecodeError, TypeError):
-            trace = {}
-
-        n_tool_calls = len(trace.get("tool_calls", []))
-
-        runs.append(
-            {
-                "id": e.get("id"),
-                "timestamp": e.get("created_at"),
-                "task_name": tag_map.get("task", trace.get("task_name", agent_id)),
-                "model": tag_map.get("model", trace.get("model", "")),
-                "cost": float(tag_map.get("cost", trace.get("cost", 0))),
-                "duration_ms": int(tag_map.get("dur", trace.get("duration_ms", 0))),
-                "error": trace.get("error"),
-                "input_tokens": trace.get("input_tokens", 0),
-                "output_tokens": trace.get("output_tokens", 0),
-                "turns": trace.get("turns", 0),
-                "tool_call_count": int(tag_map.get("tools", n_tool_calls)),
-                "started_at": trace.get("started_at"),
-                "completed_at": trace.get("completed_at"),
-            }
-        )
+    runs = [_parse_agent_run_entry(e, default_task_name=agent_id) for e in entries]
     return _cors_json({"agent_id": agent_id, "runs": runs, "total": len(runs)})
 
 
@@ -2533,44 +2544,7 @@ async def api_agent_runs_all(request: Request) -> JSONResponse:
         )
 
     entries = _extract_list(result, "entries")
-
-    runs = []
-    for e in entries:
-        tags = e.get("tags", [])
-        tag_map = {}
-        for t in tags if isinstance(tags, list) else []:
-            if ":" in t:
-                k, v = t.split(":", 1)
-                tag_map[k] = v
-
-        content = e.get("content", "")
-        trace: dict = {}
-        try:
-            trace = json.loads(content) if isinstance(content, str) else content
-            if not isinstance(trace, dict):
-                trace = {}
-        except (json.JSONDecodeError, TypeError):
-            trace = {}
-
-        n_tool_calls = len(trace.get("tool_calls", []))
-
-        runs.append(
-            {
-                "id": e.get("id"),
-                "timestamp": e.get("created_at"),
-                "task_name": tag_map.get("task", trace.get("task_name", "unknown")),
-                "model": tag_map.get("model", trace.get("model", "")),
-                "cost": float(tag_map.get("cost", trace.get("cost", 0))),
-                "duration_ms": int(tag_map.get("dur", trace.get("duration_ms", 0))),
-                "error": trace.get("error"),
-                "input_tokens": trace.get("input_tokens", 0),
-                "output_tokens": trace.get("output_tokens", 0),
-                "turns": trace.get("turns", 0),
-                "tool_call_count": int(tag_map.get("tools", n_tool_calls)),
-                "started_at": trace.get("started_at"),
-                "completed_at": trace.get("completed_at"),
-            }
-        )
+    runs = [_parse_agent_run_entry(e) for e in entries]
     return _cors_json({"runs": runs, "total": len(runs)})
 
 
