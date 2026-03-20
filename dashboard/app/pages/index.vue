@@ -38,10 +38,6 @@ const { data: costData, refresh: refreshCost } = fetchApi<{
   days_remaining: number; budget_alert: boolean; month: string
 }>('/autonomous/cost', { lazy: true })
 
-const { data: gamification, refresh: refreshGamification } = useFetch<{
-  totalXp: number; level: string; streakDays: number
-}>('/api/gamification', { lazy: true })
-
 const { data: labData, refresh: refreshLabs } = fetchApi<{
   entries: Array<{
     date: string
@@ -318,7 +314,7 @@ const roomJobs = computed(() => {
 // ── Refresh ──────────────────────────────────────
 
 async function refreshAll() {
-  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshCost(), refreshGamification(), refreshLabs()])
+  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshCost(), refreshLabs()])
 }
 
 const refreshInterval = ref<ReturnType<typeof setInterval>>()
@@ -344,12 +340,6 @@ onUnmounted(() => {
         <p class="text-sm text-gray-400">{{ $t('agents.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-3">
-        <XpProgressBar
-          v-if="gamification"
-          :total-xp="gamification.totalXp"
-          :level="gamification.level"
-          :streak-days="gamification.streakDays"
-        />
         <div class="flex items-center gap-2 text-xs">
           <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           <span class="text-gray-500">{{ status?.tools_count }} {{ $t('agents.tools').toLowerCase() }}</span>
