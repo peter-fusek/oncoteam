@@ -79,8 +79,8 @@ const drilldown = useDrilldown()
   <div class="space-y-6">
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-white">{{ $t('research.title') }}</h1>
-        <p class="text-sm text-gray-400">
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('research.title') }}</h1>
+        <p class="text-sm text-gray-500">
           <template v-if="research?.total">
             {{ $t('research.showing', { from: showingFrom, to: showingTo, total: research.total }) }}
           </template>
@@ -156,13 +156,13 @@ const drilldown = useDrilldown()
       <div
         v-for="entry in research.entries"
         :key="entry.id"
-        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 hover:bg-gray-800/30 transition-colors cursor-pointer hover:ring-1 hover:ring-teal-500/30"
+        class="rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50 transition-colors cursor-pointer hover:ring-1 hover:ring-teal-500/30"
         @click="drilldown.open({ type: 'research', id: entry.id, label: entry.title })"
       >
         <div class="flex items-start gap-3">
           <span class="text-lg mt-0.5">{{ entry.source === 'pubmed' ? '📄' : '🧪' }}</span>
           <div class="min-w-0 flex-1">
-            <div class="font-medium text-white text-sm">{{ entry.title }}</div>
+            <div class="font-medium text-gray-900 text-sm">{{ entry.title }}</div>
             <div class="flex items-center gap-2 mt-1.5 flex-wrap">
               <UBadge
                 variant="subtle"

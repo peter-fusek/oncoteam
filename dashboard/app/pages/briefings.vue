@@ -51,8 +51,8 @@ const allQuestions = computed(() => {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">{{ $t('briefings.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ $t('briefings.count', { count: briefings?.total ?? 0 }) }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('briefings.title') }}</h1>
+        <p class="text-sm text-gray-500">{{ $t('briefings.count', { count: briefings?.total ?? 0 }) }}</p>
         <LastUpdated :timestamp="briefings?.last_updated" />
       </div>
       <div class="flex items-center gap-3">
@@ -74,15 +74,15 @@ const allQuestions = computed(() => {
     <!-- Questions for Oncologist (aggregated) -->
     <div v-if="allQuestions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
       <div class="flex items-center gap-2 mb-3">
-        <UIcon name="i-lucide-message-circle-question" class="text-teal-500" />
-        <h2 class="text-sm font-semibold text-white">{{ $t('briefings.questionsForOncologist') }}</h2>
+        <UIcon name="i-lucide-message-circle-question" class="text-teal-600" />
+        <h2 class="text-sm font-semibold text-gray-900">{{ $t('briefings.questionsForOncologist') }}</h2>
       </div>
       <div class="space-y-2">
         <div v-for="(q, i) in allQuestions" :key="i" class="flex items-start gap-2">
-          <span class="text-teal-500 text-xs mt-0.5 shrink-0">{{ i + 1 }}.</span>
+          <span class="text-teal-600 text-xs mt-0.5 shrink-0">{{ i + 1 }}.</span>
           <div>
-            <div class="text-sm text-gray-300">{{ q.question }}</div>
-            <div class="text-xs text-gray-600">{{ q.from }}</div>
+            <div class="text-sm text-gray-700">{{ q.question }}</div>
+            <div class="text-xs text-gray-500">{{ q.from }}</div>
           </div>
         </div>
       </div>
@@ -104,7 +104,7 @@ const allQuestions = computed(() => {
     </div>
 
     <div v-else-if="!briefings?.error && !briefingsError && briefingsStatus !== 'pending'" class="text-center py-16 space-y-4">
-      <div class="text-gray-600 text-sm">
+      <div class="text-gray-500 text-sm">
         {{ $t('briefings.noBriefings') }}
       </div>
       <!-- Show scheduled tasks that will generate briefings -->
@@ -112,7 +112,7 @@ const allQuestions = computed(() => {
         <div
           v-for="job in autonomous.jobs"
           :key="job.id"
-          class="rounded-lg bg-gray-800/50 px-3 py-1.5 text-xs text-gray-500"
+          class="rounded-lg bg-gray-50 px-3 py-1.5 text-xs text-gray-500"
         >
           {{ job.description }} · {{ job.schedule }}
         </div>

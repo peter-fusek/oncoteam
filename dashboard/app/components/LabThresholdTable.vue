@@ -19,7 +19,7 @@ const statusColors: Record<string, string> = {
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead>
-        <tr class="text-left text-xs text-gray-500 border-b border-gray-800">
+        <tr class="text-left text-xs text-gray-500 border-b border-gray-200">
           <th class="pb-2 pr-4">{{ $t('components.labThreshold.parameter') }}</th>
           <th class="pb-2 pr-4">{{ $t('components.labThreshold.threshold') }}</th>
           <th v-if="lastValues" class="pb-2 pr-4">{{ $t('components.labThreshold.lastValue') }}</th>
@@ -28,15 +28,15 @@ const statusColors: Record<string, string> = {
           <th class="pb-2">{{ $t('components.labThreshold.action') }}</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-800/50">
+      <tbody class="divide-y divide-gray-100">
         <tr
           v-for="(t, name) in thresholds"
           :key="name"
-          class="text-gray-300 transition-colors"
-          :class="lastValues ? 'cursor-pointer hover:bg-gray-800/30' : ''"
+          class="text-gray-700 transition-colors"
+          :class="lastValues ? 'cursor-pointer hover:bg-gray-50' : ''"
           @click="lastValues ? $emit('rowClick', String(name)) : undefined"
         >
-          <td class="py-2 pr-4 font-mono text-white">{{ name }}</td>
+          <td class="py-2 pr-4 font-mono text-gray-900">{{ name }}</td>
           <td class="py-2 pr-4">
             <template v-if="t.min">
               >= {{ t.min.toLocaleString() }} {{ t.unit || '' }}

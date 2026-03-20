@@ -1,21 +1,38 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap');
+
+/* ── Clinical Design System ───────────────────── */
+/* Warm off-white background, white cards, teal accents */
+/* WCAG AAA target: 7:1 text contrast, 4.5:1 large text */
+
+:root {
+  --clinical-bg: #F7F8FA;
+  --clinical-surface: #FFFFFF;
+  --clinical-border: #E5E7EB;
+  --clinical-border-hover: #D1D5DB;
+  --clinical-text: #111827;
+  --clinical-text-secondary: #6B7280;
+  --clinical-text-muted: #9CA3AF;
+  --clinical-primary: #0B7285;
+  --clinical-primary-light: #E0F4F7;
+  --clinical-sidebar: #F1F3F5;
+  --clinical-sidebar-active: rgba(11, 114, 133, 0.08);
+  --clinical-sidebar-hover: rgba(0, 0, 0, 0.03);
+}
 
 /* ── Global Typography ──────────────────────────── */
 body {
   font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--clinical-bg);
+  color: var(--clinical-text);
 }
 
-/* ── Dashboard Card System ──────────────────────── */
-/* Glass-morphism cards with refined borders */
-.rounded-xl.border.border-gray-800,
-.rounded-xl.border.bg-gray-900\/50 {
-  border-color: rgba(75, 85, 99, 0.25);
-  background: rgba(17, 24, 39, 0.6);
-  backdrop-filter: blur(8px);
+/* Page headers — DM Serif Display for clinical authority */
+.font-display {
+  font-family: 'DM Serif Display', Georgia, serif;
 }
 
 /* Stat numbers — tabular for alignment */
@@ -27,7 +44,7 @@ body {
 /* ── Page Headers ───────────────────────────────── */
 h1.text-2xl,
 h1.text-xl {
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 /* ── Smooth Page Transitions ────────────────────── */
@@ -51,23 +68,39 @@ h1.text-xl {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(75, 85, 99, 0.4);
+  background: rgba(156, 163, 175, 0.3);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(107, 114, 128, 0.6);
+  background: rgba(107, 114, 128, 0.5);
 }
 
-/* ── Room Card Hover Polish ─────────────────────── */
+/* ── Card System ──────────────────────────────── */
+/* Clean white cards with subtle borders */
+.card {
+  background: var(--clinical-surface);
+  border: 1px solid var(--clinical-border);
+  border-radius: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--clinical-border-hover);
+}
+
+.card-interactive:hover {
+  border-color: var(--clinical-border-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Room Card Hover ──────────────────────────── */
 button.group.rounded-xl {
   transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
 }
 
 button.group.rounded-xl:hover {
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.3),
-    0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 /* ── Alert/Badge Refinements ────────────────────── */
@@ -78,4 +111,19 @@ button.group.rounded-xl:hover {
 /* ── Table Cell Refinements ─────────────────────── */
 td, th {
   transition: background-color 0.15s ease;
+}
+
+/* ── Status Indicators ────────────────────────── */
+/* Always use icon + color, never color alone (WCAG) */
+.status-active {
+  color: #059669;
+}
+.status-warning {
+  color: #B45309;
+}
+.status-critical {
+  color: #DC2626;
+}
+.status-idle {
+  color: #9CA3AF;
 }

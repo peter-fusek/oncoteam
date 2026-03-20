@@ -20,14 +20,14 @@ function formatTags(tags: string[] | string | undefined): string[] {
 </script>
 
 <template>
-  <div class="rounded-lg border border-gray-800 bg-gray-900/50 overflow-hidden">
+  <div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
     <button
-      class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-800/30 transition-colors"
+      class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
       @click="expanded = !expanded"
     >
       <div class="min-w-0 flex-1">
-        <div class="text-sm font-medium text-white truncate">{{ title }}</div>
-        <div v-if="summary && !expanded" class="text-xs text-gray-400 mt-1 line-clamp-2">
+        <div class="text-sm font-medium text-gray-900 truncate">{{ title }}</div>
+        <div v-if="summary && !expanded" class="text-xs text-gray-500 mt-1 line-clamp-2">
           {{ summary }}
         </div>
         <div class="flex items-center gap-2 mt-1">
@@ -44,10 +44,10 @@ function formatTags(tags: string[] | string | undefined): string[] {
         <UIcon :name="expanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="text-gray-500" />
       </div>
     </button>
-    <div v-if="expanded" class="px-4 pb-4 border-t border-gray-800">
-      <div class="prose prose-sm prose-invert max-w-none mt-3 text-sm text-gray-300 whitespace-pre-wrap">{{ content }}</div>
+    <div v-if="expanded" class="px-4 pb-4 border-t border-gray-200">
+      <div class="prose prose-sm prose-gray max-w-none mt-3 text-sm text-gray-700 whitespace-pre-wrap">{{ content }}</div>
       <button
-        class="mt-3 text-xs text-teal-500 hover:text-teal-400 flex items-center gap-1"
+        class="mt-3 text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1"
         @click.stop="$emit('drilldown')"
       >
         <UIcon name="i-lucide-arrow-right" class="w-3 h-3" />

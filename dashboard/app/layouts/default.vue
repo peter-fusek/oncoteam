@@ -20,9 +20,15 @@ watch(() => route.path, () => {
 })
 
 const ROLE_COLORS: Record<string, string> = {
-  advocate: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-  patient: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  doctor: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  advocate: 'bg-teal-50 text-teal-700 border-teal-200',
+  patient: 'bg-blue-50 text-blue-700 border-blue-200',
+  doctor: 'bg-purple-50 text-purple-700 border-purple-200',
+}
+
+const ROLE_DOTS: Record<string, string> = {
+  advocate: 'bg-teal-500',
+  patient: 'bg-blue-500',
+  doctor: 'bg-purple-500',
 }
 
 const allNavItems = computed(() => [
@@ -75,15 +81,15 @@ async function logout() {
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-950">
+  <div class="flex h-screen bg-[var(--clinical-bg)]">
     <!-- Desktop sidebar -->
-    <aside class="hidden md:flex flex-col w-52 shrink-0 border-r border-gray-800 bg-gray-950">
+    <aside class="hidden md:flex flex-col w-52 shrink-0 border-r border-gray-200 bg-[var(--clinical-sidebar)]">
       <!-- Header -->
-      <div class="flex items-center gap-2 px-4 py-3">
-        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-          <span class="text-sm">🧬</span>
+      <div class="flex items-center gap-2.5 px-4 py-3.5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-600 to-cyan-700 flex items-center justify-center shadow-sm">
+          <span class="text-sm text-white">+</span>
         </div>
-        <span class="font-bold text-lg text-white">Oncoteam</span>
+        <span class="font-bold text-lg text-gray-900 tracking-tight">Oncoteam</span>
       </div>
 
       <!-- Role switcher -->
@@ -95,26 +101,22 @@ async function logout() {
             @click="roleSwitcherOpen = !roleSwitcherOpen"
           >
             <span>{{ $t(`roles.${activeRole}`) }}</span>
-            <UIcon name="i-lucide-chevrons-up-down" class="w-3 h-3 opacity-60" />
+            <UIcon name="i-lucide-chevrons-up-down" class="w-3 h-3 opacity-50" />
           </button>
           <div
             v-if="roleSwitcherOpen"
-            class="absolute top-full left-0 right-0 mt-1 rounded-lg border border-gray-700 bg-gray-900 shadow-xl z-10 overflow-hidden"
+            class="absolute top-full left-0 right-0 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg z-10 overflow-hidden"
           >
             <button
               v-for="role in roles"
               :key="role"
-              class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-gray-800"
-              :class="role === activeRole ? 'text-white font-medium' : 'text-gray-400'"
+              class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors hover:bg-gray-50"
+              :class="role === activeRole ? 'text-gray-900 font-medium' : 'text-gray-500'"
               @click="switchRole(role)"
             >
               <span
                 class="w-2 h-2 rounded-full"
-                :class="{
-                  'bg-teal-500': role === 'advocate',
-                  'bg-blue-500': role === 'patient',
-                  'bg-purple-500': role === 'doctor',
-                }"
+                :class="ROLE_DOTS[role]"
               />
               {{ $t(`roles.${role}`) }}
             </button>
@@ -135,15 +137,15 @@ async function logout() {
       </nav>
 
       <!-- Footer -->
-      <div class="border-t border-gray-800 px-3 py-2 space-y-2">
+      <div class="border-t border-gray-200 px-3 py-2 space-y-2">
         <div class="flex items-center justify-between">
-          <label v-if="activeRole === 'advocate'" class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
-            <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
+          <label v-if="activeRole === 'advocate'" class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+            <input v-model="showTestData" type="checkbox" class="rounded border-gray-300 bg-white text-teal-600 focus:ring-teal-500/30 w-3.5 h-3.5" />
             {{ $t('common.showTestData') }}
           </label>
           <span v-else />
           <button
-            class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+            class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-300 text-gray-500 hover:text-gray-900 hover:border-gray-400 transition-colors"
             @click="toggleLocale"
           >
             {{ locale === 'sk' ? 'EN' : 'SK' }}
@@ -156,25 +158,25 @@ async function logout() {
               :src="user.picture"
               size="xs"
             />
-            <span class="text-xs text-gray-400 truncate">{{ user?.name }}</span>
+            <span class="text-xs text-gray-600 truncate">{{ user?.name }}</span>
           </div>
           <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
         </div>
-        <div v-if="versionInfo" class="text-[10px] text-gray-600 text-center">
+        <div v-if="versionInfo" class="text-[10px] text-gray-400 text-center">
           v{{ versionInfo.version }} · {{ versionInfo.commit }}
         </div>
       </div>
     </aside>
 
     <!-- Mobile header -->
-    <div class="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 py-2 border-b border-gray-800 bg-gray-950">
-      <button class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800" @click="mobileMenuOpen = true">
+    <div class="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 py-2 border-b border-gray-200 bg-white/95 backdrop-blur-sm">
+      <button class="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100" @click="mobileMenuOpen = true">
         <UIcon name="i-lucide-menu" class="w-5 h-5" />
       </button>
-      <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-        <span class="text-xs">🧬</span>
+      <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-teal-600 to-cyan-700 flex items-center justify-center">
+        <span class="text-xs text-white">+</span>
       </div>
-      <span class="font-bold text-white">Oncoteam</span>
+      <span class="font-bold text-gray-900">Oncoteam</span>
       <span class="ml-auto inline-flex px-2 py-0.5 rounded border text-[10px] font-medium" :class="ROLE_COLORS[activeRole]">
         {{ $t(`roles.${activeRole}`) }}
       </span>
@@ -183,19 +185,19 @@ async function logout() {
     <!-- Mobile drawer overlay -->
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="mobileMenuOpen" class="md:hidden fixed inset-0 z-50 bg-black/60" @click="mobileMenuOpen = false" />
+        <div v-if="mobileMenuOpen" class="md:hidden fixed inset-0 z-50 bg-black/20" @click="mobileMenuOpen = false" />
       </Transition>
       <Transition name="slide">
-        <aside v-if="mobileMenuOpen" class="md:hidden fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-gray-950 border-r border-gray-800 shadow-xl">
+        <aside v-if="mobileMenuOpen" class="md:hidden fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-[var(--clinical-sidebar)] border-r border-gray-200 shadow-xl">
           <!-- Header -->
           <div class="flex items-center justify-between px-4 py-3">
             <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-                <span class="text-sm">🧬</span>
+              <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-600 to-cyan-700 flex items-center justify-center">
+                <span class="text-sm text-white">+</span>
               </div>
-              <span class="font-bold text-lg text-white">Oncoteam</span>
+              <span class="font-bold text-lg text-gray-900">Oncoteam</span>
             </div>
-            <button class="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800" @click="mobileMenuOpen = false">
+            <button class="p-1 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100" @click="mobileMenuOpen = false">
               <UIcon name="i-lucide-x" class="w-5 h-5" />
             </button>
           </div>
@@ -207,7 +209,7 @@ async function logout() {
                 v-for="role in roles"
                 :key="role"
                 class="flex-1 px-2 py-1.5 rounded-lg border text-xs font-medium transition-colors"
-                :class="role === activeRole ? ROLE_COLORS[role] : 'border-gray-700 text-gray-500 hover:text-gray-300'"
+                :class="role === activeRole ? ROLE_COLORS[role] : 'border-gray-200 text-gray-500 hover:text-gray-700'"
                 @click="switchRole(role)"
               >
                 {{ $t(`roles.${role}`) }}
@@ -226,15 +228,15 @@ async function logout() {
           </nav>
 
           <!-- Footer -->
-          <div class="border-t border-gray-800 px-3 py-2 space-y-2">
+          <div class="border-t border-gray-200 px-3 py-2 space-y-2">
             <div class="flex items-center justify-between">
-              <label v-if="activeRole === 'advocate'" class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-400">
-                <input v-model="showTestData" type="checkbox" class="rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500/30 w-3.5 h-3.5" />
+              <label v-if="activeRole === 'advocate'" class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+                <input v-model="showTestData" type="checkbox" class="rounded border-gray-300 bg-white text-teal-600 focus:ring-teal-500/30 w-3.5 h-3.5" />
                 {{ $t('common.showTestData') }}
               </label>
               <span v-else />
               <button
-                class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+                class="px-2 py-0.5 text-[10px] font-medium rounded border border-gray-300 text-gray-500 hover:text-gray-900 hover:border-gray-400 transition-colors"
                 @click="toggleLocale"
               >
                 {{ locale === 'sk' ? 'EN' : 'SK' }}
@@ -247,11 +249,11 @@ async function logout() {
                   :src="user.picture"
                   size="xs"
                 />
-                <span class="text-xs text-gray-400 truncate">{{ user?.name }}</span>
+                <span class="text-xs text-gray-600 truncate">{{ user?.name }}</span>
               </div>
               <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
             </div>
-            <div v-if="versionInfo" class="text-[10px] text-gray-600 text-center">
+            <div v-if="versionInfo" class="text-[10px] text-gray-400 text-center">
               v{{ versionInfo.version }} · {{ versionInfo.commit }}
             </div>
           </div>
@@ -285,19 +287,23 @@ async function logout() {
   transform: translateX(-100%);
 }
 
-/* Sidebar polish */
+/* Sidebar navigation polish — light theme */
 aside :deep(.relative a[aria-current="page"]) {
-  background: rgba(20, 184, 166, 0.08) !important;
-  box-shadow: inset 3px 0 0 rgb(20, 184, 166);
+  background: var(--clinical-sidebar-active) !important;
+  box-shadow: inset 3px 0 0 var(--clinical-primary);
+  color: var(--clinical-primary);
+  font-weight: 600;
 }
 
 aside :deep(.relative a) {
   transition: all 0.15s ease;
   border-radius: 8px;
   margin: 1px 0;
+  color: #4B5563;
 }
 
 aside :deep(.relative a:hover) {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--clinical-sidebar-hover);
+  color: #111827;
 }
 </style>

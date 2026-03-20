@@ -73,22 +73,22 @@ const drilldown = useDrilldown()
   <div class="space-y-6 print:space-y-4 print:text-black">
     <div class="flex items-center justify-between print:hidden">
       <div>
-        <h1 class="text-2xl font-bold text-white">{{ $t('familyUpdate.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ $t('familyUpdate.subtitle') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('familyUpdate.title') }}</h1>
+        <p class="text-sm text-gray-500">{{ $t('familyUpdate.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2">
         <!-- Language toggle -->
-        <div class="flex rounded-lg border border-gray-700 overflow-hidden">
+        <div class="flex rounded-lg border border-gray-300 overflow-hidden">
           <button
             class="px-3 py-1.5 text-xs font-medium transition-colors"
-            :class="lang === 'sk' ? 'bg-teal-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'"
+            :class="lang === 'sk' ? 'bg-teal-600 text-gray-900' : 'bg-gray-100 text-gray-500 hover:text-gray-900'"
             @click="lang = 'sk'"
           >
             SK
           </button>
           <button
             class="px-3 py-1.5 text-xs font-medium transition-colors"
-            :class="lang === 'en' ? 'bg-teal-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'"
+            :class="lang === 'en' ? 'bg-teal-600 text-gray-900' : 'bg-gray-100 text-gray-500 hover:text-gray-900'"
             @click="lang = 'en'"
           >
             EN
@@ -123,7 +123,7 @@ const drilldown = useDrilldown()
     <!-- Latest generated update -->
     <div v-if="latestGenerated" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-5 print:border-gray-300 print:bg-white">
       <div class="flex items-center justify-between mb-3 print:hidden">
-        <h2 class="text-sm font-semibold text-white">
+        <h2 class="text-sm font-semibold text-gray-900">
           {{ $t('familyUpdate.newUpdate') }}
         </h2>
         <div class="flex items-center gap-2">
@@ -144,16 +144,16 @@ const drilldown = useDrilldown()
           >
             {{ $t('whatsapp.send') }}
           </UButton>
-          <span v-if="whatsappMsg" class="text-xs" :class="whatsappMsg === 'sent' ? 'text-green-500' : 'text-red-500'">
+          <span v-if="whatsappMsg" class="text-xs" :class="whatsappMsg === 'sent' ? 'text-green-500' : 'text-red-600'">
             {{ whatsappMsg === 'sent' ? $t('whatsapp.sent') : $t('whatsapp.error') }}
           </span>
         </div>
       </div>
-      <div class="prose prose-sm prose-invert max-w-none print:prose-gray">
+      <div class="prose prose-sm prose-gray max-w-none print:prose-gray">
         <p
           v-for="(line, i) in latestGenerated.split('\n').filter(l => l.trim())"
           :key="i"
-          class="text-gray-300 print:text-black leading-relaxed"
+          class="text-gray-700 print:text-black leading-relaxed"
         >
           {{ line }}
         </p>
@@ -162,17 +162,17 @@ const drilldown = useDrilldown()
 
     <!-- Past updates -->
     <div v-if="updates?.updates?.length" class="space-y-3">
-      <h2 class="text-sm font-semibold text-white print:text-black">
+      <h2 class="text-sm font-semibold text-gray-900 print:text-black">
         {{ $t('familyUpdate.previousUpdates') }}
       </h2>
       <div
         v-for="update in updates.updates"
         :key="update.id"
-        class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 print:border-gray-300 print:bg-white cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+        class="rounded-xl border border-gray-200 bg-white p-4 print:border-gray-300 print:bg-white cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
         @click="drilldown.open({ type: 'document', id: update.id, label: update.title, data: { title: update.title, content: update.content, date: update.date, tags: update.tags, type: 'family_update' } })"
       >
         <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-white print:text-black">{{ update.title }}</span>
+          <span class="text-sm font-medium text-gray-900 print:text-black">{{ update.title }}</span>
           <div class="flex items-center gap-2 print:hidden">
             <UBadge
               v-if="update.tags?.some((t: string) => t.includes('lang:'))"
@@ -192,13 +192,13 @@ const drilldown = useDrilldown()
             />
           </div>
         </div>
-        <div class="text-sm text-gray-300 print:text-black leading-relaxed whitespace-pre-line">
+        <div class="text-sm text-gray-700 print:text-black leading-relaxed whitespace-pre-line">
           {{ update.content }}
         </div>
       </div>
     </div>
 
-    <div v-else-if="!updates?.error && !updatesError && !latestGenerated" class="text-gray-600 text-center py-8 text-sm">
+    <div v-else-if="!updates?.error && !updatesError && !latestGenerated" class="text-gray-500 text-center py-8 text-sm">
       {{ $t('familyUpdate.noUpdates') }}
     </div>
   </div>

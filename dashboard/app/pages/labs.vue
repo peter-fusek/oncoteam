@@ -109,9 +109,9 @@ function refRangeText(key: string): string {
 
 function formValueStatus(key: string): string {
   const val = form.values[key]
-  if (val == null || val === '') return 'border-gray-700'
+  if (val == null || val === '') return 'border-gray-300'
   const ref = labs.value?.reference_ranges?.[key]
-  if (!ref) return 'border-gray-700'
+  if (!ref) return 'border-gray-300'
   if (Number(val) < ref.min || Number(val) > ref.max) return 'border-amber-500/50'
   return 'border-green-500/30'
 }
@@ -179,23 +179,23 @@ async function submitLab() {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">{{ $t('labs.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ $t('labs.subtitle', { count: labs?.total ?? 0 }) }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('labs.title') }}</h1>
+        <p class="text-sm text-gray-500">{{ $t('labs.subtitle', { count: labs?.total ?? 0 }) }}</p>
         <LastUpdated :timestamp="labs?.last_updated" />
       </div>
       <div class="flex items-center gap-2">
         <!-- Rookie/Pro toggle -->
-        <div class="flex rounded-lg border border-gray-700 overflow-hidden">
+        <div class="flex rounded-lg border border-gray-300 overflow-hidden">
           <button
             class="px-3 py-1.5 text-xs font-medium transition-colors"
-            :class="!proMode ? 'bg-teal-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'"
+            :class="!proMode ? 'bg-teal-600 text-gray-900' : 'bg-gray-100 text-gray-500 hover:text-gray-900'"
             @click="proMode = false"
           >
             {{ $t('labs.rookie') }}
           </button>
           <button
             class="px-3 py-1.5 text-xs font-medium transition-colors"
-            :class="proMode ? 'bg-teal-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'"
+            :class="proMode ? 'bg-teal-600 text-gray-900' : 'bg-gray-100 text-gray-500 hover:text-gray-900'"
             @click="proMode = true"
           >
             {{ $t('labs.pro') }}
@@ -221,56 +221,56 @@ async function submitLab() {
     <!-- Alerts Banner -->
     <div v-if="allAlerts.length" class="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
       <div class="flex items-center gap-2 mb-2">
-        <UIcon name="i-lucide-triangle-alert" class="text-red-500" />
-        <span class="text-sm font-semibold text-white">{{ $t('labs.safetyAlerts') }}</span>
+        <UIcon name="i-lucide-triangle-alert" class="text-red-600" />
+        <span class="text-sm font-semibold text-gray-900">{{ $t('labs.safetyAlerts') }}</span>
       </div>
       <div class="space-y-1">
-        <div v-for="(alert, i) in allAlerts" :key="i" class="text-xs text-red-400 flex items-center gap-2">
+        <div v-for="(alert, i) in allAlerts" :key="i" class="text-xs text-red-600 flex items-center gap-2">
           <span class="text-gray-500">{{ alert.date }}</span>
-          <NuxtLink :to="`/dictionary?q=${alert.param}`" class="font-mono hover:text-red-300 underline decoration-dotted">{{ alert.param }}</NuxtLink>
+          <NuxtLink :to="`/dictionary?q=${alert.param}`" class="font-mono hover:text-red-600 underline decoration-dotted">{{ alert.param }}</NuxtLink>
           <span>= {{ Number(alert.value).toLocaleString('en-US', { maximumFractionDigits: 1 }) }}</span>
-          <span class="text-gray-600">(min: {{ Number(alert.threshold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }})</span>
+          <span class="text-gray-500">(min: {{ Number(alert.threshold).toLocaleString('en-US', { maximumFractionDigits: 0 }) }})</span>
           <UBadge color="error" variant="subtle" size="xs">{{ actionLabel(alert.action) }}</UBadge>
         </div>
       </div>
     </div>
 
     <!-- Entry Form -->
-    <div v-if="showForm" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-      <h2 class="text-sm font-semibold text-white mb-4">{{ $t('labs.enterResults') }}</h2>
+    <div v-if="showForm" class="rounded-xl border border-gray-200 bg-white p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('labs.enterResults') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('common.date') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('common.date') }}</label>
           <input
             v-model="form.date"
             type="date"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500"
           />
         </div>
         <div v-for="param in allLabParams" :key="param.key">
-          <label class="text-xs text-gray-400 block mb-1">{{ param.label }} <span v-if="param.unit" class="text-gray-600">({{ param.unit }})</span></label>
+          <label class="text-xs text-gray-500 block mb-1">{{ param.label }} <span v-if="param.unit" class="text-gray-500">({{ param.unit }})</span></label>
           <input
             v-model.number="form.values[param.key]"
             type="number"
             step="any"
             :placeholder="refRangeText(param.key) || param.label"
-            class="w-full rounded-lg border bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+            class="w-full rounded-lg border bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500"
             :class="formValueStatus(param.key)"
           />
         </div>
       </div>
       <div class="mb-4">
-        <label class="text-xs text-gray-400 block mb-1">{{ $t('common.notes') }}</label>
+        <label class="text-xs text-gray-500 block mb-1">{{ $t('common.notes') }}</label>
         <input
           v-model="form.notes"
           type="text"
           :placeholder="$t('labs.placeholderNotes')"
-          class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+          class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500"
         />
       </div>
       <div class="flex items-center gap-3">
         <UButton :loading="submitting" color="primary" size="sm" @click="submitLab">{{ $t('common.save') }}</UButton>
-        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-500' : 'text-green-500'">
+        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-600' : 'text-green-500'">
           {{ submitMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: submitMsg.slice(6) }) : $t('common.saved') }}
         </span>
       </div>
@@ -293,40 +293,40 @@ async function submitLab() {
           :unit="param.unit"
         />
       </div>
-      <div v-if="!labParams.some(p => hasData(p.key)) && !labs?.entries?.length" class="text-gray-600 text-center py-16 text-sm">
+      <div v-if="!labParams.some(p => hasData(p.key)) && !labs?.entries?.length" class="text-gray-500 text-center py-16 text-sm">
         {{ $t('labs.noData') }}
       </div>
     </ClientOnly>
 
     <!-- Raw Data Table -->
-    <div v-if="labs?.entries?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden">
-      <div class="px-4 py-3 border-b border-gray-800">
-        <span class="text-sm font-semibold text-white">{{ $t('labs.resultsTable') }}</span>
+    <div v-if="labs?.entries?.length" class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-200">
+        <span class="text-sm font-semibold text-gray-900">{{ $t('labs.resultsTable') }}</span>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-xs">
           <thead>
-            <tr class="text-left text-gray-500 border-b border-gray-800">
+            <tr class="text-left text-gray-500 border-b border-gray-200">
               <th class="px-4 py-2">
                 <div>{{ $t('labs.sampleDate') }}</div>
               </th>
               <th v-for="p in labParams" :key="p.key" class="px-3 py-2">
-                <NuxtLink :to="`/dictionary?q=${p.label}`" class="hover:text-teal-400 underline decoration-dotted transition-colors" :title="`Look up ${p.label} in dictionary`">{{ p.label }}</NuxtLink>
-                <div v-if="refRangeText(p.key)" class="text-[10px] text-gray-600 font-normal">{{ refRangeText(p.key) }}</div>
+                <NuxtLink :to="`/dictionary?q=${p.label}`" class="hover:text-teal-700 underline decoration-dotted transition-colors" :title="`Look up ${p.label} in dictionary`">{{ p.label }}</NuxtLink>
+                <div v-if="refRangeText(p.key)" class="text-[10px] text-gray-500 font-normal">{{ refRangeText(p.key) }}</div>
               </th>
               <th class="px-3 py-2">{{ $t('common.notes') }}</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-800/50">
+          <tbody class="divide-y divide-gray-100">
             <tr
               v-for="entry in sortedEntries"
               :key="entry.id"
-              class="text-gray-300 cursor-pointer hover:bg-gray-800/30 transition-colors"
+              class="text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors"
               @click="drilldown.open({ type: 'treatment_event', id: entry.id, label: `Labs ${entry.date}` })"
             >
-              <td class="px-4 py-2 font-mono text-white">
+              <td class="px-4 py-2 font-mono text-gray-900">
                 <div>{{ formatDate(entry.date) }}</div>
-                <div v-if="entry.sync_date" class="text-[10px] text-gray-600" :title="$t('labs.syncDate')">
+                <div v-if="entry.sync_date" class="text-[10px] text-gray-500" :title="$t('labs.syncDate')">
                   {{ $t('labs.syncDate') }}: {{ formatDate(entry.sync_date) }}
                 </div>
               </td>
@@ -341,7 +341,7 @@ async function submitLab() {
                   class="inline-flex items-center gap-0.5"
                 >
                   <span
-                    :class="entry.alerts?.some((a: any) => a.param === p.key) ? 'text-red-400 font-semibold' : statusColor(entry.value_statuses?.[p.key])"
+                    :class="entry.alerts?.some((a: any) => a.param === p.key) ? 'text-red-600 font-semibold' : statusColor(entry.value_statuses?.[p.key])"
                     :title="entry.value_statuses?.[p.key] === 'low' ? t('labs.belowRange') : entry.value_statuses?.[p.key] === 'high' ? t('labs.aboveRange') : ''"
                   >
                     {{ typeof entry.values[p.key] === 'number' ? entry.values[p.key].toLocaleString() : entry.values[p.key] }}

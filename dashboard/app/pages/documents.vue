@@ -63,8 +63,8 @@ function statusLabel(status: string | null | undefined): string {
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-white">{{ $t('documents.title') }}</h1>
-        <p class="text-sm text-gray-400">
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('documents.title') }}</h1>
+        <p class="text-sm text-gray-500">
           {{ $t('documents.subtitle', { count: docs?.total ?? 0 }) }}
         </p>
       </div>
@@ -76,21 +76,21 @@ function statusLabel(status: string | null | undefined): string {
 
     <!-- Summary cards -->
     <div v-if="docs?.summary" class="grid grid-cols-2 md:grid-cols-4 gap-3">
-      <div class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 text-center">
-        <div class="text-2xl font-bold text-white">{{ docs.summary.total }}</div>
-        <div class="text-xs text-gray-400 mt-1">{{ $t('documents.totalDocs') }}</div>
+      <div class="rounded-lg border border-gray-200 bg-white p-4 text-center">
+        <div class="text-2xl font-bold text-gray-900">{{ docs.summary.total }}</div>
+        <div class="text-xs text-gray-500 mt-1">{{ $t('documents.totalDocs') }}</div>
       </div>
-      <div class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 text-center">
-        <div class="text-2xl font-bold text-green-400">{{ docs.summary.ocr_complete }}</div>
-        <div class="text-xs text-gray-400 mt-1">{{ $t('documents.ocrComplete') }}</div>
+      <div class="rounded-lg border border-gray-200 bg-white p-4 text-center">
+        <div class="text-2xl font-bold text-emerald-600">{{ docs.summary.ocr_complete }}</div>
+        <div class="text-xs text-gray-500 mt-1">{{ $t('documents.ocrComplete') }}</div>
       </div>
-      <div class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 text-center">
-        <div class="text-2xl font-bold" :class="docs.summary.missing_ocr > 0 ? 'text-red-400' : 'text-gray-500'">{{ docs.summary.missing_ocr }}</div>
-        <div class="text-xs text-gray-400 mt-1">{{ $t('documents.missingOcr') }}</div>
+      <div class="rounded-lg border border-gray-200 bg-white p-4 text-center">
+        <div class="text-2xl font-bold" :class="docs.summary.missing_ocr > 0 ? 'text-red-600' : 'text-gray-500'">{{ docs.summary.missing_ocr }}</div>
+        <div class="text-xs text-gray-500 mt-1">{{ $t('documents.missingOcr') }}</div>
       </div>
-      <div class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 text-center">
-        <div class="text-2xl font-bold" :class="docs.summary.missing_metadata > 0 ? 'text-amber-400' : 'text-gray-500'">{{ docs.summary.missing_metadata }}</div>
-        <div class="text-xs text-gray-400 mt-1">{{ $t('documents.missingMetadata') }}</div>
+      <div class="rounded-lg border border-gray-200 bg-white p-4 text-center">
+        <div class="text-2xl font-bold" :class="docs.summary.missing_metadata > 0 ? 'text-amber-600' : 'text-gray-500'">{{ docs.summary.missing_metadata }}</div>
+        <div class="text-xs text-gray-500 mt-1">{{ $t('documents.missingMetadata') }}</div>
       </div>
     </div>
 
@@ -109,10 +109,10 @@ function statusLabel(status: string | null | undefined): string {
     </div>
 
     <!-- Document table -->
-    <div v-if="docs?.documents?.length" class="rounded-lg border border-gray-800 overflow-x-auto">
+    <div v-if="docs?.documents?.length" class="rounded-lg border border-gray-200 overflow-x-auto">
       <table class="w-full text-sm">
         <thead>
-          <tr class="border-b border-gray-800 text-gray-400 text-xs">
+          <tr class="border-b border-gray-200 text-gray-500 text-xs">
             <th class="text-left px-4 py-2.5 font-medium">{{ $t('documents.colFilename') }}</th>
             <th class="text-left px-4 py-2.5 font-medium">{{ $t('documents.colCategory') }}</th>
             <th class="text-center px-4 py-2.5 font-medium">{{ $t('documents.colOcr') }}</th>
@@ -126,14 +126,14 @@ function statusLabel(status: string | null | undefined): string {
           <tr
             v-for="doc in docs.documents"
             :key="doc.id"
-            class="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors"
+            class="border-b border-gray-100 hover:bg-gray-50 transition-colors"
           >
-            <td class="px-4 py-2.5 text-white max-w-xs truncate">
+            <td class="px-4 py-2.5 text-gray-900 max-w-xs truncate">
               <a
                 v-if="doc.gdrive_url"
                 :href="doc.gdrive_url"
                 target="_blank"
-                class="hover:text-teal-400 transition-colors"
+                class="hover:text-teal-700 transition-colors"
                 :title="doc.filename"
               >
                 {{ doc.filename }}
@@ -144,7 +144,7 @@ function statusLabel(status: string | null | undefined): string {
               <UBadge v-if="doc.category" variant="subtle" size="xs" color="info">
                 {{ doc.category }}
               </UBadge>
-              <span v-else class="text-gray-600">-</span>
+              <span v-else class="text-gray-500">-</span>
             </td>
             <td class="px-4 py-2.5 text-center">
               <UBadge variant="subtle" size="xs" :color="statusColor(doc.ocr_status)">
@@ -177,7 +177,7 @@ function statusLabel(status: string | null | undefined): string {
                 </span>
               </div>
             </td>
-            <td class="px-4 py-2.5 text-right text-gray-400 text-xs whitespace-nowrap">
+            <td class="px-4 py-2.5 text-right text-gray-500 text-xs whitespace-nowrap">
               {{ doc.updated_at ? formatDate(doc.updated_at) : '-' }}
             </td>
           </tr>
@@ -185,7 +185,7 @@ function statusLabel(status: string | null | undefined): string {
       </table>
     </div>
 
-    <div v-else-if="!docs?.error && !docsError && docsStatus !== 'pending'" class="text-gray-600 text-center py-16 text-sm">
+    <div v-else-if="!docs?.error && !docsError && docsStatus !== 'pending'" class="text-gray-500 text-center py-16 text-sm">
       {{ $t('documents.noDocs') }}
     </div>
   </div>

@@ -66,8 +66,8 @@ function isActivityType(): boolean {
       <template v-for="(item, i) in stack" :key="i">
         <span v-if="i > 0" class="text-gray-700">/</span>
         <button
-          class="hover:text-white truncate max-w-32 transition-colors"
-          :class="i === stack.length - 1 ? 'text-teal-400' : ''"
+          class="hover:text-gray-900 truncate max-w-32 transition-colors"
+          :class="i === stack.length - 1 ? 'text-teal-700' : ''"
           @click="popTo(i)"
         >
           {{ item.label }}
@@ -77,7 +77,7 @@ function isActivityType(): boolean {
 
     <!-- Back button -->
     <div v-if="stack.length > 1" class="px-4 pb-2">
-      <button class="text-xs text-gray-500 hover:text-white flex items-center gap-1" @click="pop">
+      <button class="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1" @click="pop">
         <UIcon name="i-lucide-arrow-left" class="w-3 h-3" />
         {{ t('components.drilldown.back') }}
       </button>
@@ -129,25 +129,25 @@ function isActivityType(): boolean {
           <!-- Skip internal fields -->
           <template v-if="!['external_url'].includes(String(key))">
             <!-- Nested object -->
-            <div v-if="isObject(val)" class="rounded-lg border border-gray-800 p-3">
+            <div v-if="isObject(val)" class="rounded-lg border border-gray-200 p-3">
               <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">{{ String(key).replace(/_/g, ' ') }}</div>
               <div class="space-y-1.5">
                 <div v-for="(subVal, subKey) in (val as Record<string, unknown>)" :key="subKey" class="flex items-start gap-2 text-sm">
                   <span class="text-gray-500 font-mono text-xs min-w-24 shrink-0">{{ String(subKey).replace(/_/g, ' ') }}</span>
-                  <span class="text-gray-300 break-all">{{ formatValue(subVal) }}</span>
+                  <span class="text-gray-700 break-all">{{ formatValue(subVal) }}</span>
                 </div>
               </div>
             </div>
 
             <!-- Array -->
-            <div v-else-if="Array.isArray(val)" class="rounded-lg border border-gray-800 p-3">
+            <div v-else-if="Array.isArray(val)" class="rounded-lg border border-gray-200 p-3">
               <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">{{ String(key).replace(/_/g, ' ') }}</div>
-              <div v-for="(item, i) in (val as unknown[])" :key="i" class="text-sm text-gray-300 py-0.5">
+              <div v-for="(item, i) in (val as unknown[])" :key="i" class="text-sm text-gray-700 py-0.5">
                 <template v-if="isObject(item)">
-                  <div class="rounded bg-gray-800/50 p-2 mb-1">
+                  <div class="rounded bg-gray-50 p-2 mb-1">
                     <div v-for="(v, k) in (item as Record<string, unknown>)" :key="k" class="flex gap-2 text-xs">
                       <span class="text-gray-500 font-mono">{{ k }}</span>
-                      <span class="text-gray-300">{{ formatValue(v) }}</span>
+                      <span class="text-gray-700">{{ formatValue(v) }}</span>
                     </div>
                   </div>
                 </template>
@@ -161,13 +161,13 @@ function isActivityType(): boolean {
               <div class="space-y-1.5">
                 <div v-for="(subVal, subKey) in (val as Record<string, unknown>)" :key="subKey" class="flex items-start gap-2 text-sm">
                   <span class="text-gray-500 font-mono text-xs min-w-28 shrink-0">{{ String(subKey).replace(/_/g, ' ') }}</span>
-                  <span class="text-gray-300 break-all">{{ formatValue(subVal) }}</span>
+                  <span class="text-gray-700 break-all">{{ formatValue(subVal) }}</span>
                 </div>
               </div>
             </div>
 
             <!-- Activity output: full display with collapsible section -->
-            <div v-else-if="isActivityType() && ['output', 'input'].includes(String(key)) && String(val).length > 100" class="rounded-lg border border-gray-800 p-3">
+            <div v-else-if="isActivityType() && ['output', 'input'].includes(String(key)) && String(val).length > 100" class="rounded-lg border border-gray-200 p-3">
               <div class="flex items-center justify-between mb-2">
                 <div class="text-xs text-gray-500 uppercase tracking-wider">{{ String(key).replace(/_/g, ' ') }}</div>
                 <button
@@ -179,15 +179,15 @@ function isActivityType(): boolean {
                 </button>
               </div>
               <div
-                class="text-sm text-gray-300 whitespace-pre-wrap break-words overflow-auto"
+                class="text-sm text-gray-700 whitespace-pre-wrap break-words overflow-auto"
                 :class="!expandedOutputs.has(String(key)) && String(val).length > 500 ? 'max-h-32' : 'max-h-[70vh]'"
               >{{ val }}</div>
             </div>
 
             <!-- Long text (content, notes, summary) -->
-            <div v-else-if="['content', 'notes', 'summary', 'raw_data'].includes(String(key)) && String(val).length > 100" class="rounded-lg border border-gray-800 p-3">
+            <div v-else-if="['content', 'notes', 'summary', 'raw_data'].includes(String(key)) && String(val).length > 100" class="rounded-lg border border-gray-200 p-3">
               <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">{{ String(key).replace(/_/g, ' ') }}</div>
-              <div class="text-sm text-gray-300 whitespace-pre-wrap break-words">{{ val }}</div>
+              <div class="text-sm text-gray-700 whitespace-pre-wrap break-words">{{ val }}</div>
             </div>
 
             <!-- Simple key-value -->
@@ -198,20 +198,20 @@ function isActivityType(): boolean {
                 :to="'/documents?id=' + val"
                 class="text-teal-400 hover:text-teal-300 break-all"
               >Doc #{{ val }}</NuxtLink>
-              <span v-else class="text-gray-300 break-all">{{ formatValue(val) }}</span>
+              <span v-else class="text-gray-700 break-all">{{ formatValue(val) }}</span>
             </div>
           </template>
         </template>
       </div>
 
       <!-- Related items -->
-      <div v-if="detail.related?.length" class="pt-3 border-t border-gray-800">
+      <div v-if="detail.related?.length" class="pt-3 border-t border-gray-200">
         <div class="text-xs text-gray-500 mb-2">{{ t('components.drilldown.related') }}</div>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="rel in detail.related"
             :key="`${rel.type}-${rel.id}`"
-            class="text-xs px-2 py-1 rounded-full border border-gray-700 hover:border-teal-500/50 text-gray-400 hover:text-white transition-colors"
+            class="text-xs px-2 py-1 rounded-full border border-gray-300 hover:border-teal-500/50 text-gray-400 hover:text-gray-900 transition-colors"
             @click="push({ type: rel.type, id: rel.id, label: rel.label })"
           >
             {{ typeIcons[rel.type] ?? '📌' }} {{ rel.label }}
@@ -220,7 +220,7 @@ function isActivityType(): boolean {
       </div>
 
       <!-- Source tracing -->
-      <div class="pt-3 border-t border-gray-800 text-xs text-gray-600 flex items-center justify-between">
+      <div class="pt-3 border-t border-gray-200 text-xs text-gray-600 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <span v-if="detail.source?.oncofiles_id">
             <span class="text-gray-500">ID:</span> {{ detail.source.oncofiles_id }}

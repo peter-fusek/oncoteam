@@ -118,8 +118,8 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">{{ $t('toxicity.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ $t('toxicity.subtitle') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('toxicity.title') }}</h1>
+        <p class="text-sm text-gray-500">{{ $t('toxicity.subtitle') }}</p>
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
@@ -127,16 +127,16 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
     <ApiErrorBanner :error="toxicity?.error || toxicityError?.message" />
 
     <!-- Log Form -->
-    <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-      <h2 class="text-sm font-semibold text-white mb-4">{{ $t('toxicity.newEntry') }}</h2>
+    <div class="rounded-xl border border-gray-200 bg-white p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('toxicity.newEntry') }}</h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('common.date') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('common.date') }}</label>
           <input
             v-model="form.date"
             type="date"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
           />
         </div>
       </div>
@@ -146,7 +146,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
         <div v-for="field in toxicityFields" :key="field.key" class="flex items-center gap-3">
           <div class="flex items-center gap-2 w-48 shrink-0">
             <UIcon :name="field.icon" class="text-gray-500" />
-            <span class="text-sm text-gray-300">{{ field.label }}</span>
+            <span class="text-sm text-gray-700">{{ field.label }}</span>
           </div>
           <div class="flex gap-1">
             <button
@@ -154,8 +154,8 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
               :key="g"
               class="w-8 h-8 rounded-lg text-xs font-medium transition-all border"
               :class="(form as any)[field.key] === g
-                ? 'bg-gray-700 border-teal-500 text-white'
-                : 'bg-gray-800/50 border-gray-700 text-gray-500 hover:border-gray-600'"
+                ? 'bg-teal-50 border-teal-500 text-gray-900'
+                : 'bg-gray-50 border-gray-300 text-gray-500 hover:border-gray-400'"
               @click="(form as any)[field.key] = g"
             >
               {{ g }}
@@ -171,20 +171,20 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       <!-- Weight, ECOG & Nutrition -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('toxicity.weight') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('toxicity.weight') }}</label>
           <input
             v-model.number="form.weight_kg"
             type="number"
             step="0.1"
             :placeholder="$t('toxicity.placeholderWeight')"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('toxicity.ecog') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('toxicity.ecog') }}</label>
           <select
             v-model.number="form.ecog"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500"
           >
             <option :value="null">-</option>
             <option :value="0">{{ $t('toxicity.ecogLevels.0') }}</option>
@@ -195,15 +195,15 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           </select>
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('toxicity.appetite') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('toxicity.appetite') }}</label>
           <div class="flex gap-1">
             <button
               v-for="g in grades"
               :key="g"
               class="w-8 h-8 rounded-lg text-xs font-medium transition-all border"
               :class="form.appetite === g
-                ? 'bg-gray-700 border-teal-500 text-white'
-                : 'bg-gray-800/50 border-gray-700 text-gray-500 hover:border-gray-600'"
+                ? 'bg-teal-50 border-teal-500 text-gray-900'
+                : 'bg-gray-50 border-gray-300 text-gray-500 hover:border-gray-400'"
               @click="form.appetite = g"
             >
               {{ g }}
@@ -211,7 +211,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           </div>
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('toxicity.oralIntake') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('toxicity.oralIntake') }}</label>
           <input
             v-model.number="form.oral_intake"
             type="number"
@@ -219,19 +219,19 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
             max="100"
             step="10"
             :placeholder="$t('toxicity.placeholderOralIntake')"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
           />
         </div>
       </div>
 
       <!-- Notes -->
       <div class="mb-4">
-        <label class="text-xs text-gray-400 block mb-1">{{ $t('common.notes') }}</label>
+        <label class="text-xs text-gray-500 block mb-1">{{ $t('common.notes') }}</label>
         <textarea
           v-model="form.notes"
           rows="2"
           :placeholder="$t('toxicity.placeholderNotes')"
-          class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+          class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
         />
       </div>
 
@@ -239,7 +239,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
         <UButton :loading="submitting" color="primary" size="sm" @click="submitLog">
           {{ $t('toxicity.saveEntry') }}
         </UButton>
-        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-500' : 'text-green-500'">
+        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-600' : 'text-green-500'">
           {{ submitMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: submitMsg.slice(6) }) : $t('common.saved') }}
         </span>
       </div>
@@ -248,15 +248,15 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
     <!-- History -->
     <SkeletonLoader v-if="!toxicity && toxicityStatus === 'pending'" variant="cards" />
     <div v-else-if="toxicity?.entries?.length" class="space-y-2">
-      <h2 class="text-sm font-semibold text-white">{{ $t('common.history') }}</h2>
+      <h2 class="text-sm font-semibold text-gray-900">{{ $t('common.history') }}</h2>
       <div
         v-for="entry in toxicity.entries"
         :key="entry.id"
-        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+        class="rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
         @click="drilldown.open({ type: 'treatment_event', id: entry.id, label: `Toxicity ${entry.date}` })"
       >
         <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-white">{{ formatDate(entry.date) }}</span>
+          <span class="text-sm font-medium text-gray-900">{{ formatDate(entry.date) }}</span>
           <UBadge
             :color="getMaxGrade(entry) >= 3 ? 'error' : getMaxGrade(entry) >= 2 ? 'warning' : 'success'"
             variant="subtle"
@@ -277,17 +277,17 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           {{ $t('toxicity.weight') }}: {{ entry.metadata.weight_kg }} kg
           <span v-if="entry.metadata?.ecog != null">&middot; {{ $t('toxicity.ecog') }}: {{ entry.metadata.ecog }}</span>
         </div>
-        <p v-if="entry.notes" class="text-xs text-gray-400 mt-1">{{ entry.notes }}</p>
+        <p v-if="entry.notes" class="text-xs text-gray-500 mt-1">{{ entry.notes }}</p>
       </div>
     </div>
 
-    <div v-else-if="!toxicity?.error && !toxicityError" class="text-gray-600 text-center py-8 text-sm">
+    <div v-else-if="!toxicity?.error && !toxicityError" class="text-gray-500 text-center py-8 text-sm">
       {{ $t('toxicity.noEntries') }}
     </div>
 
     <!-- Weight Trend -->
     <div v-if="weightData?.entries?.length" class="space-y-2">
-      <h2 class="text-sm font-semibold text-white">{{ $t('toxicity.weightTrend') }}</h2>
+      <h2 class="text-sm font-semibold text-gray-900">{{ $t('toxicity.weightTrend') }}</h2>
 
       <!-- Weight alert banner -->
       <div
@@ -296,21 +296,21 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
         :class="weightData.alerts.some(a => a.severity === 'critical') ? 'border-red-500/30 bg-red-500/5' : 'border-amber-500/30 bg-amber-500/5'"
       >
         <div v-for="(alert, i) in weightData.alerts" :key="i" class="flex items-center gap-2 text-sm">
-          <UIcon name="i-lucide-triangle-alert" :class="alert.severity === 'critical' ? 'text-red-500' : 'text-amber-500'" class="shrink-0" />
-          <span :class="alert.severity === 'critical' ? 'text-red-400' : 'text-amber-400'">
+          <UIcon name="i-lucide-triangle-alert" :class="alert.severity === 'critical' ? 'text-red-600' : 'text-amber-500'" class="shrink-0" />
+          <span :class="alert.severity === 'critical' ? 'text-red-600' : 'text-amber-600'">
             -{{ alert.loss_pct }}% — {{ alert.action }}
           </span>
         </div>
       </div>
 
-      <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+      <div class="rounded-xl border border-gray-200 bg-white p-4">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div v-for="entry in weightData.entries" :key="entry.date">
             <span class="text-gray-500">{{ formatDate(entry.date) }}</span>
-            <span class="ml-2 font-medium" :class="entry.alert ? 'text-red-400' : 'text-white'">
+            <span class="ml-2 font-medium" :class="entry.alert ? 'text-red-600' : 'text-gray-900'">
               {{ entry.weight_kg }} kg
             </span>
-            <span class="text-xs ml-1" :class="entry.pct_change < 0 ? 'text-amber-400' : 'text-green-400'">
+            <span class="text-xs ml-1" :class="entry.pct_change < 0 ? 'text-amber-600' : 'text-emerald-600'">
               {{ entry.pct_change > 0 ? '+' : '' }}{{ entry.pct_change }}%
             </span>
           </div>
@@ -321,8 +321,8 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       </div>
 
       <!-- Nutrition Escalation Table -->
-      <div v-if="weightData.nutrition_escalation?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-        <h3 class="text-xs font-semibold text-gray-400 mb-2">{{ $t('toxicity.nutritionEscalation') }}</h3>
+      <div v-if="weightData.nutrition_escalation?.length" class="rounded-xl border border-gray-200 bg-white p-4">
+        <h3 class="text-xs font-semibold text-gray-500 mb-2">{{ $t('toxicity.nutritionEscalation') }}</h3>
         <div class="space-y-1">
           <div
             v-for="rule in weightData.nutrition_escalation"
@@ -336,7 +336,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
             >
               -{{ rule.loss_pct }}%
             </UBadge>
-            <span class="text-gray-300">{{ rule.action }}</span>
+            <span class="text-gray-700">{{ rule.action }}</span>
           </div>
         </div>
       </div>

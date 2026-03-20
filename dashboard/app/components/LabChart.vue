@@ -132,14 +132,14 @@ const chartOptions = computed(() => ({
 </script>
 
 <template>
-  <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+  <div class="rounded-xl border border-gray-200 bg-white p-4">
     <div class="flex items-center justify-between mb-3">
-      <h3 class="text-sm font-semibold text-white">{{ title }}</h3>
+      <h3 class="text-sm font-semibold text-gray-900">{{ title }}</h3>
       <span v-if="unit" class="text-xs text-gray-500">{{ unit }}</span>
     </div>
     <div class="h-48">
       <Line v-if="values.some(v => v != null)" :data="chartData" :options="chartOptions" />
-      <div v-else class="flex items-center justify-center h-full text-xs text-gray-600">
+      <div v-else class="flex items-center justify-center h-full text-xs text-gray-500">
         No data
       </div>
     </div>

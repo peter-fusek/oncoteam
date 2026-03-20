@@ -110,8 +110,8 @@ const drilldown = useDrilldown()
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">{{ $t('medications.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ $t('medications.subtitle') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('medications.title') }}</h1>
+        <p class="text-sm text-gray-500">{{ $t('medications.subtitle') }}</p>
       </div>
       <div class="flex gap-2">
         <UButton icon="i-lucide-plus" size="xs" color="primary" @click="showForm = !showForm">
@@ -129,7 +129,7 @@ const drilldown = useDrilldown()
     <!-- Today's Check-in -->
     <div class="rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold text-white">{{ $t('medications.todayCheckin') }}</h2>
+        <h2 class="text-sm font-semibold text-gray-900">{{ $t('medications.todayCheckin') }}</h2>
         <UBadge v-if="meds?.adherence?.compliance_pct != null" variant="subtle" size="xs" :color="meds.adherence.compliance_pct >= 90 ? 'success' : meds.adherence.compliance_pct >= 70 ? 'warning' : 'error'">
           {{ $t('medications.compliance', { pct: meds.adherence.compliance_pct }) }}
         </UBadge>
@@ -139,7 +139,7 @@ const drilldown = useDrilldown()
           v-for="med in meds?.default_medications"
           :key="med.name"
           class="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all"
-          :class="checkin[med.name] ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600'"
+          :class="checkin[med.name] ? 'bg-teal-500/20 border-teal-500 text-teal-300' : 'bg-gray-50 border-gray-300 text-gray-500 hover:border-gray-300'"
           @click="checkin[med.name] = !checkin[med.name]"
         >
           <UIcon :name="checkin[med.name] ? 'i-lucide-check-circle' : 'i-lucide-circle'" />
@@ -148,13 +148,13 @@ const drilldown = useDrilldown()
       </div>
       <div class="flex items-center gap-3">
         <UButton :loading="checkinSubmitting" color="primary" size="xs" @click="submitCheckin">{{ $t('medications.logToday') }}</UButton>
-        <span v-if="checkinMsg" class="text-xs" :class="checkinMsg.startsWith('error:') ? 'text-red-500' : 'text-green-500'">{{ checkinMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: checkinMsg.slice(6) }) : $t('common.saved') }}</span>
+        <span v-if="checkinMsg" class="text-xs" :class="checkinMsg.startsWith('error:') ? 'text-red-600' : 'text-green-500'">{{ checkinMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: checkinMsg.slice(6) }) : $t('common.saved') }}</span>
       </div>
     </div>
 
     <!-- 7-Day Adherence Grid -->
-    <div v-if="meds?.adherence?.last_7_days?.length" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <h2 class="text-xs font-semibold text-gray-400 mb-3">{{ $t('medications.adherence7Day') }}</h2>
+    <div v-if="meds?.adherence?.last_7_days?.length" class="rounded-xl border border-gray-200 bg-white p-4">
+      <h2 class="text-xs font-semibold text-gray-500 mb-3">{{ $t('medications.adherence7Day') }}</h2>
       <div class="overflow-x-auto">
         <div class="flex gap-2">
           <div
@@ -167,7 +167,7 @@ const drilldown = useDrilldown()
               v-for="(taken, medName) in day.medications"
               :key="medName"
               class="w-5 h-5 rounded-sm flex items-center justify-center text-[10px]"
-              :class="taken ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'"
+              :class="taken ? 'bg-green-500/20 text-emerald-600' : 'bg-red-500/20 text-red-600'"
               :title="`${medName}: ${taken ? t('medications.taken') : t('medications.missed')}`"
             >
               {{ taken ? '✓' : '✗' }}
@@ -175,30 +175,30 @@ const drilldown = useDrilldown()
           </div>
         </div>
         <div class="flex gap-1 mt-2">
-          <div v-for="med in meds.default_medications" :key="med.name" class="text-[10px] text-gray-600">
+          <div v-for="med in meds.default_medications" :key="med.name" class="text-[10px] text-gray-500">
             {{ med.name }}
           </div>
         </div>
       </div>
-      <div v-if="meds.adherence.missed?.length" class="mt-2 text-xs text-red-400">
+      <div v-if="meds.adherence.missed?.length" class="mt-2 text-xs text-red-600">
         {{ $t('medications.missed') }}: {{ meds.adherence.missed.map(m => `${m.medication} (${formatDateShort(m.date)})`).join(', ') }}
       </div>
     </div>
 
     <!-- Default Medications (regimen) -->
     <div v-if="meds?.default_medications?.length">
-      <h2 class="text-sm font-semibold text-white mb-3">{{ $t('medications.activeRegimen') }}</h2>
+      <h2 class="text-sm font-semibold text-gray-900 mb-3">{{ $t('medications.activeRegimen') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div
           v-for="med in meds.default_medications"
           :key="med.name"
-          class="rounded-xl border border-gray-800 bg-gray-900/50 p-4"
+          class="rounded-xl border border-gray-200 bg-white p-4"
         >
           <div class="flex items-center justify-between mb-1">
-            <span class="text-sm font-medium text-white">{{ med.name }}</span>
+            <span class="text-sm font-medium text-gray-900">{{ med.name }}</span>
             <UBadge variant="subtle" size="xs" color="success">{{ $t('common.active') }}</UBadge>
           </div>
-          <div class="text-xs text-gray-400 space-y-0.5">
+          <div class="text-xs text-gray-500 space-y-0.5">
             <div><span class="text-gray-500">{{ $t('medications.dose') }}:</span> {{ med.dose }}</div>
             <div><span class="text-gray-500">{{ $t('medications.frequency') }}:</span> {{ med.frequency }}</div>
             <div v-if="med.notes" class="text-gray-500 mt-1">{{ med.notes }}</div>
@@ -208,40 +208,40 @@ const drilldown = useDrilldown()
     </div>
 
     <!-- Add Medication Form -->
-    <div v-if="showForm" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-      <h2 class="text-sm font-semibold text-white mb-4">{{ $t('medications.newMedEntry') }}</h2>
+    <div v-if="showForm" class="rounded-xl border border-gray-200 bg-white p-5">
+      <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('medications.newMedEntry') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('common.date') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('common.date') }}</label>
           <input
             v-model="form.date"
             type="date"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('medications.medName') }} *</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('medications.medName') }} *</label>
           <input
             v-model="form.name"
             type="text"
             :placeholder="$t('medications.medName')"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('medications.dose') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('medications.dose') }}</label>
           <input
             v-model="form.dose"
             type="text"
             :placeholder="$t('medications.dose')"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('medications.frequency') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('medications.frequency') }}</label>
           <select
             v-model="form.frequency"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500"
           >
             <option value="">-</option>
             <option value="1x/day">{{ $t('medications.frequencies.1xDay') }}</option>
@@ -252,10 +252,10 @@ const drilldown = useDrilldown()
           </select>
         </div>
         <div>
-          <label class="text-xs text-gray-400 block mb-1">{{ $t('medications.timeOfDay') }}</label>
+          <label class="text-xs text-gray-500 block mb-1">{{ $t('medications.timeOfDay') }}</label>
           <select
             v-model="form.time_of_day"
-            class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500"
+            class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500"
           >
             <option value="">-</option>
             <option value="morning">{{ $t('medications.times.morning') }}</option>
@@ -266,12 +266,12 @@ const drilldown = useDrilldown()
         </div>
       </div>
       <div class="mb-4">
-        <label class="text-xs text-gray-400 block mb-1">{{ $t('common.notes') }}</label>
+        <label class="text-xs text-gray-500 block mb-1">{{ $t('common.notes') }}</label>
         <textarea
           v-model="form.notes"
           rows="2"
           :placeholder="$t('common.notes')"
-          class="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+          class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
         />
       </div>
       <div class="flex items-center gap-3">
@@ -281,7 +281,7 @@ const drilldown = useDrilldown()
         <UButton variant="ghost" size="sm" color="neutral" @click="showForm = false">
           {{ $t('common.cancel') }}
         </UButton>
-        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-500' : 'text-green-500'">
+        <span v-if="submitMsg" class="text-xs" :class="submitMsg.startsWith('error:') ? 'text-red-600' : 'text-green-500'">
           {{ submitMsg.startsWith('error:') ? $t('common.errorPrefix', { msg: submitMsg.slice(6) }) : $t('common.saved') }}
         </span>
       </div>
@@ -289,18 +289,18 @@ const drilldown = useDrilldown()
 
     <!-- Medication History -->
     <div v-if="meds?.medications?.length" class="space-y-2">
-      <h2 class="text-sm font-semibold text-white">{{ $t('common.history') }}</h2>
+      <h2 class="text-sm font-semibold text-gray-900">{{ $t('common.history') }}</h2>
       <div
         v-for="med in meds.medications"
         :key="med.id"
-        class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+        class="rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
         @click="drilldown.open({ type: 'medication', id: med.id, label: `${med.name} ${med.date}` })"
       >
         <div class="flex items-center justify-between mb-1">
-          <span class="text-sm font-medium text-white">{{ med.name }}</span>
+          <span class="text-sm font-medium text-gray-900">{{ med.name }}</span>
           <span class="text-xs text-gray-500">{{ formatDate(med.date) }}</span>
         </div>
-        <div class="text-xs text-gray-400">
+        <div class="text-xs text-gray-500">
           <span v-if="med.dose">{{ med.dose }}</span>
           <span v-if="med.frequency"> &middot; {{ med.frequency }}</span>
           <span v-if="med.time_of_day"> &middot; {{ med.time_of_day }}</span>
@@ -309,7 +309,7 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else-if="!meds?.error && !medsError" class="text-gray-600 text-center py-8 text-sm">
+    <div v-else-if="!meds?.error && !medsError" class="text-gray-500 text-center py-8 text-sm">
       {{ $t('medications.noEntries') }}
     </div>
 

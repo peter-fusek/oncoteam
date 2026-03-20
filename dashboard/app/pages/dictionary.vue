@@ -49,8 +49,8 @@ function getCategoryColor(cat: string): string {
   <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-2xl font-bold text-white">{{ t('dictionary.title') }}</h1>
-      <p class="text-sm text-gray-400 mt-1">{{ t('dictionary.subtitle') }}</p>
+      <h1 class="text-2xl font-bold text-gray-900">{{ t('dictionary.title') }}</h1>
+      <p class="text-sm text-gray-500 mt-1">{{ t('dictionary.subtitle') }}</p>
     </div>
 
     <!-- Controls -->
@@ -61,22 +61,22 @@ function getCategoryColor(cat: string): string {
         <input
           v-model="searchQuery"
           :placeholder="t('dictionary.search')"
-          class="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-900 border border-gray-700 text-sm text-white placeholder-gray-500 focus:border-teal-500 focus:outline-none"
+          class="w-full pl-10 pr-4 py-2 rounded-lg bg-white border border-gray-300 text-sm text-gray-900 placeholder-gray-500 focus:border-teal-500 focus:outline-none"
         />
       </div>
 
       <!-- Pro/Laik toggle -->
-      <div class="flex rounded-lg border border-gray-700 overflow-hidden">
+      <div class="flex rounded-lg border border-gray-300 overflow-hidden">
         <button
           class="px-3 py-2 text-xs font-medium transition-colors"
-          :class="mode === 'laik' ? 'bg-teal-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'"
+          :class="mode === 'laik' ? 'bg-teal-600 text-gray-900' : 'bg-white text-gray-500 hover:text-gray-900'"
           @click="mode = 'laik'"
         >
           {{ t('dictionary.simple') }}
         </button>
         <button
           class="px-3 py-2 text-xs font-medium transition-colors"
-          :class="mode === 'pro' ? 'bg-teal-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'"
+          :class="mode === 'pro' ? 'bg-teal-600 text-gray-900' : 'bg-white text-gray-500 hover:text-gray-900'"
           @click="mode = 'pro'"
         >
           {{ t('dictionary.professional') }}
@@ -88,7 +88,7 @@ function getCategoryColor(cat: string): string {
     <div class="flex flex-wrap gap-2">
       <button
         class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-        :class="selectedCategory === null ? 'bg-teal-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'"
+        :class="selectedCategory === null ? 'bg-teal-600 text-gray-900' : 'bg-gray-100 text-gray-500 hover:text-gray-900'"
         @click="selectedCategory = null"
       >
         {{ t('dictionary.all') }} ({{ MEDICAL_DICTIONARY.length }})
@@ -97,7 +97,7 @@ function getCategoryColor(cat: string): string {
         v-for="cat in categories"
         :key="cat.key"
         class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-        :class="selectedCategory === cat.key ? 'bg-teal-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'"
+        :class="selectedCategory === cat.key ? 'bg-teal-600 text-gray-900' : 'bg-gray-100 text-gray-500 hover:text-gray-900'"
         @click="selectedCategory = selectedCategory === cat.key ? null : cat.key"
       >
         {{ cat.label }} ({{ cat.count }})
@@ -114,13 +114,13 @@ function getCategoryColor(cat: string): string {
       <div
         v-for="entry in filteredEntries"
         :key="entry.abbr"
-        class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 hover:border-gray-700 transition-colors"
+        class="rounded-xl border border-gray-200 bg-white p-4 hover:border-gray-300 transition-colors"
       >
         <!-- Header -->
         <div class="flex items-start justify-between mb-2">
           <div>
-            <span class="text-lg font-bold text-teal-400">{{ entry.abbr }}</span>
-            <p class="text-xs text-gray-400 mt-0.5">{{ entry.fullName[lang] }}</p>
+            <span class="text-lg font-bold text-teal-700">{{ entry.abbr }}</span>
+            <p class="text-xs text-gray-500 mt-0.5">{{ entry.fullName[lang] }}</p>
           </div>
           <span
             class="px-2 py-0.5 rounded-full text-[10px] font-medium"
@@ -131,15 +131,15 @@ function getCategoryColor(cat: string): string {
         </div>
 
         <!-- Description -->
-        <p class="text-sm text-gray-300 leading-relaxed">{{ getDescription(entry) }}</p>
+        <p class="text-sm text-gray-700 leading-relaxed">{{ getDescription(entry) }}</p>
 
         <!-- Reference range -->
-        <div v-if="entry.referenceRange || entry.unit" class="mt-3 pt-2 border-t border-gray-800 flex items-center gap-3">
+        <div v-if="entry.referenceRange || entry.unit" class="mt-3 pt-2 border-t border-gray-200 flex items-center gap-3">
           <span v-if="entry.referenceRange" class="text-xs text-gray-500">
-            {{ t('dictionary.range') }}: <span class="text-gray-300">{{ entry.referenceRange }}</span>
+            {{ t('dictionary.range') }}: <span class="text-gray-700">{{ entry.referenceRange }}</span>
           </span>
           <span v-if="entry.unit" class="text-xs text-gray-500">
-            {{ t('dictionary.unit') }}: <span class="text-gray-300">{{ entry.unit }}</span>
+            {{ t('dictionary.unit') }}: <span class="text-gray-700">{{ entry.unit }}</span>
           </span>
         </div>
       </div>
@@ -147,7 +147,7 @@ function getCategoryColor(cat: string): string {
 
     <!-- Empty state -->
     <div v-if="filteredEntries.length === 0" class="text-center py-12">
-      <UIcon name="i-lucide-search-x" class="w-12 h-12 text-gray-600 mx-auto mb-3" />
+      <UIcon name="i-lucide-search-x" class="w-12 h-12 text-gray-500 mx-auto mb-3" />
       <p class="text-sm text-gray-500">{{ t('dictionary.noResults') }}</p>
     </div>
   </div>

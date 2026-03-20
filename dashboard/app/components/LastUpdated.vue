@@ -14,7 +14,7 @@ const timeAgo = computed(() => {
 </script>
 
 <template>
-  <span v-if="timeAgo" class="text-[10px] text-gray-600">
+  <span v-if="timeAgo" class="text-[10px] text-gray-500">
     Last updated: {{ timeAgo }}
   </span>
 </template>

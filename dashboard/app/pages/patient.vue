@@ -143,17 +143,17 @@ const abbreviations: Record<string, string> = {
     <ApiErrorBanner v-else-if="!patient && patientStatus === 'error'" :error="patientError?.message || 'Failed to load patient data'" />
     <template v-else-if="patient">
     <!-- Patient Header -->
-    <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+    <div class="rounded-xl border border-gray-200 bg-white p-5">
       <div class="flex items-start justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-white">{{ patient.name }}</h1>
-          <p class="text-sm text-gray-400 mt-1">
+          <h1 class="text-2xl font-bold text-gray-900">{{ patient.name }}</h1>
+          <p class="text-sm text-gray-500 mt-1">
             {{ patient.diagnosis_description }} ({{ patient.diagnosis_code }})
           </p>
           <!-- Patient IDs -->
           <div v-if="patient.patient_ids" class="flex items-center gap-4 mt-1.5 text-xs text-gray-500">
             <span v-for="(val, key) in patient.patient_ids" :key="key">
-              <span class="text-gray-600">{{ $t(`patient.${key}`, key) }}:</span> {{ val }}
+              <span class="text-gray-500">{{ $t(`patient.${key}`, key) }}:</span> {{ val }}
             </span>
           </div>
           <div class="flex items-center gap-3 mt-2 text-xs">
@@ -163,10 +163,10 @@ const abbreviations: Record<string, string> = {
           </div>
         </div>
         <div class="text-right text-sm">
-          <div class="text-white font-medium">
+          <div class="text-gray-900 font-medium">
             <UTooltip :text="abbreviations['mFOLFOX6']">{{ patient.treatment_regimen }}</UTooltip>
           </div>
-          <div class="text-gray-400">{{ $t('patient.cycle', { n: patient.current_cycle }) }}</div>
+          <div class="text-gray-500">{{ $t('patient.cycle', { n: patient.current_cycle }) }}</div>
           <div v-if="patient.ecog" class="text-gray-500 text-xs">
             <UTooltip :text="abbreviations['ECOG']">{{ $t('patient.ecogLabel', { val: patient.ecog }) }}</UTooltip>
           </div>
@@ -176,32 +176,32 @@ const abbreviations: Record<string, string> = {
 
     <!-- Active Therapies -->
     <div v-if="activeTherapies.length">
-      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.activeTherapies') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.activeTherapies') }}</h2>
       <div class="space-y-3">
         <div
           v-for="(therapy, i) in activeTherapies"
           :key="i"
-          class="rounded-xl border border-gray-800 bg-gray-900/50 p-4"
+          class="rounded-xl border border-gray-200 bg-white p-4"
         >
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-pill" class="text-teal-500" />
-              <span class="text-sm font-medium text-white">{{ therapy.name }}</span>
+              <UIcon name="i-lucide-pill" class="text-teal-600" />
+              <span class="text-sm font-medium text-gray-900">{{ therapy.name }}</span>
               <UBadge v-if="therapy.cycle" variant="subtle" color="info" size="xs">
                 {{ $t('patient.cycle', { n: therapy.cycle }) }}
               </UBadge>
             </div>
-            <button class="text-[10px] text-teal-400 hover:text-teal-300" @click="showMedical = !showMedical">
+            <button class="text-[10px] text-teal-700 hover:text-teal-600" @click="showMedical = !showMedical">
               {{ showMedical ? $t('patient.layExplanation') : $t('patient.medicalExplanation') }}
             </button>
           </div>
           <div class="space-y-2">
-            <div v-for="drug in therapy.drugs" :key="drug.name" class="rounded-lg bg-gray-800/30 px-3 py-2">
+            <div v-for="drug in therapy.drugs" :key="drug.name" class="rounded-lg bg-gray-50 px-3 py-2">
               <div class="flex items-center gap-2 text-sm">
-                <span class="text-white font-mono text-xs">{{ drug.name }}</span>
+                <span class="text-gray-900 font-mono text-xs">{{ drug.name }}</span>
                 <span class="text-gray-500 text-xs">{{ drug.dose }}</span>
               </div>
-              <p class="text-xs text-gray-400 mt-1">{{ showMedical ? drug.medical : drug.lay }}</p>
+              <p class="text-xs text-gray-500 mt-1">{{ showMedical ? drug.medical : drug.lay }}</p>
             </div>
           </div>
           <div v-if="therapy.indication" class="text-xs text-gray-500 mt-2">
@@ -213,7 +213,7 @@ const abbreviations: Record<string, string> = {
 
     <!-- Planned Therapies (with warnings) -->
     <div v-if="plannedTherapies.length">
-      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.plannedTherapies') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.plannedTherapies') }}</h2>
       <div class="space-y-3">
         <div
           v-for="(therapy, i) in plannedTherapies"
@@ -222,17 +222,17 @@ const abbreviations: Record<string, string> = {
         >
           <div class="flex items-center gap-2 mb-2">
             <UIcon name="i-lucide-alert-triangle" class="text-amber-500" />
-            <span class="text-sm font-medium text-white">{{ therapy.name }}</span>
+            <span class="text-sm font-medium text-gray-900">{{ therapy.name }}</span>
             <UBadge variant="subtle" color="warning" size="xs">{{ therapy.status }}</UBadge>
           </div>
-          <div v-if="therapy.warning" class="text-xs text-amber-400 mb-2">{{ therapy.warning }}</div>
+          <div v-if="therapy.warning" class="text-xs text-amber-600 mb-2">{{ therapy.warning }}</div>
           <div class="space-y-2">
-            <div v-for="drug in therapy.drugs" :key="drug.name" class="rounded-lg bg-gray-800/30 px-3 py-2">
+            <div v-for="drug in therapy.drugs" :key="drug.name" class="rounded-lg bg-gray-50 px-3 py-2">
               <div class="flex items-center gap-2 text-sm">
-                <span class="text-white font-mono text-xs">{{ drug.name }}</span>
+                <span class="text-gray-900 font-mono text-xs">{{ drug.name }}</span>
                 <span class="text-gray-500 text-xs">{{ drug.dose }}</span>
               </div>
-              <p class="text-xs text-gray-400 mt-1">{{ showMedical ? drug.medical : drug.lay }}</p>
+              <p class="text-xs text-gray-500 mt-1">{{ showMedical ? drug.medical : drug.lay }}</p>
             </div>
           </div>
         </div>
@@ -241,12 +241,12 @@ const abbreviations: Record<string, string> = {
 
     <!-- Top Studies -->
     <div v-if="topStudies.length">
-      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.topStudies') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.topStudies') }}</h2>
       <div class="space-y-2">
         <div
           v-for="study in topStudies"
           :key="study.id"
-          class="rounded-xl border border-gray-800 bg-gray-900/50 p-4 cursor-pointer hover:border-gray-600 transition-colors"
+          class="rounded-xl border border-gray-200 bg-white p-4 cursor-pointer hover:border-gray-300 transition-colors"
           @click="drilldown.open({ type: 'research', id: String(study.id), label: study.title })"
         >
           <div class="flex items-start justify-between gap-3">
@@ -257,7 +257,7 @@ const abbreviations: Record<string, string> = {
                 </UBadge>
                 <span class="text-xs text-gray-500 uppercase">{{ study.source }}</span>
               </div>
-              <p class="text-sm text-white line-clamp-2">{{ study.title }}</p>
+              <p class="text-sm text-gray-900 line-clamp-2">{{ study.title }}</p>
               <p v-if="study.relevance_reason" class="text-xs text-gray-500 mt-1">{{ study.relevance_reason }}</p>
             </div>
             <div class="flex items-center gap-1 shrink-0">
@@ -265,7 +265,7 @@ const abbreviations: Record<string, string> = {
                 v-if="study.external_url"
                 :href="study.external_url"
                 target="_blank"
-                class="text-teal-500 hover:text-teal-400"
+                class="text-teal-600 hover:text-teal-700"
                 @click.stop
               >
                 <UIcon name="i-lucide-external-link" class="w-4 h-4" />
@@ -279,7 +279,7 @@ const abbreviations: Record<string, string> = {
 
     <!-- Genomic Profile Cards (hidden for patient role) -->
     <div v-if="activeRole !== 'patient'">
-      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.genomicProfile') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.genomicProfile') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <BiomarkerCard
           v-for="b in biomarkerDisplay"
@@ -294,7 +294,7 @@ const abbreviations: Record<string, string> = {
 
     <!-- Excluded Therapies (hidden for patient role) -->
     <div v-if="excludedTherapies.length && activeRole !== 'patient'">
-      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.excludedTherapies') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.excludedTherapies') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div
           v-for="(et, i) in excludedTherapies"
@@ -302,9 +302,9 @@ const abbreviations: Record<string, string> = {
           class="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 cursor-pointer hover:ring-1 hover:ring-red-500/30 transition-all"
           @click="drilldown.open({ type: 'biomarker', id: `excluded-${i}`, label: et.therapy, data: { therapy: et.therapy, reason: et.reason, status: 'Permanently excluded', source: 'Molecular pathology B26/746963' } })"
         >
-          <UIcon name="i-lucide-x-circle" class="text-red-500 shrink-0" />
+          <UIcon name="i-lucide-x-circle" class="text-red-600 shrink-0" />
           <div class="min-w-0 flex-1">
-            <div class="text-sm text-white truncate">{{ et.therapy }}</div>
+            <div class="text-sm text-gray-900 truncate">{{ et.therapy }}</div>
             <div class="text-xs text-gray-500">{{ et.reason }}</div>
           </div>
           <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
@@ -314,7 +314,7 @@ const abbreviations: Record<string, string> = {
 
     <!-- Safety Flags (hidden for patient role) -->
     <div v-if="protocol?.safety_flags && activeRole !== 'patient'">
-      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.safetyFlags') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.safetyFlags') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div
           v-for="(flag, id) in protocol.safety_flags"
@@ -329,16 +329,16 @@ const abbreviations: Record<string, string> = {
 
     <!-- Metastases -->
     <div v-if="patient.metastases?.length">
-      <h2 class="text-lg font-semibold text-white mb-3">{{ $t('patient.metastases') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.metastases') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
         <div
           v-for="(met, i) in patient.metastases"
           :key="i"
-          class="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/50 px-3 py-2 cursor-pointer hover:border-gray-600 transition-colors"
+          class="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer hover:border-gray-300 transition-colors"
           @click="drilldown.open({ type: 'patient', id: `met-${i}`, label: met, data: { site: met, type: 'Metastasis', source: 'CT staging / pathology' } })"
         >
           <UIcon :name="getMetIcon(met)" class="text-gray-500 shrink-0" />
-          <span class="text-sm text-gray-300 flex-1">{{ met }}</span>
+          <span class="text-sm text-gray-700 flex-1">{{ met }}</span>
           <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
         </div>
       </div>
@@ -346,32 +346,32 @@ const abbreviations: Record<string, string> = {
 
     <!-- Treatment Info -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-        <h3 class="text-sm font-semibold text-white mb-2">{{ $t('patient.hospitals') }}</h3>
-        <div v-for="h in patient.hospitals" :key="h" class="text-sm text-gray-400 flex items-center gap-2 py-1">
-          <UIcon name="i-lucide-building-2" class="text-gray-600" />
+      <div class="rounded-xl border border-gray-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-gray-900 mb-2">{{ $t('patient.hospitals') }}</h3>
+        <div v-for="h in patient.hospitals" :key="h" class="text-sm text-gray-500 flex items-center gap-2 py-1">
+          <UIcon name="i-lucide-building-2" class="text-gray-500" />
           {{ h }}
         </div>
       </div>
-      <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-        <h3 class="text-sm font-semibold text-white mb-2">{{ $t('patient.physicians') }}</h3>
-        <div v-if="patient.treating_physician" class="text-sm text-gray-400 py-1">
-          <span class="text-gray-600">{{ $t('patient.treating') }}</span> {{ patient.treating_physician }}
+      <div class="rounded-xl border border-gray-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-gray-900 mb-2">{{ $t('patient.physicians') }}</h3>
+        <div v-if="patient.treating_physician" class="text-sm text-gray-500 py-1">
+          <span class="text-gray-500">{{ $t('patient.treating') }}</span> {{ patient.treating_physician }}
         </div>
-        <div v-if="patient.admitting_physician" class="text-sm text-gray-400 py-1">
-          <span class="text-gray-600">{{ $t('patient.admitting') }}</span> {{ patient.admitting_physician }}
+        <div v-if="patient.admitting_physician" class="text-sm text-gray-500 py-1">
+          <span class="text-gray-500">{{ $t('patient.admitting') }}</span> {{ patient.admitting_physician }}
         </div>
       </div>
     </div>
 
     <!-- Comorbidities & Notes -->
-    <div v-if="patient.comorbidities?.length || patient.notes" class="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <h3 class="text-sm font-semibold text-white mb-2">{{ $t('patient.notesComorbidities') }}</h3>
-      <div v-for="c in patient.comorbidities" :key="c" class="text-sm text-amber-400 flex items-center gap-2 py-1">
+    <div v-if="patient.comorbidities?.length || patient.notes" class="rounded-xl border border-gray-200 bg-white p-4">
+      <h3 class="text-sm font-semibold text-gray-900 mb-2">{{ $t('patient.notesComorbidities') }}</h3>
+      <div v-for="c in patient.comorbidities" :key="c" class="text-sm text-amber-600 flex items-center gap-2 py-1">
         <UIcon name="i-lucide-alert-circle" class="shrink-0" />
         {{ c }}
       </div>
-      <p v-if="patient.notes" class="text-sm text-gray-400 mt-2">{{ patient.notes }}</p>
+      <p v-if="patient.notes" class="text-sm text-gray-500 mt-2">{{ patient.notes }}</p>
     </div>
     </template>
   </div>

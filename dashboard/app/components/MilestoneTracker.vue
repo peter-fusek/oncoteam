@@ -30,11 +30,11 @@ function statusColor(status: string) {
     >
       <div class="flex flex-col items-center">
         <div class="w-3 h-3 rounded-full" :class="statusColor(milestoneStatus(m.cycle))" />
-        <div class="w-px h-full bg-gray-800 mt-1" />
+        <div class="w-px h-full bg-gray-100 mt-1" />
       </div>
       <div class="pb-4">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-white">{{ t('components.milestone.cycle', { n: m.cycle }) }}</span>
+          <span class="text-sm font-medium text-gray-900">{{ t('components.milestone.cycle', { n: m.cycle }) }}</span>
           <UBadge
             :color="milestoneStatus(m.cycle) === 'done' ? 'success' : milestoneStatus(m.cycle) === 'upcoming' ? 'warning' : 'neutral'"
             variant="subtle"
@@ -43,8 +43,8 @@ function statusColor(status: string) {
             {{ t(`components.milestone.${milestoneStatus(m.cycle)}`) }}
           </UBadge>
         </div>
-        <div class="text-xs text-gray-400 mt-0.5">{{ m.description }}</div>
-        <div class="text-xs text-gray-600 font-mono">{{ m.action }}</div>
+        <div class="text-xs text-gray-500 mt-0.5">{{ m.description }}</div>
+        <div class="text-xs text-gray-500 font-mono">{{ m.action }}</div>
       </div>
     </div>
   </div>

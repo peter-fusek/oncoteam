@@ -31,10 +31,10 @@ const colors = computed(() => {
     @click="$emit('drilldown')"
   >
     <div class="flex items-center justify-between mb-1">
-      <span class="font-semibold text-sm text-white">{{ name }}</span>
+      <span class="font-semibold text-sm text-gray-900">{{ name }}</span>
       <span class="w-2 h-2 rounded-full" :class="colors.dot" />
     </div>
-    <div class="text-xs text-gray-300">{{ value }}</div>
+    <div class="text-xs text-gray-700">{{ value }}</div>
     <div v-if="implication" class="text-xs text-gray-500 mt-1 italic">{{ implication }}</div>
   </div>
 </template>

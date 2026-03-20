@@ -46,6 +46,6 @@ export default defineNuxtConfig({
   devtools: { enabled: process.dev },
 
   colorMode: {
-    preference: 'dark',
+    preference: 'light',
   },
 })

@@ -64,8 +64,8 @@ const tabs = computed(() => [
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-white">{{ $t('protocol.title') }}</h1>
-        <p class="text-sm text-gray-400">{{ $t('protocol.subtitle') }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('protocol.title') }}</h1>
+        <p class="text-sm text-gray-500">{{ $t('protocol.subtitle') }}</p>
         <LastUpdated :timestamp="protocol?.last_updated" />
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
@@ -91,7 +91,7 @@ const tabs = computed(() => [
     <div v-else-if="protocol">
       <!-- Pre-Cycle Checklist -->
       <div v-if="activeTab === 'checklist'">
-        <div class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
+        <div class="rounded-xl border border-gray-200 bg-white p-5">
           <PreCycleChecklist
             :current-cycle="protocol.current_cycle"
             :last-lab-values="protocol.last_lab_values"
@@ -101,14 +101,14 @@ const tabs = computed(() => [
 
         <!-- Previous cycles -->
         <div v-if="cycleHistory?.cycles?.length" class="mt-6">
-          <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
             {{ $t('protocol.previousCycles') }}
           </h3>
           <div v-for="cycle in cycleHistory.cycles" :key="cycle.cycle_number"
-               class="rounded-lg border border-gray-800 bg-gray-900/30 mb-2">
+               class="rounded-lg border border-gray-200 bg-white mb-2">
             <button class="w-full px-4 py-3 flex items-center justify-between text-left"
                     @click="expandedCycle = expandedCycle === cycle.cycle_number ? null : cycle.cycle_number">
-              <span class="text-sm text-white">{{ $t('components.milestone.cycle', { n: cycle.cycle_number }) }}</span>
+              <span class="text-sm text-gray-900">{{ $t('components.milestone.cycle', { n: cycle.cycle_number }) }}</span>
               <div class="flex items-center gap-2">
                 <span v-if="cycle.date" class="text-xs text-gray-500">{{ cycle.date }}</span>
                 <UBadge :color="cycle.overall_pass ? 'success' : 'error'" variant="subtle" size="xs">
@@ -116,7 +116,7 @@ const tabs = computed(() => [
                 </UBadge>
                 <UIcon
                   :name="expandedCycle === cycle.cycle_number ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                  class="w-4 h-4 text-gray-600"
+                  class="w-4 h-4 text-gray-500"
                 />
               </div>
             </button>
@@ -128,8 +128,8 @@ const tabs = computed(() => [
       </div>
 
       <!-- Lab Thresholds -->
-      <div v-if="activeTab === 'labs'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.labThresholds') }}</h2>
+      <div v-if="activeTab === 'labs'" class="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('protocol.labThresholds') }}</h2>
         <LabThresholdTable
           :thresholds="protocol.lab_thresholds"
           :last-values="protocol.last_lab_values"
@@ -140,13 +140,13 @@ const tabs = computed(() => [
       <!-- Dose Modifications -->
       <div v-if="activeTab === 'dosemods'" class="space-y-2">
         <!-- Current regimen info -->
-        <div v-if="protocol.real_values?.current_regimen" class="rounded-lg border border-gray-800 bg-gray-900/30 px-4 py-3 flex items-center gap-4 text-sm mb-2">
-          <span class="text-gray-400">{{ $t('protocol.currentRegimen') }}:</span>
-          <span class="text-white font-medium">{{ protocol.real_values.current_regimen.regimen }}</span>
+        <div v-if="protocol.real_values?.current_regimen" class="rounded-lg border border-gray-200 bg-white px-4 py-3 flex items-center gap-4 text-sm mb-2">
+          <span class="text-gray-500">{{ $t('protocol.currentRegimen') }}:</span>
+          <span class="text-gray-900 font-medium">{{ protocol.real_values.current_regimen.regimen }}</span>
           <span class="text-gray-500">{{ $t('components.milestone.cycle', { n: protocol.real_values.current_regimen.cycle }) }}</span>
           <template v-if="protocol.real_values.dose_modifications">
             <span class="text-gray-700">|</span>
-            <span class="text-amber-400 text-xs">{{ protocol.real_values.dose_modifications.last_change }} ({{ protocol.real_values.dose_modifications.date }})</span>
+            <span class="text-amber-600 text-xs">{{ protocol.real_values.dose_modifications.last_change }} ({{ protocol.real_values.dose_modifications.date }})</span>
           </template>
         </div>
         <div
@@ -160,18 +160,18 @@ const tabs = computed(() => [
       </div>
 
       <!-- Cumulative Dose -->
-      <div v-if="activeTab === 'cumdose' && cumDose" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.doseTitle') }}</h2>
+      <div v-if="activeTab === 'cumdose' && cumDose" class="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('protocol.doseTitle') }}</h2>
         <div class="mb-4">
           <div class="flex items-center justify-between mb-1">
-            <span class="text-sm text-gray-300">
+            <span class="text-sm text-gray-700">
               {{ cumDose.cumulative_mg_m2 }} {{ cumDose.unit }}
               <span class="text-gray-500">({{ cumDose.cycles_counted }} cycles × {{ cumDose.dose_per_cycle }})</span>
             </span>
             <span class="text-sm text-gray-400">{{ $t('protocol.doseMax') }}: {{ cumDose.max_recommended }} {{ cumDose.unit }}</span>
           </div>
           <!-- Progress bar -->
-          <div class="relative h-4 rounded-full bg-gray-800 overflow-hidden">
+          <div class="relative h-4 rounded-full bg-gray-100 overflow-hidden">
             <div
               class="h-full rounded-full transition-all"
               :class="cumDose.pct_to_next >= 100 ? 'bg-red-500' : cumDose.thresholds_reached.length >= 2 ? 'bg-amber-500' : 'bg-teal-500'"
@@ -193,7 +193,7 @@ const tabs = computed(() => [
             v-for="t in cumDose.all_thresholds"
             :key="t.at"
             class="flex items-center gap-3 text-sm py-1"
-            :class="cumDose.cumulative_mg_m2 >= t.at ? 'text-white' : 'text-gray-500'"
+            :class="cumDose.cumulative_mg_m2 >= t.at ? 'text-gray-900' : 'text-gray-500'"
           >
             <UIcon
               :name="cumDose.cumulative_mg_m2 >= t.at ? 'i-lucide-check-circle' : 'i-lucide-circle'"
@@ -209,13 +209,13 @@ const tabs = computed(() => [
       </div>
 
       <!-- Cycle Delay Rules -->
-      <div v-if="activeTab === 'delays'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.delayRules') }}</h2>
+      <div v-if="activeTab === 'delays'" class="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('protocol.delayRules') }}</h2>
         <div class="space-y-1">
           <div
             v-for="(rule, i) in protocol.cycle_delay_rules"
             :key="i"
-            class="flex items-start gap-3 py-2 border-b border-gray-800/50 last:border-0 cursor-pointer hover:bg-gray-800/30 rounded-lg px-2 -mx-2 transition-colors"
+            class="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors"
             @click="drilldown.open({ type: 'protocol_section', id: `delay-${i}`, label: rule.condition, data: { condition: rule.condition, action: rule.action, source: 'ESMO/NCCN cycle delay guidelines' } })"
           >
             <UIcon
@@ -224,7 +224,7 @@ const tabs = computed(() => [
               class="mt-0.5 shrink-0"
             />
             <div class="flex-1">
-              <div class="text-sm text-white">{{ rule.condition }}</div>
+              <div class="text-sm text-gray-900">{{ rule.condition }}</div>
               <div class="text-xs text-gray-400">{{ rule.action }}</div>
             </div>
             <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 mt-1 shrink-0" />
@@ -233,24 +233,24 @@ const tabs = computed(() => [
       </div>
 
       <!-- Milestones -->
-      <div v-if="activeTab === 'milestones'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.milestonesTitle') }}</h2>
+      <div v-if="activeTab === 'milestones'" class="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('protocol.milestonesTitle') }}</h2>
         <MilestoneTracker :milestones="protocol.milestones" :current-cycle="protocol.current_cycle" />
       </div>
 
       <!-- Monitoring Schedule -->
-      <div v-if="activeTab === 'monitoring'" class="rounded-xl border border-gray-800 bg-gray-900/50 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">{{ $t('protocol.monitoringTitle') }}</h2>
+      <div v-if="activeTab === 'monitoring'" class="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('protocol.monitoringTitle') }}</h2>
         <div class="space-y-2">
           <div
             v-for="(schedule, item) in protocol.monitoring_schedule"
             :key="item"
-            class="flex items-start gap-3 py-2 border-b border-gray-800/50 last:border-0 cursor-pointer hover:bg-gray-800/30 rounded-lg px-2 -mx-2 transition-colors"
+            class="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors"
             @click="drilldown.open({ type: 'protocol_section', id: `monitor-${item}`, label: String(item).replace(/_/g, ' '), data: { item: String(item).replace(/_/g, ' '), schedule, source: 'mFOLFOX6 monitoring protocol' } })"
           >
             <UIcon name="i-lucide-clock" class="text-gray-600 mt-0.5 shrink-0" />
             <div class="flex-1">
-              <div class="text-sm text-white">{{ item.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) }}</div>
+              <div class="text-sm text-gray-900">{{ item.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) }}</div>
               <div class="text-xs text-gray-500">{{ schedule }}</div>
             </div>
             <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 mt-1 shrink-0" />
@@ -263,12 +263,12 @@ const tabs = computed(() => [
         <div
           v-for="(opt, i) in protocol.second_line_options"
           :key="i"
-          class="rounded-lg border border-gray-800 bg-gray-900/50 p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+          class="rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
           @click="drilldown.open({ type: 'protocol_section', id: `2l-${i}`, label: opt.regimen, data: { regimen: opt.regimen, evidence: opt.evidence, note: opt.note, ranking: i + 1, source: 'ESMO/NCCN 2L options for KRAS-mutant mCRC' } })"
         >
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-white">{{ i + 1 }}.</span>
-            <span class="text-sm font-medium text-white">{{ opt.regimen }}</span>
+            <span class="text-sm font-medium text-gray-900">{{ i + 1 }}.</span>
+            <span class="text-sm font-medium text-gray-900">{{ opt.regimen }}</span>
             <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 ml-auto" />
           </div>
           <div class="text-xs text-gray-400 mt-1">{{ opt.evidence }}</div>
@@ -281,11 +281,11 @@ const tabs = computed(() => [
         <div
           v-for="trial in protocol.watched_trials"
           :key="trial"
-          class="flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/50 px-4 py-3 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+          class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
           @click="drilldown.open({ type: 'protocol_section', id: `trial-${trial}`, label: trial, data: { trial, status: 'Watched', relevance: 'KRAS G12S mCRC', source: 'ClinicalTrials.gov' } })"
         >
           <UIcon name="i-lucide-eye" class="text-teal-500 shrink-0" />
-          <span class="text-sm text-gray-300 flex-1">{{ trial }}</span>
+          <span class="text-sm text-gray-700 flex-1">{{ trial }}</span>
           <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
         </div>
       </div>
