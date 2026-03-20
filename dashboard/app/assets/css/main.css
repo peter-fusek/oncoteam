@@ -1,2 +1,81 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+/* ── Global Typography ──────────────────────────── */
+body {
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Dashboard Card System ──────────────────────── */
+/* Glass-morphism cards with refined borders */
+.rounded-xl.border.border-gray-800,
+.rounded-xl.border.bg-gray-900\/50 {
+  border-color: rgba(75, 85, 99, 0.25);
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+/* Stat numbers — tabular for alignment */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ── Page Headers ───────────────────────────────── */
+h1.text-2xl,
+h1.text-xl {
+  letter-spacing: -0.03em;
+}
+
+/* ── Smooth Page Transitions ────────────────────── */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.15s ease;
+}
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+}
+
+/* ── Scrollbar Styling ──────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.4);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.6);
+}
+
+/* ── Room Card Hover Polish ─────────────────────── */
+button.group.rounded-xl {
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+button.group.rounded-xl:hover {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* ── Alert/Badge Refinements ────────────────────── */
+.animate-pulse {
+  animation-duration: 2s;
+}
+
+/* ── Table Cell Refinements ─────────────────────── */
+td, th {
+  transition: background-color 0.15s ease;
+}
