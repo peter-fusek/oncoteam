@@ -68,22 +68,26 @@ async def test_pipeline_deduplication():
 @pytest.mark.anyio
 async def test_pipeline_dispatches_lab():
     """Lab report classification triggers lab_sync_single downstream."""
-    mock_scan = AsyncMock(return_value={
-        "response": "This is a lab report with blood values",
-        "cost": 0.01,
-        "tool_calls": [{"name": "view_document"}],
-        "error": None,
-        "model": "haiku",
-        "duration_ms": 500,
-    })
-    mock_lab = AsyncMock(return_value={
-        "response": "Extracted WBC, ANC",
-        "cost": 0.005,
-        "tool_calls": [],
-        "error": None,
-        "model": "haiku",
-        "duration_ms": 300,
-    })
+    mock_scan = AsyncMock(
+        return_value={
+            "response": "This is a lab report with blood values",
+            "cost": 0.01,
+            "tool_calls": [{"name": "view_document"}],
+            "error": None,
+            "model": "haiku",
+            "duration_ms": 500,
+        }
+    )
+    mock_lab = AsyncMock(
+        return_value={
+            "response": "Extracted WBC, ANC",
+            "cost": 0.005,
+            "tool_calls": [],
+            "error": None,
+            "model": "haiku",
+            "duration_ms": 300,
+        }
+    )
 
     with (
         patch("oncoteam.autonomous_tasks._get_state", AsyncMock(return_value={})),
@@ -106,26 +110,32 @@ async def test_pipeline_dispatches_lab():
 @pytest.mark.anyio
 async def test_pipeline_dispatches_visit_note():
     """Visit note triggers both toxicity_extraction and weight_extraction."""
-    mock_scan = AsyncMock(return_value={
-        "response": "Konzultacia u onkológa, vizita note",
-        "cost": 0.01,
-        "tool_calls": [],
-        "error": None,
-        "model": "haiku",
-        "duration_ms": 500,
-    })
-    mock_tox = AsyncMock(return_value={
-        "response": "Neuropathy grade 1",
-        "cost": 0.005,
-        "tool_calls": [],
-        "error": None,
-    })
-    mock_weight = AsyncMock(return_value={
-        "response": "Weight 68kg",
-        "cost": 0.003,
-        "tool_calls": [],
-        "error": None,
-    })
+    mock_scan = AsyncMock(
+        return_value={
+            "response": "Konzultacia u onkológa, vizita note",
+            "cost": 0.01,
+            "tool_calls": [],
+            "error": None,
+            "model": "haiku",
+            "duration_ms": 500,
+        }
+    )
+    mock_tox = AsyncMock(
+        return_value={
+            "response": "Neuropathy grade 1",
+            "cost": 0.005,
+            "tool_calls": [],
+            "error": None,
+        }
+    )
+    mock_weight = AsyncMock(
+        return_value={
+            "response": "Weight 68kg",
+            "cost": 0.003,
+            "tool_calls": [],
+            "error": None,
+        }
+    )
 
     with (
         patch("oncoteam.autonomous_tasks._get_state", AsyncMock(return_value={})),
@@ -174,10 +184,7 @@ def _make_request(body: dict, headers: dict | None = None):
         "type": "http",
         "method": "POST",
         "path": "/api/internal/document-webhook",
-        "headers": [
-            (k.lower().encode(), v.encode())
-            for k, v in (headers or {}).items()
-        ],
+        "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()],
     }
 
     async def receive():

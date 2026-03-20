@@ -703,7 +703,10 @@ async def _run_single_doc_task(task_name: str, document_id: int, prompt: str) ->
 
 async def run_file_scan_single(document_id: int) -> dict:
     """Classify a single document by ID (no broad search)."""
-    return await _run_single_doc_task("file_scan_single", document_id, f"""\
+    return await _run_single_doc_task(
+        "file_scan_single",
+        document_id,
+        f"""\
 View document {document_id} using view_document tool, then classify it.
 
 Instructions:
@@ -716,12 +719,16 @@ Instructions:
 6. Report the classification and key findings
 
 This is a single-document scan triggered by a new upload webhook.
-""")
+""",
+    )
 
 
 async def run_lab_sync_single(document_id: int) -> dict:
     """Extract lab values from a single document by ID."""
-    return await _run_single_doc_task("lab_sync_single", document_id, f"""\
+    return await _run_single_doc_task(
+        "lab_sync_single",
+        document_id,
+        f"""\
 Extract structured lab data from document {document_id}.
 
 Instructions:
@@ -736,12 +743,16 @@ Instructions:
 IMPORTANT: Use store_lab_values for structured persistence (enables trends/charts).
 Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
 creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
-""")
+""",
+    )
 
 
 async def run_toxicity_extraction_single(document_id: int) -> dict:
     """Extract toxicity grades from a single document by ID."""
-    return await _run_single_doc_task("toxicity_extraction_single", document_id, f"""\
+    return await _run_single_doc_task(
+        "toxicity_extraction_single",
+        document_id,
+        f"""\
 Extract NCI-CTCAE toxicity assessments from document {document_id}.
 
 Instructions:
@@ -752,12 +763,16 @@ Instructions:
 4. Report extracted toxicity data with dates
 
 This is a single-document extraction triggered by a new upload webhook.
-""")
+""",
+    )
 
 
 async def run_weight_extraction_single(document_id: int) -> dict:
     """Extract weight/BMI from a single document by ID."""
-    return await _run_single_doc_task("weight_extraction_single", document_id, f"""\
+    return await _run_single_doc_task(
+        "weight_extraction_single",
+        document_id,
+        f"""\
 Extract weight/BMI data from document {document_id}.
 
 Instructions:
@@ -769,7 +784,8 @@ Instructions:
 6. Report what was extracted
 
 This is a single-document extraction triggered by a new upload webhook.
-""")
+""",
+    )
 
 
 async def run_document_pipeline(document_id: int, metadata: dict | None = None) -> dict:
@@ -802,11 +818,13 @@ async def run_document_pipeline(document_id: int, metadata: dict | None = None) 
         scan_result = await run_file_scan_single(document_id)
         scan_cost = scan_result.get("cost", 0)
         total_cost += scan_cost
-        steps.append({
-            "step": "file_scan",
-            "cost": scan_cost,
-            "error": scan_result.get("error"),
-        })
+        steps.append(
+            {
+                "step": "file_scan",
+                "cost": scan_cost,
+                "error": scan_result.get("error"),
+            }
+        )
         await _log_task("file_scan_single", scan_result)
     except Exception as e:
         pipeline_error = f"file_scan_single failed: {e}"
@@ -835,11 +853,13 @@ async def run_document_pipeline(document_id: int, metadata: dict | None = None) 
                 step_result = await step_fn(document_id)
                 step_cost = step_result.get("cost", 0)
                 total_cost += step_cost
-                steps.append({
-                    "step": step_name,
-                    "cost": step_cost,
-                    "error": step_result.get("error"),
-                })
+                steps.append(
+                    {
+                        "step": step_name,
+                        "cost": step_cost,
+                        "error": step_result.get("error"),
+                    }
+                )
                 await _log_task(f"{step_name}_single", step_result)
             except Exception as e:
                 logger.error("document_pipeline step %s failed: %s", step_name, e)
@@ -875,12 +895,15 @@ async def run_document_pipeline(document_id: int, metadata: dict | None = None) 
     await _log_task("document_pipeline", combined)
 
     # Store dedup state
-    await _set_state(state_key, {
-        "timestamp": datetime.now(UTC).isoformat(),
-        "doc_type": doc_type,
-        "steps": [s["step"] for s in steps],
-        "cost": total_cost,
-    })
+    await _set_state(
+        state_key,
+        {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "doc_type": doc_type,
+            "steps": [s["step"] for s in steps],
+            "cost": total_cost,
+        },
+    )
 
     # WhatsApp notification for safety-critical findings
     if not pipeline_error and doc_type in ("lab_report", "pathology", "genetics"):
