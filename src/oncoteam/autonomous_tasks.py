@@ -584,9 +584,14 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
                 if by_date:
                     latest_date = max(by_date.keys())
                     vals = by_date[latest_date]
-                    alerts: list[str] = []
+                    # Normalize units: G/L → /µL (same logic as dashboard_api)
                     anc = vals.get("ABS_NEUT", vals.get("ANC"))
+                    if anc is not None and isinstance(anc, (int, float)) and anc < 30:
+                        anc = round(anc * 1000)
                     plt = vals.get("PLT")
+                    if plt is not None and isinstance(plt, (int, float)) and plt < 1000:
+                        plt = round(plt * 1000)
+                    alerts: list[str] = []
                     if anc is not None and anc < 1500:
                         alerts.append(f"ANC = {anc} (< 1500) — hold chemo")
                     if plt is not None and plt < 75000:
@@ -1249,6 +1254,8 @@ async def run_daily_cost_report() -> dict:
                     if anc is not None and isinstance(anc, (int, float)) and anc < 30:
                         anc = round(anc * 1000)
                     plt = vals.get("PLT")
+                    if plt is not None and isinstance(plt, (int, float)) and plt < 1000:
+                        plt = round(plt * 1000)
                     wbc = vals.get("WBC")
                     hgb = vals.get("HGB")
                     lines.append(f"*Labky ({latest_date})*")
