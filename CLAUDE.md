@@ -61,6 +61,9 @@ uv run oncoteam-mcp    # stdio mode
 - `api_trigger_agent` clears cooldown state before triggering — imports `_get_task_functions` from `scheduler.py`. Same lazy-import pattern as webhook.
 - Agent registry `model` field is display-only — the actual model override is in each `run_*()` function's `run_autonomous_task()` call. If you change model in registry, also update the corresponding `run_*()` function.
 - `AUTONOMOUS_COST_LIMIT` default is $10 (temporary, target $5 after monitoring period ~2026-03-28)
+- `_CONTAMINATED_EVENT_IDS` in `dashboard_api.py` filters known bad data (IDs 19-21: placeholder labs 100x too low, ID 32: duplicate of 27). Tests must not use these IDs.
+- `_normalize_lab_values()` converts G/L → /µL for ANC (<30), PLT (<1000), ABS_LYMPH (<30), and maps HGB→hemoglobin
+- `api_labs` outlier detection flags CEA/CA_19_9 entries with >90% single-reading change as `suspects[]`
 
 
 ## Key commands
