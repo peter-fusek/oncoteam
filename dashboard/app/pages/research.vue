@@ -1,22 +1,8 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 
-const currentPage = ref(1)
-const perPage = ref(10)
+const activeTab = ref<'trials' | 'literature'>('trials')
 const sortBy = ref<'relevance' | 'date' | 'source'>('relevance')
-const sourceFilter = ref<string | null>(null)
-
-const apiUrl = computed(() => {
-  const params = new URLSearchParams({
-    page: String(currentPage.value),
-    per_page: String(perPage.value),
-    sort: sortBy.value,
-  })
-  if (sourceFilter.value) {
-    params.set('source', sourceFilter.value)
-  }
-  return `/research?${params.toString()}`
-})
 
 const { data: research, status: researchStatus, error: researchError, refresh } = fetchApi<{
   entries: Array<{
@@ -31,45 +17,67 @@ const { data: research, status: researchStatus, error: researchError, refresh } 
     relevance_reason: string
   }>
   total: number
-  page: number
-  per_page: number
-  total_pages: number
   error?: string
-}>(apiUrl, { lazy: true, watch: [apiUrl] })
+}>('/research?per_page=100&sort=relevance', { lazy: true })
 
-const showingFrom = computed(() => {
-  if (!research.value?.total) return 0
-  return (research.value.page - 1) * research.value.per_page + 1
+// Split entries into trials and literature
+const trialEntries = computed(() => {
+  if (!research.value?.entries) return []
+  return research.value.entries.filter(e => e.source === 'clinicaltrials')
 })
 
-const showingTo = computed(() => {
-  if (!research.value?.total) return 0
-  return Math.min(research.value.page * research.value.per_page, research.value.total)
+const literatureEntries = computed(() => {
+  if (!research.value?.entries) return []
+  return research.value.entries.filter(e => e.source !== 'clinicaltrials')
 })
 
-function setSourceFilter(value: string | null) {
-  sourceFilter.value = value
-  currentPage.value = 1
-}
+const displayEntries = computed(() => {
+  const entries = activeTab.value === 'trials' ? trialEntries.value : literatureEntries.value
+  if (sortBy.value === 'date') {
+    return [...entries].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  }
+  return entries // Already sorted by relevance from API
+})
 
-function setSort(value: 'relevance' | 'date' | 'source') {
-  sortBy.value = value
-  currentPage.value = 1
-}
+// Relevance stats
+const highRelevanceCount = computed(() =>
+  research.value?.entries?.filter(e => e.relevance === 'high').length ?? 0,
+)
 
-function prevPage() {
-  if (currentPage.value > 1) currentPage.value--
-}
-
-function nextPage() {
-  if (research.value && currentPage.value < research.value.total_pages) currentPage.value++
+const relevanceIcon: Record<string, string> = {
+  high: 'i-lucide-star',
+  medium: 'i-lucide-circle-dot',
+  low: 'i-lucide-circle',
+  not_applicable: 'i-lucide-circle-x',
 }
 
 const relevanceColor: Record<string, string> = {
+  high: 'text-amber-600',
+  medium: 'text-blue-500',
+  low: 'text-gray-400',
+  not_applicable: 'text-gray-300',
+}
+
+const relevanceBadgeColor: Record<string, string> = {
   high: 'success',
   medium: 'info',
   low: 'neutral',
   not_applicable: 'error',
+}
+
+function sourceIcon(source: string): string {
+  if (source === 'pubmed') return 'i-lucide-book-open'
+  if (source === 'clinicaltrials') return 'i-lucide-flask-conical'
+  if (source === 'esmo') return 'i-lucide-graduation-cap'
+  return 'i-lucide-file-text'
+}
+
+function sourceLabel(source: string): string {
+  if (source === 'pubmed') return 'PubMed'
+  if (source === 'clinicaltrials') return 'ClinicalTrials.gov'
+  if (source === 'esmo') return 'ESMO'
+  if (source === 'manual') return 'Manual'
+  return source
 }
 
 const drilldown = useDrilldown()
@@ -77,27 +85,25 @@ const drilldown = useDrilldown()
 
 <template>
   <div class="space-y-6">
+    <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">{{ $t('research.title') }}</h1>
         <p class="text-sm text-gray-500">
-          <template v-if="research?.total">
-            {{ $t('research.showing', { from: showingFrom, to: showingTo, total: research.total }) }}
-          </template>
-          <template v-else>
-            {{ $t('research.count', { count: research?.total ?? 0 }) }}
-          </template>
+          {{ research?.total ?? 0 }} entries
+          <span v-if="highRelevanceCount" class="text-amber-600 font-medium ml-1">
+            ({{ highRelevanceCount }} high relevance)
+          </span>
         </p>
         <LastUpdated :timestamp="research?.last_updated" />
       </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <!-- Sort dropdown -->
+      <div class="flex items-center gap-2">
         <UButtonGroup>
           <UButton
             :variant="sortBy === 'relevance' ? 'solid' : 'ghost'"
             size="xs"
             color="neutral"
-            @click="setSort('relevance')"
+            @click="sortBy = 'relevance'"
           >
             {{ $t('research.sortRelevance') }}
           </UButton>
@@ -105,44 +111,9 @@ const drilldown = useDrilldown()
             :variant="sortBy === 'date' ? 'solid' : 'ghost'"
             size="xs"
             color="neutral"
-            @click="setSort('date')"
+            @click="sortBy = 'date'"
           >
             {{ $t('research.sortDate') }}
-          </UButton>
-          <UButton
-            :variant="sortBy === 'source' ? 'solid' : 'ghost'"
-            size="xs"
-            color="neutral"
-            @click="setSort('source')"
-          >
-            {{ $t('research.sortSource') }}
-          </UButton>
-        </UButtonGroup>
-        <!-- Source filter -->
-        <UButtonGroup>
-          <UButton
-            :variant="!sourceFilter ? 'solid' : 'ghost'"
-            size="xs"
-            color="neutral"
-            @click="setSourceFilter(null)"
-          >
-            {{ $t('research.filterAll') }}
-          </UButton>
-          <UButton
-            :variant="sourceFilter === 'pubmed' ? 'solid' : 'ghost'"
-            size="xs"
-            color="neutral"
-            @click="setSourceFilter('pubmed')"
-          >
-            PubMed
-          </UButton>
-          <UButton
-            :variant="sourceFilter === 'clinicaltrials' ? 'solid' : 'ghost'"
-            size="xs"
-            color="neutral"
-            @click="setSourceFilter('clinicaltrials')"
-          >
-            {{ $t('research.filterTrials') }}
           </UButton>
         </UButtonGroup>
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
@@ -152,84 +123,112 @@ const drilldown = useDrilldown()
     <ApiErrorBanner :error="research?.error || researchError?.message" />
     <SkeletonLoader v-if="!research && researchStatus === 'pending'" variant="cards" />
 
-    <div v-if="research?.entries?.length" class="space-y-2">
+    <!-- Tab navigation -->
+    <div class="flex gap-1 rounded-lg border border-gray-200 p-1 bg-gray-50 w-fit">
+      <button
+        class="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+        :class="activeTab === 'trials'
+          ? 'bg-white text-gray-900 shadow-sm'
+          : 'text-gray-500 hover:text-gray-700'"
+        @click="activeTab = 'trials'"
+      >
+        <UIcon name="i-lucide-flask-conical" class="w-4 h-4" />
+        Clinical Trials
+        <UBadge v-if="trialEntries.length" variant="subtle" size="xs" color="success">{{ trialEntries.length }}</UBadge>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+        :class="activeTab === 'literature'
+          ? 'bg-white text-gray-900 shadow-sm'
+          : 'text-gray-500 hover:text-gray-700'"
+        @click="activeTab = 'literature'"
+      >
+        <UIcon name="i-lucide-book-open" class="w-4 h-4" />
+        Literature
+        <UBadge v-if="literatureEntries.length" variant="subtle" size="xs" color="info">{{ literatureEntries.length }}</UBadge>
+      </button>
+    </div>
+
+    <!-- Entries list -->
+    <div v-if="displayEntries.length" class="space-y-3">
       <div
-        v-for="entry in research.entries"
+        v-for="entry in displayEntries"
         :key="entry.id"
-        class="rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50 transition-colors cursor-pointer hover:ring-1 hover:ring-teal-500/30"
+        class="group rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition-all cursor-pointer"
+        :class="entry.relevance === 'high' ? 'ring-1 ring-amber-200/50' : ''"
         @click="drilldown.open({ type: 'research', id: entry.id, label: entry.title })"
       >
         <div class="flex items-start gap-3">
-          <span class="text-lg mt-0.5">{{ entry.source === 'pubmed' ? '📄' : '🧪' }}</span>
+          <!-- Relevance indicator -->
+          <div class="flex flex-col items-center gap-1 pt-0.5">
+            <UIcon :name="relevanceIcon[entry.relevance]" :class="relevanceColor[entry.relevance]" class="w-5 h-5" />
+          </div>
+
           <div class="min-w-0 flex-1">
-            <div class="font-medium text-gray-900 text-sm">{{ entry.title }}</div>
-            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-              <UBadge
-                variant="subtle"
-                size="xs"
-                :color="entry.source === 'pubmed' ? 'info' : 'success'"
-              >
-                {{ entry.source === 'pubmed' ? $t('research.sourcePubMed') : $t('research.sourceClinicalTrials') }}
+            <!-- Title -->
+            <h3 class="font-medium text-gray-900 text-sm leading-snug">{{ entry.title }}</h3>
+
+            <!-- Metadata row -->
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+              <!-- Source badge -->
+              <UBadge variant="subtle" size="xs" :color="entry.source === 'clinicaltrials' ? 'success' : entry.source === 'pubmed' ? 'info' : 'neutral'">
+                <UIcon :name="sourceIcon(entry.source)" class="w-3 h-3 mr-0.5" />
+                {{ sourceLabel(entry.source) }}
               </UBadge>
-              <UBadge
-                variant="subtle"
-                size="xs"
-                :color="relevanceColor[entry.relevance] ?? 'neutral'"
-                :title="entry.relevance_reason"
-              >
+
+              <!-- Relevance badge -->
+              <UBadge variant="subtle" size="xs" :color="relevanceBadgeColor[entry.relevance]" :title="entry.relevance_reason">
+                <UIcon :name="relevanceIcon[entry.relevance]" class="w-3 h-3 mr-0.5" />
                 {{ $t(`research.relevance.${entry.relevance}`) }}
               </UBadge>
-              <span v-if="entry.external_id" class="text-xs font-mono text-gray-500">
-                {{ entry.external_id }}
-              </span>
+
+              <!-- External ID as clickable link -->
               <a
-                v-if="entry.external_url"
+                v-if="entry.external_url && entry.external_id"
                 :href="entry.external_url"
                 target="_blank"
-                class="text-xs text-teal-500 hover:text-teal-400"
+                rel="noopener"
+                class="inline-flex items-center gap-1 text-xs font-mono text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 rounded px-1.5 py-0.5 transition-colors"
+                :title="`Open ${entry.external_id} in ${sourceLabel(entry.source)}`"
                 @click.stop
               >
-                {{ $t('common.viewSource') }} ↗
+                {{ entry.external_id }}
+                <UIcon name="i-lucide-external-link" class="w-3 h-3" />
               </a>
+              <span v-else-if="entry.external_id" class="text-xs font-mono text-gray-400">
+                {{ entry.external_id }}
+              </span>
             </div>
-            <p v-if="entry.relevance_reason" class="text-xs text-gray-600 mt-1">
+
+            <!-- Relevance reason -->
+            <p v-if="entry.relevance_reason" class="text-xs text-gray-500 mt-1.5 italic">
               {{ entry.relevance_reason }}
             </p>
-            <p v-if="entry.summary" class="text-xs text-gray-500 mt-1.5 line-clamp-2">
+
+            <!-- Summary -->
+            <p v-if="entry.summary" class="text-xs text-gray-600 mt-1.5 line-clamp-3 leading-relaxed">
               {{ entry.summary }}
             </p>
           </div>
+
+          <!-- External link button -->
+          <a
+            v-if="entry.external_url"
+            :href="entry.external_url"
+            target="_blank"
+            rel="noopener"
+            class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            :title="`Open in ${sourceLabel(entry.source)}`"
+            @click.stop
+          >
+            <UButton icon="i-lucide-external-link" variant="ghost" size="xs" color="neutral" />
+          </a>
         </div>
       </div>
     </div>
 
-    <div v-else-if="!research?.error && !researchError" class="text-gray-600 text-center py-16 text-sm">
-      {{ $t('research.noResearch') }}
-    </div>
-
-    <!-- Pagination controls -->
-    <div v-if="research && research.total_pages > 1" class="flex items-center justify-center gap-3 pt-2">
-      <UButton
-        :disabled="currentPage <= 1"
-        variant="ghost"
-        size="xs"
-        color="neutral"
-        @click="prevPage"
-      >
-        {{ $t('research.previous') }}
-      </UButton>
-      <span class="text-sm text-gray-400">
-        {{ $t('research.pageOf', { page: research.page, totalPages: research.total_pages }) }}
-      </span>
-      <UButton
-        :disabled="currentPage >= research.total_pages"
-        variant="ghost"
-        size="xs"
-        color="neutral"
-        @click="nextPage"
-      >
-        {{ $t('research.next') }}
-      </UButton>
+    <div v-else-if="!research?.error && !researchError" class="text-gray-400 text-center py-16 text-sm">
+      {{ activeTab === 'trials' ? 'No clinical trials found' : $t('research.noResearch') }}
     </div>
   </div>
 </template>
