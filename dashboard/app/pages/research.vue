@@ -4,6 +4,11 @@ const { fetchApi } = useOncoteamApi()
 const activeTab = ref<'trials' | 'literature'>('trials')
 const sortBy = ref<'relevance' | 'date' | 'source'>('relevance')
 
+// Watched trials from clinical protocol
+const { data: protocol } = fetchApi<{
+  watched_trials: string[]
+}>('/protocol', { lazy: true })
+
 const { data: research, status: researchStatus, error: researchError, refresh } = fetchApi<{
   entries: Array<{
     id: number
@@ -122,6 +127,25 @@ const drilldown = useDrilldown()
 
     <ApiErrorBanner :error="research?.error || researchError?.message" />
     <SkeletonLoader v-if="!research && researchStatus === 'pending'" variant="cards" />
+
+    <!-- Watched trials panel (from clinical protocol) -->
+    <div v-if="protocol?.watched_trials?.length && activeTab === 'trials'" class="rounded-xl border border-teal-200 bg-teal-50/50 p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <UIcon name="i-lucide-radar" class="text-teal-700 w-4 h-4" />
+        <h2 class="text-sm font-semibold text-teal-900">Actively Monitored Trials</h2>
+        <span class="text-[10px] text-teal-600 ml-auto">From clinical protocol</span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div
+          v-for="trial in protocol.watched_trials"
+          :key="trial"
+          class="flex items-center gap-2 rounded-lg bg-white/80 border border-teal-100 px-3 py-2 text-xs"
+        >
+          <UIcon name="i-lucide-eye" class="text-teal-500 w-3.5 h-3.5 flex-shrink-0" />
+          <span class="text-gray-800 font-medium">{{ trial }}</span>
+        </div>
+      </div>
+    </div>
 
     <!-- Tab navigation -->
     <div class="flex gap-1 rounded-lg border border-gray-200 p-1 bg-gray-50 w-fit">
