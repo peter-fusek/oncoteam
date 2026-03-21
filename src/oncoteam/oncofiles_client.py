@@ -33,6 +33,27 @@ _circuit_open_until: float = 0.0
 # Per-call timeout (seconds) — prevents indefinite hangs when oncofiles is slow.
 CALL_TIMEOUT = 20.0
 
+# ── Telemetry ────────────────────────────────────────────────────────────
+_total_calls: int = 0
+_total_errors: int = 0
+_total_circuit_trips: int = 0
+
+
+def get_circuit_breaker_status() -> dict:
+    """Return circuit breaker state for health/diagnostics endpoints."""
+    now = time.monotonic()
+    is_open = _circuit_open_until > now
+    return {
+        "state": "open" if is_open else "closed",
+        "consecutive_failures": _circuit_failures,
+        "threshold": CIRCUIT_BREAKER_THRESHOLD,
+        "cooldown_remaining_s": round(max(0, _circuit_open_until - now), 1) if is_open else 0,
+        "total_calls": _total_calls,
+        "total_errors": _total_errors,
+        "total_circuit_trips": _total_circuit_trips,
+        "call_timeout_s": CALL_TIMEOUT,
+    }
+
 
 def _get_lock() -> asyncio.Lock:
     global _client_lock
@@ -88,11 +109,15 @@ async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
 
     Includes circuit breaker, per-call timeout, and retry with backoff.
     """
-    global _circuit_failures, _circuit_open_until
+    global _circuit_failures, _circuit_open_until, _total_calls, _total_errors
+    global _total_circuit_trips
+
+    _total_calls += 1
 
     # Circuit breaker — fail fast when oncofiles is known to be down.
     now = time.monotonic()
     if _circuit_open_until > now:
+        _total_errors += 1
         remaining = _circuit_open_until - now
         raise ConnectionError(
             f"oncofiles circuit breaker open — retrying in {remaining:.0f}s "
@@ -116,9 +141,11 @@ async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
                 await asyncio.sleep(0.5)  # brief backoff before retry
                 continue
             # Second failure — update circuit breaker.
+            _total_errors += 1
             _circuit_failures += 1
             if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
                 _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
+                _total_circuit_trips += 1
                 _logger.error(
                     "oncofiles circuit breaker OPEN after %d failures — blocking calls for %ds",
                     _circuit_failures,

@@ -568,11 +568,23 @@ async def api_health_deep(request: Request) -> JSONResponse:
 
     overall = "ok" if checks["oncofiles"] == "ok" else "degraded"
 
+    # Circuit breaker telemetry — early warning for oncofiles instability
+    cb_status = oncofiles_client.get_circuit_breaker_status()
+    if cb_status["state"] == "open":
+        overall = "degraded"
+
+    # Process memory (RSS) — track for OOM early warning
+    import resource
+
+    rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+
     return _cors_json(
         {
             "status": overall,
             "version": VERSION,
             "commit": GIT_COMMIT,
+            "memory_rss_mb": round(rss_mb, 1),
+            "circuit_breaker": cb_status,
             **checks,
         }
     )
@@ -1884,10 +1896,13 @@ async def api_diagnostics(request: Request) -> JSONResponse:
         except Exception as e:
             record_suppressed_error("api_diagnostics", "lab_sync_check", e)
 
+    cb_status = oncofiles_client.get_circuit_breaker_status()
+
     return _cors_json(
         {
-            "healthy": all(c["ok"] for c in checks),
+            "healthy": all(c["ok"] for c in checks) and cb_status["state"] == "closed",
             "checks": checks,
+            "circuit_breaker": cb_status,
             "oncofiles_url": (ONCOFILES_MCP_URL[:30] + "...") if ONCOFILES_MCP_URL else "NOT SET",
             "autonomous_enabled": AUTONOMOUS_ENABLED,
             "lab_sync_stale": lab_sync_stale,
