@@ -24,7 +24,7 @@ def _make_request(query_string: str = "") -> object:
 @pytest.mark.anyio
 @patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_returns_jobs():
-    """Should return 14 jobs with assigned_tool field."""
+    """Should return 15 jobs with assigned_tool field."""
     request = _make_request()
     response = await api_autonomous(request)
     data = json.loads(response.body)

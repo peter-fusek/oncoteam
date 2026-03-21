@@ -1266,7 +1266,7 @@ async def run_daily_cost_report() -> dict:
             lines.append("Labky: nedostupné\n")
 
         # --- Cycle section ---
-        lines.append(f"*Cyklus {PATIENT.get('current_cycle', 3)}* — mFOLFOX6")
+        lines.append(f"*Cyklus {PATIENT.current_cycle or 3}* — mFOLFOX6")
         lines.append("")
 
         # --- Cost section ---
