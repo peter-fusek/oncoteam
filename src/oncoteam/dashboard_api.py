@@ -68,11 +68,27 @@ def _normalize_lab_values(meta: dict) -> dict:
 
     - Maps ABS_NEUT → ANC (canonical name)
     - Detects ANC in G/L (< 30) and converts to /µL (* 1000)
+    - Detects PLT in G/L (< 1000) and converts to /µL (* 1000)
+    - Detects WBC in G/L (< 100) and converts to ×10³/µL (keep as-is, already correct)
+    - Detects hemoglobin aliases (HGB → hemoglobin)
     """
+    # Parameter name aliases
     if "ABS_NEUT" in meta and "ANC" not in meta:
         meta["ANC"] = meta.pop("ABS_NEUT")
+    if "HGB" in meta and "hemoglobin" not in meta:
+        meta["hemoglobin"] = meta.pop("HGB")
+
+    # Unit conversions: G/L → /µL
     if "ANC" in meta and isinstance(meta["ANC"], (int, float)) and meta["ANC"] < 30:
         meta["ANC"] = round(meta["ANC"] * 1000)  # G/L → /µL
+    if "PLT" in meta and isinstance(meta["PLT"], (int, float)) and meta["PLT"] < 1000:
+        meta["PLT"] = round(meta["PLT"] * 1000)  # G/L → /µL (e.g., 587 → 587000)
+    if (
+        "ABS_LYMPH" in meta
+        and isinstance(meta["ABS_LYMPH"], (int, float))
+        and meta["ABS_LYMPH"] < 30
+    ):
+        meta["ABS_LYMPH"] = round(meta["ABS_LYMPH"] * 1000)  # G/L → /µL
     return meta
 
 
@@ -1591,6 +1607,34 @@ async def api_labs(request: Request) -> JSONResponse:
                                 health_dirs[param] = "stable"
             entry["directions"] = directions
             entry["health_directions"] = health_dirs
+
+        # Outlier detection: flag entries with >90% single-reading change
+        # (e.g., CEA 1559→6 is medically impossible in 1 week)
+        outlier_params = {"CEA", "CA_19_9"}
+        for i, entry in enumerate(entries):
+            suspects: list[dict] = []
+            prev = entries[i + 1] if i + 1 < len(entries) else None
+            if prev:
+                for param in outlier_params:
+                    val = entry["values"].get(param)
+                    prev_val = prev["values"].get(param)
+                    if (
+                        isinstance(val, (int, float))
+                        and isinstance(prev_val, (int, float))
+                        and prev_val > 0
+                    ):
+                        pct_change = abs(val - prev_val) / prev_val
+                        if pct_change > 0.9:
+                            suspects.append(
+                                {
+                                    "param": param,
+                                    "value": val,
+                                    "prev_value": prev_val,
+                                    "pct_change": round(pct_change * 100, 1),
+                                    "prev_date": prev["date"],
+                                }
+                            )
+            entry["suspects"] = suspects
 
         return _cors_json(
             {
