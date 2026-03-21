@@ -13,8 +13,8 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Project structure
 
-- `src/oncoteam/server.py` — MCP server, 24 tools + 20 dashboard API routes (5 POST, 2 parameterized), system instructions with biomarker rules + QA protocol
-- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,agent-runs,detail/{type}/{id},internal/document-webhook}
+- `src/oncoteam/server.py` — MCP server, 24 tools + 21 dashboard API routes (6 POST, 2 parameterized), system instructions with biomarker rules + QA protocol
+- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,agent-runs,detail/{type}/{id},internal/document-webhook,internal/trigger-agent}
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
 - `src/oncoteam/autonomous_tasks.py` — 18 autonomous task wrappers + document pipeline orchestrator with cooldown guards and WhatsApp notifications
@@ -58,6 +58,9 @@ uv run oncoteam-mcp    # stdio mode
 - Dashboard proxy timeout (`dashboard/server/api/oncoteam/[...path].ts`) is 25s. Oncofiles MCP `search_conversations` takes ~15s per query — don't reduce below 20s.
 - `document_pipeline` agent in registry has `schedule_params={"hours": 999}` — never fires on schedule. It's event-driven only, triggered by `POST /api/internal/document-webhook`.
 - `api_document_webhook` imports `_get_state`, `_extract_timestamp`, `run_document_pipeline` lazily from `autonomous_tasks` — test patches must target `oncoteam.autonomous_tasks`, not `oncoteam.dashboard_api`.
+- `api_trigger_agent` clears cooldown state before triggering — imports `_get_task_functions` from `scheduler.py`. Same lazy-import pattern as webhook.
+- Agent registry `model` field is display-only — the actual model override is in each `run_*()` function's `run_autonomous_task()` call. If you change model in registry, also update the corresponding `run_*()` function.
+- `AUTONOMOUS_COST_LIMIT` default is $10 (temporary, target $5 after monitoring period ~2026-03-28)
 
 
 ## Key commands
