@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import time
 
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
@@ -20,6 +21,17 @@ if ONCOFILES_MCP_URL and not ONCOFILES_MCP_TOKEN:
 # Persistent connection — reused across all calls to avoid per-call TCP+TLS+SSE overhead.
 _persistent_client: Client | None = None
 _client_lock: asyncio.Lock | None = None
+
+# ── Circuit breaker ──────────────────────────────────────────────────────
+# After CIRCUIT_BREAKER_THRESHOLD consecutive failures within the window,
+# all calls fail-fast for CIRCUIT_BREAKER_COOLDOWN seconds.
+CIRCUIT_BREAKER_THRESHOLD = 5
+CIRCUIT_BREAKER_COOLDOWN = 30  # seconds
+_circuit_failures: int = 0
+_circuit_open_until: float = 0.0
+
+# Per-call timeout (seconds) — prevents indefinite hangs when oncofiles is slow.
+CALL_TIMEOUT = 20.0
 
 
 def _get_lock() -> asyncio.Lock:
@@ -72,17 +84,46 @@ def _parse_result(result: object) -> dict | list | str:
 
 
 async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
-    """Call an oncofiles MCP tool, reusing a persistent connection."""
+    """Call an oncofiles MCP tool, reusing a persistent connection.
+
+    Includes circuit breaker, per-call timeout, and retry with backoff.
+    """
+    global _circuit_failures, _circuit_open_until
+
+    # Circuit breaker — fail fast when oncofiles is known to be down.
+    now = time.monotonic()
+    if _circuit_open_until > now:
+        remaining = _circuit_open_until - now
+        raise ConnectionError(
+            f"oncofiles circuit breaker open — retrying in {remaining:.0f}s "
+            f"(after {CIRCUIT_BREAKER_THRESHOLD} consecutive failures)"
+        )
+
     for attempt in range(2):
         try:
             client = await _get_client()
-            result = await client.call_tool(tool_name, arguments)
+            result = await asyncio.wait_for(
+                client.call_tool(tool_name, arguments),
+                timeout=CALL_TIMEOUT,
+            )
+            # Success — reset circuit breaker.
+            _circuit_failures = 0
             return _parse_result(result)
         except Exception:
             if attempt == 0:
-                # Connection may have dropped — invalidate and retry once.
+                # Connection may have dropped — invalidate, backoff, retry once.
                 await _invalidate_client()
+                await asyncio.sleep(0.5)  # brief backoff before retry
                 continue
+            # Second failure — update circuit breaker.
+            _circuit_failures += 1
+            if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
+                _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
+                _logger.error(
+                    "oncofiles circuit breaker OPEN after %d failures — blocking calls for %ds",
+                    _circuit_failures,
+                    CIRCUIT_BREAKER_COOLDOWN,
+                )
             raise
     raise RuntimeError("call_oncofiles: unreachable")
 

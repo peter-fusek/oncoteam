@@ -1186,9 +1186,12 @@ async def api_protocol_cycles(request: Request) -> JSONResponse:
 
     # Fetch lab results and chemo events
     try:
-        lab_result, chemo_result = await asyncio.gather(
-            oncofiles_client.list_treatment_events(event_type="lab_result", limit=50),
-            oncofiles_client.list_treatment_events(event_type="chemotherapy", limit=50),
+        lab_result, chemo_result = await asyncio.wait_for(
+            asyncio.gather(
+                oncofiles_client.list_treatment_events(event_type="lab_result", limit=50),
+                oncofiles_client.list_treatment_events(event_type="chemotherapy", limit=50),
+            ),
+            timeout=10.0,
         )
         lab_entries = _extract_list(lab_result, "entries")
         chemo_entries = _extract_list(chemo_result, "entries")
@@ -1303,10 +1306,15 @@ async def api_briefings(request: Request) -> JSONResponse:
     """GET /api/briefings — autonomous briefings + cost alerts from oncofiles diary."""
     limit = _parse_limit(request, default=20)
     try:
-        briefings_res, alerts_res = await asyncio.gather(
-            oncofiles_client.search_conversations(entry_type="autonomous_briefing", limit=limit),
-            oncofiles_client.search_conversations(entry_type="cost_alert", limit=5),
-            return_exceptions=True,
+        briefings_res, alerts_res = await asyncio.wait_for(
+            asyncio.gather(
+                oncofiles_client.search_conversations(
+                    entry_type="autonomous_briefing", limit=limit
+                ),
+                oncofiles_client.search_conversations(entry_type="cost_alert", limit=5),
+                return_exceptions=True,
+            ),
+            timeout=20.0,
         )
         briefings = (
             _extract_list(briefings_res, "entries") if isinstance(briefings_res, dict) else []
@@ -1844,7 +1852,12 @@ async def api_diagnostics(request: Request) -> JSONResponse:
         except Exception as e:
             return {"name": name, "ok": False, "error": str(e)}
 
-    checks = list(await asyncio.gather(*[_run_probe(*p) for p in probes]))
+    checks = list(
+        await asyncio.wait_for(
+            asyncio.gather(*[_run_probe(*p) for p in probes]),
+            timeout=15.0,
+        )
+    )
 
     # Check if lab_result data is stale (>48h since last lab_result event)
     lab_sync_stale = False
@@ -2021,10 +2034,13 @@ async def api_medications(request: Request) -> JSONResponse:
     # GET: list medication logs + adherence data
     limit = _parse_limit(request, default=50)
     try:
-        med_result, adh_result = await asyncio.gather(
-            oncofiles_client.list_treatment_events(event_type="medication_log", limit=limit),
-            oncofiles_client.list_treatment_events(event_type="medication_adherence", limit=7),
-            return_exceptions=True,
+        med_result, adh_result = await asyncio.wait_for(
+            asyncio.gather(
+                oncofiles_client.list_treatment_events(event_type="medication_log", limit=limit),
+                oncofiles_client.list_treatment_events(event_type="medication_adherence", limit=7),
+                return_exceptions=True,
+            ),
+            timeout=10.0,
         )
 
         # Process medication logs
@@ -2116,10 +2132,15 @@ async def api_weight(request: Request) -> JSONResponse:
 
     try:
         # Fetch both weight_measurement and toxicity_log events in parallel
-        weight_result, toxicity_result = await asyncio.gather(
-            oncofiles_client.list_treatment_events(event_type="weight_measurement", limit=limit),
-            oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=limit),
-            return_exceptions=True,
+        weight_result, toxicity_result = await asyncio.wait_for(
+            asyncio.gather(
+                oncofiles_client.list_treatment_events(
+                    event_type="weight_measurement", limit=limit
+                ),
+                oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=limit),
+                return_exceptions=True,
+            ),
+            timeout=10.0,
         )
 
         entries_by_date: dict[str, dict] = {}
@@ -2380,11 +2401,16 @@ async def api_family_update(request: Request) -> JSONResponse:
 
             # Fetch latest data in parallel
             labs_data, toxicity_data, weight_data = None, None, None
-            results = await asyncio.gather(
-                oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
-                oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=1),
-                oncofiles_client.list_treatment_events(event_type="weight_measurement", limit=5),
-                return_exceptions=True,
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
+                    oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=1),
+                    oncofiles_client.list_treatment_events(
+                        event_type="weight_measurement", limit=5
+                    ),
+                    return_exceptions=True,
+                ),
+                timeout=10.0,
             )
 
             if not isinstance(results[0], Exception):
@@ -2503,9 +2529,12 @@ async def api_agents(request: Request) -> JSONResponse:
         except Exception:
             return None
 
-    timestamps = await asyncio.gather(
-        *[_safe_get_state(aid) for aid, _ in non_system],
-        return_exceptions=True,
+    timestamps = await asyncio.wait_for(
+        asyncio.gather(
+            *[_safe_get_state(aid) for aid, _ in non_system],
+            return_exceptions=True,
+        ),
+        timeout=10.0,
     )
 
     agents = []
