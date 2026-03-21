@@ -1041,6 +1041,7 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
             prompt,
             max_turns=6,
             task_name="medication_adherence_check",
+            model=AUTONOMOUS_MODEL_LIGHT,
         )
     except Exception as e:
         logger.error("!!! Failed task: medication_adherence_check — %s", e)

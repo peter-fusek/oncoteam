@@ -2665,6 +2665,54 @@ async def api_document_webhook(request: Request) -> JSONResponse:
     return _cors_json({"status": "pipeline_started", "document_id": document_id}, request=request)
 
 
+async def api_trigger_agent(request: Request) -> JSONResponse:
+    """POST /api/internal/trigger-agent — manually trigger a full agent run.
+
+    Expects JSON body: {agent_id: str}
+    Launches the agent as a background task with full resources (no cooldown skip).
+    """
+    import asyncio
+
+    from .agent_registry import AGENT_REGISTRY
+
+    try:
+        body = await request.json()
+    except Exception:
+        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
+
+    agent_id = body.get("agent_id", "")
+    if agent_id not in AGENT_REGISTRY:
+        return _cors_json(
+            {"error": f"Unknown agent: {agent_id}", "available": list(AGENT_REGISTRY.keys())},
+            status_code=400,
+            request=request,
+        )
+
+    # Import task functions dynamically (same map as scheduler.py)
+    from .scheduler import _get_task_functions
+
+    task_functions = _get_task_functions()
+    func = task_functions.get(agent_id)
+    if func is None:
+        return _cors_json(
+            {"error": f"No runnable function for agent: {agent_id}"},
+            status_code=400,
+            request=request,
+        )
+
+    # Clear cooldown state so the agent runs unconditionally
+    try:
+        await oncofiles_client.set_agent_state(f"last_{agent_id}", {})
+        _logger.info("Cleared cooldown for %s", agent_id)
+    except Exception as e:
+        _logger.warning("Could not clear cooldown for %s: %s", agent_id, e)
+
+    asyncio.create_task(func())
+    _logger.info("Manually triggered agent: %s", agent_id)
+
+    return _cors_json({"status": "triggered", "agent_id": agent_id}, request=request)
+
+
 async def api_cors_preflight(request: Request) -> JSONResponse:
     """OPTIONS handler for CORS preflight on all /api/* routes."""
     return _cors_json({}, request=request)

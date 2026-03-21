@@ -50,6 +50,7 @@ from .dashboard_api import (
     api_status,
     api_timeline,
     api_toxicity,
+    api_trigger_agent,
     api_weight,
     api_whatsapp_chat,
 )
@@ -1011,6 +1012,9 @@ mcp.custom_route("/api/internal/whatsapp-chat", methods=["OPTIONS"])(api_cors_pr
 _doc_webhook = _auth_wrap(api_document_webhook)
 mcp.custom_route("/api/internal/document-webhook", methods=["POST"])(_doc_webhook)
 mcp.custom_route("/api/internal/document-webhook", methods=["OPTIONS"])(api_cors_preflight)
+_trigger_agent = _auth_wrap(api_trigger_agent)
+mcp.custom_route("/api/internal/trigger-agent", methods=["POST"])(_trigger_agent)
+mcp.custom_route("/api/internal/trigger-agent", methods=["OPTIONS"])(api_cors_preflight)
 
 
 # ── Entry point ─────────────────────────────────
