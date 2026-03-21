@@ -9,6 +9,17 @@ import pytest
 
 from oncoteam.dashboard_api import api_diagnostics
 
+_CB_CLOSED = {
+    "state": "closed",
+    "consecutive_failures": 0,
+    "threshold": 5,
+    "cooldown_remaining_s": 0,
+    "total_calls": 0,
+    "total_errors": 0,
+    "total_circuit_trips": 0,
+    "call_timeout_s": 20.0,
+}
+
 
 def _make_request(query_string: str = "") -> object:
     from starlette.datastructures import Headers, QueryParams
@@ -24,16 +35,7 @@ def _make_request(query_string: str = "") -> object:
 @pytest.mark.anyio
 @patch(
     "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
-    return_value={
-        "state": "closed",
-        "consecutive_failures": 0,
-        "threshold": 5,
-        "cooldown_remaining_s": 0,
-        "total_calls": 0,
-        "total_errors": 0,
-        "total_circuit_trips": 0,
-        "call_timeout_s": 20.0,
-    },
+    return_value=_CB_CLOSED,
 )
 @patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
@@ -65,16 +67,7 @@ async def test_diagnostics_all_healthy(
 @pytest.mark.anyio
 @patch(
     "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
-    return_value={
-        "state": "closed",
-        "consecutive_failures": 0,
-        "threshold": 5,
-        "cooldown_remaining_s": 0,
-        "total_calls": 0,
-        "total_errors": 0,
-        "total_circuit_trips": 0,
-        "call_timeout_s": 20.0,
-    },
+    return_value=_CB_CLOSED,
 )
 @patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
@@ -100,11 +93,17 @@ async def test_diagnostics_partial_failure(
 
 
 @pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    return_value=_CB_CLOSED,
+)
 @patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
-async def test_diagnostics_all_down(mock_events, mock_research, mock_convos, mock_activity):
+async def test_diagnostics_all_down(
+    mock_events, mock_research, mock_convos, mock_activity, _mock_cb
+):
     error = Exception("connection refused")
     mock_events.side_effect = error
     mock_research.side_effect = error
@@ -120,7 +119,11 @@ async def test_diagnostics_all_down(mock_events, mock_research, mock_convos, moc
 
 
 @pytest.mark.anyio
-async def test_diagnostics_has_cors():
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    return_value=_CB_CLOSED,
+)
+async def test_diagnostics_has_cors(_mock_cb):
     with (
         patch(
             "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
