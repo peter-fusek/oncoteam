@@ -64,6 +64,10 @@ uv run oncoteam-mcp    # stdio mode
 - `_CONTAMINATED_EVENT_IDS` in `dashboard_api.py` filters known bad data (IDs 19-21: placeholder labs 100x too low, ID 32: duplicate of 27). Tests must not use these IDs.
 - `_normalize_lab_values()` converts G/L → /µL for ANC (<30), PLT (<1000), ABS_LYMPH (<30), and maps HGB→hemoglobin
 - `api_labs` outlier detection flags CEA/CA_19_9 entries with >90% single-reading change as `suspects[]`
+- `oncofiles_client.py` has circuit breaker (5 fails → 30s cooldown), 20s per-call timeout, 0.5s retry backoff. `get_circuit_breaker_status()` exposes state for health endpoints.
+- Don't wrap `asyncio.gather(return_exceptions=True)` with `asyncio.wait_for` — timeout cancels ALL tasks, defeating partial results. Individual `call_oncofiles` already has 20s timeout.
+- `api_health_deep` and `api_diagnostics` include `circuit_breaker` status. Tests mocking diagnostics must also mock `get_circuit_breaker_status`.
+- RSS memory: `resource.getrusage` returns bytes on macOS, KB on Linux — use `sys.platform == "darwin"` check
 
 
 ## Key commands
