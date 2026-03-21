@@ -60,7 +60,10 @@ _TEST_TOOL_NAMES = ("e2e_test",)
 _TEST_AGENT_IDS = ("oncoteam-e2e",)
 _TEST_TAGS = ("e2e-test",)
 # Known contaminated event IDs (E2E test data that leaked into production — #85)
-_CONTAMINATED_EVENT_IDS = {22, 23, 24}
+# IDs 19-21: manually entered placeholder labs with CEA/CA19-9 values 100-1000x too low
+#   vs PDF-confirmed values. Feb 20 CEA=8.4 but Feb 27 PDF confirms CEA=1559.5. (#116)
+# ID 32: duplicate of ID 27 (same Feb 27 labs, same values)
+_CONTAMINATED_EVENT_IDS = {19, 20, 21, 22, 23, 24, 32}
 
 
 def _normalize_lab_values(meta: dict) -> dict:

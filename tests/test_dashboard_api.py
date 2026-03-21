@@ -1054,7 +1054,7 @@ async def test_api_sessions_defaults_clinical_for_ambiguous(mock_search):
     mock_search.return_value = {
         "entries": [
             {
-                "id": 20,
+                "id": 200,
                 "title": "Session: General discussion",
                 "content": "Talked about various topics.",
                 "created_at": "2026-03-10T10:00:00Z",
