@@ -231,7 +231,11 @@ async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
         )
 
     # RSS-based backoff — don't pile on when oncofiles memory is high.
-    await _check_rss_backoff()
+    try:
+        await _check_rss_backoff()
+    except ConnectionError:
+        _total_errors += 1
+        raise
 
     # Concurrency limiter — queue excess calls instead of piling on.
     sem = _get_semaphore()
