@@ -498,8 +498,58 @@ def get_patient(patient_id: str = DEFAULT_PATIENT_ID) -> PatientProfile:
     """Get a patient profile by ID. Returns Erika by default."""
     if patient_id in _patient_registry:
         return _patient_registry[patient_id]
-    # Future: load from oncofiles by patient_id
-    raise KeyError(f"Patient '{patient_id}' not found. Register via load_patient().")
+    raise KeyError(f"Patient '{patient_id}' not found. Register via register_patient().")
+
+
+def register_patient(
+    patient_id: str,
+    token: str,
+    profile: PatientProfile,
+    research_terms: list[str] | None = None,
+    recipients: dict[str, Recipient] | None = None,
+) -> PatientProfile:
+    """Register a new patient in the in-memory registry.
+
+    Args:
+        patient_id: Unique patient identifier (e.g. "jan_novak")
+        token: Dedicated oncofiles bearer token — scopes all data to this patient
+        profile: Patient profile with diagnosis, biomarkers, treatment plan
+        research_terms: Curated PubMed search terms (derived from diagnosis if None)
+        recipients: Care team recipients for WhatsApp (empty if None)
+    """
+    profile.patient_id = patient_id
+    _patient_registry[patient_id] = profile
+    _patient_tokens[patient_id] = token
+    _patient_research_terms[patient_id] = research_terms or _derive_research_terms(profile)
+    _patient_recipients[patient_id] = recipients or {}
+    return profile
+
+
+def _derive_research_terms(patient: PatientProfile) -> list[str]:
+    """Auto-generate PubMed search terms from a patient's profile."""
+    terms = []
+    dx = patient.diagnosis_description.lower()
+    regimen = patient.treatment_regimen
+
+    # Cancer type + treatment
+    if dx and regimen:
+        terms.append(f"{dx} {regimen} treatment")
+
+    # Biomarker-specific searches
+    for marker, value in patient.biomarkers.items():
+        if isinstance(value, str) and value.lower() not in ("wild-type", "negative", "false"):
+            terms.append(f"{marker} {value} {dx}")
+
+    # Treatment + side effects
+    if regimen:
+        terms.append(f"{regimen} toxicity management")
+        terms.append(f"{regimen} dose modification")
+
+    # General prognosis
+    if patient.staging:
+        terms.append(f"{dx} stage {patient.staging} prognosis")
+
+    return terms or [f"{dx} treatment"]
 
 
 def get_patient_token(patient_id: str = DEFAULT_PATIENT_ID) -> str | None:
