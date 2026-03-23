@@ -6,7 +6,7 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 592 tests
+uv run pytest          # 593 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
@@ -65,6 +65,11 @@ uv run oncoteam-mcp    # stdio mode
 - `_normalize_lab_values()` converts G/L → /µL for ANC (<30), PLT (<1000), ABS_LYMPH (<30), and maps HGB→hemoglobin
 - `api_labs` outlier detection flags CEA/CA_19_9 entries with >90% single-reading change as `suspects[]`
 - `oncofiles_client.py` has circuit breaker (5 fails → 30s cooldown), 20s per-call timeout, 0.5s retry backoff. `get_circuit_breaker_status()` exposes state for health endpoints.
+- `oncofiles_client.py` concurrency: max 3 parallel calls (semaphore), heavy queries (`search_conversations`, `search_documents`) max 1 concurrent. Excess calls queue, not reject.
+- `oncofiles_client.py` RSS backoff: checks oncofiles `/health` every 60s (throttled). RSS >= 400MB → 30s backoff, >= 450MB → 2min. Don't reduce `RSS_CHECK_INTERVAL` below 30s — per-call health checks cause dashboard proxy timeouts.
+- `api_whatsapp_chat` checks circuit breaker before calling Claude API — returns clear Slovak/English message if oncofiles is down, saving API cost.
+- Agent schedules are staggered to avoid morning pile-on: weekly_briefing 05:00, daily_cost 06:00, trial_monitor 07:45, daily_research 09:00, protocol_review Wed 11:30. Don't cluster agents within 30min of each other.
+- WhatsApp chat tests must mock `oncofiles_client.get_circuit_breaker_status` (return `{"state": "closed"}`).
 - Don't wrap `asyncio.gather(return_exceptions=True)` with `asyncio.wait_for` — timeout cancels ALL tasks, defeating partial results. Individual `call_oncofiles` already has 20s timeout.
 - `api_health_deep` and `api_diagnostics` include `circuit_breaker` status. Tests mocking diagnostics must also mock `get_circuit_breaker_status`.
 - RSS memory: `resource.getrusage` returns bytes on macOS, KB on Linux — use `sys.platform == "darwin"` check
@@ -83,7 +88,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Testing
 
-- `uv run pytest` — full suite (592 tests, ~2.3s)
+- `uv run pytest` — full suite (593 tests, ~2.3s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -96,7 +101,7 @@ uv run oncoteam-mcp    # stdio mode
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 592 tests, ruff clean
+- 593 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
