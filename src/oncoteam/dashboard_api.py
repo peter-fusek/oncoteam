@@ -2707,6 +2707,76 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
         )
 
 
+async def api_bug_report(request: Request) -> JSONResponse:
+    """POST /api/bug-report — create a GitHub issue from dashboard bug reporter.
+
+    Expects JSON: {description: str, url: str, route: str, viewport: str,
+                    role: str, locale: str, page_text?: str}
+    """
+    auth = _check_api_auth(request)
+    if auth:
+        return auth
+    try:
+        body = json.loads(await request.body())
+    except (json.JSONDecodeError, Exception):
+        return _cors_json({"error": "Invalid JSON"}, status_code=400)
+
+    description = body.get("description", "").strip()
+    if not description:
+        return _cors_json({"error": "description is required"}, status_code=400)
+
+    url = body.get("url", "")
+    route = body.get("route", "")
+    viewport = body.get("viewport", "")
+    role = body.get("role", "")
+    locale = body.get("locale", "")
+    page_text = body.get("page_text", "")[:2000]
+    user_agent = request.headers.get("user-agent", "")[:200]
+
+    from datetime import UTC, datetime
+
+    now_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    page_file = route.strip("/") or "index"
+
+    issue_body = (
+        f"## Bug Report\n\n"
+        f"**{description}**\n\n"
+        f"### Context\n"
+        f"| Field | Value |\n|-------|-------|\n"
+        f"| Page | `{route}` |\n"
+        f"| URL | {url} |\n"
+        f"| Viewport | {viewport} |\n"
+        f"| Role | {role} |\n"
+        f"| Locale | {locale} |\n"
+        f"| User Agent | {user_agent[:100]} |\n"
+        f"| Reported | {now_str} |\n\n"
+        f"### Page Content (truncated)\n"
+        f"<details>\n"
+        f"<summary>Visible text at time of report</summary>\n\n"
+        f"```\n{page_text}\n```\n"
+        f"</details>\n\n"
+        f"### For Claude Code\n"
+        f"- **File**: `dashboard/app/pages/{page_file}.vue`\n"
+        f"- **Repro**: `{url}` as `{role}` / `{locale}`\n"
+        f"- **Checklist**: [ ] Root cause [ ] Fix [ ] Test\n\n"
+        f"---\n*Reported via dashboard bug reporter*\n"
+    )
+
+    try:
+        from .github_client import create_issue
+
+        result = await create_issue(
+            repo="peter-fusek/oncoteam",
+            title=f"Bug: {description[:80]}",
+            body=issue_body,
+            labels=["bug"],
+        )
+        return _cors_json({"created": True, **result})
+    except Exception as e:
+        record_suppressed_error("api_bug_report", "create_issue", e)
+        return _cors_json({"error": str(e)}, status_code=502)
+
+
 async def api_document_webhook(request: Request) -> JSONResponse:
     """POST /api/internal/document-webhook — triggered by oncofiles on new upload.
 

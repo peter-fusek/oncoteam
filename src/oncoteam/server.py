@@ -30,6 +30,7 @@ from .dashboard_api import (
     api_autonomous_cost,
     api_autonomous_status,
     api_briefings,
+    api_bug_report,
     api_cors_preflight,
     api_cumulative_dose,
     api_detail,
@@ -1015,6 +1016,8 @@ mcp.custom_route("/api/internal/document-webhook", methods=["OPTIONS"])(api_cors
 _trigger_agent = _auth_wrap(api_trigger_agent)
 mcp.custom_route("/api/internal/trigger-agent", methods=["POST"])(_trigger_agent)
 mcp.custom_route("/api/internal/trigger-agent", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/bug-report", methods=["POST"])(_auth_wrap(api_bug_report))
+mcp.custom_route("/api/bug-report", methods=["OPTIONS"])(api_cors_preflight)
 
 
 # ── Entry point ─────────────────────────────────

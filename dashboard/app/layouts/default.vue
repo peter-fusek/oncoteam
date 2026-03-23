@@ -265,6 +265,7 @@ async function logout() {
     <main class="flex-1 overflow-auto p-4 md:p-6 pt-14 md:pt-6">
       <slot />
       <DrilldownPanel />
+      <BugReportButton />
     </main>
   </div>
 </template>
