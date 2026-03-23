@@ -2738,7 +2738,7 @@ async def api_bug_report(request: Request) -> JSONResponse:
     """POST /api/bug-report — create a GitHub issue from dashboard bug reporter.
 
     Expects JSON: {description: str, url: str, route: str, viewport: str,
-                    role: str, locale: str, page_text?: str}
+                    role: str, locale: str}
     """
     auth = _check_api_auth(request)
     if auth:
@@ -2757,7 +2757,7 @@ async def api_bug_report(request: Request) -> JSONResponse:
     viewport = body.get("viewport", "")
     role = body.get("role", "")
     locale = body.get("locale", "")
-    page_text = body.get("page_text", "")[:2000]
+    # page_text removed — auto-capture of DOM content is an injection risk.
     user_agent = request.headers.get("user-agent", "")[:200]
 
     from datetime import UTC, datetime
@@ -2777,11 +2777,6 @@ async def api_bug_report(request: Request) -> JSONResponse:
         f"| Locale | {locale} |\n"
         f"| User Agent | {user_agent[:100]} |\n"
         f"| Reported | {now_str} |\n\n"
-        f"### Page Content (truncated)\n"
-        f"<details>\n"
-        f"<summary>Visible text at time of report</summary>\n\n"
-        f"```\n{page_text}\n```\n"
-        f"</details>\n\n"
         f"### For Claude Code\n"
         f"- **File**: `dashboard/app/pages/{page_file}.vue`\n"
         f"- **Repro**: `{url}` as `{role}` / `{locale}`\n"

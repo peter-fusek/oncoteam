@@ -10,12 +10,9 @@ const submitted = ref(false)
 const issueUrl = ref('')
 const error = ref('')
 
-const pageText = ref('')
-
 function collectContext() {
-  // Grab visible text content (truncated)
-  const main = document.querySelector('main')
-  pageText.value = (main?.innerText || document.body.innerText || '').slice(0, 2000)
+  // NO auto-capture of page content — injection risk.
+  // User describes the bug in their own words.
 }
 
 async function submit() {
@@ -33,7 +30,7 @@ async function submit() {
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         role: activeRole.value,
         locale: locale.value,
-        page_text: pageText.value,
+        page_text: '',  // Removed: auto-capture is an injection risk
       },
     })
     if (result.created) {
