@@ -1,5 +1,5 @@
 import twilio from 'twilio'
-import { handleWhatsAppCommand } from '../../utils/whatsapp-commands'
+import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
 
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
@@ -95,7 +95,53 @@ export default defineEventHandler(async (event) => {
 
   // Process command and respond
   const oncoteamApiUrl = config.oncoteamApiUrl as string
-  const reply = await handleWhatsAppCommand(messageBody, oncoteamApiUrl)
+  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl)
+
+  if (result.type === 'async') {
+    // Conversational message — respond immediately, send Claude's answer async.
+    // Claude API takes 30-60s, exceeding Twilio's 15s webhook timeout.
+    const twilioFrom = `whatsapp:${config.twilioWhatsappFrom || '+14155238886'}`
+    const twilioTo = `whatsapp:${from}`
+
+    // Fire-and-forget: call Claude API and send response via Twilio REST API
+    ;(async () => {
+      try {
+        const apiKey = config.oncoteamApiKey || ''
+        const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+        const chatResult = await $fetch<{ response: string }>(`${oncoteamApiUrl}/api/internal/whatsapp-chat`, {
+          method: 'POST',
+          body: { message: result.message, lang: result.lang },
+          headers,
+        })
+        const reply = chatResult.response || 'Prepáčte, nepodarilo sa spracovať správu.'
+
+        // Send via Twilio REST API
+        const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
+        await client.messages.create({
+          from: twilioFrom,
+          to: twilioTo,
+          body: reply.slice(0, 1500),
+        })
+
+        // Log the exchange
+        $fetch(`${oncoteamApiUrl}/api/internal/log-whatsapp`, {
+          method: 'POST',
+          body: { phone: from, user_message: messageBody, bot_response: reply },
+          headers,
+        }).catch(() => {})
+      }
+      catch (err) {
+        console.error('[whatsapp-async] Failed to send Claude response:', err)
+      }
+    })()
+
+    // Immediate response to Twilio — acknowledge receipt
+    setResponseHeader(event, 'content-type', 'text/xml')
+    return twiml(result.lang === 'sk' ? 'Premýšľam... 🤔' : 'Thinking... 🤔')
+  }
+
+  // Synchronous command response
+  const reply = result.text
 
   // Log the WhatsApp exchange to oncofiles (fire-and-forget)
   try {

@@ -245,43 +245,24 @@ Prikazy:
 Posli prikaz a dostanes odpoved.`
 }
 
-export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string): Promise<string> {
+export type CommandResult =
+  | { type: 'reply'; text: string }
+  | { type: 'async'; lang: Lang; message: string }
+
+export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string): Promise<CommandResult> {
   const input = body.trim().toLowerCase().split(/\s+/)[0] || ''
   const lang = detectLang(input)
   const command = COMMAND_MAP[input]
 
   if (command === 'help') {
-    return helpText(lang)
+    return { type: 'reply', text: helpText(lang) }
   }
 
-  // Conversational fallback — pass unrecognized messages to Claude API
-  // Twilio webhook timeout is 15s — we must respond within that window.
+  // Conversational fallback — handled async (Claude API takes 30-60s,
+  // exceeds Twilio's 15s webhook timeout). Caller sends immediate TwiML
+  // ack, then sends Claude's response via Twilio REST API.
   if (!command) {
-    try {
-      const config = useRuntimeConfig()
-      const apiKey = config.oncoteamApiKey || ''
-      const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 12000)
-      try {
-        const result = await $fetch<{ response: string }>(`${oncoteamApiUrl}/api/internal/whatsapp-chat`, {
-          method: 'POST',
-          body: { message: body, lang },
-          headers,
-          signal: controller.signal,
-        })
-        return truncate(result.response || helpText(lang))
-      }
-      finally {
-        clearTimeout(timeout)
-      }
-    }
-    catch {
-      return t(L(
-        'Spracovanie trvá dlhšie. Skús jeden z príkazov:\n\n' + helpText('sk').split('\n').slice(2).join('\n'),
-        'Processing is taking longer. Try one of the commands:\n\n' + helpText('en').split('\n').slice(2).join('\n'),
-      ), lang)
-    }
+    return { type: 'async', lang, message: body }
   }
 
   const apiMap: Record<string, string> = {
@@ -296,7 +277,7 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
   }
 
   const endpoint = apiMap[command]
-  if (!endpoint) return helpText(lang)
+  if (!endpoint) return { type: 'reply', text: helpText(lang) }
 
   try {
     const sep = endpoint.includes('?') ? '&' : '?'
@@ -305,23 +286,28 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
     const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
     const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}${sep}lang=${lang}`, { headers })
 
+    let text: string
     switch (command) {
-      case 'labs': return formatLabs(data, lang)
-      case 'meds': return formatMeds(data, lang)
-      case 'briefing': return formatBriefing(data, lang)
-      case 'timeline': return formatTimeline(data, lang)
-      case 'status': return formatStatus(data, lang)
-      case 'cost': return formatCost(data, lang)
-      case 'trials': return formatTrials(data, lang)
-      case 'cycle': return formatCycle(data, lang)
-      default: return helpText(lang)
+      case 'labs': text = formatLabs(data, lang); break
+      case 'meds': text = formatMeds(data, lang); break
+      case 'briefing': text = formatBriefing(data, lang); break
+      case 'timeline': text = formatTimeline(data, lang); break
+      case 'status': text = formatStatus(data, lang); break
+      case 'cost': text = formatCost(data, lang); break
+      case 'trials': text = formatTrials(data, lang); break
+      case 'cycle': text = formatCycle(data, lang); break
+      default: text = helpText(lang)
     }
+    return { type: 'reply', text }
   }
   catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return t(L(
-      `⚠️ Chyba: ${message}\n\nSkus znova neskor alebo posli *pomoc*.`,
-      `⚠️ Error: ${message}\n\nTry again later or send *help*.`,
-    ), lang)
+    return {
+      type: 'reply',
+      text: t(L(
+        `⚠️ Chyba: ${message}\n\nSkus znova neskor alebo posli *pomoc*.`,
+        `⚠️ Error: ${message}\n\nTry again later or send *help*.`,
+      ), lang),
+    }
   }
 }
