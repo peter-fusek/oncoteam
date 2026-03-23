@@ -66,6 +66,7 @@ def _get_heavy_semaphore() -> asyncio.Semaphore:
         _heavy_semaphore = asyncio.Semaphore(1)
     return _heavy_semaphore
 
+
 # ── Telemetry ────────────────────────────────────────────────────────────
 _total_calls: int = 0
 _total_errors: int = 0
@@ -82,18 +83,13 @@ async def _check_rss_backoff() -> None:
     if _rss_backoff_until > now:
         remaining = _rss_backoff_until - now
         raise ConnectionError(
-            f"oncofiles RSS backoff — waiting {remaining:.0f}s "
-            f"(last RSS: {_last_rss_mb}MB)"
+            f"oncofiles RSS backoff — waiting {remaining:.0f}s (last RSS: {_last_rss_mb}MB)"
         )
 
     if not ONCOFILES_MCP_URL:
         return
 
-    base = (
-        ONCOFILES_MCP_URL.rsplit("/", 1)[0]
-        if "/" in ONCOFILES_MCP_URL
-        else ONCOFILES_MCP_URL
-    )
+    base = ONCOFILES_MCP_URL.rsplit("/", 1)[0] if "/" in ONCOFILES_MCP_URL else ONCOFILES_MCP_URL
     try:
         async with httpx.AsyncClient(timeout=5) as http:
             resp = await http.get(f"{base}/health")
@@ -110,10 +106,7 @@ async def _check_rss_backoff() -> None:
                             rss,
                             RSS_CRITICAL_MB,
                         )
-                        raise ConnectionError(
-                            f"oncofiles RSS {rss}MB critical — "
-                            f"backing off 120s"
-                        )
+                        raise ConnectionError(f"oncofiles RSS {rss}MB critical — backing off 120s")
                     elif rss >= RSS_WARN_MB:
                         _rss_backoff_until = now + 30
                         _total_rss_backoffs += 1
@@ -122,10 +115,7 @@ async def _check_rss_backoff() -> None:
                             rss,
                             RSS_WARN_MB,
                         )
-                        raise ConnectionError(
-                            f"oncofiles RSS {rss}MB high — "
-                            f"backing off 30s"
-                        )
+                        raise ConnectionError(f"oncofiles RSS {rss}MB high — backing off 30s")
     except ConnectionError:
         raise
     except Exception as e:
