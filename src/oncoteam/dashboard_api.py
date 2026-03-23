@@ -497,11 +497,16 @@ def _check_api_auth(request: Request) -> JSONResponse | None:
 
 
 # ── Rate limiter ─────────────────────────────────
-# Simple in-memory sliding window: max 120 authenticated requests per 60s.
-# Protects against runaway dashboard clients or misconfigured cron jobs.
+# Two-tier sliding window: general API + strict limit for expensive endpoints
+# that trigger Claude API calls (WhatsApp chat, agent triggers, document pipeline).
 _RATE_LIMIT_WINDOW = 60  # seconds
-_RATE_LIMIT_MAX = 120  # requests per window
+_RATE_LIMIT_MAX = 120  # general requests per window
 _rate_timestamps: collections.deque = collections.deque()
+
+# Expensive endpoints: Claude API calls cost real money
+_EXPENSIVE_RATE_WINDOW = 300  # 5 minutes
+_EXPENSIVE_RATE_MAX = 10  # max 10 Claude API calls per 5 min
+_expensive_timestamps: collections.deque = collections.deque()
 
 
 def _check_rate_limit() -> bool:
@@ -513,6 +518,18 @@ def _check_rate_limit() -> bool:
     if len(_rate_timestamps) >= _RATE_LIMIT_MAX:
         return False
     _rate_timestamps.append(now)
+    return True
+
+
+def _check_expensive_rate_limit() -> bool:
+    """Strict rate limit for endpoints that trigger Claude API calls."""
+    now = time.time()
+    cutoff = now - _EXPENSIVE_RATE_WINDOW
+    while _expensive_timestamps and _expensive_timestamps[0] < cutoff:
+        _expensive_timestamps.popleft()
+    if len(_expensive_timestamps) >= _EXPENSIVE_RATE_MAX:
+        return False
+    _expensive_timestamps.append(now)
     return True
 
 
@@ -2677,11 +2694,23 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
     auth = _check_api_auth(request)
     if auth:
         return auth
+    if not _check_expensive_rate_limit():
+        return _cors_json(
+            {"error": "Too many AI requests. Try again in a few minutes."},
+            status_code=429,
+            request=request,
+        )
     try:
         body = json.loads(await request.body())
         message = body.get("message", "")
         phone = body.get("phone", "unknown")
         lang = body.get("lang", "sk")
+
+        # Input validation: reject empty or excessively long messages
+        if not message or not message.strip():
+            return _cors_json({"error": "Empty message"}, status_code=400, request=request)
+        if len(message) > 2000:
+            message = message[:2000]  # Truncate to avoid inflated token costs
 
         if not ANTHROPIC_API_KEY:
             return _cors_json({"error": "AI not configured"}, status_code=500)
@@ -2809,6 +2838,13 @@ async def api_document_webhook(request: Request) -> JSONResponse:
 
     from .autonomous_tasks import _extract_timestamp, _get_state, run_document_pipeline
 
+    if not _check_expensive_rate_limit():
+        return _cors_json(
+            {"error": "Too many pipeline triggers. Try again later."},
+            status_code=429,
+            request=request,
+        )
+
     try:
         body = await request.json()
     except Exception:
@@ -2848,6 +2884,13 @@ async def api_trigger_agent(request: Request) -> JSONResponse:
     import asyncio
 
     from .agent_registry import AGENT_REGISTRY
+
+    if not _check_expensive_rate_limit():
+        return _cors_json(
+            {"error": "Too many agent triggers. Try again later."},
+            status_code=429,
+            request=request,
+        )
 
     try:
         body = await request.json()

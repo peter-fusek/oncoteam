@@ -31,3 +31,15 @@ def _set_cors_and_origins():
     with patch("oncoteam.dashboard_api.DASHBOARD_ALLOWED_ORIGINS", _TEST_ALLOWED_ORIGINS):
         yield
     mod._CURRENT_REQUEST = None
+
+
+@pytest.fixture(autouse=True)
+def _clear_rate_limiters():
+    """Reset rate limiter deques between tests to avoid cross-test pollution."""
+    import oncoteam.dashboard_api as mod
+
+    mod._rate_timestamps.clear()
+    mod._expensive_timestamps.clear()
+    yield
+    mod._rate_timestamps.clear()
+    mod._expensive_timestamps.clear()
