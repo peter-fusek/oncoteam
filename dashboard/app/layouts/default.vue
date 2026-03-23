@@ -4,8 +4,10 @@ const { showTestData } = useTestDataToggle()
 const { t, locale } = useI18n()
 const { setLocale } = useI18n()
 const { activeRole, roles, hasMultipleRoles, canAccess, landingPage } = useUserRole()
+const { activePatientId, activePatient, patients, hasMultiplePatients, canSwitchPatient, switchPatient } = useActivePatient()
 
 const mobileMenuOpen = ref(false)
+const patientSwitcherOpen = ref(false)
 const route = useRoute()
 const drilldown = useDrilldown()
 
@@ -90,6 +92,38 @@ async function logout() {
           <span class="text-sm text-white">+</span>
         </div>
         <span class="font-bold text-lg text-gray-900 tracking-tight">Oncoteam</span>
+      </div>
+
+      <!-- Patient switcher (advocate with multiple patients) -->
+      <div v-if="canSwitchPatient && hasMultiplePatients" class="px-3 pb-2">
+        <div ref="patientSwitcherRef" class="relative">
+          <button
+            class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 transition-colors hover:border-gray-300"
+            @click="patientSwitcherOpen = !patientSwitcherOpen"
+          >
+            <span class="truncate">{{ activePatient?.name || 'Patient' }}</span>
+            <UIcon name="i-lucide-chevrons-up-down" class="w-3 h-3 opacity-50 shrink-0" />
+          </button>
+          <div
+            v-if="patientSwitcherOpen"
+            class="absolute top-full left-0 right-0 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg z-10 overflow-hidden"
+          >
+            <button
+              v-for="p in patients"
+              :key="p.id"
+              class="w-full flex flex-col items-start px-2.5 py-1.5 text-xs transition-colors hover:bg-gray-50"
+              :class="p.id === activePatientId ? 'text-gray-900 font-medium' : 'text-gray-500'"
+              @click="switchPatient(p.id); patientSwitcherOpen = false"
+            >
+              <span>{{ p.name }}</span>
+              <span class="text-[10px] opacity-60">{{ p.diagnosis }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Single patient label (when only one patient) -->
+      <div v-else-if="canSwitchPatient" class="px-3 pb-1">
+        <span class="text-[10px] text-gray-400 uppercase tracking-wider">{{ activePatient?.name }}</span>
       </div>
 
       <!-- Role switcher -->

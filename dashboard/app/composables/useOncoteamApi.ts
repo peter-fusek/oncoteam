@@ -1,11 +1,13 @@
 export function useOncoteamApi() {
   const { showTestData } = useTestDataToggle()
   const { locale } = useI18n()
+  const { activePatientId } = useActivePatient()
 
   function fetchApi<T>(path: string | Ref<string> | (() => string), opts?: Record<string, unknown>) {
     const query = computed(() => {
       const q: Record<string, string> = { lang: locale.value }
       if (showTestData.value) q.show_test = 'true'
+      if (activePatientId.value) q.patient_id = activePatientId.value
       return q
     })
 
