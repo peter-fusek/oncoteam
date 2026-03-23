@@ -77,7 +77,7 @@ const tabs = computed(() => [
         v-for="tab in tabs"
         :key="tab.key"
         :icon="tab.icon"
-        :variant="activeTab === tab.key ? 'solid' : 'ghost'"
+        :variant="activeTab === tab.key ? 'solid' : 'soft'"
         :color="activeTab === tab.key ? 'primary' : 'neutral'"
         size="xs"
         @click="activeTab = tab.key"

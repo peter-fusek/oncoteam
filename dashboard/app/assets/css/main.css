@@ -17,8 +17,8 @@
   --clinical-primary: #0B7285;
   --clinical-primary-light: #E0F4F7;
   --clinical-sidebar: #F1F3F5;
-  --clinical-sidebar-active: rgba(11, 114, 133, 0.08);
-  --clinical-sidebar-hover: rgba(0, 0, 0, 0.03);
+  --clinical-sidebar-active: rgba(11, 114, 133, 0.12);
+  --clinical-sidebar-hover: rgba(0, 0, 0, 0.05);
 }
 
 /* ── Global Typography ──────────────────────────── */

@@ -2,12 +2,73 @@ from __future__ import annotations
 
 import asyncio
 import re
+from dataclasses import dataclass
 from datetime import date
 
 from . import oncofiles_client
 from .activity_logger import record_suppressed_error
 from .locale import L, resolve
 from .models import PatientProfile
+
+# ── Recipient Registry ────────────────────────────
+# WhatsApp message recipients with role-aware formatting.
+
+
+@dataclass(frozen=True)
+class Recipient:
+    """A WhatsApp message recipient with role and language preference."""
+
+    name: str
+    role: str  # "patient", "caregiver", "physician"
+    phone: str
+    language: str = "sk"  # ISO 639-1
+
+
+# Pre-populated care team for current patient.
+RECIPIENTS: dict[str, Recipient] = {
+    "caregiver": Recipient(
+        name="Peter",
+        role="caregiver",
+        phone="+421905123456",
+        language="sk",
+    ),
+    "physician": Recipient(
+        name="MUDr. Porsok",
+        role="physician",
+        phone="",  # not used — physician gets dashboard only
+        language="sk",
+    ),
+}
+
+# Default recipient for all agent WhatsApp messages.
+DEFAULT_RECIPIENT = RECIPIENTS["caregiver"]
+
+
+def format_whatsapp_header(
+    title: str,
+    recipient: Recipient | None = None,
+    date_str: str = "",
+) -> str:
+    """Format a standardized WhatsApp message header.
+
+    Returns lines like:
+        *Pre-cycle check (cyklus 3)*
+        Pre: Peter (opatrovateľ)
+        Dátum: 2026-03-23
+    """
+    r = recipient or DEFAULT_RECIPIENT
+    role_labels = {
+        "caregiver": "opatrovateľ" if r.language == "sk" else "caregiver",
+        "physician": "lekár" if r.language == "sk" else "physician",
+        "patient": "pacient" if r.language == "sk" else "patient",
+    }
+    lines = [f"*{title}*"]
+    lines.append(f"Pre: {r.name} ({role_labels.get(r.role, r.role)})")
+    if date_str:
+        lines.append(f"Dátum: {date_str}")
+    lines.append("")  # blank line before content
+    return "\n".join(lines)
+
 
 # Therapy type categories for display grouping and badges
 THERAPY_CATEGORIES: dict[str, dict] = {

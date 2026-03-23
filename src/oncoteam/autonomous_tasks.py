@@ -13,7 +13,7 @@ from .agent_registry import get_cooldown
 from .autonomous import run_autonomous_task
 from .clinical_protocol import WATCHED_TRIALS, format_pre_cycle_checklist, get_milestones_for_cycle
 from .config import AUTONOMOUS_MODEL_LIGHT
-from .patient_context import PATIENT, RESEARCH_TERMS
+from .patient_context import PATIENT, RESEARCH_TERMS, format_whatsapp_header
 
 
 async def _should_skip(task_name: str) -> bool:
@@ -199,12 +199,12 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
     try:
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
-            lines = [f"*Pre-cycle check (cyklus {cycle})*\n"]
-            summary = response_text[:1500]
-            if len(response_text) > 1500:
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
+            header = format_whatsapp_header(f"Kontrola pred cyklom {cycle}", date_str=today)
+            summary = response_text[:1400]
+            if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            lines.append(summary)
-            await _send_whatsapp("\n".join(lines))
+            await _send_whatsapp(header + summary, recipient="caregiver")
     except Exception as e:
         record_suppressed_error("pre_cycle_check", "whatsapp_notify", e)
 
@@ -400,14 +400,12 @@ Prioritize trials at centers within practical travel distance from Bratislava:
     try:
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
-            # Build a concise WhatsApp summary
-            lines = ["*Klinické štúdie — EU sken*\n"]
-            # Extract key info — truncate for WhatsApp
-            summary = response_text[:1500]
-            if len(response_text) > 1500:
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
+            header = format_whatsapp_header("Klinické štúdie — EU sken", date_str=today)
+            summary = response_text[:1400]
+            if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            lines.append(summary)
-            await _send_whatsapp("\n".join(lines))
+            await _send_whatsapp(header + summary, recipient="caregiver")
     except Exception as e:
         record_suppressed_error("trial_monitor", "whatsapp_notify", e)
 
@@ -515,12 +513,12 @@ Structure the briefing with clear sections:
     try:
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
-            lines = ["*Týždenný briefing*\n"]
-            summary = response_text[:1500]
-            if len(response_text) > 1500:
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
+            header = format_whatsapp_header("Týždenný briefing", date_str=today)
+            summary = response_text[:1400]
+            if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            lines.append(summary)
-            await _send_whatsapp("\n".join(lines))
+            await _send_whatsapp(header + summary, recipient="caregiver")
     except Exception as e:
         record_suppressed_error("weekly_briefing", "whatsapp_notify", e)
 
@@ -597,10 +595,12 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
                     if plt is not None and plt < 75000:
                         alerts.append(f"PLT = {plt:.0f} (< 75000) — hold chemo")
                     if alerts:
-                        msg = f"*Lab Safety Alert ({latest_date})*\n\n" + "\n".join(
-                            f"- {a}" for a in alerts
+                        header = format_whatsapp_header(
+                            f"Lab Safety Alert ({latest_date})",
+                            date_str=latest_date,
                         )
-                        await _send_whatsapp(msg)
+                        body = "\n".join(f"- {a}" for a in alerts)
+                        await _send_whatsapp(header + body, recipient="caregiver")
     except Exception as e:
         record_suppressed_error("lab_sync", "whatsapp_safety_alert", e)
 
@@ -915,10 +915,16 @@ async def run_document_pipeline(document_id: int, metadata: dict | None = None) 
         try:
             scan_response = scan_result.get("response", "")
             if any(kw in scan_response.lower() for kw in ("safety", "alert", "hold", "critical")):
+                today = datetime.now(UTC).strftime("%Y-%m-%d")
+                header = format_whatsapp_header(
+                    "Nový dokument — bezpečnostné upozornenie",
+                    date_str=today,
+                )
                 await _send_whatsapp(
-                    f"*Nový dokument (pipeline)*\n\n"
-                    f"Dokument {document_id} ({doc_type}) — nájdené bezpečnostné upozornenie.\n"
-                    f"Pozrite dashboard pre detaily."
+                    header
+                    + f"Dokument {document_id} ({doc_type}) — nájdené bezpečnostné upozornenie.\n"
+                    f"Pozrite dashboard pre detaily.",
+                    recipient="caregiver",
                 )
         except Exception as e:
             record_suppressed_error("document_pipeline", "whatsapp_notify", e)
@@ -1012,12 +1018,12 @@ Vyhni sa zbytočným odborným detailom.
     try:
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
-            lines = ["*Týždenná správa pre rodinu*\n"]
-            summary = response_text[:1500]
-            if len(response_text) > 1500:
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
+            header = format_whatsapp_header("Týždenná správa pre rodinu", date_str=today)
+            summary = response_text[:1400]
+            if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            lines.append(summary)
-            await _send_whatsapp("\n".join(lines))
+            await _send_whatsapp(header + summary, recipient="caregiver")
     except Exception as e:
         record_suppressed_error("family_update", "whatsapp_notify", e)
 
@@ -1066,7 +1072,9 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
     try:
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
-            await _send_whatsapp(f"*Kontrola liekov*\n\n{response_text[:1500]}")
+            today = datetime.now(UTC).strftime("%Y-%m-%d")
+            header = format_whatsapp_header("Kontrola liekov", date_str=today)
+            await _send_whatsapp(header + response_text[:1400], recipient="caregiver")
     except Exception as e:
         record_suppressed_error("medication_adherence_check", "whatsapp_notify", e)
 
@@ -1116,17 +1124,26 @@ Structure for MDT presentation:
     return result
 
 
-async def _send_whatsapp(msg: str) -> dict:
-    """Send a WhatsApp message via dashboard internal endpoint."""
+async def _send_whatsapp(msg: str, recipient: str | None = None) -> dict:
+    """Send a WhatsApp message via dashboard internal endpoint.
+
+    Args:
+        msg: Message body (header should already be formatted).
+        recipient: Optional recipient key from RECIPIENTS registry.
+                   Logged for audit but routing is handled by Twilio config.
+    """
     import httpx
 
     from .config import DASHBOARD_API_KEY
 
     dashboard_url = "https://dashboard.oncoteam.cloud"
+    payload: dict = {"message": msg}
+    if recipient:
+        payload["recipient"] = recipient
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(
             f"{dashboard_url}/api/internal/whatsapp-notify",
-            json={"message": msg},
+            json=payload,
             headers={"Authorization": f"Bearer {DASHBOARD_API_KEY}"},
         )
         resp.raise_for_status()
@@ -1230,7 +1247,9 @@ async def run_daily_cost_report() -> dict:
     try:
         now = datetime.now(UTC)
         month_key = now.strftime("%Y-%m")
-        lines = [f"*Oncoteam Ranný prehľad*\n{now.strftime('%Y-%m-%d')}\n"]
+        today = now.strftime("%Y-%m-%d")
+        header = format_whatsapp_header("Oncoteam Ranný prehľad", date_str=today)
+        lines = [header]
 
         # --- Labs section ---
         try:
@@ -1301,7 +1320,7 @@ async def run_daily_cost_report() -> dict:
             lines.append("⚠️ Nízky zostatok!")
 
         msg = "\n".join(lines)
-        result_data = await _send_whatsapp(msg)
+        result_data = await _send_whatsapp(msg, recipient="caregiver")
 
         sent = result_data.get("sent", 0)
         logger.info("<<< Completed task: daily_cost_report — sent to %d", sent)

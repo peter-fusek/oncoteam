@@ -105,7 +105,7 @@ const drilldown = useDrilldown()
       <div class="flex items-center gap-2">
         <UButtonGroup>
           <UButton
-            :variant="sortBy === 'relevance' ? 'solid' : 'ghost'"
+            :variant="sortBy === 'relevance' ? 'solid' : 'soft'"
             size="xs"
             color="neutral"
             @click="sortBy = 'relevance'"
@@ -113,7 +113,7 @@ const drilldown = useDrilldown()
             {{ $t('research.sortRelevance') }}
           </UButton>
           <UButton
-            :variant="sortBy === 'date' ? 'solid' : 'ghost'"
+            :variant="sortBy === 'date' ? 'solid' : 'soft'"
             size="xs"
             color="neutral"
             @click="sortBy = 'date'"
