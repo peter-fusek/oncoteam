@@ -105,34 +105,49 @@ export default defineEventHandler(async (event) => {
 
     // Fire-and-forget: call Claude API and send response via Twilio REST API
     ;(async () => {
+      const apiKey = config.oncoteamApiKey || ''
+      const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+
+      // Step 1: Get Claude response
+      let reply: string
       try {
-        const apiKey = config.oncoteamApiKey || ''
-        const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+        console.log('[whatsapp-async] Calling Claude API for:', result.message.slice(0, 50))
         const chatResult = await $fetch<{ response: string }>(`${oncoteamApiUrl}/api/internal/whatsapp-chat`, {
           method: 'POST',
           body: { message: result.message, lang: result.lang },
           headers,
         })
-        const reply = chatResult.response || 'Prepáčte, nepodarilo sa spracovať správu.'
+        reply = chatResult.response || 'Prepáčte, nepodarilo sa spracovať správu.'
+        console.log('[whatsapp-async] Claude responded:', reply.slice(0, 80))
+      }
+      catch (err) {
+        console.error('[whatsapp-async] Claude API failed:', err)
+        reply = result.lang === 'sk'
+          ? 'Prepáčte, nepodarilo sa spracovať správu. Skúste príkaz ako *labky* alebo *pomoc*.'
+          : 'Sorry, could not process your message. Try a command like *labs* or *help*.'
+      }
 
-        // Send via Twilio REST API
+      // Step 2: Send reply via Twilio REST API
+      try {
+        console.log('[whatsapp-async] Sending via Twilio:', twilioFrom, '->', twilioTo)
         const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
-        await client.messages.create({
+        const msg = await client.messages.create({
           from: twilioFrom,
           to: twilioTo,
           body: reply.slice(0, 1500),
         })
-
-        // Log the exchange
-        $fetch(`${oncoteamApiUrl}/api/internal/log-whatsapp`, {
-          method: 'POST',
-          body: { phone: from, user_message: messageBody, bot_response: reply },
-          headers,
-        }).catch(() => {})
+        console.log('[whatsapp-async] Twilio sent OK, SID:', msg.sid)
       }
       catch (err) {
-        console.error('[whatsapp-async] Failed to send Claude response:', err)
+        console.error('[whatsapp-async] Twilio send failed:', err)
       }
+
+      // Step 3: Log exchange
+      $fetch(`${oncoteamApiUrl}/api/internal/log-whatsapp`, {
+        method: 'POST',
+        body: { phone: from, user_message: messageBody, bot_response: reply },
+        headers,
+      }).catch(() => {})
     })()
 
     // Immediate response to Twilio — acknowledge receipt
