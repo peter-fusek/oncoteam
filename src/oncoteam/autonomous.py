@@ -20,7 +20,15 @@ from .clinical_protocol import (
 )
 from .config import ANTHROPIC_API_KEY, AUTONOMOUS_COST_LIMIT, AUTONOMOUS_MODEL
 from .eligibility import check_eligibility
-from .patient_context import PATIENT, RESEARCH_TERMS, get_patient_profile_text
+from .patient_context import (
+    PATIENT,
+    RESEARCH_TERMS,
+    build_biomarker_rules,
+    build_patient_profile_text,
+    get_patient,
+    get_patient_profile_text,
+    get_patient_research_terms,
+)
 
 logger = logging.getLogger("oncoteam.autonomous")
 
@@ -92,6 +100,62 @@ ALL findings are for physician review only. You do NOT communicate with patients
 - Structure output as markdown with clear sections.
 - End every briefing with "Questions for Oncologist" section.
 """
+
+
+def build_system_prompt(patient_id: str = "erika") -> str:
+    """Build a patient-specific system prompt for autonomous agents.
+
+    For Erika, returns the same hardcoded prompt as AUTONOMOUS_SYSTEM_PROMPT.
+    For other patients, generates dynamically from their profile.
+    """
+    if patient_id == "erika":
+        return AUTONOMOUS_SYSTEM_PROMPT
+
+    patient = get_patient(patient_id)
+    research_terms = get_patient_research_terms(patient_id)
+
+    return f"""\
+You are an autonomous medical research agent for cancer treatment management.
+ALL findings are for physician review only. You do NOT communicate with patients.
+
+{build_patient_profile_text(patient)}
+
+{build_biomarker_rules(patient)}
+
+# Clinical Protocol (ESMO 2022, NCCN, ASCO)
+## Lab Safety Thresholds
+{json.dumps(LAB_SAFETY_THRESHOLDS, indent=2)}
+
+## Dose Modification Rules
+{json.dumps(DOSE_MODIFICATION_RULES, indent=2)}
+
+## Treatment Milestones
+{json.dumps(TREATMENT_MILESTONES, indent=2)}
+
+## Monitoring Schedule
+{json.dumps(MONITORING_SCHEDULE, indent=2)}
+
+## Safety Flags
+{json.dumps(SAFETY_FLAGS, indent=2)}
+
+## Second-Line Options (if progression)
+{json.dumps(SECOND_LINE_OPTIONS, indent=2)}
+
+## Watched Trials
+{json.dumps(WATCHED_TRIALS, indent=2)}
+
+# Research Terms
+{json.dumps(research_terms, indent=2)}
+
+# Instructions
+- Only use data from PubMed (NCBI) and ClinicalTrials.gov.
+- If uncertain about a biomarker match or eligibility, flag as NEEDS_PHYSICIAN_REVIEW.
+- Always reference ESMO/NCCN guideline version when making treatment-related statements.
+- Structure output as markdown with clear sections.
+- End every briefing with "Questions for Oncologist" section.
+- Patient ID: {patient_id} — all data queries must scope to this patient.
+"""
+
 
 # Tool definitions for Claude API
 TOOLS = [
@@ -571,6 +635,7 @@ async def run_autonomous_task(
     task_name: str = "autonomous",
     model: str | None = None,
     thinking_budget: int | None = None,
+    patient_id: str = "erika",
 ) -> dict:
     """Run an autonomous agent loop with extended thinking.
 
@@ -578,6 +643,7 @@ async def run_autonomous_task(
         model: Override model (default: AUTONOMOUS_MODEL from config).
         thinking_budget: Extended thinking budget. None = auto (10000 for
             Sonnet, disabled for Haiku). Set to 0 to disable thinking.
+        patient_id: Patient to run for (default: "erika").
 
     Returns dict with thinking, tool_calls, response, token counts, cost.
     """
@@ -626,7 +692,7 @@ async def run_autonomous_task(
             create_kwargs: dict = {
                 "model": effective_model,
                 "max_tokens": 16000 if use_thinking else 8192,
-                "system": AUTONOMOUS_SYSTEM_PROMPT,
+                "system": build_system_prompt(patient_id),
                 "tools": TOOLS,
                 "messages": messages,
             }

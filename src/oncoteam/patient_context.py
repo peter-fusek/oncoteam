@@ -86,6 +86,7 @@ THERAPY_CATEGORIES: dict[str, dict] = {
 
 
 PATIENT = PatientProfile(
+    patient_id="erika",
     name="Erika Fusekova",
     diagnosis_code="C18.7",
     diagnosis_description="AdenoCa colon sigmoideum, G3, mCRC",
@@ -472,6 +473,94 @@ def get_context_tags() -> list[str]:
     for marker, value in PATIENT.biomarkers.items():
         tags.append(f"{marker}_{value}")
     return tags
+
+
+# ── Patient Registry ──────────────────────────────
+# In-memory registry of loaded patient profiles. Erika is pre-seeded.
+# Future patients load from oncofiles on first access.
+
+_patient_registry: dict[str, PatientProfile] = {"erika": PATIENT}
+
+# Per-patient research terms. Erika's are hardcoded; others derived from profile.
+_patient_research_terms: dict[str, list[str]] = {"erika": RESEARCH_TERMS}
+
+# Per-patient recipients. Erika's are hardcoded; others loaded from oncofiles.
+_patient_recipients: dict[str, dict[str, Recipient]] = {"erika": RECIPIENTS}
+
+DEFAULT_PATIENT_ID = "erika"
+
+
+def get_patient(patient_id: str = DEFAULT_PATIENT_ID) -> PatientProfile:
+    """Get a patient profile by ID. Returns Erika by default."""
+    if patient_id in _patient_registry:
+        return _patient_registry[patient_id]
+    # Future: load from oncofiles by patient_id
+    raise KeyError(f"Patient '{patient_id}' not found. Register via load_patient().")
+
+
+def get_patient_recipients(
+    patient_id: str = DEFAULT_PATIENT_ID,
+) -> dict[str, Recipient]:
+    """Get recipients for a patient."""
+    return _patient_recipients.get(patient_id, {})
+
+
+def get_patient_research_terms(
+    patient_id: str = DEFAULT_PATIENT_ID,
+) -> list[str]:
+    """Get curated research terms for a patient."""
+    return _patient_research_terms.get(patient_id, [])
+
+
+def build_patient_profile_text(patient: PatientProfile) -> str:
+    """Build formatted profile text for any patient (not just Erika)."""
+    biomarkers = "\n".join(f"  - {k}: {v}" for k, v in patient.biomarkers.items())
+    hospitals = ", ".join(patient.hospitals)
+    metastases = ", ".join(patient.metastases) if patient.metastases else "none"
+    comorbidities = ", ".join(patient.comorbidities) if patient.comorbidities else "none"
+    excluded = "\n".join(f"  - {k}: {v}" for k, v in patient.excluded_therapies.items())
+    parts = [
+        "# Patient Profile\n",
+        f"- **Patient ID**: {patient.patient_id}",
+        f"- **Name**: {patient.name}",
+        f"- **Diagnosis**: {patient.diagnosis_description} ({patient.diagnosis_code})",
+        f"- **Staging**: {patient.staging}" if patient.staging else "",
+        f"- **Histology**: {patient.histology}" if patient.histology else "",
+        f"- **Tumor site**: {patient.tumor_site}",
+        f"- **Biomarkers**:\n{biomarkers}",
+        f"- **Treatment**: {patient.treatment_regimen}"
+        + (f" (cycle {patient.current_cycle})" if patient.current_cycle else ""),
+        f"- **ECOG**: {patient.ecog}" if patient.ecog else "",
+        f"- **Metastases**: {metastases}",
+        f"- **Comorbidities**: {comorbidities}",
+        f"- **Hospitals**: {hospitals}",
+        f"- **Treating physician**: {patient.treating_physician}"
+        if patient.treating_physician
+        else "",
+        f"- **Excluded therapies**:\n{excluded}" if patient.excluded_therapies else "",
+        f"- **Notes**: {patient.notes}",
+    ]
+    return "\n".join(line for line in parts if line) + "\n"
+
+
+def build_biomarker_rules(patient: PatientProfile) -> str:
+    """Generate biomarker safety rules from a patient's profile.
+
+    These are the NEVER-violate rules that go into the system prompt.
+    Derived dynamically from the patient's biomarkers and excluded therapies.
+    """
+    rules = ["# Biomarker Rules (NEVER violate)"]
+    for marker, value in patient.biomarkers.items():
+        rules.append(f"- {marker}: {value}")
+    if patient.excluded_therapies:
+        rules.append("\nExcluded therapies (NEVER suggest):")
+        for therapy, reason in patient.excluded_therapies.items():
+            rules.append(f"- {therapy}: {reason}")
+    if patient.comorbidities:
+        rules.append("\nComorbidity alerts:")
+        for c in patient.comorbidities:
+            rules.append(f"- {c}")
+    return "\n".join(rules)
 
 
 # ── Dynamic genetic profile ────────────────────

@@ -49,6 +49,7 @@ class ClinicalTrial(BaseModel):
 
 
 class PatientProfile(BaseModel):
+    patient_id: str = ""  # Unique ID (e.g. "erika"). Empty = legacy single-patient.
     name: str
     diagnosis_code: str
     diagnosis_description: str
