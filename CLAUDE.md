@@ -73,6 +73,12 @@ uv run oncoteam-mcp    # stdio mode
 - Don't wrap `asyncio.gather(return_exceptions=True)` with `asyncio.wait_for` — timeout cancels ALL tasks, defeating partial results. Individual `call_oncofiles` already has 20s timeout.
 - `api_health_deep` and `api_diagnostics` include `circuit_breaker` status. Tests mocking diagnostics must also mock `get_circuit_breaker_status`.
 - RSS memory: `resource.getrusage` returns bytes on macOS, KB on Linux — use `sys.platform == "darwin"` check
+- WhatsApp conversational (non-command) messages use async pattern: immediate "Premýšľam..." TwiML, then Claude response via Twilio REST API. Commands (labky, lieky, etc.) respond synchronously.
+- `NUXT_TWILIO_WHATSAPP_FROM` env var may include `whatsapp:` prefix — code handles both formats to prevent double-wrapping.
+- Multi-patient: `patient_context.py` has `PatientRegistry` (in-memory dict), `get_patient(patient_id)`, `register_patient()`, `build_system_prompt(patient_id)`. Erika is `patient_id="erika"`. Oncofiles bearer token scopes data per-patient — no need to pass patient_id to oncofiles calls.
+- `run_autonomous_task()` accepts `patient_id` param — uses `build_system_prompt(patient_id)` instead of hardcoded `AUTONOMOUS_SYSTEM_PROMPT`.
+- Dashboard `useActivePatient` composable tracks active patient. `useOncoteamApi` includes `patient_id` in all API queries. Patient switcher in sidebar (advocate-only, activates when >1 patient).
+- **NEVER apply Erika's biomarker rules (KRAS G12S, anti-EGFR excluded) to other patients** — each patient has different cancer type, biomarkers, drug contraindications. Use `build_biomarker_rules(patient)` to generate per-patient rules.
 
 
 ## Key commands
