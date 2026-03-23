@@ -855,7 +855,7 @@ async def create_improvement_issue(
     """Create a GitHub issue for a usage-driven improvement idea.
 
     Args:
-        repo: GitHub repo ("instarea-sk/oncoteam" or "instarea-sk/oncofiles")
+        repo: GitHub repo ("peter-fusek/oncoteam" or "peter-fusek/oncofiles")
         title: Issue title (concise)
         body: Markdown body with context
         labels: GitHub labels (default: ["enhancement"])

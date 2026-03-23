@@ -41,5 +41,5 @@
 
 - Website: https://oncoteam.cloud
 - Dashboard: https://dashboard.oncoteam.cloud
-- GitHub: https://github.com/instarea-sk
+- GitHub: https://github.com/peter-fusek
 - Author: Peter Fusek (https://www.linkedin.com/in/peterfusek/)

@@ -252,9 +252,9 @@ class TestSummarizeInput:
     def test_create_improvement_issue(self):
         result = _summarize_input(
             "create_improvement_issue",
-            {"repo": "instarea-sk/oncoteam", "title": "Fix something"},
+            {"repo": "peter-fusek/oncoteam", "title": "Fix something"},
         )
-        assert "instarea-sk/oncoteam" in result
+        assert "peter-fusek/oncoteam" in result
 
     def test_empty_inputs(self):
         assert _summarize_input("search_pubmed", {}) == ""
