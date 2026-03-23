@@ -481,6 +481,10 @@ def get_context_tags() -> list[str]:
 
 _patient_registry: dict[str, PatientProfile] = {"erika": PATIENT}
 
+# Per-patient bearer tokens for oncofiles. Token scopes all data automatically.
+# Erika uses the default ONCOFILES_MCP_TOKEN from config.
+_patient_tokens: dict[str, str] = {}  # patient_id → bearer token
+
 # Per-patient research terms. Erika's are hardcoded; others derived from profile.
 _patient_research_terms: dict[str, list[str]] = {"erika": RESEARCH_TERMS}
 
@@ -496,6 +500,16 @@ def get_patient(patient_id: str = DEFAULT_PATIENT_ID) -> PatientProfile:
         return _patient_registry[patient_id]
     # Future: load from oncofiles by patient_id
     raise KeyError(f"Patient '{patient_id}' not found. Register via load_patient().")
+
+
+def get_patient_token(patient_id: str = DEFAULT_PATIENT_ID) -> str | None:
+    """Get the oncofiles bearer token for a patient.
+
+    Returns None for Erika (uses default ONCOFILES_MCP_TOKEN from config).
+    For other patients, returns their dedicated token which scopes all
+    oncofiles data to that patient automatically.
+    """
+    return _patient_tokens.get(patient_id)
 
 
 def get_patient_recipients(
