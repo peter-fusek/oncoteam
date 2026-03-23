@@ -32,8 +32,6 @@ async def test_cumulative_dose_returns_correct_dose():
 @pytest.mark.anyio
 async def test_cumulative_dose_flags_thresholds():
     """With cycle 6 (510 mg/m²), should reach the 400 threshold."""
-    from unittest.mock import patch
-
     from oncoteam.patient_context import PATIENT
 
     original_cycle = PATIENT.current_cycle
