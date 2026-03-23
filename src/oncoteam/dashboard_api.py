@@ -2659,6 +2659,16 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
         if not ANTHROPIC_API_KEY:
             return _cors_json({"error": "AI not configured"}, status_code=500)
 
+        # Fail fast if oncofiles is down — don't waste API call on doomed tool use
+        cb = oncofiles_client.get_circuit_breaker_status()
+        if cb["state"] == "open":
+            msg = (
+                "Databáza je dočasne nedostupná. Skúste znova o minútu."
+                if lang == "sk"
+                else "Database temporarily unavailable. Try again in a minute."
+            )
+            return _cors_json({"response": msg, "cost": 0})
+
         prompt = (
             f"User message via WhatsApp (phone: {phone}, lang: {lang}):\n\n"
             f"{message}\n\n"

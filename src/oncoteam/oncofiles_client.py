@@ -6,6 +6,7 @@ import json
 import logging
 import time
 
+import httpx
 from fastmcp import Client
 from fastmcp.client.transports import StreamableHttpTransport
 
@@ -33,16 +34,110 @@ _circuit_open_until: float = 0.0
 # Per-call timeout (seconds) — prevents indefinite hangs when oncofiles is slow.
 CALL_TIMEOUT = 20.0
 
+# ── Concurrency limiter ─────────────────────────────────────────────────
+# Limits parallel oncofiles calls to prevent OOM on the server side.
+# Excess calls queue behind the semaphore rather than piling on.
+MAX_CONCURRENT_CALLS = 3
+_concurrency_semaphore: asyncio.Semaphore | None = None
+
+# Heavy queries (search_conversations, search_documents) get their own
+# stricter semaphore — max 1 concurrent to avoid server OOM.
+_HEAVY_TOOLS = frozenset({"search_conversations", "search_documents"})
+_heavy_semaphore: asyncio.Semaphore | None = None
+
+# ── RSS-based backoff ──────────────────────────────────────────────────
+# Check oncofiles /health before calls; back off if memory is high.
+RSS_WARN_MB = 400  # wait 30s before retry
+RSS_CRITICAL_MB = 450  # back off 2 min
+_rss_backoff_until: float = 0.0
+_total_rss_backoffs: int = 0
+
+
+def _get_semaphore() -> asyncio.Semaphore:
+    global _concurrency_semaphore
+    if _concurrency_semaphore is None:
+        _concurrency_semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
+    return _concurrency_semaphore
+
+
+def _get_heavy_semaphore() -> asyncio.Semaphore:
+    global _heavy_semaphore
+    if _heavy_semaphore is None:
+        _heavy_semaphore = asyncio.Semaphore(1)
+    return _heavy_semaphore
+
 # ── Telemetry ────────────────────────────────────────────────────────────
 _total_calls: int = 0
 _total_errors: int = 0
 _total_circuit_trips: int = 0
+_total_queued: int = 0
+_last_rss_mb: float | None = None
+
+
+async def _check_rss_backoff() -> None:
+    """Check oncofiles /health RSS and set backoff if memory is high."""
+    global _rss_backoff_until, _total_rss_backoffs, _last_rss_mb
+
+    now = time.monotonic()
+    if _rss_backoff_until > now:
+        remaining = _rss_backoff_until - now
+        raise ConnectionError(
+            f"oncofiles RSS backoff — waiting {remaining:.0f}s "
+            f"(last RSS: {_last_rss_mb}MB)"
+        )
+
+    if not ONCOFILES_MCP_URL:
+        return
+
+    base = (
+        ONCOFILES_MCP_URL.rsplit("/", 1)[0]
+        if "/" in ONCOFILES_MCP_URL
+        else ONCOFILES_MCP_URL
+    )
+    try:
+        async with httpx.AsyncClient(timeout=5) as http:
+            resp = await http.get(f"{base}/health")
+            if resp.status_code == 200:
+                data = resp.json()
+                rss = data.get("memory_rss_mb")
+                if rss is not None:
+                    _last_rss_mb = rss
+                    if rss >= RSS_CRITICAL_MB:
+                        _rss_backoff_until = now + 120
+                        _total_rss_backoffs += 1
+                        _logger.warning(
+                            "oncofiles RSS %dMB >= %dMB — backing off 2min",
+                            rss,
+                            RSS_CRITICAL_MB,
+                        )
+                        raise ConnectionError(
+                            f"oncofiles RSS {rss}MB critical — "
+                            f"backing off 120s"
+                        )
+                    elif rss >= RSS_WARN_MB:
+                        _rss_backoff_until = now + 30
+                        _total_rss_backoffs += 1
+                        _logger.warning(
+                            "oncofiles RSS %dMB >= %dMB — backing off 30s",
+                            rss,
+                            RSS_WARN_MB,
+                        )
+                        raise ConnectionError(
+                            f"oncofiles RSS {rss}MB high — "
+                            f"backing off 30s"
+                        )
+    except ConnectionError:
+        raise
+    except Exception as e:
+        _logger.debug("RSS check failed (non-blocking): %s", e)
 
 
 def get_circuit_breaker_status() -> dict:
-    """Return circuit breaker state for health/diagnostics endpoints."""
+    """Return circuit breaker + concurrency + RSS state for health/diagnostics."""
     now = time.monotonic()
     is_open = _circuit_open_until > now
+    rss_backing_off = _rss_backoff_until > now
+    sem = _get_semaphore()
     return {
         "state": "open" if is_open else "closed",
         "consecutive_failures": _circuit_failures,
@@ -51,7 +146,16 @@ def get_circuit_breaker_status() -> dict:
         "total_calls": _total_calls,
         "total_errors": _total_errors,
         "total_circuit_trips": _total_circuit_trips,
+        "total_queued": _total_queued,
+        "total_rss_backoffs": _total_rss_backoffs,
         "call_timeout_s": CALL_TIMEOUT,
+        "max_concurrent": MAX_CONCURRENT_CALLS,
+        "available_slots": sem._value if hasattr(sem, "_value") else None,
+        "oncofiles_rss_mb": _last_rss_mb,
+        "rss_backoff_active": rss_backing_off,
+        "rss_backoff_remaining_s": (
+            round(max(0, _rss_backoff_until - now), 1) if rss_backing_off else 0
+        ),
     }
 
 
@@ -107,10 +211,11 @@ def _parse_result(result: object) -> dict | list | str:
 async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
     """Call an oncofiles MCP tool, reusing a persistent connection.
 
-    Includes circuit breaker, per-call timeout, and retry with backoff.
+    Includes RSS backoff, concurrency limiter, heavy-query gate,
+    circuit breaker, per-call timeout, and retry with backoff.
     """
     global _circuit_failures, _circuit_open_until, _total_calls, _total_errors
-    global _total_circuit_trips
+    global _total_circuit_trips, _total_queued
 
     _total_calls += 1
 
@@ -124,34 +229,48 @@ async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
             f"(after {CIRCUIT_BREAKER_THRESHOLD} consecutive failures)"
         )
 
-    for attempt in range(2):
-        try:
-            client = await _get_client()
-            result = await asyncio.wait_for(
-                client.call_tool(tool_name, arguments),
-                timeout=CALL_TIMEOUT,
-            )
-            # Success — reset circuit breaker.
-            _circuit_failures = 0
-            return _parse_result(result)
-        except Exception:
-            if attempt == 0:
-                # Connection may have dropped — invalidate, backoff, retry once.
-                await _invalidate_client()
-                await asyncio.sleep(0.5)  # brief backoff before retry
-                continue
-            # Second failure — update circuit breaker.
-            _total_errors += 1
-            _circuit_failures += 1
-            if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
-                _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
-                _total_circuit_trips += 1
-                _logger.error(
-                    "oncofiles circuit breaker OPEN after %d failures — blocking calls for %ds",
-                    _circuit_failures,
-                    CIRCUIT_BREAKER_COOLDOWN,
-                )
-            raise
+    # RSS-based backoff — don't pile on when oncofiles memory is high.
+    await _check_rss_backoff()
+
+    # Concurrency limiter — queue excess calls instead of piling on.
+    sem = _get_semaphore()
+    is_heavy = tool_name in _HEAVY_TOOLS
+    if sem.locked():
+        _total_queued += 1
+        _logger.debug("oncofiles call queued (%s) — max %d", tool_name, MAX_CONCURRENT_CALLS)
+
+    async with sem:
+        # Heavy queries get an extra gate — max 1 concurrent.
+        heavy_ctx = _get_heavy_semaphore() if is_heavy else contextlib.nullcontext()
+        async with heavy_ctx:
+            for attempt in range(2):
+                try:
+                    client = await _get_client()
+                    result = await asyncio.wait_for(
+                        client.call_tool(tool_name, arguments),
+                        timeout=CALL_TIMEOUT,
+                    )
+                    # Success — reset circuit breaker.
+                    _circuit_failures = 0
+                    return _parse_result(result)
+                except Exception:
+                    if attempt == 0:
+                        await _invalidate_client()
+                        await asyncio.sleep(0.5)
+                        continue
+                    # Second failure — update circuit breaker.
+                    _total_errors += 1
+                    _circuit_failures += 1
+                    if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
+                        _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
+                        _total_circuit_trips += 1
+                        _logger.error(
+                            "oncofiles circuit breaker OPEN after %d failures "
+                            "— blocking calls for %ds",
+                            _circuit_failures,
+                            CIRCUIT_BREAKER_COOLDOWN,
+                        )
+                    raise
     raise RuntimeError("call_oncofiles: unreachable")
 
 
