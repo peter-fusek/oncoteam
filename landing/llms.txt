@@ -1,45 +1,48 @@
 # Oncoteam
 
-> Your always-ready AI team for cancer treatment management. Your data lives in Google Drive, Gmail, and Calendar — Oncofiles organizes it, Oncoteam makes it work for you. 18 autonomous agents find treatments, check protocols, explain everything in patient and doctor language, prepare you for appointments, inform your family, and search compatible clinical trials. Stay in control, even as a medicine amateur.
+> When someone you love has cancer, you become their advocate. Oncoteam is your AI ally — it helps you understand lab results, ask the right questions, find clinical trials across Europe and the US, and make sure nothing gets overlooked. All from your phone.
 
-## What Oncoteam Does
+## The Story
 
-- Analyzes lab results with trend tracking, inflammation indices (SII, Ne/Ly ratio), and pre-cycle safety checks
-- Matches clinical trials from ClinicalTrials.gov and PubMed across 14 European countries based on molecular profile (KRAS, NRAS, BRAF, HER2, MSI/MMR status)
-- Tracks treatment protocols with dose modification rules, cumulative dose thresholds, and cycle delay criteria
-- Sends proactive WhatsApp safety alerts and weekly briefings to you and your family
-- Processes medical documents (lab reports, pathology, imaging, genetics) with OCR and structured data extraction
-- Provides bilingual interface (Slovak/English) with medical dictionary and plain-language explanations
-- Generates family-friendly treatment summaries
-- Applies medical standards (DeVita textbook, NCCN protocols) as automatic second opinion
-- Prepares you for doctor appointments with the right questions and situation understanding
+Oncoteam was built by Peter Fusek — a software engineer, not a doctor — when his wife Erika was diagnosed with metastatic colorectal cancer. Buried in lab results, genetic reports, and treatment protocols he didn't understand, he built what he needed: a tool to keep up with a situation that moves faster than any one person can track.
 
-## Multi-Channel Access
-
-- **Dashboard**: Full data view, dose tracking, dictionary, trends, agent observatory
-- **Claude.ai / ChatGPT**: Deep analysis, Q&A, research via MCP protocol
-- **WhatsApp**: Quick alerts, briefings, ask-on-the-go for patient and family
-- **Autonomous agents**: 18 background agents monitoring, researching, and notifying 24/7
-
-## Architecture
-
-- Built on the Model Context Protocol (MCP) — open, interoperable standard for AI tool use
-- 18 specialized autonomous agents running clinical and research tasks
-- 24 MCP tools for PubMed search, clinical trial matching, lab analysis, and document processing
-- Two-layer architecture: Oncofiles (data/persistence layer) + Oncoteam (intelligence layer)
-- Patient data stored in patient-owned Google Drive (GDPR compliant)
-- Dashboard built with Nuxt 4, backend with Python/FastMCP
+Alongside Oncoteam (the intelligence layer), he built [Oncofiles](https://github.com/peter-fusek/oncofiles) — the data layer that organizes all medical documents from Google Drive. Oncofiles structures and connects them. Oncoteam turns them into understanding, questions, and action.
 
 ## Who It's For
 
-- Cancer patients managing their own treatment data
-- Family caregivers coordinating care
-- Patient advocates navigating the healthcare system
-- Healthcare professionals seeking AI-assisted treatment management
+- Cancer patients who want to understand and track their own treatment
+- Family members acting as patient advocates — spouses, children, siblings
+- Care providers coordinating between doctors, family, and the patient
+- Anyone who needs a second opinion backed by medical textbooks and the latest research — not to replace the doctor, but because even the best oncologist has hundreds of patients and fifteen minutes per visit
+
+## What Oncoteam Does
+
+- Explains lab results in plain language with trend charts, safety thresholds, and cycle-over-cycle comparisons
+- Prepares personalized questions before every oncologist visit based on your latest data
+- Searches clinical trials from ClinicalTrials.gov and EU registries across 14 European countries, matched to your molecular profile
+- Cross-references your treatment with medical textbooks (DeVita), NCCN protocols, and latest PubMed research
+- Tracks treatment trends — tumor markers, blood counts, inflammation indices — so you can see if treatment is working
+- Sends WhatsApp alerts for safety issues, weekly briefings, and trial updates
+- Provides bilingual interface (Slovak/English) with medical and plain-language modes
+- Generates family-friendly treatment summaries shareable via WhatsApp or print
+- Stores all patient data in your own Google Drive (GDPR compliant)
+
+## Access
+
+- **Dashboard**: Visual overview of treatment, trends, timelines — https://dashboard.oncoteam.cloud
+- **WhatsApp**: Chat anytime for quick answers, summaries, and alerts
+- **Claude.ai / ChatGPT**: Deep analysis and Q&A via MCP protocol
+
+## Architecture
+
+- Built on the Model Context Protocol (MCP) — open standard for AI tool integration
+- Two-layer architecture: Oncofiles (data/persistence) + Oncoteam (intelligence)
+- Patient data stored in patient-owned Google Drive
+- Dashboard built with Nuxt 4, backend with Python/FastMCP
 
 ## Links
 
 - Website: https://oncoteam.cloud
 - Dashboard: https://dashboard.oncoteam.cloud
-- GitHub: https://github.com/peter-fusek
+- GitHub: https://github.com/peter-fusek/oncoteam
 - Author: Peter Fusek (https://www.linkedin.com/in/peterfusek/)

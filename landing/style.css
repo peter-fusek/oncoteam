@@ -206,56 +206,130 @@ body {
   border-radius: 7px;
 }
 
-/* ── Problem / Solution ──────────────────────── */
-.problem-solution { padding: 90px 0; }
+/* ── Story ───────────────────────────────────── */
+.story {
+  padding: 90px 0;
+  background: var(--bg);
+}
 
-.ps-grid {
+.story .section-title {
+  text-align: left;
+  margin-bottom: 28px;
+}
+
+.story-content {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.story-text p {
+  color: var(--text-light);
+  font-size: 1rem;
+  line-height: 1.85;
+  margin-bottom: 18px;
+}
+
+.story-text p:last-child {
+  margin-bottom: 0;
+}
+
+.story-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(13,115,84,0.3);
+  transition: border-color 0.2s ease;
+}
+
+.story-link:hover {
+  border-color: var(--primary);
+}
+
+/* ── Manifesto ───────────────────────────────── */
+.manifesto {
+  padding: 64px 0;
+  background: var(--bg-alt);
+  border-top: 1px solid var(--border-light);
+}
+
+.manifesto-quote {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px;
+  text-align: center;
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  line-height: 1.85;
+  color: var(--text-light);
+  font-style: italic;
+  position: relative;
+}
+
+.manifesto-quote::before {
+  content: '\201C';
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 4rem;
+  color: var(--primary);
+  opacity: 0.2;
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-style: normal;
+}
+
+/* ── Reality ─────────────────────────────────── */
+.reality {
+  padding: 100px 0;
+  background: var(--bg-warm);
+}
+
+.reality .section-title { margin-bottom: 8px; }
+
+.reality-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 28px;
+  gap: 24px;
 }
 
-.ps-card {
-  padding: 40px 36px;
+.reality-card {
+  padding: 36px 32px;
   border-radius: var(--radius);
-  position: relative;
-  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow);
+  transition: all 0.25s ease;
 }
 
-.ps-card::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
+.reality-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
-.ps-card h2 {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-size: 1.4rem;
-  font-weight: 400;
-  margin-bottom: 14px;
+.reality-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.reality-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 10px;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 
-.ps-card p {
+.reality-card p {
   color: var(--text-light);
-  line-height: 1.75;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  line-height: 1.7;
 }
-
-.problem {
-  background: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%);
-  border: 1px solid rgba(239,68,68,0.1);
-}
-.problem::after { background: #ef4444; }
-
-.solution {
-  background: linear-gradient(135deg, var(--primary-light) 0%, #f0fdf4 100%);
-  border: 1px solid rgba(13,115,84,0.1);
-}
-.solution::after { background: var(--primary); }
 
 /* ── Stats ───────────────────────────────────── */
 .stats {
@@ -330,7 +404,7 @@ body {
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
@@ -482,9 +556,16 @@ body {
 .contact-sub {
   color: var(--text-light);
   max-width: 560px;
-  margin: 0 auto 40px;
+  margin: 0 auto 12px;
   line-height: 1.7;
   font-size: 0.95rem;
+}
+
+.contact-author {
+  text-align: center;
+  color: var(--text-light);
+  font-size: 0.95rem;
+  margin: 0 auto 40px;
 }
 
 .contact-links {
@@ -574,7 +655,7 @@ body {
 
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 768px) {
-  .ps-grid,
+  .reality-grid,
   .features-grid,
   .steps,
   .privacy-grid {
@@ -585,7 +666,8 @@ body {
   .section-title { font-size: 1.7rem; }
   .steps::before { display: none; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  .features, .how-it-works, .problem-solution, .contact, .privacy { padding: 70px 0; }
+  .features, .how-it-works, .reality, .contact, .privacy { padding: 70px 0; }
+  .manifesto { padding: 48px 0; }
 }
 
 @media (max-width: 480px) {

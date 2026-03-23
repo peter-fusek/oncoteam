@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Oncoteam — AI-Powered Cancer Treatment Management</title>
-  <meta name="description" content="Your always-ready AI team for cancer treatment. 18 autonomous agents find treatments, check protocols, prepare you for appointments, inform your family, and search compatible clinical trials. Works with Claude.ai, ChatGPT, WhatsApp, and a full dashboard.">
-  <meta property="og:title" content="Oncoteam — AI-Powered Cancer Treatment Management">
-  <meta property="og:description" content="18 AI agents that find treatments, check protocols, prepare appointments, and inform your family. Works with Claude.ai, ChatGPT, and WhatsApp.">
+  <title>Oncoteam — Your AI Ally in Cancer Treatment</title>
+  <meta name="description" content="When someone you love has cancer, you become their advocate. Oncoteam helps you understand lab results, ask the right questions, find clinical trials across Europe and the US, and make sure nothing gets overlooked — all from your phone.">
+  <meta property="og:title" content="Oncoteam — Your AI Ally in Cancer Treatment">
+  <meta property="og:description" content="When someone you love has cancer, you become their advocate. Oncoteam helps you understand, ask, and act — so nothing gets missed.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://oncoteam.cloud">
   <meta property="og:image" content="https://oncoteam.cloud/og-image.png">
@@ -16,8 +16,8 @@
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="sk_SK">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Oncoteam — AI-Powered Cancer Treatment Management">
-  <meta name="twitter:description" content="18 AI agents that find treatments, check protocols, prepare appointments, and inform your family. Works with Claude.ai, ChatGPT, and WhatsApp.">
+  <meta name="twitter:title" content="Oncoteam — Your AI Ally in Cancer Treatment">
+  <meta name="twitter:description" content="When someone you love has cancer, you become their advocate. Oncoteam helps you understand, ask, and act — so nothing gets missed.">
   <meta name="twitter:image" content="https://oncoteam.cloud/og-image.png">
   <meta name="google-site-verification" content="0doOCc0v04xgk-nAT7-jV95WZk5vwibCQPMRBe9Oczk" />
   <link rel="canonical" href="https://oncoteam.cloud">
@@ -30,7 +30,7 @@
     "applicationCategory": "MedicalApplication",
     "applicationSubCategory": "Cancer Treatment Management",
     "operatingSystem": "Web",
-    "description": "Your always-ready AI team for cancer treatment. 18 autonomous agents find treatments, check protocols, prepare appointments, inform your family, and search compatible clinical trials. Works with Claude.ai, ChatGPT, WhatsApp, and a full dashboard.",
+    "description": "AI-powered patient advocacy tool that helps cancer patients and their families understand treatment, track lab trends, find clinical trials across Europe and the US, and prepare for oncologist visits.",
     "url": "https://oncoteam.cloud",
     "image": "https://oncoteam.cloud/og-image.png",
     "author": {
@@ -45,18 +45,16 @@
       "priceCurrency": "EUR"
     },
     "featureList": [
-      "18 autonomous AI agents for treatment management",
-      "Multi-channel access: Claude.ai, ChatGPT, WhatsApp, dashboard",
-      "Clinical trial matching across 14 EU countries",
-      "Molecular profile-aware eligibility checking (KRAS, NRAS, BRAF, HER2, MSI)",
-      "Lab result tracking with trend analysis and safety checks",
-      "Medical knowledge base: DeVita textbook, NCCN protocols",
-      "Dose tracking and cumulative toxicity monitoring",
-      "Proactive WhatsApp safety alerts and family updates",
-      "Autonomous document processing with OCR",
-      "GDPR-compliant patient-owned Google Drive storage",
-      "Full AI transparency: see every prompt, tool call, and decision",
-      "Bilingual interface (Slovak/English)"
+      "Lab result interpretation with trend analysis and safety checks",
+      "Clinical trial matching across Europe and the US",
+      "Molecular profile-aware eligibility checking",
+      "Appointment preparation with suggested questions",
+      "Second opinion backed by medical textbooks and protocols",
+      "Bilingual medical dictionary (plain language and medical terminology)",
+      "WhatsApp chat for on-the-go access",
+      "Treatment dashboard with visual trends",
+      "Family-friendly treatment summaries",
+      "GDPR-compliant patient-owned data storage"
     ]
   },
   {
@@ -75,7 +73,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Language switcher -->
+  <!-- Navigation -->
   <nav class="top-nav">
     <div class="container nav-container">
       <div class="logo">oncoteam</div>
@@ -93,26 +91,71 @@
   <!-- Hero -->
   <header class="hero">
     <div class="container">
-      <h1 data-i18n="hero.title">AI-Powered Cancer Treatment Management</h1>
-      <p class="hero-sub" data-i18n="hero.subtitle">Your always-ready team of 18 AI agents that find treatments, check protocols, prepare you for appointments, inform your family, and search compatible trials — so you stay in control, even as a medicine amateur.</p>
+      <h1 data-i18n="hero.title">When someone you love has cancer, you become their advocate.</h1>
+      <p class="hero-sub" data-i18n="hero.subtitle">Oncoteam helps you understand the treatment, ask the right questions, find clinical trials, and make sure nothing gets overlooked — all from your phone.</p>
       <div class="hero-cta">
-        <a href="#contact" class="btn btn-primary" data-i18n="hero.cta">Get in Touch</a>
-        <a href="#features" class="btn btn-secondary" data-i18n="hero.learn">Learn More</a>
+        <a href="#how" class="btn btn-primary" data-i18n="hero.cta">See How It Works</a>
+        <a href="#why" class="btn btn-secondary" data-i18n="hero.learn">Why You Need This</a>
       </div>
     </div>
   </header>
 
-  <!-- Problem / Solution -->
-  <section class="problem-solution">
+  <!-- Our Story -->
+  <section class="story">
     <div class="container">
-      <div class="ps-grid">
-        <div class="ps-card problem">
-          <h2 data-i18n="problem.title">The Problem</h2>
-          <p data-i18n="problem.text">Cancer patients and their families face an overwhelming flood of medical data — lab results, imaging reports, genetic tests, treatment protocols, clinical trial options. Making sense of it all while fighting the disease is an impossible burden.</p>
+      <div class="story-content">
+        <h2 class="section-title" data-i18n="story.title">Born from Real Life</h2>
+        <div class="story-text">
+          <p data-i18n="story.p1">When Erika was diagnosed with metastatic colorectal cancer, her husband Peter — a software engineer, not a doctor — found himself buried in lab results, genetic reports, and treatment protocols he didn't understand. Every oncologist visit felt too short. Every new test raised questions he didn't know how to ask.</p>
+          <p data-i18n="story.p2">So he built Oncoteam. Not as a replacement for their oncologist, but as a tool to help him keep up — to understand the numbers, prepare the right questions, track what's changing, and search for clinical trials that no single doctor has time to systematically monitor across Europe and the US.</p>
+          <p data-i18n="story.p3">Alongside Oncoteam, he built <a href="https://github.com/peter-fusek/oncofiles" class="story-link">Oncofiles</a> — the data layer that organizes all medical documents from Google Drive: lab results, pathology reports, CT scans, genetic tests. Oncofiles structures and connects them. Oncoteam makes them useful — it's the intelligence layer that turns raw medical data into understanding, questions, and action.</p>
         </div>
-        <div class="ps-card solution">
-          <h2 data-i18n="solution.title">Our Solution</h2>
-          <p data-i18n="solution.text">Your data lives in Google Drive, Gmail, and Calendar. Oncofiles organizes it. Oncoteam makes it work for you — autonomous agents that explain everything in patient and doctor language, show trends, track doses, challenge your doctor with the right questions, and apply medical standards like DeVita textbooks as a second opinion. Chat via Claude.ai, ChatGPT, or WhatsApp.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Manifesto -->
+  <section class="manifesto">
+    <div class="container">
+      <blockquote class="manifesto-quote">
+        <p data-i18n="manifesto.text">This is not a replacement for your oncologist. It's a tool that helps you — the patient, the spouse, the son, the daughter — keep up with a situation that moves faster than any one person can track. Not because you don't trust your doctor, but because even the best doctor has hundreds of patients and fifteen minutes per visit.</p>
+      </blockquote>
+    </div>
+  </section>
+
+  <!-- Why — The Reality -->
+  <section id="why" class="reality">
+    <div class="container">
+      <h2 class="section-title" data-i18n="reality.title">The Reality You're Facing</h2>
+      <p class="section-subtitle" data-i18n="reality.subtitle">None of this is anyone's fault. It's just the reality of modern oncology.</p>
+      <div class="reality-grid">
+        <div class="reality-card">
+          <div class="reality-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3 data-i18n="reality.hundreds.title">Hundreds of patients, one doctor</h3>
+          <p data-i18n="reality.hundreds.text">Your oncologist is excellent — but they care for hundreds of patients. It's humanly impossible to keep every detail of every case in their head during a fifteen-minute appointment.</p>
+        </div>
+        <div class="reality-card">
+          <div class="reality-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+          </div>
+          <h3 data-i18n="reality.trials.title">New trials published every day</h3>
+          <p data-i18n="reality.trials.text">Clinical trials that could match your molecular profile open every week — not just locally, but across Europe and the US. No human can systematically search and evaluate them all, personalized to your case, on a daily basis.</p>
+        </div>
+        <div class="reality-card">
+          <div class="reality-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <h3 data-i18n="reality.data.title">An avalanche of medical data</h3>
+          <p data-i18n="reality.data.text">Lab results, CT scans, pathology reports, genetic tests, treatment protocols — the paperwork piles up fast. Understanding what it means, how it connects, and what's changing over time is a full-time job.</p>
+        </div>
+        <div class="reality-card">
+          <div class="reality-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3 data-i18n="reality.time.title">Treatment evolves, questions multiply</h3>
+          <p data-i18n="reality.time.text">As treatment progresses, the situation changes cycle by cycle. New side effects, dose adjustments, shifting biomarkers. You need to know what to ask at the next appointment — and you need that answer now, not in three weeks.</p>
         </div>
       </div>
     </div>
@@ -123,20 +166,20 @@
     <div class="container">
       <div class="stats-grid">
         <div class="stat">
-          <div class="stat-num">18</div>
-          <div class="stat-label" data-i18n="stats.agents">Autonomous Agents</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num">24</div>
-          <div class="stat-label" data-i18n="stats.tools">MCP Tools</div>
-        </div>
-        <div class="stat">
           <div class="stat-num">14</div>
-          <div class="stat-label" data-i18n="stats.countries">EU Countries Monitored</div>
+          <div class="stat-label" data-i18n="stats.countries">European Countries Searched</div>
         </div>
         <div class="stat">
-          <div class="stat-num">592</div>
-          <div class="stat-label" data-i18n="stats.tests">Automated Tests</div>
+          <div class="stat-num">24/7</div>
+          <div class="stat-label" data-i18n="stats.monitoring">Trial Monitoring</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">2</div>
+          <div class="stat-label" data-i18n="stats.languages">Languages (Medical + Plain)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">1</div>
+          <div class="stat-label" data-i18n="stats.phone">Phone Is All You Need</div>
         </div>
       </div>
     </div>
@@ -145,125 +188,88 @@
   <!-- Features -->
   <section id="features" class="features">
     <div class="container">
-      <h2 class="section-title" data-i18n="features.title">What Oncoteam Does</h2>
+      <h2 class="section-title" data-i18n="features.title">What You Get</h2>
+      <p class="section-subtitle" data-i18n="features.subtitle">Everything a patient advocate needs, explained in language you choose.</p>
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">📊</div>
-          <h3 data-i18n="features.dashboard.title">Treatment Dashboard</h3>
-          <p data-i18n="features.dashboard.text">All your medical data in one place — labs, imaging, medications, treatment timeline. Bilingual interface (Slovak/English).</p>
+          <h3 data-i18n="features.labs.title">Understand Your Lab Results</h3>
+          <p data-i18n="features.labs.text">See what every number means, whether it's improving or worsening, and how it compares to previous cycles. Inflammation indices, safety thresholds, and trend charts — in plain language or medical terminology, one click apart.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💡</div>
+          <h3 data-i18n="features.questions.title">Ask the Right Questions</h3>
+          <p data-i18n="features.questions.text">Before every oncologist visit, get a personalized list of questions based on the latest lab results, treatment stage, and any changes since the last appointment. Walk in prepared, not overwhelmed.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🔬</div>
-          <h3 data-i18n="features.labs.title">Lab Analysis</h3>
-          <p data-i18n="features.labs.text">Automated lab result interpretation with reference ranges, trend analysis, inflammation indices (SII, Ne/Ly ratio), and pre-cycle safety checks.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🧬</div>
-          <h3 data-i18n="features.trials.title">Clinical Trial Matching</h3>
-          <p data-i18n="features.trials.text">Searches ClinicalTrials.gov and PubMed for trials matching your molecular profile. Checks eligibility based on your biomarkers, prior treatments, and location.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🤖</div>
-          <h3 data-i18n="features.agent.title">Autonomous Agent</h3>
-          <p data-i18n="features.agent.text">Runs autonomously to scan new documents, extract data, update your treatment timeline, and flag anything that needs attention — even when you're not looking.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📋</div>
-          <h3 data-i18n="features.protocol.title">Protocol Tracking</h3>
-          <p data-i18n="features.protocol.text">Embedded clinical protocol with dose modification rules, cumulative dose thresholds, toxicity grading, and cycle delay criteria.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🌍</div>
-          <h3 data-i18n="features.euTrials.title">EU-Wide Trial Search</h3>
-          <p data-i18n="features.euTrials.text">Monitors clinical trials across 14 European countries — from Vienna to Barcelona. Prioritized by travel distance, checked every 6 hours.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📱</div>
-          <h3 data-i18n="features.whatsapp.title">Proactive WhatsApp Alerts</h3>
-          <p data-i18n="features.whatsapp.text">Safety alerts, weekly briefings, and trial updates delivered to your phone via WhatsApp — so nothing critical gets missed.</p>
+          <h3 data-i18n="features.trials.title">Find Clinical Trials You Qualify For</h3>
+          <p data-i18n="features.trials.text">Automatically searches ClinicalTrials.gov and EU registries for trials matching your molecular profile, location, and treatment history. From your local hospital to Vienna, Barcelona, or Boston — nothing overlooked.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">📖</div>
-          <h3 data-i18n="features.dictionary.title">Medical Dictionary</h3>
-          <p data-i18n="features.dictionary.text">Built-in bilingual dictionary with professional and plain-language explanations of every medical term. Searchable from any page.</p>
+          <h3 data-i18n="features.opinion.title">A Second Opinion, Always Available</h3>
+          <p data-i18n="features.opinion.text">Cross-references your treatment with medical textbooks (DeVita), NCCN protocols, and latest research. Not to question your doctor — but to make sure the standard of care is being met and no option is missed.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">👁</div>
-          <h3 data-i18n="features.observatory.title">Agent Observatory</h3>
-          <p data-i18n="features.observatory.text">Watch all 18 autonomous agents work in real time. See thinking steps, tool calls with full I/O, costs, and run history. Full transparency into every AI decision.</p>
+          <div class="feature-icon">📱</div>
+          <h3 data-i18n="features.mobile.title">Everything in Your Pocket</h3>
+          <p data-i18n="features.mobile.text">Chat via WhatsApp anytime — ask about a lab value, check when the next cycle is, or get a quick summary. Open the dashboard for trends, timelines, and deep dives. It's there when you need it, wherever you are.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🔍</div>
-          <h3 data-i18n="features.prompts.title">Prompt Explorer</h3>
-          <p data-i18n="features.prompts.text">See every prompt sent to AI, every tool output returned, and the complete message history. Search and filter across all agent runs. No black boxes.</p>
+          <div class="feature-icon">🔤</div>
+          <h3 data-i18n="features.language.title">Medical ↔ Plain Language</h3>
+          <p data-i18n="features.language.text">Every medical term, abbreviation, and lab value explained in words you understand. Switch between plain language and clinical terminology with one click. Learn at your own pace — or just get the answer fast.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📈</div>
+          <h3 data-i18n="features.trends.title">See How Treatment Is Working</h3>
+          <p data-i18n="features.trends.text">Visual trends of tumor markers, blood counts, and inflammation indices across every cycle. See the trajectory — is the treatment working? Are the numbers heading the right direction? No guessing.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">👨‍👩‍👧</div>
-          <h3 data-i18n="features.family.title">Family Updates</h3>
-          <p data-i18n="features.family.text">Generate easy-to-understand treatment summaries for family members. Available in Slovak and English, shareable via WhatsApp or print.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">💬</div>
-          <h3 data-i18n="features.multichannel.title">Chat Anywhere</h3>
-          <p data-i18n="features.multichannel.text">Access your crew via Claude.ai, ChatGPT, or WhatsApp — same data, any device. Ask questions on the go, get instant notifications when it matters.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📚</div>
-          <h3 data-i18n="features.knowledge.title">Medical Knowledge Base</h3>
-          <p data-i18n="features.knowledge.text">DeVita textbooks, NCCN protocols, and latest research automatically applied to your case as a second opinion. Top-notch medical standards, always up to date.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">💊</div>
-          <h3 data-i18n="features.doses.title">Dose Tracking & Doctor Prep</h3>
-          <p data-i18n="features.doses.text">Register doses, track cumulative toxicity, and get the right questions for your next appointment. Understand your situation and prognosis — challenge your doctor with confidence.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔗</div>
-          <h3 data-i18n="features.mcp.title">MCP-Native Architecture</h3>
-          <p data-i18n="features.mcp.text">Built on the Model Context Protocol — open, interoperable, and designed to work with any AI assistant. Your data stays yours.</p>
+          <h3 data-i18n="features.family.title">Keep Your Family Informed</h3>
+          <p data-i18n="features.family.text">Generate clear, compassionate treatment summaries for family members who want to help but don't know how to ask. Share via WhatsApp or print — no medical degree required to understand.</p>
         </div>
       </div>
     </div>
   </section>
 
   <!-- How it works -->
-  <section class="how-it-works">
+  <section id="how" class="how-it-works">
     <div class="container">
       <h2 class="section-title" data-i18n="how.title">How It Works</h2>
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
-          <h3 data-i18n="how.step1.title">Your Data, Organized</h3>
-          <p data-i18n="how.step1.text">Your medical data lives in Google Drive, Gmail, and Calendar. Oncofiles organizes it — OCR, structure, metadata, bilingual support. GDrive stays your single source of truth.</p>
+          <h3 data-i18n="how.step1.title">Upload Your Documents</h3>
+          <p data-i18n="how.step1.text">Lab results, pathology reports, CT scans — upload them to your secure Google Drive folder. Oncoteam reads, structures, and connects everything automatically.</p>
         </div>
         <div class="step">
           <div class="step-num">2</div>
-          <h3 data-i18n="how.step2.title">AI Works for You 24/7</h3>
-          <p data-i18n="how.step2.text">18 autonomous agents scan documents, extract biomarkers, match clinical trials, check protocols, and track trends — even when you're not looking.</p>
+          <h3 data-i18n="how.step2.title">AI Connects the Dots</h3>
+          <p data-i18n="how.step2.text">Your molecular profile, treatment history, lab trends, and eligible trials — all connected into one coherent picture. Updated automatically as new documents arrive.</p>
         </div>
         <div class="step">
           <div class="step-num">3</div>
-          <h3 data-i18n="how.step3.title">Stay in Control</h3>
-          <p data-i18n="how.step3.text">Get briefings, safety alerts, and appointment prep via dashboard, Claude.ai, ChatGPT, or WhatsApp. Your family gets plain-language updates. No medical degree required.</p>
+          <h3 data-i18n="how.step3.title">You Stay in Control</h3>
+          <p data-i18n="how.step3.text">Open the dashboard for a visual overview. Chat on WhatsApp for quick answers. Get alerted when something needs attention. Walk into every appointment prepared and confident.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Tech stack -->
+  <!-- Tech trust -->
   <section class="tech-stack">
     <div class="container">
-      <h2 class="section-title" data-i18n="tech.title">Built With</h2>
+      <h2 class="section-title" data-i18n="tech.title">Powered By</h2>
       <div class="tech-badges">
-        <span class="badge">Model Context Protocol (MCP)</span>
         <span class="badge">Claude AI</span>
-        <span class="badge">ChatGPT Compatible</span>
+        <span class="badge">PubMed</span>
+        <span class="badge">ClinicalTrials.gov</span>
+        <span class="badge">EU Clinical Trials Register</span>
         <span class="badge">WhatsApp</span>
-        <span class="badge">PubMed API</span>
-        <span class="badge">ClinicalTrials.gov API</span>
         <span class="badge">Google Drive</span>
-        <span class="badge">Python / FastMCP</span>
-        <span class="badge">Nuxt 4 Dashboard</span>
       </div>
     </div>
   </section>
@@ -272,8 +278,16 @@
   <section id="contact" class="contact">
     <div class="container">
       <h2 class="section-title" data-i18n="contact.title">Get in Touch</h2>
-      <p class="contact-sub" data-i18n="contact.subtitle">Oncoteam is currently in active development for a real patient. If you're interested in learning more or collaborating, reach out.</p>
+      <p class="contact-sub" data-i18n="contact.subtitle">Oncoteam was built for a real patient by a family member who needed it. If you're in a similar situation and want to learn more, reach out — we've been there.</p>
+      <p class="contact-author">
+        <a href="https://www.linkedin.com/in/peterfusek/" class="story-link"><strong>Peter Fusek</strong></a>
+        <span data-i18n="contact.role"> — Engineering Manager & Founder</span>
+      </p>
       <div class="contact-links">
+        <a href="https://github.com/peter-fusek/oncoteam/issues/new" class="contact-link">
+          <span class="contact-icon">&#9679;</span>
+          <span data-i18n="contact.bug">Report a Bug</span>
+        </a>
         <a href="https://github.com/peter-fusek" class="contact-link">
           <span class="contact-icon">&#9679;</span>
           GitHub
@@ -293,23 +307,23 @@
   <!-- Privacy / GDPR -->
   <section id="privacy" class="privacy">
     <div class="container">
-      <h2 class="section-title" data-i18n="privacy.title">Privacy & Data Protection</h2>
+      <h2 class="section-title" data-i18n="privacy.title">Your Data, Your Control</h2>
       <div class="privacy-grid">
         <div class="privacy-item">
           <h3 data-i18n="privacy.gdpr.title">GDPR Compliant</h3>
           <p data-i18n="privacy.gdpr.text">All patient data is processed in compliance with the EU General Data Protection Regulation. Data is encrypted at rest and in transit.</p>
         </div>
         <div class="privacy-item">
-          <h3 data-i18n="privacy.ownership.title">Your Data, Your Control</h3>
-          <p data-i18n="privacy.ownership.text">Patient documents are stored in your own Google Drive. Oncoteam reads and processes data but never stores originals outside your control.</p>
+          <h3 data-i18n="privacy.ownership.title">Stored in Your Google Drive</h3>
+          <p data-i18n="privacy.ownership.text">Your medical documents stay in your own Google Drive. Oncoteam reads and processes data but never stores originals outside your control. You can revoke access anytime.</p>
         </div>
         <div class="privacy-item">
-          <h3 data-i18n="privacy.access.title">Controlled Access</h3>
-          <p data-i18n="privacy.access.text">Multi-layer authentication: Google OAuth, API bearer tokens, and MCP server authentication. No unauthorized access to patient data.</p>
+          <h3 data-i18n="privacy.access.title">Multi-Layer Security</h3>
+          <p data-i18n="privacy.access.text">Google OAuth, API authentication, and encrypted connections. No unauthorized access to patient data — ever.</p>
         </div>
         <div class="privacy-item">
-          <h3 data-i18n="privacy.audit.title">Full Audit Trail</h3>
-          <p data-i18n="privacy.audit.text">Every data access, AI decision, and document interaction is logged. Complete transparency for patients and caregivers.</p>
+          <h3 data-i18n="privacy.audit.title">Full Transparency</h3>
+          <p data-i18n="privacy.audit.text">Every data access and AI decision is logged. You can see exactly what Oncoteam read, analyzed, and recommended — and why.</p>
         </div>
       </div>
     </div>
@@ -319,9 +333,9 @@
   <!-- Footer -->
   <footer class="footer">
     <div class="container">
-      <p>&copy; 2026 Oncoteam. <span data-i18n="footer.rights">Built with care for cancer patients and their families.</span></p>
+      <p>&copy; 2026 Oncoteam. <span data-i18n="footer.rights">Built by a patient advocate, for patient advocates.</span></p>
       <p class="footer-note" data-i18n="footer.disclaimer">Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.</p>
-      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.38.0</p>
+      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.42.0</p>
     </div>
   </footer>
 
