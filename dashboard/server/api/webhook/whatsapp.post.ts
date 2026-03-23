@@ -100,7 +100,8 @@ export default defineEventHandler(async (event) => {
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.
     // Claude API takes 30-60s, exceeding Twilio's 15s webhook timeout.
-    const twilioFrom = `whatsapp:${config.twilioWhatsappFrom || '+14155238886'}`
+    const rawFrom = String(config.twilioWhatsappFrom || '+14155238886')
+    const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
     const twilioTo = `whatsapp:${from}`
 
     // Fire-and-forget: call Claude API and send response via Twilio REST API
@@ -129,7 +130,7 @@ export default defineEventHandler(async (event) => {
 
       // Step 2: Send reply via Twilio REST API
       try {
-        console.log('[whatsapp-async] Sending via Twilio:', twilioFrom, '->', twilioTo)
+        console.log('[whatsapp-async] Sending via Twilio:', twilioFrom, '->', twilioTo, '(raw env:', rawFrom, ')')
         const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
         const msg = await client.messages.create({
           from: twilioFrom,
