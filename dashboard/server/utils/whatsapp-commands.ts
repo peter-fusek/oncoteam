@@ -255,20 +255,32 @@ export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string
   }
 
   // Conversational fallback — pass unrecognized messages to Claude API
+  // Twilio webhook timeout is 15s — we must respond within that window.
   if (!command) {
     try {
       const config = useRuntimeConfig()
       const apiKey = config.oncoteamApiKey || ''
       const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
-      const result = await $fetch<{ response: string }>(`${oncoteamApiUrl}/api/internal/whatsapp-chat`, {
-        method: 'POST',
-        body: { message: body, lang },
-        headers,
-      })
-      return truncate(result.response || helpText(lang))
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 12000)
+      try {
+        const result = await $fetch<{ response: string }>(`${oncoteamApiUrl}/api/internal/whatsapp-chat`, {
+          method: 'POST',
+          body: { message: body, lang },
+          headers,
+          signal: controller.signal,
+        })
+        return truncate(result.response || helpText(lang))
+      }
+      finally {
+        clearTimeout(timeout)
+      }
     }
     catch {
-      return helpText(lang)
+      return t(L(
+        'Spracovanie trvá dlhšie. Skús jeden z príkazov:\n\n' + helpText('sk').split('\n').slice(2).join('\n'),
+        'Processing is taking longer. Try one of the commands:\n\n' + helpText('en').split('\n').slice(2).join('\n'),
+      ), lang)
     }
   }
 
