@@ -49,7 +49,9 @@ _heavy_semaphore: asyncio.Semaphore | None = None
 # Check oncofiles /health before calls; back off if memory is high.
 RSS_WARN_MB = 400  # wait 30s before retry
 RSS_CRITICAL_MB = 450  # back off 2 min
+RSS_CHECK_INTERVAL = 60  # seconds between health checks (avoid per-call overhead)
 _rss_backoff_until: float = 0.0
+_rss_last_checked: float = 0.0
 _total_rss_backoffs: int = 0
 
 
@@ -76,8 +78,12 @@ _last_rss_mb: float | None = None
 
 
 async def _check_rss_backoff() -> None:
-    """Check oncofiles /health RSS and set backoff if memory is high."""
-    global _rss_backoff_until, _total_rss_backoffs, _last_rss_mb
+    """Check oncofiles /health RSS and set backoff if memory is high.
+
+    Throttled to once per RSS_CHECK_INTERVAL (60s) to avoid adding
+    an HTTP roundtrip to every single oncofiles call.
+    """
+    global _rss_backoff_until, _total_rss_backoffs, _last_rss_mb, _rss_last_checked
 
     now = time.monotonic()
     if _rss_backoff_until > now:
@@ -86,9 +92,14 @@ async def _check_rss_backoff() -> None:
             f"oncofiles RSS backoff — waiting {remaining:.0f}s (last RSS: {_last_rss_mb}MB)"
         )
 
+    # Skip health check if we checked recently
+    if now - _rss_last_checked < RSS_CHECK_INTERVAL:
+        return
+
     if not ONCOFILES_MCP_URL:
         return
 
+    _rss_last_checked = now
     base = ONCOFILES_MCP_URL.rsplit("/", 1)[0] if "/" in ONCOFILES_MCP_URL else ONCOFILES_MCP_URL
     try:
         async with httpx.AsyncClient(timeout=5) as http:
