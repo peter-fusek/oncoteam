@@ -34,12 +34,16 @@ async def test_cumulative_dose_flags_thresholds():
     """With cycle 6 (510 mg/m²), should reach the 400 threshold."""
     from unittest.mock import patch
 
-    with patch("oncoteam.dashboard_api.PATIENT") as mock_patient:
-        mock_patient.current_cycle = 6
-        mock_patient.baseline_weight_kg = 72.0
+    from oncoteam.patient_context import PATIENT
+
+    original_cycle = PATIENT.current_cycle
+    try:
+        PATIENT.current_cycle = 6
         request = FakeRequest()
         response = await api_cumulative_dose(request)
         data = json.loads(response.body)
+    finally:
+        PATIENT.current_cycle = original_cycle
 
     assert data["cumulative_mg_m2"] == 510
     assert len(data["thresholds_reached"]) == 1

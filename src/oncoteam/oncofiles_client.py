@@ -19,8 +19,9 @@ if not ONCOFILES_MCP_URL:
 if ONCOFILES_MCP_URL and not ONCOFILES_MCP_TOKEN:
     _logger.warning("ONCOFILES_MCP_TOKEN not set — connecting to oncofiles without auth")
 
-# Persistent connection — reused across all calls to avoid per-call TCP+TLS+SSE overhead.
-_persistent_client: Client | None = None
+# Persistent connections — one per patient token. Reused to avoid per-call overhead.
+# Key: token string (or "" for default). Value: MCP Client.
+_persistent_clients: dict[str, Client] = {}
 _client_lock: asyncio.Lock | None = None
 
 # ── Circuit breaker ──────────────────────────────────────────────────────
@@ -167,36 +168,42 @@ def _get_lock() -> asyncio.Lock:
     return _client_lock
 
 
-def _make_transport() -> StreamableHttpTransport:
+def _make_transport(token: str | None = None) -> StreamableHttpTransport:
     if not ONCOFILES_MCP_URL:
         raise RuntimeError(
             "ONCOFILES_MCP_URL not configured. Set the env var to connect to oncofiles."
         )
-    auth = ONCOFILES_MCP_TOKEN if ONCOFILES_MCP_TOKEN else None
+    auth = token or ONCOFILES_MCP_TOKEN or None
     return StreamableHttpTransport(ONCOFILES_MCP_URL, auth=auth)
 
 
-async def _get_client() -> Client:
-    """Return the persistent client, creating it if necessary."""
-    global _persistent_client
+async def _get_client(token: str | None = None) -> Client:
+    """Return a persistent client for the given token, creating if necessary.
+
+    Each unique token gets its own MCP connection (different patient data).
+    Default token (None) uses ONCOFILES_MCP_TOKEN → Erika's data.
+    """
+    key = token or ""
     async with _get_lock():
-        if _persistent_client is None:
-            c = Client(_make_transport())
+        if key not in _persistent_clients:
+            c = Client(_make_transport(token))
             await c.__aenter__()
-            _persistent_client = c
-            _logger.debug("Opened persistent oncofiles connection")
-        return _persistent_client
+            _persistent_clients[key] = c
+            tok_label = key[:8] if key else "default"
+            _logger.debug("Opened oncofiles connection (token=%s...)", tok_label)
+        return _persistent_clients[key]
 
 
-async def _invalidate_client() -> None:
-    """Close and discard the persistent client so the next call reconnects."""
-    global _persistent_client
+async def _invalidate_client(token: str | None = None) -> None:
+    """Close and discard a persistent client so the next call reconnects."""
+    key = token or ""
     async with _get_lock():
-        if _persistent_client is not None:
+        client = _persistent_clients.pop(key, None)
+        if client is not None:
             with contextlib.suppress(Exception):
-                await _persistent_client.__aexit__(None, None, None)
-            _persistent_client = None
-            _logger.debug("Closed persistent oncofiles connection (will reconnect)")
+                await client.__aexit__(None, None, None)
+            tok_label = key[:8] if key else "default"
+            _logger.debug("Closed oncofiles connection (token=%s...)", tok_label)
 
 
 def _parse_result(result: object) -> dict | list | str:
@@ -209,8 +216,14 @@ def _parse_result(result: object) -> dict | list | str:
     return str(result)
 
 
-async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
+async def call_oncofiles(
+    tool_name: str, arguments: dict, *, token: str | None = None
+) -> dict | list | str:
     """Call an oncofiles MCP tool, reusing a persistent connection.
+
+    Args:
+        token: Optional patient-specific bearer token. None = default (Erika).
+               Each token scopes all data to one patient automatically.
 
     Includes RSS backoff, concurrency limiter, heavy-query gate,
     circuit breaker, per-call timeout, and retry with backoff.
@@ -250,7 +263,7 @@ async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
         async with heavy_ctx:
             for attempt in range(2):
                 try:
-                    client = await _get_client()
+                    client = await _get_client(token)
                     result = await asyncio.wait_for(
                         client.call_tool(tool_name, arguments),
                         timeout=CALL_TIMEOUT,
@@ -260,7 +273,7 @@ async def call_oncofiles(tool_name: str, arguments: dict) -> dict | list | str:
                     return _parse_result(result)
                 except Exception:
                     if attempt == 0:
-                        await _invalidate_client()
+                        await _invalidate_client(token)
                         await asyncio.sleep(0.5)
                         continue
                     # Second failure — update circuit breaker.

@@ -47,7 +47,13 @@ from .config import (
 )
 from .eligibility import assess_research_relevance
 from .locale import L, get_lang, resolve
-from .patient_context import PATIENT, THERAPY_CATEGORIES, get_patient_localized
+from .patient_context import (
+    DEFAULT_PATIENT_ID,
+    PATIENT,
+    THERAPY_CATEGORIES,
+    get_patient,
+    get_patient_localized,
+)
 
 VERSION = "0.20.0"
 
@@ -124,6 +130,20 @@ def _is_test_entry(entry: dict) -> bool:
 def _show_test(request: Request) -> bool:
     """Check if ?show_test=true is in query params."""
     return request.query_params.get("show_test", "").lower() in ("true", "1", "yes")
+
+
+def _get_patient_id(request: Request) -> str:
+    """Extract patient_id from query params. Defaults to Erika."""
+    return request.query_params.get("patient_id", DEFAULT_PATIENT_ID)
+
+
+def _get_patient_for_request(request: Request):
+    """Get PatientProfile for the request's patient_id. Returns Erika on error."""
+    pid = _get_patient_id(request)
+    try:
+        return get_patient(pid)
+    except KeyError:
+        return PATIENT  # fallback to Erika
 
 
 def _extract_output_data(tool_name: str | None, output_str: str | None) -> dict | None:
@@ -1158,9 +1178,10 @@ async def api_protocol(request: Request) -> JSONResponse:
             }
 
         # Current dose level from patient context
+        pt = _get_patient_for_request(request)
         real_values["current_regimen"] = {
-            "regimen": PATIENT.treatment_regimen,
-            "cycle": PATIENT.current_cycle,
+            "regimen": pt.treatment_regimen,
+            "cycle": pt.current_cycle,
         }
 
         # Nutrition: latest weight from weight events
@@ -1181,7 +1202,7 @@ async def api_protocol(request: Request) -> JSONResponse:
                 real_values["nutrition"] = {
                     "weight_kg": weight,
                     "date": weight_events[0].get("event_date", ""),
-                    "baseline_kg": PATIENT.baseline_weight_kg,
+                    "baseline_kg": pt.baseline_weight_kg,
                 }
     elif isinstance(events_result, Exception):
         record_suppressed_error("api_protocol", "fetch_real_values", events_result)
@@ -1196,7 +1217,8 @@ async def api_protocol_cycles(request: Request) -> JSONResponse:
     """GET /api/protocol/cycles — previous cycle history with lab evaluations."""
     from .clinical_protocol import LAB_SAFETY_THRESHOLDS, check_lab_safety
 
-    cycle = PATIENT.current_cycle or 3
+    pt = _get_patient_for_request(request)
+    cycle = pt.current_cycle or 3
 
     # Fetch lab results and chemo events
     try:
@@ -1771,7 +1793,7 @@ async def api_detail(request: Request) -> JSONResponse:
 
         elif detail_type == "biomarker":
             # Static from patient context
-            patient_data = PATIENT.model_dump()
+            patient_data = _get_patient_for_request(request).model_dump()
             biomarkers = patient_data.get("biomarkers", {})
             value = biomarkers.get(detail_id, biomarkers.get(detail_id.replace(" ", "_")))
             data = {
@@ -1819,7 +1841,7 @@ async def api_detail(request: Request) -> JSONResponse:
                     data["metadata"] = json.loads(meta)
 
         elif detail_type == "patient":
-            patient_data = PATIENT.model_dump()
+            patient_data = _get_patient_for_request(request).model_dump()
             if patient_data.get("diagnosis_date"):
                 patient_data["diagnosis_date"] = str(patient_data["diagnosis_date"])
             data = patient_data
@@ -2137,7 +2159,8 @@ async def api_weight(request: Request) -> JSONResponse:
     Calculates % change from baseline and flags >5% loss.
     """
     limit = _parse_limit(request, default=50)
-    baseline = PATIENT.baseline_weight_kg or 72.0
+    pt = _get_patient_for_request(request)
+    baseline = pt.baseline_weight_kg or 72.0
 
     try:
         # Fetch both weight_measurement and toxicity_log events in parallel
@@ -2246,7 +2269,8 @@ async def api_weight(request: Request) -> JSONResponse:
 async def api_cumulative_dose(request: Request) -> JSONResponse:
     """GET /api/cumulative-dose — cumulative oxaliplatin dose tracking."""
     lang = get_lang(request)
-    cycle = PATIENT.current_cycle or 2
+    pt = _get_patient_for_request(request)
+    cycle = pt.current_cycle or 2
     oxa = resolve(CUMULATIVE_DOSE_THRESHOLDS["oxaliplatin"], lang)
     dose_per_cycle = oxa["dose_per_cycle"]
     cumulative = cycle * dose_per_cycle
@@ -2281,10 +2305,12 @@ def _translate_for_family(
     milestones: list[dict],
     weight_data: dict | None,
     lang: str = "sk",
+    patient=None,
 ) -> str:
     """Translate clinical data to plain language for family members."""
+    pt = patient or PATIENT
     parts: list[str] = []
-    cycle = PATIENT.current_cycle or 2
+    cycle = pt.current_cycle or 2
 
     if lang == "sk":
         parts.append(f"Liečba prebieha — cyklus {cycle} z chemoterapie mFOLFOX6.\n")
@@ -2431,7 +2457,8 @@ async def api_family_update(request: Request) -> JSONResponse:
                     toxicity_data = meta
 
             # Build simple weight_data for translation
-            baseline = PATIENT.baseline_weight_kg or 72.0
+            fpt = _get_patient_for_request(request)
+            baseline = fpt.baseline_weight_kg or 72.0
             weight_info: dict = {"baseline_weight_kg": baseline, "alerts": []}
             if not isinstance(results[2], Exception):
                 for e in _extract_list(results[2], "events"):
@@ -2454,7 +2481,7 @@ async def api_family_update(request: Request) -> JSONResponse:
             # Get milestones (resolve bilingual descriptions)
             from .clinical_protocol import TREATMENT_MILESTONES
 
-            cycle = PATIENT.current_cycle or 2
+            cycle = fpt.current_cycle or 2
             milestones = resolve(
                 [m for m in TREATMENT_MILESTONES if m.get("cycle", 0) >= cycle],
                 post_lang,

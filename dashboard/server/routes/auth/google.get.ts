@@ -10,15 +10,19 @@ export default defineOAuthGoogleEventHandler({
       throw createError({ statusCode: 403, message: 'Not authorized' })
     }
 
-    let roleMap: Record<string, { roles?: string[]; phone?: string }> = {}
+    let roleMap: Record<string, { roles?: string[]; phone?: string; patient_id?: string; patient_ids?: string[] }> = {}
     try {
       const raw = config.roleMap
       roleMap = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw as typeof roleMap) || {}
-    } catch {
+    }
+    catch {
       roleMap = {}
     }
     const userConfig = roleMap[user.email] || { roles: ['advocate'] }
     const roles = userConfig.roles || ['advocate']
+    // Patient scoping: advocate sees all patient_ids, others see only their own
+    const patientId = userConfig.patient_id || 'erika'
+    const patientIds = userConfig.patient_ids || [patientId]
 
     await setUserSession(event, {
       user: {
@@ -28,6 +32,8 @@ export default defineOAuthGoogleEventHandler({
         roles,
         activeRole: roles[0],
         phone: userConfig.phone || null,
+        patientId,
+        patientIds,
       },
     })
 
