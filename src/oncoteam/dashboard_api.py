@@ -55,7 +55,7 @@ from .patient_context import (
     get_patient_localized,
 )
 
-VERSION = "0.20.0"
+VERSION = "0.44.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
