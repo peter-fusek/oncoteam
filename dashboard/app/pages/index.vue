@@ -29,7 +29,7 @@ const { data: labs } = fetchApi<{
   total: number
   error?: string
   unavailable?: boolean
-}>('/labs', { lazy: true })
+}>('/labs?limit=50', { lazy: true })
 
 const { data: briefings } = fetchApi<{
   briefings: Array<{
