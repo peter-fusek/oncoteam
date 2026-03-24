@@ -221,7 +221,6 @@ async function handleCollectLanguage(
 
     const updatedState: OnboardingState = {
       ...provisioningState,
-      bearerToken: result.bearer_token,
       patientId: result.patient_id || state.patientId,
       step: 'oauth_sent',
       updatedAt: Date.now(),

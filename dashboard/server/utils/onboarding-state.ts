@@ -5,7 +5,6 @@ export interface OnboardingState {
   patientName?: string
   patientId?: string
   diagnosis?: string
-  bearerToken?: string
   createdAt: number
   updatedAt: number
 }
@@ -40,4 +39,9 @@ export function clearOnboardingState(phone: string): void {
 export function isOnboarding(phone: string): boolean {
   cleanupExpired()
   return onboardingStates.has(phone)
+}
+
+export function getActiveSessionCount(): number {
+  cleanupExpired()
+  return onboardingStates.size
 }

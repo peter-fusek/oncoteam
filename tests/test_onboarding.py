@@ -127,7 +127,7 @@ async def test_onboard_patient_invalid_json():
 
 @pytest.mark.anyio
 async def test_onboarding_status_returns_unknown():
-    """Placeholder endpoint returns status: unknown."""
+    """Unapproved phone returns status: unknown."""
     request = FakeRequest({"phone": "+421900111222"})
     response = await api_onboarding_status(request)
     data = json.loads(response.body)
@@ -135,6 +135,20 @@ async def test_onboarding_status_returns_unknown():
     assert response.status_code == 200
     assert data["status"] == "unknown"
     assert data["phone"] == "+421900111222"
+    assert data["approved"] is False
+
+
+@pytest.mark.anyio
+async def test_onboarding_status_returns_approved():
+    """Approved phone returns status: approved."""
+    _approved_phones.add("+421900111222")
+    request = FakeRequest({"phone": "+421900111222"})
+    response = await api_onboarding_status(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "approved"
+    assert data["approved"] is True
 
 
 @pytest.mark.anyio
@@ -165,14 +179,18 @@ async def test_onboarding_status_invalid_json():
 @pytest.fixture(autouse=True)
 def _clear_approved_phones():
     """Clear approved phones set between tests."""
+    import oncoteam.dashboard_api as _mod
     _approved_phones.clear()
+    _mod._approved_phones_loaded = False
     yield
     _approved_phones.clear()
+    _mod._approved_phones_loaded = False
 
 
 @pytest.mark.anyio
-async def test_approve_user_success():
-    """Approve a phone number successfully."""
+@patch("oncoteam.dashboard_api._persist_approved_phones", new_callable=AsyncMock)
+async def test_approve_user_success(mock_persist):
+    """Approve a phone number successfully and persist to oncofiles."""
     request = FakeRequest({"phone": "+421900111222"})
     response = await api_approve_user(request)
     data = json.loads(response.body)
@@ -210,7 +228,8 @@ async def test_approve_user_invalid_json():
 
 
 @pytest.mark.anyio
-async def test_approve_user_idempotent():
+@patch("oncoteam.dashboard_api._persist_approved_phones", new_callable=AsyncMock)
+async def test_approve_user_idempotent(mock_persist):
     """Approving the same phone twice works without error."""
     request1 = FakeRequest({"phone": "+421900111222"})
     await api_approve_user(request1)
@@ -324,3 +343,61 @@ async def test_whatsapp_media_upload_failure(mock_fup, mock_upload):
 
     assert response.status_code == 502
     assert "Failed to upload" in data["error"]
+
+
+# ── load_approved_phones / persist ──────────────────
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+async def test_load_approved_phones_from_oncofiles(mock_get):
+    """Load approved phones from oncofiles agent_state."""
+    from oncoteam.dashboard_api import load_approved_phones
+
+    mock_get.return_value = {"value": {"phones": ["+421900111222", "+421900333444"]}}
+    await load_approved_phones()
+
+    from oncoteam.dashboard_api import is_phone_approved
+
+    assert is_phone_approved("+421900111222") is True
+    assert is_phone_approved("+421900333444") is True
+    assert is_phone_approved("+421900999999") is False
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+async def test_load_approved_phones_oncofiles_down(mock_get):
+    """Load gracefully handles oncofiles being down."""
+    from oncoteam.dashboard_api import load_approved_phones
+
+    mock_get.side_effect = ConnectionError("oncofiles unreachable")
+    await load_approved_phones()  # Should not raise
+
+    from oncoteam.dashboard_api import is_phone_approved
+
+    assert is_phone_approved("+421900111222") is False
+
+
+# ── Per-patient FUP counters ─────────────────────────
+
+
+def test_fup_per_patient_isolation():
+    """FUP counters track per-patient, not globally."""
+    from oncoteam.dashboard_api import (
+        _check_fup_ai_query,
+        _fup_ai_queries,
+        _get_fup_status,
+    )
+
+    _fup_ai_queries.clear()
+
+    # Patient A and patient B each get their own counter
+    assert _check_fup_ai_query("patient_a") is True
+    assert _check_fup_ai_query("patient_b") is True
+
+    status = _get_fup_status()
+    assert "patient_a" in status["ai_queries"]["per_patient"]
+    assert "patient_b" in status["ai_queries"]["per_patient"]
+    assert status["ai_queries"]["used"] == 2
+
+    _fup_ai_queries.clear()

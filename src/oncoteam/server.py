@@ -67,6 +67,7 @@ from .dashboard_api import (
     api_weight,
     api_whatsapp_chat,
     api_whatsapp_media,
+    load_approved_phones,
 )
 from .eligibility import check_eligibility
 from .models import ResearchSource
@@ -1066,6 +1067,10 @@ def main() -> None:
             # FastMCP 3.x lifespan is broken in HTTP transport (double-wrap bug).
             # Start the autonomous scheduler explicitly within the event loop.
             start_scheduler()
+            # Load persisted approved phones from oncofiles (non-critical)
+            import contextlib
+            with contextlib.suppress(Exception):
+                await load_approved_phones()
             await mcp.run_async(
                 transport=MCP_TRANSPORT,
                 host=MCP_HOST,

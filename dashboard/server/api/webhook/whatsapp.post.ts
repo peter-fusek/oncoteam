@@ -1,8 +1,8 @@
 import twilio from 'twilio'
 import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
-import { getOnboardingState, setOnboardingState, isOnboarding } from '../../utils/onboarding-state'
+import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionCount } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
-import { isApproved } from '../../utils/approved-phones'
+import { isApproved, checkApprovedWithBackend } from '../../utils/approved-phones'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
@@ -154,10 +154,39 @@ export default defineEventHandler(async (event) => {
     return twiml('Invalid sender.')
   }
 
+  // Rate limiting per phone — applied BEFORE onboarding to prevent abuse
+  const now = Date.now()
+  const rateEntry = rateLimitMap.get(from)
+  if (rateEntry && now < rateEntry.resetAt) {
+    if (rateEntry.count >= RATE_LIMIT_MAX) {
+      setResponseHeader(event, 'content-type', 'text/xml')
+      return twiml('Rate limit exceeded. Try again later.')
+    }
+    rateEntry.count++
+  }
+  else {
+    rateLimitMap.set(from, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+  }
+
   // Phone allowlist check (mandatory — primary security gate)
   const allowedPhones = extractPhoneAllowlist(config.roleMap)
-  const isAllowed = allowedPhones.has(from) || isApproved(from)
+  let isAllowed = allowedPhones.has(from) || isApproved(from)
+
+  // If not in local cache, double-check with backend (oncofiles-persisted phones)
   if (!isAllowed) {
+    const oncoteamUrl = config.oncoteamApiUrl as string
+    const apiKey = (config.oncoteamApiKey || '') as string
+    isAllowed = await checkApprovedWithBackend(from, oncoteamUrl, apiKey)
+  }
+
+  if (!isAllowed) {
+    // Cap total active onboarding sessions to prevent resource exhaustion
+    const MAX_ACTIVE_SESSIONS = 10
+    if (!isOnboarding(from) && getActiveSessionCount() >= MAX_ACTIVE_SESSIONS) {
+      setResponseHeader(event, 'content-type', 'text/xml')
+      return twiml('Service is busy. Please try again later.')
+    }
+
     // Check if user is in onboarding flow
     if (isOnboarding(from)) {
       // Handle media from onboarding users with a patient_id
@@ -245,20 +274,6 @@ export default defineEventHandler(async (event) => {
     const onboardingResult = await handleOnboardingMessage(from, messageBody, oncoteamUrl, apiKey)
     setResponseHeader(event, 'content-type', 'text/xml')
     return twiml(onboardingResult.text || '')
-  }
-
-  // Rate limiting per phone
-  const now = Date.now()
-  const rateEntry = rateLimitMap.get(from)
-  if (rateEntry && now < rateEntry.resetAt) {
-    if (rateEntry.count >= RATE_LIMIT_MAX) {
-      setResponseHeader(event, 'content-type', 'text/xml')
-      return twiml('Rate limit exceeded. Try again later.')
-    }
-    rateEntry.count++
-  }
-  else {
-    rateLimitMap.set(from, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
   }
 
   // ── Media attachment handling ──────────────────────────────────────

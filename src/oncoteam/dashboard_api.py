@@ -552,9 +552,9 @@ def _check_expensive_rate_limit() -> bool:
     return True
 
 
-# ── FUP (Fair Use Policy) — monthly counters ────────────────────────────
+# ── FUP (Fair Use Policy) — per-patient monthly counters ─────────────
 
-_fup_ai_queries: dict[str, int] = {}  # month_key → count
+_fup_ai_queries: dict[str, int] = {}  # "patient_id:month" → count
 _fup_agent_runs: dict[str, int] = {}
 
 
@@ -566,40 +566,69 @@ def _fup_month_key() -> str:
     return _dt.now(UTC).strftime("%Y-%m")
 
 
-def _check_fup_ai_query() -> bool:
+def _fup_key(patient_id: str = "") -> str:
+    """Build per-patient FUP key: '{patient_id}:{month}' or 'global:{month}'."""
+    pid = patient_id.strip() if patient_id else "global"
+    return f"{pid}:{_fup_month_key()}"
+
+
+def _check_fup_ai_query(patient_id: str = "") -> bool:
     """Record an AI query and return True if within FUP limit."""
-    key = _fup_month_key()
+    month = _fup_month_key()
+    key = _fup_key(patient_id)
     count = _fup_ai_queries.get(key, 0)
     if count >= FUP_AI_QUERIES_PER_MONTH:
         return False
     _fup_ai_queries[key] = count + 1
-    # Clean old months
+    # Clean old months (any key not ending with current month)
     for k in list(_fup_ai_queries):
-        if k != key:
+        if not k.endswith(f":{month}"):
             del _fup_ai_queries[k]
     return True
 
 
-def _check_fup_agent_run() -> bool:
+def _check_fup_agent_run(patient_id: str = "") -> bool:
     """Record an agent run and return True if within FUP limit."""
-    key = _fup_month_key()
+    month = _fup_month_key()
+    key = _fup_key(patient_id)
     count = _fup_agent_runs.get(key, 0)
     if count >= FUP_AGENT_RUNS_PER_MONTH:
         return False
     _fup_agent_runs[key] = count + 1
     for k in list(_fup_agent_runs):
-        if k != key:
+        if not k.endswith(f":{month}"):
             del _fup_agent_runs[k]
     return True
 
 
 def _get_fup_status() -> dict:
-    """Return current FUP usage for the /api/status endpoint."""
-    key = _fup_month_key()
+    """Return current FUP usage for the /api/status endpoint, with per-patient breakdown."""
+    month = _fup_month_key()
+    # Aggregate per-patient breakdown for current month
+    ai_breakdown: dict[str, int] = {}
+    agent_breakdown: dict[str, int] = {}
+    for k, v in _fup_ai_queries.items():
+        if k.endswith(f":{month}"):
+            pid = k.rsplit(":", 1)[0]
+            ai_breakdown[pid] = v
+    for k, v in _fup_agent_runs.items():
+        if k.endswith(f":{month}"):
+            pid = k.rsplit(":", 1)[0]
+            agent_breakdown[pid] = v
+    ai_total = sum(ai_breakdown.values())
+    agent_total = sum(agent_breakdown.values())
     return {
-        "month": key,
-        "ai_queries": {"used": _fup_ai_queries.get(key, 0), "limit": FUP_AI_QUERIES_PER_MONTH},
-        "agent_runs": {"used": _fup_agent_runs.get(key, 0), "limit": FUP_AGENT_RUNS_PER_MONTH},
+        "month": month,
+        "ai_queries": {
+            "used": ai_total,
+            "limit": FUP_AI_QUERIES_PER_MONTH,
+            "per_patient": ai_breakdown,
+        },
+        "agent_runs": {
+            "used": agent_total,
+            "limit": FUP_AGENT_RUNS_PER_MONTH,
+            "per_patient": agent_breakdown,
+        },
         "oncofiles_documents": {"limit": FUP_ONCOFILES_DOCUMENTS, "note": "enforced by oncofiles"},
     }
 
@@ -2840,18 +2869,22 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             status_code=429,
             request=request,
         )
-    if not _check_fup_ai_query():
+    try:
+        body = json.loads(await request.body())
+        message = body.get("message", "")
+        phone = body.get("phone", "unknown")
+        lang = body.get("lang", "sk")
+        patient_id = body.get("patient_id", "")
+    except Exception:
+        return _cors_json({"error": "Invalid request body"}, status_code=400, request=request)
+
+    if not _check_fup_ai_query(patient_id or "global"):
         return _cors_json(
             {"error": f"Monthly AI query limit reached ({FUP_AI_QUERIES_PER_MONTH})."},
             status_code=429,
             request=request,
         )
     try:
-        body = json.loads(await request.body())
-        message = body.get("message", "")
-        phone = body.get("phone", "unknown")
-        lang = body.get("lang", "sk")
-
         # Input validation: reject empty or excessively long messages
         if not message or not message.strip():
             return _cors_json({"error": "Empty message"}, status_code=400, request=request)
@@ -3037,12 +3070,6 @@ async def api_trigger_agent(request: Request) -> JSONResponse:
             status_code=429,
             request=request,
         )
-    if not _check_fup_agent_run():
-        return _cors_json(
-            {"error": f"Monthly agent run limit reached ({FUP_AGENT_RUNS_PER_MONTH})."},
-            status_code=429,
-            request=request,
-        )
 
     try:
         body = await request.json()
@@ -3050,6 +3077,14 @@ async def api_trigger_agent(request: Request) -> JSONResponse:
         return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
 
     agent_id = body.get("agent_id", "")
+    trigger_patient_id = body.get("patient_id", "")
+
+    if not _check_fup_agent_run(trigger_patient_id or "global"):
+        return _cors_json(
+            {"error": f"Monthly agent run limit reached ({FUP_AGENT_RUNS_PER_MONTH})."},
+            status_code=429,
+            request=request,
+        )
     if agent_id not in AGENT_REGISTRY:
         return _cors_json(
             {"error": f"Unknown agent: {agent_id}", "available": list(AGENT_REGISTRY.keys())},
@@ -3247,8 +3282,8 @@ async def api_whatsapp_media(request: Request) -> JSONResponse:
             request=request,
         )
 
-    # FUP limit check
-    if not _check_fup_ai_query():
+    # FUP limit check (per-patient)
+    if not _check_fup_ai_query(patient_id or "global"):
         return _cors_json(
             {"error": "Monthly AI query limit exceeded"},
             status_code=429,
@@ -3408,12 +3443,17 @@ async def api_onboarding_status(request: Request) -> JSONResponse:
     if not phone:
         return _cors_json({"error": "phone is required"}, status_code=400, request=request)
 
-    # Placeholder — will be expanded in #137 when the state machine is built
-    return _cors_json({"phone": phone, "status": "unknown"}, request=request)
+    # Check if the phone is in the approved set (includes oncofiles-persisted phones)
+    approved = is_phone_approved(phone)
+    return _cors_json(
+        {"phone": phone, "status": "approved" if approved else "unknown", "approved": approved},
+        request=request,
+    )
 
 
 # In-memory set of admin-approved WhatsApp phone numbers (#141)
 _approved_phones: set[str] = set()
+_approved_phones_loaded = False
 
 
 def is_phone_approved(phone: str) -> bool:
@@ -3421,11 +3461,52 @@ def is_phone_approved(phone: str) -> bool:
     return phone in _approved_phones
 
 
+async def load_approved_phones() -> None:
+    """Load approved phones from oncofiles on startup. Safe to call multiple times."""
+    global _approved_phones_loaded
+    if _approved_phones_loaded:
+        return
+    try:
+        result = await oncofiles_client.get_agent_state(key="phones", agent_id="approved_phones")
+        phones = []
+        if isinstance(result, dict):
+            # The state value may be nested under "value" or "state"
+            data = result.get("value") or result.get("state") or result
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, dict):
+                phones = data.get("phones", [])
+            elif isinstance(data, list):
+                phones = data
+        for p in phones:
+            if isinstance(p, str) and p.strip():
+                _approved_phones.add(p.strip())
+        _approved_phones_loaded = True
+        if _approved_phones:
+            _logger.info("Loaded %d approved phones from oncofiles", len(_approved_phones))
+    except Exception as exc:
+        record_suppressed_error("load_approved_phones", "get_agent_state", exc)
+        _logger.warning("Failed to load approved phones from oncofiles: %s", exc)
+
+
+async def _persist_approved_phones() -> None:
+    """Persist the current approved phones set to oncofiles."""
+    try:
+        await oncofiles_client.set_agent_state(
+            key="phones",
+            value={"phones": sorted(_approved_phones)},
+            agent_id="approved_phones",
+        )
+    except Exception as exc:
+        record_suppressed_error("_persist_approved_phones", "set_agent_state", exc)
+        _logger.warning("Failed to persist approved phones to oncofiles: %s", exc)
+
+
 async def api_approve_user(request: Request) -> JSONResponse:
     """POST /api/internal/approve-user — admin approves a new WhatsApp user.
 
     Expects JSON body: {phone}
-    Stores phone in the in-memory approved set.
+    Stores phone in the in-memory approved set and persists to oncofiles.
     Returns: {status: "approved", phone: str}
     """
     try:
@@ -3439,6 +3520,9 @@ async def api_approve_user(request: Request) -> JSONResponse:
 
     _approved_phones.add(phone)
     _logger.info("Admin approved WhatsApp user: %s", phone)
+
+    # Persist to oncofiles (fire-and-forget, don't block response)
+    asyncio.ensure_future(_persist_approved_phones())
 
     return _cors_json({"status": "approved", "phone": phone}, request=request)
 
