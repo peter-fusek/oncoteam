@@ -69,7 +69,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=45">
+  <link rel="stylesheet" href="style.css?v=46">
 </head>
 <body>
   <!-- Navigation -->
@@ -463,19 +463,51 @@
     </div>
   </section>
 
-  <!-- Tech trust -->
-  <section class="tech-stack">
+  <!-- Tech carousel -->
+  <section class="tech-carousel">
     <div class="container">
-      <h2 class="section-title" data-i18n="tech.title">Powered By</h2>
-      <div class="tech-badges">
-        <span class="badge">Claude AI</span>
-        <span class="badge">PubMed</span>
-        <span class="badge">ClinicalTrials.gov</span>
-        <span class="badge">EU Clinical Trials Register</span>
-        <span class="badge">WhatsApp</span>
-        <span class="badge">Google Drive</span>
-        <span class="badge">MCP Protocol</span>
-        <span class="badge">Open Source</span>
+      <h2 class="section-title" data-i18n="tech.title">Integrates With</h2>
+    </div>
+    <div class="carousel-track-wrapper">
+      <div class="carousel-track">
+        <span class="carousel-item">🤖 Claude AI</span>
+        <span class="carousel-item">📚 PubMed</span>
+        <span class="carousel-item">🏥 ClinicalTrials.gov</span>
+        <span class="carousel-item">🇪🇺 EU Clinical Trials</span>
+        <span class="carousel-item">💬 WhatsApp</span>
+        <span class="carousel-item">📁 Google Drive</span>
+        <span class="carousel-item">🔌 MCP Protocol</span>
+        <span class="carousel-item">📋 Oncofiles</span>
+        <!-- duplicate for seamless loop -->
+        <span class="carousel-item">🤖 Claude AI</span>
+        <span class="carousel-item">📚 PubMed</span>
+        <span class="carousel-item">🏥 ClinicalTrials.gov</span>
+        <span class="carousel-item">🇪🇺 EU Clinical Trials</span>
+        <span class="carousel-item">💬 WhatsApp</span>
+        <span class="carousel-item">📁 Google Drive</span>
+        <span class="carousel-item">🔌 MCP Protocol</span>
+        <span class="carousel-item">📋 Oncofiles</span>
+      </div>
+    </div>
+    <div class="carousel-track-wrapper" style="margin-top: 1rem;">
+      <div class="carousel-track carousel-track-reverse">
+        <span class="carousel-item">🔬 Lab Analysis</span>
+        <span class="carousel-item">🎯 Trial Matching</span>
+        <span class="carousel-item">💊 Treatment Protocol</span>
+        <span class="carousel-item">📊 Tumor Markers</span>
+        <span class="carousel-item">🛡️ Safety Checks</span>
+        <span class="carousel-item">📰 AI Briefings</span>
+        <span class="carousel-item">👨‍👩‍👧 Family Updates</span>
+        <span class="carousel-item">🌐 Open Source</span>
+        <!-- duplicate for seamless loop -->
+        <span class="carousel-item">🔬 Lab Analysis</span>
+        <span class="carousel-item">🎯 Trial Matching</span>
+        <span class="carousel-item">💊 Treatment Protocol</span>
+        <span class="carousel-item">📊 Tumor Markers</span>
+        <span class="carousel-item">🛡️ Safety Checks</span>
+        <span class="carousel-item">📰 AI Briefings</span>
+        <span class="carousel-item">👨‍👩‍👧 Family Updates</span>
+        <span class="carousel-item">🌐 Open Source</span>
       </div>
     </div>
   </section>
@@ -545,7 +577,7 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=45"></script>
+  <script src="i18n.js?v=46"></script>
   <script>
   // Demo tab switching
   document.querySelectorAll('.demo-tab').forEach(tab => {
