@@ -3014,6 +3014,131 @@ async def api_trigger_agent(request: Request) -> JSONResponse:
     return _cors_json({"status": "triggered", "agent_id": agent_id}, request=request)
 
 
+_FUNNEL_STAGES = ("Excluded", "Later Line", "Watching", "Eligible Now", "Action Needed")
+
+_FUNNEL_SYSTEM_PROMPT = """\
+You are a clinical trial funnel classifier for cancer treatment management.
+Classify this trial into exactly one funnel stage for the patient.
+
+## Funnel Stages
+- **Excluded**: Biomarker contraindication or eligibility hard-stop
+- **Later Line**: Relevant but only for future treatment lines (2L, 3L+)
+- **Watching**: Relevant, no contraindication, but not yet actionable
+- **Eligible Now**: Patient meets known criteria, trial is recruiting in reachable geography
+- **Action Needed**: Eligible AND requires immediate action (contact site, enrollment closing soon)
+
+## Patient Biomarker Rules
+- KRAS mutant G12S (c.34G>A) — anti-EGFR EXCLUDED (cetuximab, panitumumab)
+- KRAS G12S is NOT G12C — sotorasib/adagrasib do NOT apply
+- pMMR/MSS — checkpoint inhibitor monotherapy NOT indicated
+- HER2 negative — HER2-targeted therapy NOT indicated
+- BRAF V600E wild-type — BRAF inhibitors NOT indicated
+- Active VJI thrombosis on Clexane — bevacizumab HIGH RISK
+- Current regimen: mFOLFOX6 90% (1st line, cycle 3)
+
+You MUST respond with ONLY a valid JSON object. No markdown, no explanation:
+{"stage": "<one of the 5 stages>", "exclusion_reason": "<null or string>", \
+"next_step": "<1 sentence recommendation>", "deadline_note": "<null or string>"}
+"""
+
+
+async def api_assess_funnel(request: Request) -> JSONResponse:
+    """POST /api/research/assess-funnel — AI-classify trials into funnel stages."""
+    auth = _check_api_auth(request)
+    if auth:
+        return auth
+    if not _check_expensive_rate_limit():
+        return _cors_json(
+            {"error": "Too many AI requests. Try again in a few minutes."},
+            status_code=429,
+            request=request,
+        )
+    try:
+        body = json.loads(await request.body())
+    except (json.JSONDecodeError, Exception):
+        return _cors_json({"error": "Invalid JSON"}, status_code=400, request=request)
+
+    trials = body.get("trials", [])
+    if not isinstance(trials, list) or len(trials) > 15:
+        return _cors_json(
+            {"error": "trials must be a list of max 15 entries"},
+            status_code=400,
+            request=request,
+        )
+    if not trials:
+        return _cors_json({"assessments": [], "cost_usd": 0}, request=request)
+
+    if not ANTHROPIC_API_KEY:
+        return _cors_json({"error": "AI not configured"}, status_code=500, request=request)
+
+    from anthropic import AsyncAnthropic
+
+    client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+    assessments = []
+    total_cost = 0.0
+
+    for trial in trials:
+        nct_id = trial.get("external_id", "")
+        title = trial.get("title", "")
+        summary = trial.get("summary", "")
+        relevance = trial.get("relevance", "")
+        reason = trial.get("relevance_reason", "")
+
+        user_msg = (
+            f"Trial: {nct_id}\nTitle: {title}\n"
+            f"Summary: {summary[:500]}\n"
+            f"Current relevance: {relevance} ({reason})"
+        )
+
+        try:
+            resp = await client.messages.create(
+                model=AUTONOMOUS_MODEL_LIGHT,
+                max_tokens=256,
+                system=_FUNNEL_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_msg}],
+            )
+            text = resp.content[0].text if resp.content else "{}"
+            cost = (resp.usage.input_tokens * 0.80 + resp.usage.output_tokens * 4.0) / 1_000_000
+            total_cost += cost
+
+            parsed = json.loads(text)
+            stage = parsed.get("stage", "Watching")
+            if stage not in _FUNNEL_STAGES:
+                stage = "Watching"
+
+            assessments.append(
+                {
+                    "nct_id": nct_id,
+                    "oncofiles_id": trial.get("id"),
+                    "stage": stage,
+                    "exclusion_reason": parsed.get("exclusion_reason"),
+                    "next_step": parsed.get("next_step", "Review trial details"),
+                    "deadline_note": parsed.get("deadline_note"),
+                }
+            )
+        except Exception as e:
+            record_suppressed_error("api_assess_funnel", f"assess_{nct_id}", e)
+            assessments.append(
+                {
+                    "nct_id": nct_id,
+                    "oncofiles_id": trial.get("id"),
+                    "stage": "Watching",
+                    "exclusion_reason": None,
+                    "next_step": "Assessment failed — review manually",
+                    "deadline_note": None,
+                }
+            )
+
+    return _cors_json(
+        {
+            "assessments": assessments,
+            "model": AUTONOMOUS_MODEL_LIGHT,
+            "cost_usd": round(total_cost, 4),
+        },
+        request=request,
+    )
+
+
 async def api_cors_preflight(request: Request) -> JSONResponse:
     """OPTIONS handler for CORS preflight on all /api/* routes."""
     return _cors_json({}, request=request)

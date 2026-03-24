@@ -26,6 +26,7 @@ from .dashboard_api import (
     api_agent_runs,
     api_agent_runs_all,
     api_agents,
+    api_assess_funnel,
     api_autonomous,
     api_autonomous_cost,
     api_autonomous_status,
@@ -1018,6 +1019,8 @@ mcp.custom_route("/api/internal/trigger-agent", methods=["POST"])(_trigger_agent
 mcp.custom_route("/api/internal/trigger-agent", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/bug-report", methods=["POST"])(_auth_wrap(api_bug_report))
 mcp.custom_route("/api/bug-report", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/research/assess-funnel", methods=["POST"])(_auth_wrap(api_assess_funnel))
+mcp.custom_route("/api/research/assess-funnel", methods=["OPTIONS"])(api_cors_preflight)
 
 
 # ── Entry point ─────────────────────────────────

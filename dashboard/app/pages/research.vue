@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 
-const activeTab = ref<'trials' | 'literature'>('trials')
+const activeTab = ref<'trials' | 'literature' | 'funnel'>('trials')
 const sortBy = ref<'relevance' | 'date' | 'source'>('relevance')
 
 // Watched trials from clinical protocol
@@ -102,7 +102,7 @@ const drilldown = useDrilldown()
         </p>
         <LastUpdated :timestamp="research?.last_updated" />
       </div>
-      <div class="flex items-center gap-2">
+      <div v-if="activeTab !== 'funnel'" class="flex items-center gap-2">
         <UButtonGroup>
           <UButton
             :variant="sortBy === 'relevance' ? 'solid' : 'soft'"
@@ -171,10 +171,24 @@ const drilldown = useDrilldown()
         Literature
         <UBadge v-if="literatureEntries.length" variant="subtle" size="xs" color="info">{{ literatureEntries.length }}</UBadge>
       </button>
+      <button
+        class="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+        :class="activeTab === 'funnel'
+          ? 'bg-white text-gray-900 shadow-sm'
+          : 'text-gray-500 hover:text-gray-700'"
+        @click="activeTab = 'funnel'"
+      >
+        <UIcon name="i-lucide-kanban" class="w-4 h-4" />
+        Funnel
+        <UBadge v-if="trialEntries.length" variant="subtle" size="xs" color="warning">{{ trialEntries.length }}</UBadge>
+      </button>
     </div>
 
+    <!-- Funnel board -->
+    <TrialFunnelBoard v-if="activeTab === 'funnel'" :trials="trialEntries" />
+
     <!-- Entries list -->
-    <div v-if="displayEntries.length" class="space-y-3">
+    <div v-if="activeTab !== 'funnel' && displayEntries.length" class="space-y-3">
       <div
         v-for="entry in displayEntries"
         :key="entry.id"
