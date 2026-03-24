@@ -38,7 +38,7 @@ class TestNormalizeTags:
         assert result == ["sys:cost-alert"]
 
     def test_removes_patient_name(self):
-        result = normalize_tags(["task:daily-briefing", "Fusekova"])
+        result = normalize_tags(["task:daily-briefing", "patient_name"])
         assert result == ["task:daily-briefing"]
 
     def test_applies_migration_mapping(self):
@@ -61,7 +61,7 @@ class TestNormalizeTags:
         assert normalize_tags([]) == []
 
     def test_all_noise_tags_removed(self):
-        result = normalize_tags(["sid:xyz", "date:2026-01-01", "Fusekova"])
+        result = normalize_tags(["sid:xyz", "date:2026-01-01", "patient_name"])
         assert result == []
 
     def test_migration_mapping_covers_known_legacy_tags(self):

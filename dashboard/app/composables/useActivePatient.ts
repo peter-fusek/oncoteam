@@ -12,7 +12,7 @@ const activePatientId = ref('erika')
 // When new patients onboard, they're added to the user's session patientIds
 // and their display info is fetched from the backend.
 const patientDisplayInfo = ref<Record<string, { name: string; diagnosis: string }>>({
-  erika: { name: 'Erika Fusekova', diagnosis: 'mCRC (C18.7)' },
+  erika: { name: 'Erika F.', diagnosis: 'mCRC (C18.7)' },
 })
 
 export function useActivePatient() {

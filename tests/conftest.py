@@ -6,7 +6,7 @@ import pytest
 
 _TEST_ALLOWED_ORIGINS = [
     "https://dashboard.oncoteam.cloud",
-    "https://valiant-reprieve-production.up.railway.app",
+    "https://test-deployment.up.railway.app",
 ]
 
 

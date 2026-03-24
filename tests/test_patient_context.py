@@ -20,7 +20,7 @@ from oncoteam.patient_context import (
 class TestPatientContext:
     def test_patient_is_valid_profile(self):
         assert isinstance(PATIENT, PatientProfile)
-        assert PATIENT.name == "Erika Fusekova"
+        assert PATIENT.name == "Erika F."
         assert PATIENT.diagnosis_code == "C18.7"
 
     def test_patient_has_treatment(self):
@@ -51,7 +51,7 @@ class TestPatientContext:
 
     def test_profile_text_contains_key_info(self):
         text = get_patient_profile_text()
-        assert "Erika Fusekova" in text
+        assert "Erika F." in text
         assert "C18.7" in text
         assert "FOLFOX" in text
         assert "HER2" in text

@@ -33,7 +33,7 @@ RECIPIENTS: dict[str, Recipient] = {
         language="sk",
     ),
     "physician": Recipient(
-        name="MUDr. Porsok",
+        name="MUDr. [Physician]",
         role="physician",
         phone="",  # not used — physician gets dashboard only
         language="sk",
@@ -87,7 +87,7 @@ THERAPY_CATEGORIES: dict[str, dict] = {
 
 PATIENT = PatientProfile(
     patient_id="erika",
-    name="Erika Fusekova",
+    name="Erika F.",
     diagnosis_code="C18.7",
     diagnosis_description="AdenoCa colon sigmoideum, G3, mCRC",
     tumor_site="Sigmoid colon",
@@ -128,8 +128,8 @@ PATIENT = PatientProfile(
             "result": "AdenoCa G3",
         }
     ],
-    treating_physician="MUDr. Stefan Porsok, PhD., MPH — primár OKO G, NOU Bratislava",
-    admitting_physician="MUDr. Natália Pazderová — NOU Bratislava",
+    treating_physician="MUDr. [Treating Physician], PhD., MPH — NOU Bratislava",
+    admitting_physician="MUDr. [Admitting Physician] — NOU Bratislava",
     baseline_weight_kg=72.0,
     current_cycle=3,
     ecog="unknown — verify",

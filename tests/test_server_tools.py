@@ -329,7 +329,7 @@ class TestGetPatientContextTool:
     async def test_returns_patient_profile(self):
         result = json.loads(await get_patient_context())
 
-        assert result["name"] == "Erika Fusekova"
+        assert result["name"] == "Erika F."
         assert result["diagnosis_code"] == "C18.7"
         assert "FOLFOX" in result["treatment_regimen"]
         assert "HER2" in result["biomarkers"]

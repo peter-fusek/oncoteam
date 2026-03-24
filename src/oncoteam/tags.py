@@ -62,12 +62,12 @@ def normalize_tags(tags: list[str]) -> list[str]:
     - Applies TAG_MIGRATION mapping
     - Strips session IDs (sid:*) -- these are metadata, not tags
     - Strips date tags (date:*) -- these are metadata
-    - Strips patient name tags (Fusekova) -- single-patient system
+    - Strips patient name tags -- single-patient system
     """
     result: list[str] = []
     for t in tags:
         # Skip noise tags
-        if t.startswith("sid:") or t.startswith("date:") or t == "Fusekova":
+        if t.startswith("sid:") or t.startswith("date:") or t == "patient_name":
             continue
         # Apply migration
         canonical = TAG_MIGRATION.get(t, t)

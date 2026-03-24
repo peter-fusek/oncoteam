@@ -343,7 +343,7 @@ async def test_api_patient_returns_profile():
     data = json.loads(response.body)
 
     assert response.status_code == 200
-    assert data["name"] == "Erika Fusekova"
+    assert data["name"] == "Erika F."
     assert data["diagnosis_code"] == "C18.7"
     assert data["biomarkers"]["KRAS"] == "mutant G12S (c.34G>A)"
     assert data["staging"].startswith("IV (liver mets, peritoneal carcinomatosis")
