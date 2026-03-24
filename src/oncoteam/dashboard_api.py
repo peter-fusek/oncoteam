@@ -41,6 +41,9 @@ from .config import (
     AUTONOMOUS_MODEL_LIGHT,
     DASHBOARD_ALLOWED_ORIGINS,
     DASHBOARD_API_KEY,
+    FUP_AGENT_RUNS_PER_MONTH,
+    FUP_AI_QUERIES_PER_MONTH,
+    FUP_ONCOFILES_DOCUMENTS,
     GIT_COMMIT,
     MCP_TRANSPORT,
     ONCOFILES_MCP_URL,
@@ -547,6 +550,58 @@ def _check_expensive_rate_limit() -> bool:
         return False
     _expensive_timestamps.append(now)
     return True
+
+
+# ── FUP (Fair Use Policy) — monthly counters ────────────────────────────
+
+_fup_ai_queries: dict[str, int] = {}  # month_key → count
+_fup_agent_runs: dict[str, int] = {}
+
+
+def _fup_month_key() -> str:
+    """Current month key for FUP tracking, e.g. '2026-03'."""
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    return _dt.now(UTC).strftime("%Y-%m")
+
+
+def _check_fup_ai_query() -> bool:
+    """Record an AI query and return True if within FUP limit."""
+    key = _fup_month_key()
+    count = _fup_ai_queries.get(key, 0)
+    if count >= FUP_AI_QUERIES_PER_MONTH:
+        return False
+    _fup_ai_queries[key] = count + 1
+    # Clean old months
+    for k in list(_fup_ai_queries):
+        if k != key:
+            del _fup_ai_queries[k]
+    return True
+
+
+def _check_fup_agent_run() -> bool:
+    """Record an agent run and return True if within FUP limit."""
+    key = _fup_month_key()
+    count = _fup_agent_runs.get(key, 0)
+    if count >= FUP_AGENT_RUNS_PER_MONTH:
+        return False
+    _fup_agent_runs[key] = count + 1
+    for k in list(_fup_agent_runs):
+        if k != key:
+            del _fup_agent_runs[k]
+    return True
+
+
+def _get_fup_status() -> dict:
+    """Return current FUP usage for the /api/status endpoint."""
+    key = _fup_month_key()
+    return {
+        "month": key,
+        "ai_queries": {"used": _fup_ai_queries.get(key, 0), "limit": FUP_AI_QUERIES_PER_MONTH},
+        "agent_runs": {"used": _fup_agent_runs.get(key, 0), "limit": FUP_AGENT_RUNS_PER_MONTH},
+        "oncofiles_documents": {"limit": FUP_ONCOFILES_DOCUMENTS, "note": "enforced by oncofiles"},
+    }
 
 
 async def api_status(request: Request) -> JSONResponse:
@@ -1066,6 +1121,7 @@ async def api_autonomous_cost(request: Request) -> JSONResponse:
             "month": now.strftime("%Y-%m"),
             "day_of_month": day_of_month,
             "days_in_month": days_in_month,
+            "fup": _get_fup_status(),
         }
     )
 
@@ -2784,6 +2840,12 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             status_code=429,
             request=request,
         )
+    if not _check_fup_ai_query():
+        return _cors_json(
+            {"error": f"Monthly AI query limit reached ({FUP_AI_QUERIES_PER_MONTH})."},
+            status_code=429,
+            request=request,
+        )
     try:
         body = json.loads(await request.body())
         message = body.get("message", "")
@@ -2972,6 +3034,12 @@ async def api_trigger_agent(request: Request) -> JSONResponse:
     if not _check_expensive_rate_limit():
         return _cors_json(
             {"error": "Too many agent triggers. Try again later."},
+            status_code=429,
+            request=request,
+        )
+    if not _check_fup_agent_run():
+        return _cors_json(
+            {"error": f"Monthly agent run limit reached ({FUP_AGENT_RUNS_PER_MONTH})."},
             status_code=429,
             request=request,
         )

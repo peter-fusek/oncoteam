@@ -55,6 +55,12 @@ ANTHROPIC_BUDGET_ALERT_THRESHOLD: float = float(
     os.environ.get("ANTHROPIC_BUDGET_ALERT_THRESHOLD", "15.0")
 )
 
+# Fair Use Policy (FUP) — free tier limits per patient/month
+# Temporary guardrails before freemium pricing. Manually reviewed.
+FUP_AI_QUERIES_PER_MONTH: int = int(os.environ.get("FUP_AI_QUERIES_PER_MONTH", "500"))
+FUP_AGENT_RUNS_PER_MONTH: int = int(os.environ.get("FUP_AGENT_RUNS_PER_MONTH", "100"))
+FUP_ONCOFILES_DOCUMENTS: int = int(os.environ.get("FUP_ONCOFILES_DOCUMENTS", "200"))
+
 # HTTP timeouts (seconds)
 TIMEOUT_EXTERNAL_API: int = 30  # PubMed, ClinicalTrials.gov
 TIMEOUT_GITHUB_API: int = 15
