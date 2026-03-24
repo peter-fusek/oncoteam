@@ -17,6 +17,7 @@ from oncoteam.dashboard_api import (
     api_briefings,
     api_cumulative_dose,
     api_diagnostics,
+    api_documents,
     api_family_update,
     api_labs,
     api_medications,
@@ -261,3 +262,36 @@ async def test_briefings_data_flows_through(mock):
     data = _parse(await api_briefings(_make_request()))
     assert data["total"] >= 1
     assert len(data["briefings"]) >= 1
+
+
+# ── Circuit breaker fast-fail (#131) ─────────────
+
+
+@pytest.mark.anyio
+async def test_labs_circuit_breaker_open(
+    _mock_circuit_breaker_closed,  # noqa: ARG001 — override the autouse fixture
+):
+    with patch(
+        "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+        return_value={"state": "open", "failure_count": 5, "cooldown_remaining": 25},
+    ):
+        resp = await api_labs(_make_request())
+        data = _parse(resp)
+        assert resp.status_code == 503
+        assert data["unavailable"] is True
+        assert data["entries"] == []
+
+
+@pytest.mark.anyio
+async def test_documents_circuit_breaker_open(
+    _mock_circuit_breaker_closed,  # noqa: ARG001 — override the autouse fixture
+):
+    with patch(
+        "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+        return_value={"state": "open", "failure_count": 5, "cooldown_remaining": 25},
+    ):
+        resp = await api_documents(_make_request())
+        data = _parse(resp)
+        assert resp.status_code == 503
+        assert data["unavailable"] is True
+        assert data["documents"] == []

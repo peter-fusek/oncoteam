@@ -42,7 +42,8 @@
     "viewDetails": "Zobraziť detaily",
     "googleDrive": "Google Drive",
     "errorPrefix": "Chyba: {msg}",
-    "minSafe": "Min bezpečné ({param})"
+    "minSafe": "Min bezpečné ({param})",
+    "retry": "Skúsiť znova"
   },
   "agents": {
     "title": "Prehľad agentov",
@@ -410,7 +411,9 @@
     "status_error": "Chyba",
     "status_synced": "Synchronizované",
     "status_not_attempted": "N/A",
-    "noDocs": "Žiadne dokumenty"
+    "noDocs": "Žiadne dokumenty",
+    "unavailable": "Databáza je dočasne nedostupná",
+    "unavailableHint": "Služba sa reštartuje. Zvyčajne sa to vyrieši do minúty."
   },
   "dictionary": {
     "title": "Medicínsky slovník",

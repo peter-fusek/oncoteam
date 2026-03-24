@@ -188,5 +188,14 @@ function statusLabel(status: string | null | undefined): string {
     <div v-else-if="!docs?.error && !docsError && docsStatus !== 'pending'" class="text-gray-500 text-center py-16 text-sm">
       {{ $t('documents.noDocs') }}
     </div>
+
+    <!-- Unavailable state — don't confuse "0 documents" with "backend down" -->
+    <div v-if="docs?.unavailable && !docs?.documents?.length" class="text-center py-12 text-sm text-gray-500">
+      <p class="text-lg font-medium text-gray-700 mb-2">{{ $t('documents.unavailable') }}</p>
+      <p>{{ $t('documents.unavailableHint') }}</p>
+      <UButton icon="i-lucide-refresh-cw" variant="soft" size="sm" color="neutral" class="mt-4" @click="refresh">
+        {{ $t('common.retry') }}
+      </UButton>
+    </div>
   </div>
 </template>

@@ -43,3 +43,13 @@ def _clear_rate_limiters():
     yield
     mod._rate_timestamps.clear()
     mod._expensive_timestamps.clear()
+
+
+@pytest.fixture(autouse=True)
+def _mock_circuit_breaker_closed():
+    """Default circuit breaker to closed so api_labs/api_documents don't fast-fail."""
+    with patch(
+        "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+        return_value={"state": "closed", "failure_count": 0, "cooldown_remaining": 0},
+    ):
+        yield

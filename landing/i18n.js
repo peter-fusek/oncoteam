@@ -150,7 +150,13 @@ function setLanguage(lang) {
 }
 
 document.querySelectorAll(".lang-btn").forEach(btn => {
-  btn.addEventListener("click", () => setLanguage(btn.dataset.lang));
+  btn.addEventListener("click", () => {
+    setLanguage(btn.dataset.lang);
+    // GA4: track language switch
+    if (typeof gtag === "function") {
+      gtag("event", "language_switch", { language: btn.dataset.lang });
+    }
+  });
 });
 
 // Restore saved language or detect from browser
@@ -159,4 +165,50 @@ if (saved && translations[saved]) {
   setLanguage(saved);
 } else if (navigator.language.startsWith("sk")) {
   setLanguage("sk");
+}
+
+// ── GA4 Custom Events ──────────────────────────────────────────────
+
+// Track CTA and link clicks
+document.querySelectorAll("a[href], button").forEach(el => {
+  el.addEventListener("click", () => {
+    if (typeof gtag !== "function") return;
+    const href = el.getAttribute("href") || "";
+    const text = el.textContent.trim().slice(0, 50);
+
+    // Hero CTA buttons
+    if (el.classList.contains("btn-primary") || el.classList.contains("btn-secondary")) {
+      gtag("event", "cta_click", { link_text: text, link_url: href });
+    }
+    // Contact section links
+    if (el.classList.contains("contact-link") || el.classList.contains("story-link")) {
+      gtag("event", "contact_click", { link_text: text, link_url: href });
+    }
+    // Dashboard link
+    if (href.includes("dashboard.oncoteam.cloud")) {
+      gtag("event", "dashboard_click", { link_text: text });
+    }
+    // GitHub link
+    if (href.includes("github.com")) {
+      gtag("event", "github_click", { link_text: text, link_url: href });
+    }
+  });
+});
+
+// Track section visibility (scroll depth)
+if ("IntersectionObserver" in window) {
+  const sections = document.querySelectorAll("section[id], section[class]");
+  const seen = new Set();
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const name = entry.target.id || entry.target.className.split(" ")[0];
+      if (seen.has(name)) return;
+      seen.add(name);
+      if (typeof gtag === "function") {
+        gtag("event", "section_view", { section_name: name });
+      }
+    });
+  }, { threshold: 0.3 });
+  sections.forEach(s => observer.observe(s));
 }

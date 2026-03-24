@@ -42,7 +42,8 @@
     "viewDetails": "View full details",
     "googleDrive": "Google Drive",
     "errorPrefix": "Error: {msg}",
-    "minSafe": "Min safe ({param})"
+    "minSafe": "Min safe ({param})",
+    "retry": "Try again"
   },
   "agents": {
     "title": "Agent Dashboard",
@@ -410,7 +411,9 @@
     "status_error": "Error",
     "status_synced": "Synced",
     "status_not_attempted": "N/A",
-    "noDocs": "No documents found"
+    "noDocs": "No documents found",
+    "unavailable": "Database temporarily unavailable",
+    "unavailableHint": "The document service is restarting. This usually resolves within a minute."
   },
   "dictionary": {
     "title": "Medical Dictionary",

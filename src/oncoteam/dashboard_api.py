@@ -1482,6 +1482,19 @@ async def api_labs(request: Request) -> JSONResponse:
     GET: list lab results (treatment events with event_type=lab_result).
     POST: create a new lab result entry.
     """
+    # Fail fast if oncofiles is down
+    cb = oncofiles_client.get_circuit_breaker_status()
+    if cb["state"] == "open":
+        return _cors_json(
+            {
+                "error": "Database temporarily unavailable. Try again in a minute.",
+                "entries": [],
+                "total": 0,
+                "unavailable": True,
+            },
+            status_code=503,
+        )
+
     if request.method == "POST":
         try:
             body = json.loads(await request.body())
@@ -1950,6 +1963,22 @@ async def api_diagnostics(request: Request) -> JSONResponse:
 async def api_documents(request: Request) -> JSONResponse:
     """GET /api/documents — document status matrix from oncofiles."""
     filter_param = request.query_params.get("filter", "all")
+
+    # Fail fast if oncofiles is down — don't wait 20s for timeout
+    cb = oncofiles_client.get_circuit_breaker_status()
+    if cb["state"] == "open":
+        return _cors_json(
+            {
+                "error": "Database temporarily unavailable. Try again in a minute.",
+                "documents": [],
+                "total": 0,
+                "filter": filter_param,
+                "summary": {"total": 0, "ocr_complete": 0, "missing_ocr": 0, "missing_metadata": 0},
+                "unavailable": True,
+            },
+            status_code=503,
+        )
+
     try:
         result = await oncofiles_client.call_oncofiles(
             "get_document_status_matrix", {"filter": filter_param}
