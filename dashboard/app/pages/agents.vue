@@ -45,6 +45,17 @@ const { data: labData, refresh: refreshLabs } = fetchApi<{
   }>
 }>('/labs?limit=3', { lazy: true })
 
+// Fetch registered agents for the scheduled agents section (#135)
+const { data: agentsRegistry, refresh: refreshAgents } = fetchApi<{
+  agents: Array<{
+    id: string; name: string; description: string; category: string
+    model: string; schedule: string; cooldown_hours: number; max_turns: number
+    whatsapp_enabled: boolean; last_run: string | null; enabled: boolean
+  }>
+}>('/agents', { lazy: true })
+
+const registeredAgents = computed(() => agentsRegistry.value?.agents || [])
+
 // ── Helpers ──────────────────────────────────────
 
 function toolLabel(toolName: string): string {
@@ -119,6 +130,18 @@ function relativeTime(ts: string): string {
   if (hours < 24) return `${hours}h`
   const days = Math.floor(hours / 24)
   return `${days}d`
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  data_pipeline: 'bg-blue-500/20 text-blue-600',
+  research: 'bg-purple-500/20 text-purple-600',
+  clinical: 'bg-rose-500/20 text-rose-600',
+  reporting: 'bg-emerald-500/20 text-emerald-600',
+}
+
+const MODEL_LABELS: Record<string, string> = {
+  light: 'Haiku',
+  sonnet: 'Sonnet',
 }
 
 // ── Room definitions ─────────────────────────────
@@ -328,7 +351,7 @@ const roomJobs = computed(() => {
 // ── Refresh ──────────────────────────────────────
 
 async function refreshAll() {
-  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshCost(), refreshLabs()])
+  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshCost(), refreshLabs(), refreshAgents()])
 }
 
 const refreshInterval = ref<ReturnType<typeof setInterval>>()
@@ -425,6 +448,38 @@ onUnmounted(() => {
           <div class="text-sm font-mono" :class="costData.budget_alert ? 'text-amber-600' : 'text-emerald-600'">${{ costData.remaining_credit.toFixed(2) }}</div>
           <div class="text-[10px] text-gray-400">~{{ costData.days_remaining }}d</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Scheduled Agents (#135 — merged from Prompts page) -->
+    <div v-if="registeredAgents.length > 0 && currentLevel === 0">
+      <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{{ $t('agents.scheduledTasks') }}</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <NuxtLink
+          v-for="agent in registeredAgents"
+          :key="agent.id"
+          :to="`/agents/${agent.id}`"
+          class="rounded-xl border border-gray-200 bg-white p-4 hover:border-gray-300 hover:shadow-sm transition-all group"
+        >
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-sm font-medium text-gray-900 group-hover:text-teal-700 transition-colors truncate">
+              {{ agent.name }}
+            </span>
+            <span
+              class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium"
+              :class="CATEGORY_COLORS[agent.category] || 'bg-gray-500/20 text-gray-500'"
+            >
+              {{ agent.category }}
+            </span>
+          </div>
+          <p class="text-xs text-gray-500 mb-2 line-clamp-1">{{ agent.description }}</p>
+          <div class="flex items-center gap-3 text-[10px] text-gray-400">
+            <span>{{ MODEL_LABELS[agent.model] || agent.model }}</span>
+            <span>{{ agent.schedule }}</span>
+            <span v-if="agent.last_run" class="ml-auto">{{ relativeTime(agent.last_run) }}</span>
+            <span v-else class="ml-auto">{{ $t('agents.neverRun') }}</span>
+          </div>
+        </NuxtLink>
       </div>
     </div>
 
