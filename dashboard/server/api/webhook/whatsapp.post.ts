@@ -1,5 +1,8 @@
 import twilio from 'twilio'
 import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
+import { getOnboardingState, setOnboardingState, isOnboarding } from '../../utils/onboarding-state'
+import { handleOnboardingMessage } from '../../utils/onboarding-handler'
+import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
@@ -75,8 +78,31 @@ export default defineEventHandler(async (event) => {
   // Phone allowlist check (mandatory — primary security gate)
   const allowedPhones = extractPhoneAllowlist(config.roleMap)
   if (!allowedPhones.has(from)) {
+    // Check if user is in onboarding flow
+    if (isOnboarding(from)) {
+      const oncoteamUrl = config.oncoteamApiUrl as string
+      const apiKey = (config.oncoteamApiKey || '') as string
+      const onboardingResult = await handleOnboardingMessage(from, messageBody, oncoteamUrl, apiKey)
+      setResponseHeader(event, 'content-type', 'text/xml')
+      return twiml(onboardingResult.text || '')
+    }
+
+    // Start onboarding for unknown phone numbers
+    const now = Date.now()
+    const initialState: OnboardingState = {
+      step: 'welcome',
+      phone: from,
+      lang: 'sk',
+      createdAt: now,
+      updatedAt: now,
+    }
+    setOnboardingState(from, initialState)
+
+    const oncoteamUrl = config.oncoteamApiUrl as string
+    const apiKey = (config.oncoteamApiKey || '') as string
+    const onboardingResult = await handleOnboardingMessage(from, messageBody, oncoteamUrl, apiKey)
     setResponseHeader(event, 'content-type', 'text/xml')
-    return twiml('Your phone number is not registered.')
+    return twiml(onboardingResult.text || '')
   }
 
   // Rate limiting per phone
