@@ -67,7 +67,8 @@ const latestBriefing = computed(() => briefings.value?.briefings?.[0] ?? null)
 
 const upcomingEvents = computed(() => {
   if (!timeline.value?.events) return []
-  const today = new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   return timeline.value.events
     .filter(e => e.event_date >= today)
     .slice(0, 5)

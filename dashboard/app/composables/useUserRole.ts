@@ -12,6 +12,7 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/family-update': ['advocate', 'patient'],
   '/dictionary': ['advocate', 'patient', 'doctor'],
   '/agents': ['advocate'],
+  '/prompts': ['advocate'],
   '/sessions': ['advocate'],
   '/documents': ['advocate'],
 }
