@@ -29,7 +29,7 @@ const { data: labs } = fetchApi<{
   total: number
   error?: string
   unavailable?: boolean
-}>('/labs?limit=3', { lazy: true })
+}>('/labs', { lazy: true })
 
 const { data: briefings } = fetchApi<{
   briefings: Array<{
@@ -56,7 +56,11 @@ const { data: timeline } = fetchApi<{
 }>('/timeline?limit=10', { lazy: true })
 
 // Computed helpers
-const latestLab = computed(() => labs.value?.entries?.[0] ?? null)
+const latestLab = computed(() => {
+  if (!labs.value?.entries) return null
+  // Find first entry with actual values (skip entries with empty metadata)
+  return labs.value.entries.find(e => e.values && Object.keys(e.values).length > 0) ?? labs.value.entries[0] ?? null
+})
 
 const labAlerts = computed(() => {
   if (!latestLab.value?.alerts) return []
