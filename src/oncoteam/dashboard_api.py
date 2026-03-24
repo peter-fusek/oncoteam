@@ -3232,6 +3232,21 @@ async def api_whatsapp_media(request: Request) -> JSONResponse:
             request=request,
         )
 
+    # Content type allowlist — prevent content injection
+    allowed_types = {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/heic",
+        "application/pdf",
+    }
+    if content_type not in allowed_types:
+        return _cors_json(
+            {"error": f"Unsupported content type: {content_type}"},
+            status_code=400,
+            request=request,
+        )
+
     # FUP limit check
     if not _check_fup_ai_query():
         return _cors_json(

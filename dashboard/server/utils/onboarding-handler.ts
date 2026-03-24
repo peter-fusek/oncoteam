@@ -3,7 +3,7 @@ import type { OnboardingState } from './onboarding-state'
 
 type Lang = 'sk' | 'en'
 
-const ONCOFILES_URL = 'https://aware-kindness-production.up.railway.app'
+const ONCOFILES_URL = process.env.NUXT_ONCOFILES_PUBLIC_URL || 'https://aware-kindness-production.up.railway.app'
 
 const SLOVAK_INDICATORS = [
   'ahoj', 'dobry', 'dobrý', 'den', 'deň', 'chcem', 'potrebujem', 'pomoc',

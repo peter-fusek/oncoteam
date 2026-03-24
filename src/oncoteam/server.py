@@ -17,7 +17,15 @@ from .activity_logger import (
     log_to_diary,
     record_suppressed_error,
 )
-from .config import GIT_COMMIT, MCP_BASE_URL, MCP_BEARER_TOKEN, MCP_HOST, MCP_PORT, MCP_TRANSPORT
+from .config import (
+    DASHBOARD_ALLOWED_ORIGINS,
+    GIT_COMMIT,
+    MCP_BASE_URL,
+    MCP_BEARER_TOKEN,
+    MCP_HOST,
+    MCP_PORT,
+    MCP_TRANSPORT,
+)
 from .dashboard_api import (
     VERSION,
     _check_api_auth,
@@ -1065,8 +1073,8 @@ def main() -> None:
                 middleware=[
                     Middleware(
                         CORSMiddleware,
-                        allow_origins=["*"],
-                        allow_credentials=True,
+                        allow_origins=DASHBOARD_ALLOWED_ORIGINS or ["*"],
+                        allow_credentials=False,
                         allow_methods=["GET", "POST", "OPTIONS", "DELETE"],
                         allow_headers=["Authorization", "Content-Type", "mcp-protocol-version"],
                     ),

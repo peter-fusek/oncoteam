@@ -331,12 +331,15 @@ export type CommandResult =
   | { type: 'reply'; text: string }
   | { type: 'async'; lang: Lang; message: string }
 
-function extractAdminPhones(roleMapRaw: string | Record<string, { phone?: string }>): Set<string> {
+function extractAdminPhones(roleMapRaw: string | Record<string, { phone?: string; roles?: string[] }>): Set<string> {
   try {
     const roleMap = typeof roleMapRaw === 'string' ? JSON.parse(roleMapRaw || '{}') : roleMapRaw || {}
     const phones = new Set<string>()
-    for (const config of Object.values(roleMap) as Array<{ phone?: string }>) {
-      if (config.phone) phones.add(config.phone.replace(/[\s\-()]/g, ''))
+    for (const [key, config] of Object.entries(roleMap) as Array<[string, { phone?: string; roles?: string[] }]>) {
+      // Only admin/advocate roles can approve — not patients or doctors
+      const isAdmin = key.startsWith('admin') || key.startsWith('advocate')
+        || (config.roles && (config.roles.includes('admin') || config.roles.includes('advocate')))
+      if (isAdmin && config.phone) phones.add(config.phone.replace(/[\s\-()]/g, ''))
     }
     return phones
   }

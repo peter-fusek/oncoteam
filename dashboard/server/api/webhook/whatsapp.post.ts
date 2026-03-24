@@ -47,11 +47,17 @@ function extractMedia(body: Record<string, unknown>): MediaAttachment[] {
   return attachments
 }
 
+const TWILIO_MEDIA_DOMAINS = ['https://api.twilio.com/', 'https://media.twiliocdn.com/']
+
 async function downloadTwilioMedia(
   mediaUrl: string,
   accountSid: string,
   authToken: string,
 ): Promise<ArrayBuffer> {
+  // SSRF protection: only fetch from Twilio domains
+  if (!TWILIO_MEDIA_DOMAINS.some(d => mediaUrl.startsWith(d))) {
+    throw new Error(`Untrusted media URL domain: ${mediaUrl}`)
+  }
   const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
   const response = await fetch(mediaUrl, {
     headers: { Authorization: `Basic ${auth}` },
@@ -65,6 +71,10 @@ async function downloadTwilioMedia(
 
 function normalizePhone(phone: string): string {
   return phone.replace(/[\s\-()]/g, '')
+}
+
+function isValidPhoneFormat(phone: string): boolean {
+  return /^\+[1-9]\d{6,14}$/.test(phone)
 }
 
 function extractPhoneAllowlist(roleMapRaw: string | Record<string, { phone?: string }>): Set<string> {
@@ -128,6 +138,12 @@ export default defineEventHandler(async (event) => {
   // (Reverse proxy URL reconstruction may not match Twilio's expected URL)
   if (!isValid) {
     console.warn('[whatsapp-webhook] Twilio signature validation failed, relying on phone allowlist')
+  }
+
+  // Phone format validation — reject malformed senders
+  if (!isValidPhoneFormat(from)) {
+    setResponseHeader(event, 'content-type', 'text/xml')
+    return twiml('Invalid sender.')
   }
 
   // Phone allowlist check (mandatory — primary security gate)
