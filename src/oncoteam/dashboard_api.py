@@ -3096,7 +3096,16 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
                 text = resp.content[0].text if resp.content else "{}"
                 cost = (resp.usage.input_tokens * 0.80 + resp.usage.output_tokens * 4.0) / 1_000_000
                 total_cost += cost
-                parsed = json.loads(text)
+                # Extract JSON from response (Haiku may wrap in markdown)
+                clean = text.strip()
+                if "```" in clean:
+                    clean = re.sub(r"```(?:json)?\s*", "", clean).strip().rstrip("`")
+                # Find first { ... } block
+                start = clean.find("{")
+                end = clean.rfind("}") + 1
+                if start >= 0 and end > start:
+                    clean = clean[start:end]
+                parsed = json.loads(clean)
                 stage = parsed.get("stage", "Watching")
                 if stage not in _FUNNEL_STAGES:
                     stage = "Watching"
