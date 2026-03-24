@@ -3275,6 +3275,14 @@ async def api_whatsapp_media(request: Request) -> JSONResponse:
     if isinstance(upload_result, dict):
         document_id = str(upload_result.get("document_id", upload_result.get("id", "")))
 
+    if not document_id:
+        _logger.error("upload_document returned no document_id: %s", upload_result)
+        return _cors_json(
+            {"error": "Upload succeeded but no document_id returned"},
+            status_code=502,
+            request=request,
+        )
+
     # Step 2: Trigger OCR + AI analysis
     summary = ""
     if document_id:
@@ -3316,7 +3324,8 @@ async def api_onboard_patient(request: Request) -> JSONResponse:
         return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
 
     patient_id = (body.get("patient_id") or "").strip()
-    display_name = (body.get("display_name") or "").strip()
+    # Accept both field name variants (frontend sends patient_name)
+    display_name = (body.get("display_name") or body.get("patient_name") or "").strip()
     if not patient_id or not display_name:
         return _cors_json(
             {"error": "patient_id and display_name are required"},
@@ -3324,8 +3333,8 @@ async def api_onboard_patient(request: Request) -> JSONResponse:
             request=request,
         )
 
-    diagnosis_summary = body.get("diagnosis_summary", "")
-    preferred_lang = body.get("preferred_lang", "sk")
+    diagnosis_summary = body.get("diagnosis_summary", body.get("diagnosis", ""))
+    preferred_lang = body.get("preferred_lang", body.get("lang", "sk"))
 
     try:
         result = await oncofiles_client.create_patient_via_api(

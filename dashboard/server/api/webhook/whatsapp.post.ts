@@ -59,14 +59,21 @@ async function downloadTwilioMedia(
     throw new Error(`Untrusted media URL domain: ${mediaUrl}`)
   }
   const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
-  const response = await fetch(mediaUrl, {
-    headers: { Authorization: `Basic ${auth}` },
-    redirect: 'follow',
-  })
-  if (!response.ok) {
-    throw new Error(`Failed to download media: ${response.status} ${response.statusText}`)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30_000)
+  try {
+    const response = await fetch(mediaUrl, {
+      headers: { Authorization: `Basic ${auth}` },
+      redirect: 'follow',
+      signal: controller.signal,
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to download media: ${response.status} ${response.statusText}`)
+    }
+    return response.arrayBuffer()
+  } finally {
+    clearTimeout(timeout)
   }
-  return response.arrayBuffer()
 }
 
 function normalizePhone(phone: string): string {
@@ -86,7 +93,8 @@ function extractPhoneAllowlist(roleMapRaw: string | Record<string, { phone?: str
     }
     return phones
   }
-  catch {
+  catch (err) {
+    console.error('[whatsapp-webhook] CRITICAL: Failed to parse role map — all users locked out:', err)
     return new Set()
   }
 }
@@ -318,7 +326,7 @@ export default defineEventHandler(async (event) => {
         method: 'POST',
         body: { phone: from, user_message: `[media x${mediaAttachments.length}] ${messageBody}`, bot_response: reply },
         headers,
-      }).catch(() => {})
+      }).catch((err: unknown) => console.warn('[whatsapp] Non-critical async failed:', (err as Error)?.message || err))
     })()
 
     setResponseHeader(event, 'content-type', 'text/xml')
@@ -380,7 +388,7 @@ export default defineEventHandler(async (event) => {
         method: 'POST',
         body: { phone: from, user_message: messageBody, bot_response: reply },
         headers,
-      }).catch(() => {})
+      }).catch((err: unknown) => console.warn('[whatsapp] Non-critical async failed:', (err as Error)?.message || err))
     })()
 
     // Immediate response to Twilio — acknowledge receipt
@@ -399,7 +407,7 @@ export default defineEventHandler(async (event) => {
       method: 'POST',
       body: { phone: from, user_message: messageBody, bot_response: reply },
       headers: logHeaders,
-    }).catch(() => {})
+    }).catch((err: unknown) => console.warn('[whatsapp] Non-critical async failed:', (err as Error)?.message || err))
   }
   catch {
     // Logging failure must not block the response

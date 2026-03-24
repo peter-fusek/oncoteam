@@ -629,7 +629,7 @@ async def create_patient_via_api(
         raise RuntimeError("ONCOFILES_MCP_URL not configured")
 
     # Derive REST base URL: replace /mcp suffix with /api/patients
-    base = ONCOFILES_MCP_URL.replace("/mcp", "")
+    base = ONCOFILES_MCP_URL.removesuffix("/mcp")
     url = f"{base}/api/patients"
 
     payload = {
