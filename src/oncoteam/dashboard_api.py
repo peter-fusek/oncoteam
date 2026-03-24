@@ -1524,8 +1524,10 @@ async def api_labs(request: Request) -> JSONResponse:
         result = await oncofiles_client.list_treatment_events(event_type="lab_result", limit=limit)
         events = _filter_test(_extract_list(result, "events"), request)
 
-        # Fallback 1: try lab_values table (structured numeric data)
-        if not events:
+        # Enrich events that have empty metadata from lab_values table,
+        # or create new events if none exist.
+        empty_meta = any(not e.get("metadata") for e in events)
+        if empty_meta or not events:
             try:
                 trends = await oncofiles_client.get_lab_trends_data(limit=200)
                 values_list = _extract_list(trends, "values")
@@ -1540,16 +1542,21 @@ async def api_labs(request: Request) -> JSONResponse:
                             continue
                         by_date[d]["metadata"][v["parameter"]] = v["value"]
                         by_date[d]["document_id"] = v.get("document_id")
+                    # Enrich existing events or add new ones
+                    existing_dates = {e.get("event_date"): e for e in events}
                     for d, data in by_date.items():
                         _normalize_lab_values(data["metadata"])
-                        events.append(
-                            {
-                                "event_date": d,
-                                "metadata": data["metadata"],
-                                "notes": data.get("notes", ""),
-                                "id": data.get("document_id"),
-                            }
-                        )
+                        if d in existing_dates and not existing_dates[d].get("metadata"):
+                            existing_dates[d]["metadata"] = data["metadata"]
+                        elif d not in existing_dates:
+                            events.append(
+                                {
+                                    "event_date": d,
+                                    "metadata": data["metadata"],
+                                    "notes": data.get("notes", ""),
+                                    "id": data.get("document_id"),
+                                }
+                            )
             except Exception as fallback_err:
                 record_suppressed_error("api_labs", "lab_trends_fallback", fallback_err)
 
