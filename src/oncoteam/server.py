@@ -1035,11 +1035,27 @@ def main() -> None:
     else:
         import asyncio
 
+        from starlette.middleware import Middleware
+        from starlette.middleware.cors import CORSMiddleware
+
         async def _run_http():
             # FastMCP 3.x lifespan is broken in HTTP transport (double-wrap bug).
             # Start the autonomous scheduler explicitly within the event loop.
             start_scheduler()
-            await mcp.run_async(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
+            await mcp.run_async(
+                transport=MCP_TRANSPORT,
+                host=MCP_HOST,
+                port=MCP_PORT,
+                middleware=[
+                    Middleware(
+                        CORSMiddleware,
+                        allow_origins=["*"],
+                        allow_credentials=True,
+                        allow_methods=["GET", "POST", "OPTIONS", "DELETE"],
+                        allow_headers=["Authorization", "Content-Type", "mcp-protocol-version"],
+                    ),
+                ],
+            )
 
         asyncio.run(_run_http())
 
