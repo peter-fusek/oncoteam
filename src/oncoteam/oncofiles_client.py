@@ -586,3 +586,43 @@ async def get_lab_safety_check() -> dict:
 async def get_precycle_checklist(cycle_number: int = 3) -> dict:
     """Full pre-cycle checklist: lab safety + toxicity + VTE + general assessment."""
     return await call_oncofiles("get_precycle_checklist", {"cycle_number": cycle_number})
+
+
+# ── REST API wrappers (non-MCP) ──────────────────
+
+
+async def create_patient_via_api(
+    patient_id: str,
+    display_name: str,
+    diagnosis_summary: str = "",
+    preferred_lang: str = "sk",
+    caregiver_email: str = "",
+) -> dict:
+    """Create a new patient via oncofiles REST API (not MCP).
+
+    Returns dict with ``patient`` and ``bearer_token`` on success.
+    Raises ``httpx.HTTPStatusError`` on 409 (patient already exists) or other errors.
+    """
+    if not ONCOFILES_MCP_URL:
+        raise RuntimeError("ONCOFILES_MCP_URL not configured")
+
+    # Derive REST base URL: replace /mcp suffix with /api/patients
+    base = ONCOFILES_MCP_URL.replace("/mcp", "")
+    url = f"{base}/api/patients"
+
+    payload = {
+        "patient_id": patient_id,
+        "display_name": display_name,
+        "diagnosis_summary": diagnosis_summary,
+        "preferred_lang": preferred_lang,
+        "caregiver_email": caregiver_email,
+    }
+
+    headers: dict[str, str] = {}
+    if ONCOFILES_MCP_TOKEN:
+        headers["Authorization"] = f"Bearer {ONCOFILES_MCP_TOKEN}"
+
+    async with httpx.AsyncClient(timeout=15) as http:
+        resp = await http.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        return resp.json()

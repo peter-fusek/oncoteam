@@ -3140,6 +3140,110 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
     )
 
 
+async def api_onboard_patient(request: Request) -> JSONResponse:
+    """POST /api/internal/onboard-patient — create a new patient in oncofiles and register locally.
+
+    Expects JSON body: {patient_id, display_name, diagnosis_summary?, preferred_lang?, phone?}
+    Returns: {patient_id, bearer_token, status: "created"} or {status: "exists"} on 409.
+    """
+    import httpx as _httpx
+
+    from .models import PatientProfile
+    from .patient_context import register_patient
+
+    try:
+        body = await request.json()
+    except Exception:
+        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
+
+    patient_id = (body.get("patient_id") or "").strip()
+    display_name = (body.get("display_name") or "").strip()
+    if not patient_id or not display_name:
+        return _cors_json(
+            {"error": "patient_id and display_name are required"},
+            status_code=400,
+            request=request,
+        )
+
+    diagnosis_summary = body.get("diagnosis_summary", "")
+    preferred_lang = body.get("preferred_lang", "sk")
+
+    try:
+        result = await oncofiles_client.create_patient_via_api(
+            patient_id=patient_id,
+            display_name=display_name,
+            diagnosis_summary=diagnosis_summary,
+            preferred_lang=preferred_lang,
+            caregiver_email="",
+        )
+    except _httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 409:
+            _logger.info("Patient %s already exists in oncofiles", patient_id)
+            return _cors_json(
+                {"patient_id": patient_id, "status": "exists"},
+                request=request,
+            )
+        record_suppressed_error("api_onboard_patient", "create_patient", exc)
+        return _cors_json(
+            {"error": f"Oncofiles error: {exc.response.status_code}"},
+            status_code=502,
+            request=request,
+        )
+    except Exception as exc:
+        record_suppressed_error("api_onboard_patient", "create_patient", exc)
+        return _cors_json(
+            {"error": f"Failed to create patient: {exc}"},
+            status_code=502,
+            request=request,
+        )
+
+    # Register in oncoteam's in-memory patient registry
+    bearer_token = result.get("bearer_token", "")
+    profile = PatientProfile(
+        patient_id=patient_id,
+        name=display_name,
+        diagnosis_code="",
+        diagnosis_description=diagnosis_summary,
+        tumor_site="",
+        treatment_regimen="",
+    )
+    try:
+        register_patient(patient_id=patient_id, token=bearer_token, profile=profile)
+    except Exception as exc:
+        record_suppressed_error("api_onboard_patient", "register_patient", exc)
+        # Non-fatal — patient was created in oncofiles, just not registered locally
+
+    _logger.info("Onboarded patient %s", patient_id)
+
+    return _cors_json(
+        {
+            "patient_id": patient_id,
+            "bearer_token": bearer_token,
+            "status": "created",
+        },
+        request=request,
+    )
+
+
+async def api_onboarding_status(request: Request) -> JSONResponse:
+    """POST /api/internal/onboarding-status — check onboarding state for a phone number.
+
+    Expects JSON body: {phone}
+    Returns: {status: "unknown"} — placeholder for #137 state machine.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
+
+    phone = (body.get("phone") or "").strip()
+    if not phone:
+        return _cors_json({"error": "phone is required"}, status_code=400, request=request)
+
+    # Placeholder — will be expanded in #137 when the state machine is built
+    return _cors_json({"phone": phone, "status": "unknown"}, request=request)
+
+
 async def api_cors_preflight(request: Request) -> JSONResponse:
     """OPTIONS handler for CORS preflight on all /api/* routes."""
     return _cors_json({}, request=request)

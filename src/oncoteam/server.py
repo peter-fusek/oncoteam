@@ -43,6 +43,8 @@ from .dashboard_api import (
     api_labs,
     api_log_whatsapp,
     api_medications,
+    api_onboard_patient,
+    api_onboarding_status,
     api_patient,
     api_protocol,
     api_protocol_cycles,
@@ -1017,6 +1019,12 @@ mcp.custom_route("/api/internal/document-webhook", methods=["OPTIONS"])(api_cors
 _trigger_agent = _auth_wrap(api_trigger_agent)
 mcp.custom_route("/api/internal/trigger-agent", methods=["POST"])(_trigger_agent)
 mcp.custom_route("/api/internal/trigger-agent", methods=["OPTIONS"])(api_cors_preflight)
+_onboard_patient = _auth_wrap(api_onboard_patient)
+mcp.custom_route("/api/internal/onboard-patient", methods=["POST"])(_onboard_patient)
+mcp.custom_route("/api/internal/onboard-patient", methods=["OPTIONS"])(api_cors_preflight)
+_onboarding_status = _auth_wrap(api_onboarding_status)
+mcp.custom_route("/api/internal/onboarding-status", methods=["POST"])(_onboarding_status)
+mcp.custom_route("/api/internal/onboarding-status", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/bug-report", methods=["POST"])(_auth_wrap(api_bug_report))
 mcp.custom_route("/api/bug-report", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/research/assess-funnel", methods=["POST"])(_auth_wrap(api_assess_funnel))

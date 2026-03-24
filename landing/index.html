@@ -69,7 +69,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=44">
+  <link rel="stylesheet" href="style.css?v=45">
 </head>
 <body>
   <!-- Navigation -->
@@ -339,26 +339,80 @@
     </div>
   </section>
 
-  <!-- How it works -->
-  <section id="how" class="how-it-works">
+  <!-- Get Started — 5-step onboarding guide -->
+  <section id="get-started" class="get-started">
     <div class="container">
-      <h2 class="section-title" data-i18n="how.title">How It Works</h2>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <h3 data-i18n="how.step1.title">Upload Your Documents</h3>
-          <p data-i18n="how.step1.text">Lab results, pathology reports, CT scans — upload them to your secure Google Drive folder. Oncoteam reads, structures, and connects everything automatically.</p>
+      <h2 class="section-title" data-i18n="gs.title">Get Started in 5 Steps</h2>
+      <p class="section-subtitle" data-i18n="gs.subtitle">From zero to a fully operational AI patient advocate — takes about 30 minutes.</p>
+
+      <div class="gs-shortcut">
+        <span data-i18n="gs.shortcut.prefix">Already have Oncofiles?</span>
+        <a href="#gs-step4" data-i18n="gs.shortcut.link">Skip to Step 4 →</a>
+      </div>
+
+      <div class="gs-row gs-row-top">
+        <div class="gs-step" id="gs-step1">
+          <div class="gs-step-header">
+            <div class="step-num">1</div>
+            <div class="gs-icon">🏥</div>
+          </div>
+          <h3 data-i18n="gs.step1.title">Create Your Account</h3>
+          <p data-i18n="gs.step1.text">Go to oncofiles.com, create a patient profile, and get your data organized in one place. This is the foundation everything else builds on.</p>
+          <a href="https://oncofiles.com" class="btn btn-primary btn-sm gs-cta" target="_blank" rel="noopener" data-i18n="gs.step1.cta">Go to Oncofiles.com</a>
         </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <h3 data-i18n="how.step2.title">AI Connects the Dots</h3>
-          <p data-i18n="how.step2.text">Your molecular profile, treatment history, lab trends, and eligible trials — all connected into one coherent picture. Updated automatically as new documents arrive.</p>
+
+        <div class="gs-step" id="gs-step2">
+          <div class="gs-step-header">
+            <div class="step-num">2</div>
+            <div class="gs-icon">📁</div>
+          </div>
+          <h3 data-i18n="gs.step2.title">Connect Google Drive</h3>
+          <p data-i18n="gs.step2.text">Link your Google Drive to Oncofiles. It reads your medical documents, organizes them automatically, and applies OCR and AI structuring — no manual tagging needed.</p>
         </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <h3 data-i18n="how.step3.title">You Stay in Control</h3>
-          <p data-i18n="how.step3.text">Open the dashboard for a visual overview. Chat on WhatsApp for quick answers. Get alerted when something needs attention. Walk into every appointment prepared and confident.</p>
+
+        <div class="gs-step" id="gs-step3">
+          <div class="gs-step-header">
+            <div class="step-num">3</div>
+            <div class="gs-icon">⬆️</div>
+          </div>
+          <h3 data-i18n="gs.step3.title">Upload Your Documents</h3>
+          <p data-i18n="gs.step3.text">Drop lab results, pathology reports, CT scans, and genetic tests into the connected Google Drive folder. Oncofiles processes each file — OCR, classification, extraction — automatically.</p>
         </div>
+      </div>
+
+      <div class="gs-row gs-row-bottom">
+        <div class="gs-step" id="gs-step4">
+          <div class="gs-step-header">
+            <div class="step-num gs-step-num-highlight">4</div>
+            <div class="gs-icon">🔌</div>
+          </div>
+          <div class="gs-skip-badge" data-i18n="gs.step4.badge">← Already have Oncofiles? Start here</div>
+          <h3 data-i18n="gs.step4.title">Connect AI Connectors</h3>
+          <p data-i18n="gs.step4.text">In Claude.ai, go to Settings → Connectors and add both "Oncoteam" and "Oncofiles" as custom connectors. This gives the AI direct access to your treatment data.</p>
+          <a href="https://claude.ai/settings/connectors" class="btn btn-secondary btn-sm gs-cta" target="_blank" rel="noopener" data-i18n="gs.step4.cta">Open Claude.ai Connectors</a>
+        </div>
+
+        <div class="gs-step" id="gs-step5">
+          <div class="gs-step-header">
+            <div class="step-num">5</div>
+            <div class="gs-icon">🚀</div>
+          </div>
+          <h3 data-i18n="gs.step5.title">Start Using</h3>
+          <p data-i18n="gs.step5.text">Send a message on WhatsApp or open the dashboard — your AI patient advocate is ready. Ask about labs, request a trial search, or get a briefing before the next oncologist visit.</p>
+          <a href="https://dashboard.oncoteam.cloud" class="btn btn-primary btn-sm gs-cta" target="_blank" rel="noopener" data-i18n="gs.step5.cta">Open Dashboard</a>
+        </div>
+      </div>
+
+      <div class="gs-whatsapp">
+        <div class="gs-whatsapp-icon">💬</div>
+        <div class="gs-whatsapp-body">
+          <strong data-i18n="gs.whatsapp.label">Fastest way to start:</strong>
+          <span data-i18n="gs.whatsapp.text"> Message us on WhatsApp and we'll walk you through setup.</span>
+        </div>
+        <a href="https://wa.me/421XXXXXXXXX" class="btn btn-primary gs-whatsapp-btn" target="_blank" rel="noopener">
+          <span data-i18n="gs.whatsapp.btn">WhatsApp</span>
+          <span class="gs-whatsapp-number">+421 XXX XXX XXX</span>
+        </a>
       </div>
     </div>
   </section>
@@ -470,7 +524,7 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=44"></script>
+  <script src="i18n.js?v=45"></script>
   <script>
   // Demo tab switching
   document.querySelectorAll('.demo-tab').forEach(tab => {
