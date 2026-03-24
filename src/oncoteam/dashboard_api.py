@@ -3059,9 +3059,9 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
         return _cors_json({"error": "Invalid JSON"}, status_code=400, request=request)
 
     trials = body.get("trials", [])
-    if not isinstance(trials, list) or len(trials) > 15:
+    if not isinstance(trials, list) or len(trials) > 50:
         return _cors_json(
-            {"error": "trials must be a list of max 15 entries"},
+            {"error": "trials must be a list of max 50 entries"},
             status_code=400,
             request=request,
         )
@@ -3074,40 +3074,33 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
     from anthropic import AsyncAnthropic
 
     client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
-    assessments = []
     total_cost = 0.0
+    sem = asyncio.Semaphore(5)  # 5 concurrent Haiku calls
 
-    for trial in trials:
+    async def _assess_one(trial: dict) -> dict:
+        nonlocal total_cost
         nct_id = trial.get("external_id", "")
-        title = trial.get("title", "")
-        summary = trial.get("summary", "")
-        relevance = trial.get("relevance", "")
-        reason = trial.get("relevance_reason", "")
-
         user_msg = (
-            f"Trial: {nct_id}\nTitle: {title}\n"
-            f"Summary: {summary[:500]}\n"
-            f"Current relevance: {relevance} ({reason})"
+            f"Trial: {nct_id}\nTitle: {trial.get('title', '')}\n"
+            f"Summary: {trial.get('summary', '')[:500]}\n"
+            f"Current relevance: {trial.get('relevance', '')} ({trial.get('relevance_reason', '')})"
         )
-
-        try:
-            resp = await client.messages.create(
-                model=AUTONOMOUS_MODEL_LIGHT,
-                max_tokens=256,
-                system=_FUNNEL_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": user_msg}],
-            )
-            text = resp.content[0].text if resp.content else "{}"
-            cost = (resp.usage.input_tokens * 0.80 + resp.usage.output_tokens * 4.0) / 1_000_000
-            total_cost += cost
-
-            parsed = json.loads(text)
-            stage = parsed.get("stage", "Watching")
-            if stage not in _FUNNEL_STAGES:
-                stage = "Watching"
-
-            assessments.append(
-                {
+        async with sem:
+            try:
+                resp = await client.messages.create(
+                    model=AUTONOMOUS_MODEL_LIGHT,
+                    max_tokens=256,
+                    system=_FUNNEL_SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": user_msg}],
+                )
+                text = resp.content[0].text if resp.content else "{}"
+                cost = (resp.usage.input_tokens * 0.80 + resp.usage.output_tokens * 4.0) / 1_000_000
+                total_cost += cost
+                parsed = json.loads(text)
+                stage = parsed.get("stage", "Watching")
+                if stage not in _FUNNEL_STAGES:
+                    stage = "Watching"
+                return {
                     "nct_id": nct_id,
                     "oncofiles_id": trial.get("id"),
                     "stage": stage,
@@ -3115,11 +3108,9 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
                     "next_step": parsed.get("next_step", "Review trial details"),
                     "deadline_note": parsed.get("deadline_note"),
                 }
-            )
-        except Exception as e:
-            record_suppressed_error("api_assess_funnel", f"assess_{nct_id}", e)
-            assessments.append(
-                {
+            except Exception as e:
+                record_suppressed_error("api_assess_funnel", f"assess_{nct_id}", e)
+                return {
                     "nct_id": nct_id,
                     "oncofiles_id": trial.get("id"),
                     "stage": "Watching",
@@ -3127,11 +3118,12 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
                     "next_step": "Assessment failed — review manually",
                     "deadline_note": None,
                 }
-            )
+
+    assessments = await asyncio.gather(*[_assess_one(t) for t in trials])
 
     return _cors_json(
         {
-            "assessments": assessments,
+            "assessments": list(assessments),
             "model": AUTONOMOUS_MODEL_LIGHT,
             "cost_usd": round(total_cost, 4),
         },
