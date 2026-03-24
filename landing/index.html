@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oncoteam — Your AI Ally in Cancer Treatment</title>
-  <meta name="description" content="When someone you love has cancer, you become their advocate. Oncoteam helps you understand lab results, ask the right questions, find clinical trials across Europe and the US, and make sure nothing gets overlooked — all from your phone.">
+  <meta name="description" content="Open-source AI patient advocacy tool. Understand lab results, find clinical trials, track treatment — all from your phone. Built by a patient advocate, used in active treatment.">
   <meta property="og:title" content="Oncoteam — Your AI Ally in Cancer Treatment">
   <meta property="og:description" content="When someone you love has cancer, you become their advocate. Oncoteam helps you understand, ask, and act — so nothing gets missed.">
   <meta property="og:type" content="website">
@@ -47,12 +47,11 @@
     "featureList": [
       "Lab result interpretation with trend analysis and safety checks",
       "Clinical trial matching across Europe and the US",
+      "AI-powered trial funnel with eligibility classification",
       "Molecular profile-aware eligibility checking",
       "Appointment preparation with suggested questions",
-      "Second opinion backed by medical textbooks and protocols",
-      "Bilingual medical dictionary (plain language and medical terminology)",
+      "Treatment dashboard with alerts and lab trends",
       "WhatsApp chat for on-the-go access",
-      "Treatment dashboard with visual trends",
       "Family-friendly treatment summaries",
       "GDPR-compliant patient-owned data storage"
     ]
@@ -70,7 +69,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=43">
+  <link rel="stylesheet" href="style.css?v=44">
 </head>
 <body>
   <!-- Navigation -->
@@ -79,6 +78,7 @@
       <div class="logo">oncoteam</div>
       <div class="nav-right">
         <a href="https://dashboard.oncoteam.cloud" class="btn btn-secondary btn-sm" data-i18n="nav.dashboard">Dashboard</a>
+        <a href="https://github.com/peter-fusek/oncoteam" class="btn btn-sm btn-ghost">GitHub</a>
         <div class="lang-switcher">
           <button class="lang-btn active" data-lang="en">EN</button>
           <button class="lang-btn" data-lang="sk">SK</button>
@@ -91,35 +91,116 @@
   <!-- Hero -->
   <header class="hero">
     <div class="container">
+      <div class="hero-badge" data-i18n="hero.badge">
+        <span class="hero-badge-dot"></span>
+        Open Source &middot; Used in Active Treatment
+      </div>
       <h1 data-i18n="hero.title">When someone you love has cancer, you become their advocate.</h1>
       <p class="hero-sub" data-i18n="hero.subtitle">Oncoteam helps you understand the treatment, ask the right questions, find clinical trials, and make sure nothing gets overlooked — all from your phone.</p>
       <div class="hero-cta">
-        <a href="#how" class="btn btn-primary" data-i18n="hero.cta">See How It Works</a>
-        <a href="#why" class="btn btn-secondary" data-i18n="hero.learn">Why You Need This</a>
+        <a href="https://dashboard.oncoteam.cloud" class="btn btn-primary" data-i18n="hero.cta">Open Dashboard</a>
+        <a href="https://github.com/peter-fusek/oncoteam" class="btn btn-secondary" data-i18n="hero.github">View on GitHub</a>
+        <a href="#why" class="btn btn-ghost" data-i18n="hero.learn">Why You Need This</a>
       </div>
     </div>
   </header>
 
-  <!-- Our Story -->
-  <section class="story">
+  <!-- Product Demo -->
+  <section class="demo" id="demo">
     <div class="container">
-      <div class="story-content">
-        <h2 class="section-title" data-i18n="story.title">Born from Real Life</h2>
-        <div class="story-text">
-          <p data-i18n="story.p1">When Erika was diagnosed with metastatic colorectal cancer, her husband Peter — a software engineer, not a doctor — found himself buried in lab results, genetic reports, and treatment protocols he didn't understand. Every oncologist visit felt too short. Every new test raised questions he didn't know how to ask.</p>
-          <p data-i18n="story.p2">So he built Oncoteam. Not as a replacement for their oncologist, but as a tool to help him keep up — to understand the numbers, prepare the right questions, track what's changing, and search for clinical trials that no single doctor has time to systematically monitor across Europe and the US.</p>
-          <p data-i18n="story.p3">Alongside Oncoteam, he built <a href="https://github.com/peter-fusek/oncofiles" class="story-link">Oncofiles</a> — the data layer that organizes all medical documents from Google Drive: lab results, pathology reports, CT scans, genetic tests. Oncofiles structures and connects them. Oncoteam makes them useful — it's the intelligence layer that turns raw medical data into understanding, questions, and action.</p>
+      <h2 class="section-title" data-i18n="demo.title">See It in Action</h2>
+      <p class="section-subtitle" data-i18n="demo.subtitle">Real dashboard, real data, real treatment.</p>
+      <div class="demo-tabs">
+        <button class="demo-tab active" data-demo="dashboard" data-i18n="demo.tab.dashboard">Dashboard</button>
+        <button class="demo-tab" data-demo="labs" data-i18n="demo.tab.labs">Lab Trends</button>
+        <button class="demo-tab" data-demo="funnel" data-i18n="demo.tab.funnel">Trial Funnel</button>
+        <button class="demo-tab" data-demo="protocol" data-i18n="demo.tab.protocol">Protocol</button>
+      </div>
+      <div class="demo-browser">
+        <div class="browser-chrome">
+          <div class="browser-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <div class="browser-url">dashboard.oncoteam.cloud</div>
+        </div>
+        <div class="browser-content">
+          <div class="demo-panel active" data-demo="dashboard">
+            <div class="demo-mockup demo-mockup-home">
+              <div class="mock-alert">ANC = 1,150 (threshold: 1,500) — hold chemo</div>
+              <div class="mock-grid">
+                <div class="mock-card">
+                  <div class="mock-label">TREATMENT STATUS</div>
+                  <div class="mock-big">mFOLFOX6 90%</div>
+                  <div class="mock-sub">Cycle 3 &middot; Stage IV mCRC</div>
+                </div>
+                <div class="mock-card">
+                  <div class="mock-label">RECENT LABS</div>
+                  <div class="mock-labs">
+                    <span class="mock-lab mock-lab-red">ANC 1.1k &darr;</span>
+                    <span class="mock-lab">PLT 269k &darr;</span>
+                    <span class="mock-lab mock-lab-green">HGB 118 &uarr;</span>
+                  </div>
+                  <div class="mock-labs" style="margin-top:8px">
+                    <span class="mock-lab mock-lab-green">CEA 733 &darr;</span>
+                    <span class="mock-lab mock-lab-green">CA19-9 22.3k &darr;</span>
+                  </div>
+                </div>
+              </div>
+              <div class="mock-briefing">Latest AI Briefing: EU Clinical Trial Monitor — 3 new trials matched...</div>
+            </div>
+          </div>
+          <div class="demo-panel" data-demo="labs">
+            <div class="demo-mockup demo-mockup-labs">
+              <div class="mock-label">TUMOR MARKERS — 3 CYCLES</div>
+              <div class="mock-chart">
+                <div class="mock-chart-bar" style="height:90%"><span>CEA 1,912</span></div>
+                <div class="mock-chart-bar" style="height:72%"><span>1,560</span></div>
+                <div class="mock-chart-bar mock-chart-good" style="height:38%"><span>733 (-62%)</span></div>
+              </div>
+              <div class="mock-chart-labels">
+                <span>Pre-C1 (Feb)</span><span>Pre-C2 (Feb)</span><span>Pre-C3 (Mar)</span>
+              </div>
+              <div class="mock-insight">Excellent treatment response — CEA declined 62% over 3 cycles</div>
+            </div>
+          </div>
+          <div class="demo-panel" data-demo="funnel">
+            <div class="demo-mockup demo-mockup-funnel">
+              <div class="mock-label">CLINICAL TRIAL FUNNEL — AI-CLASSIFIED</div>
+              <div class="mock-funnel">
+                <div class="mock-funnel-col mock-col-red">
+                  <div class="mock-funnel-header">Excluded <span>20</span></div>
+                  <div class="mock-funnel-item">Bevacizumab risk (VTE)</div>
+                  <div class="mock-funnel-item">Checkpoint mono (MSS)</div>
+                </div>
+                <div class="mock-funnel-col mock-col-gray">
+                  <div class="mock-funnel-header">Later Line <span>2</span></div>
+                  <div class="mock-funnel-item">3L+ registries</div>
+                </div>
+                <div class="mock-funnel-col mock-col-blue">
+                  <div class="mock-funnel-header">Watching <span>14</span></div>
+                  <div class="mock-funnel-item">pan-KRAS trials</div>
+                  <div class="mock-funnel-item">ICI combinations</div>
+                </div>
+              </div>
+              <div class="mock-insight">36 trials classified by AI in 15 seconds — $0.025 total</div>
+            </div>
+          </div>
+          <div class="demo-panel" data-demo="protocol">
+            <div class="demo-mockup demo-mockup-protocol">
+              <div class="mock-label">PRE-CYCLE 3 CHECKLIST — mFOLFOX6</div>
+              <div class="mock-checklist">
+                <div class="mock-check mock-check-warn">ANC &ge; 1,500/&mu;L — <strong>1,150 (HOLD)</strong></div>
+                <div class="mock-check mock-check-ok">PLT &ge; 75,000/&mu;L — 269,000</div>
+                <div class="mock-check mock-check-ok">Creatinine &le; 1.5x ULN — 0.42</div>
+                <div class="mock-check mock-check-ok">Bilirubin &le; 1.5x ULN — normal</div>
+              </div>
+              <div class="mock-insight">Pre-cycle safety check: 1 flag requires physician review before C3</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- Manifesto -->
-  <section class="manifesto">
-    <div class="container">
-      <blockquote class="manifesto-quote">
-        <p data-i18n="manifesto.text">This is not a replacement for your oncologist. It's a tool that helps you — the patient, the spouse, the son, the daughter — keep up with a situation that moves faster than any one person can track. Not because you don't trust your doctor, but because even the best doctor has hundreds of patients and fifteen minutes per visit.</p>
-      </blockquote>
     </div>
   </section>
 
@@ -166,20 +247,20 @@
     <div class="container">
       <div class="stats-grid">
         <div class="stat">
-          <div class="stat-num">14</div>
-          <div class="stat-label" data-i18n="stats.countries">European Countries Searched</div>
+          <div class="stat-num">24</div>
+          <div class="stat-label" data-i18n="stats.tools">AI Tools</div>
         </div>
         <div class="stat">
-          <div class="stat-num">24/7</div>
-          <div class="stat-label" data-i18n="stats.monitoring">Trial Monitoring</div>
+          <div class="stat-num">595</div>
+          <div class="stat-label" data-i18n="stats.tests">Passing Tests</div>
         </div>
         <div class="stat">
-          <div class="stat-num">2</div>
-          <div class="stat-label" data-i18n="stats.languages">Languages (Medical + Plain)</div>
+          <div class="stat-num">36</div>
+          <div class="stat-label" data-i18n="stats.trials">Clinical Trials Tracked</div>
         </div>
         <div class="stat">
-          <div class="stat-num">1</div>
-          <div class="stat-label" data-i18n="stats.phone">Phone Is All You Need</div>
+          <div class="stat-num">5</div>
+          <div class="stat-label" data-i18n="stats.funnel">Funnel Stages</div>
         </div>
       </div>
     </div>
@@ -204,7 +285,7 @@
         <div class="feature-card">
           <div class="feature-icon">🔬</div>
           <h3 data-i18n="features.trials.title">Find Clinical Trials You Qualify For</h3>
-          <p data-i18n="features.trials.text">Automatically searches ClinicalTrials.gov and EU registries for trials matching your molecular profile, location, and treatment history. From your local hospital to Vienna, Barcelona, or Boston — nothing overlooked.</p>
+          <p data-i18n="features.trials.text">Automatically searches ClinicalTrials.gov and EU registries for trials matching your molecular profile, location, and treatment history. AI classifies each trial into a funnel — from excluded to action needed.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">📖</div>
@@ -217,14 +298,14 @@
           <p data-i18n="features.mobile.text">Chat via WhatsApp anytime — ask about a lab value, check when the next cycle is, or get a quick summary. Open the dashboard for trends, timelines, and deep dives. It's there when you need it, wherever you are.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🔤</div>
-          <h3 data-i18n="features.language.title">Medical ↔ Plain Language</h3>
-          <p data-i18n="features.language.text">Every medical term, abbreviation, and lab value explained in words you understand. Switch between plain language and clinical terminology with one click. Learn at your own pace — or just get the answer fast.</p>
-        </div>
-        <div class="feature-card">
           <div class="feature-icon">📈</div>
           <h3 data-i18n="features.trends.title">See How Treatment Is Working</h3>
           <p data-i18n="features.trends.text">Visual trends of tumor markers, blood counts, and inflammation indices across every cycle. See the trajectory — is the treatment working? Are the numbers heading the right direction? No guessing.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔤</div>
+          <h3 data-i18n="features.language.title">Medical ↔ Plain Language</h3>
+          <p data-i18n="features.language.text">Every medical term, abbreviation, and lab value explained in words you understand. Switch between plain language and clinical terminology with one click.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">👨‍👩‍👧</div>
@@ -232,6 +313,29 @@
           <p data-i18n="features.family.text">Generate clear, compassionate treatment summaries for family members who want to help but don't know how to ask. Share via WhatsApp or print — no medical degree required to understand.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Our Story (moved after features — proof first, then personal story) -->
+  <section class="story">
+    <div class="container">
+      <div class="story-content">
+        <h2 class="section-title" data-i18n="story.title">Born from Real Life</h2>
+        <div class="story-text">
+          <p data-i18n="story.p1">When Erika was diagnosed with metastatic colorectal cancer, her husband Peter — a software engineer, not a doctor — found himself buried in lab results, genetic reports, and treatment protocols he didn't understand. Every oncologist visit felt too short. Every new test raised questions he didn't know how to ask.</p>
+          <p data-i18n="story.p2">So he built Oncoteam. Not as a replacement for their oncologist, but as a tool to help him keep up — to understand the numbers, prepare the right questions, track what's changing, and search for clinical trials that no single doctor has time to systematically monitor across Europe and the US.</p>
+          <p data-i18n="story.p3">Alongside Oncoteam, he built <a href="https://oncofiles.com" class="story-link">Oncofiles</a> — the data layer that organizes all medical documents from Google Drive: lab results, pathology reports, CT scans, genetic tests. Oncofiles structures and connects them. Oncoteam makes them useful — it's the intelligence layer that turns raw medical data into understanding, questions, and action.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Manifesto -->
+  <section class="manifesto">
+    <div class="container">
+      <blockquote class="manifesto-quote">
+        <p data-i18n="manifesto.text">This is not a replacement for your oncologist. It's a tool that helps you — the patient, the spouse, the son, the daughter — keep up with a situation that moves faster than any one person can track. Not because you don't trust your doctor, but because even the best doctor has hundreds of patients and fifteen minutes per visit.</p>
+      </blockquote>
     </div>
   </section>
 
@@ -259,6 +363,31 @@
     </div>
   </section>
 
+  <!-- Ecosystem — Two Products -->
+  <section class="ecosystem">
+    <div class="container">
+      <h2 class="section-title" data-i18n="ecosystem.title">Two Products, One Mission</h2>
+      <p class="section-subtitle" data-i18n="ecosystem.subtitle">Your medical data, organized and understood.</p>
+      <div class="ecosystem-grid">
+        <a href="https://oncofiles.com" class="ecosystem-card ecosystem-card-files">
+          <div class="ecosystem-icon">📁</div>
+          <h3>Oncofiles</h3>
+          <p class="ecosystem-role" data-i18n="ecosystem.files.role">Data Layer</p>
+          <p data-i18n="ecosystem.files.text">Organizes medical documents from Google Drive. Lab results, pathology, CT scans, genetic tests — structured, connected, and searchable.</p>
+        </a>
+        <div class="ecosystem-arrow">
+          <svg width="48" height="24" viewBox="0 0 48 24"><path d="M0 12h40M34 6l8 6-8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="ecosystem-card ecosystem-card-team">
+          <div class="ecosystem-icon">🩺</div>
+          <h3>Oncoteam</h3>
+          <p class="ecosystem-role" data-i18n="ecosystem.team.role">Intelligence Layer</p>
+          <p data-i18n="ecosystem.team.text">Turns organized data into understanding. Lab trends, trial matching, appointment prep, family updates — powered by AI, controlled by you.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Tech trust -->
   <section class="tech-stack">
     <div class="container">
@@ -270,6 +399,8 @@
         <span class="badge">EU Clinical Trials Register</span>
         <span class="badge">WhatsApp</span>
         <span class="badge">Google Drive</span>
+        <span class="badge">MCP Protocol</span>
+        <span class="badge">Open Source</span>
       </div>
     </div>
   </section>
@@ -339,6 +470,21 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=43"></script>
+  <script src="i18n.js?v=44"></script>
+  <script>
+  // Demo tab switching
+  document.querySelectorAll('.demo-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.demo;
+      document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.demo-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelector(`.demo-panel[data-demo="${target}"]`).classList.add('active');
+      if (typeof gtag === 'function') {
+        gtag('event', 'demo_tab_click', { tab_name: target });
+      }
+    });
+  });
+  </script>
 </body>
 </html>
