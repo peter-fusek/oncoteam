@@ -56,10 +56,29 @@ const { data: timeline } = fetchApi<{
 }>('/timeline?limit=10', { lazy: true })
 
 // Computed helpers
-const latestLab = computed(() => {
+// Merge most recent value for each key parameter across all entries
+const mergedLabSnapshot = computed(() => {
   if (!labs.value?.entries) return null
-  // Find first entry with actual values (skip entries with empty metadata)
-  return labs.value.entries.find(e => e.values && Object.keys(e.values).length > 0) ?? null
+  const values: Record<string, number> = {}
+  const statuses: Record<string, string> = {}
+  const directions: Record<string, string> = {}
+  const healthDirs: Record<string, string> = {}
+  let latestDate = ''
+
+  for (const e of labs.value.entries) {
+    if (!e.values || Object.keys(e.values).length === 0) continue
+    if (!latestDate) latestDate = e.date
+    for (const p of KEY_PARAMS) {
+      if (!(p.key in values) && e.values[p.key] != null) {
+        values[p.key] = e.values[p.key]
+        if (e.value_statuses?.[p.key]) statuses[p.key] = e.value_statuses[p.key]
+        if (e.directions?.[p.key]) directions[p.key] = e.directions[p.key]
+        if (e.health_directions?.[p.key]) healthDirs[p.key] = e.health_directions[p.key]
+      }
+    }
+  }
+  if (!latestDate) return null
+  return { date: latestDate, values, value_statuses: statuses, directions, health_directions: healthDirs }
 })
 
 const labAlerts = computed(() => {
@@ -131,7 +150,7 @@ const EVENT_ICONS: Record<string, string> = {
         </div>
       </div>
     </div>
-    <div v-else-if="latestLab" class="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+    <div v-else-if="mergedLabSnapshot" class="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
       <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
       {{ $t('home.noAlerts') }}
     </div>
@@ -161,8 +180,8 @@ const EVENT_ICONS: Record<string, string> = {
           <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.recentLabs') }}</h2>
           <NuxtLink to="/labs" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
         </div>
-        <div v-if="latestLab" class="space-y-2">
-          <div class="text-xs text-gray-500 mb-2">{{ formatDate(latestLab.date) }}</div>
+        <div v-if="mergedLabSnapshot" class="space-y-2">
+          <div class="text-xs text-gray-500 mb-2">{{ formatDate(mergedLabSnapshot.date) }}</div>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <div
               v-for="p in KEY_PARAMS"
@@ -170,11 +189,11 @@ const EVENT_ICONS: Record<string, string> = {
               class="rounded-lg bg-gray-50 px-3 py-2 text-center"
             >
               <div class="text-[10px] font-medium text-gray-400 uppercase">{{ p.label }}</div>
-              <div class="text-lg font-bold" :class="latestLab.value_statuses?.[p.key] === 'low' || latestLab.value_statuses?.[p.key] === 'high' ? 'text-red-600' : 'text-gray-900'">
-                {{ latestLab.values?.[p.key] != null ? (latestLab.values[p.key] > 1000 ? (latestLab.values[p.key] / 1000).toFixed(1) + 'k' : latestLab.values[p.key].toFixed(1)) : '\u2014' }}
+              <div class="text-lg font-bold" :class="mergedLabSnapshot.value_statuses?.[p.key] === 'low' || mergedLabSnapshot.value_statuses?.[p.key] === 'high' ? 'text-red-600' : 'text-gray-900'">
+                {{ mergedLabSnapshot.values?.[p.key] != null ? (mergedLabSnapshot.values[p.key] > 1000 ? (mergedLabSnapshot.values[p.key] / 1000).toFixed(1) + 'k' : mergedLabSnapshot.values[p.key].toFixed(1)) : '\u2014' }}
               </div>
-              <div class="text-xs" :class="healthColor(latestLab.health_directions?.[p.key])">
-                {{ directionIcon(latestLab.directions?.[p.key]) }}
+              <div class="text-xs" :class="healthColor(mergedLabSnapshot.health_directions?.[p.key])">
+                {{ directionIcon(mergedLabSnapshot.directions?.[p.key]) }}
               </div>
             </div>
           </div>
@@ -182,7 +201,7 @@ const EVENT_ICONS: Record<string, string> = {
         <div v-else-if="labs?.unavailable" class="text-sm text-gray-500 py-4 text-center">
           {{ $t('documents.unavailable') }}
         </div>
-        <div v-else-if="labs && !latestLab" class="text-sm text-gray-500 py-6 text-center">
+        <div v-else-if="labs && !mergedLabSnapshot" class="text-sm text-gray-500 py-6 text-center">
           <NuxtLink to="/labs" class="text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
         </div>
         <SkeletonLoader v-else variant="cards" />
