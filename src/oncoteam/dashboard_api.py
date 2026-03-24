@@ -59,6 +59,22 @@ VERSION = "0.44.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
+
+def _circuit_breaker_503(fallback_data: dict) -> JSONResponse | None:
+    """Return 503 response if circuit breaker is open, else None."""
+    cb = oncofiles_client.get_circuit_breaker_status()
+    if cb["state"] == "open":
+        return _cors_json(
+            {
+                "error": "Database temporarily unavailable. Try again in a minute.",
+                "unavailable": True,
+                **fallback_data,
+            },
+            status_code=503,
+        )
+    return None
+
+
 # Last trigger result (for debugging via /api/autonomous?last_trigger=1)
 _last_trigger_result: dict | None = None
 
@@ -631,6 +647,9 @@ async def api_health_deep(request: Request) -> JSONResponse:
 
 async def api_activity(request: Request) -> JSONResponse:
     """GET /api/activity — recent activity log entries."""
+    cb_resp = _circuit_breaker_503({"entries": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     limit = _parse_limit(request, default=50)
     try:
         result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=limit)
@@ -693,6 +712,9 @@ async def api_stats(request: Request) -> JSONResponse:
 
 async def api_timeline(request: Request) -> JSONResponse:
     """GET /api/timeline — treatment events timeline."""
+    cb_resp = _circuit_breaker_503({"events": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     limit = _parse_limit(request, default=50)
     try:
         result = await oncofiles_client.list_treatment_events(limit=limit)
@@ -744,6 +766,11 @@ async def api_research(request: Request) -> JSONResponse:
       - page: page number (default 1)
       - per_page: entries per page (default 10)
     """
+    cb_resp = _circuit_breaker_503(
+        {"entries": [], "total": 0, "page": 1, "per_page": 10, "total_pages": 0}
+    )
+    if cb_resp:
+        return cb_resp
     limit = _parse_limit(request, default=100)
     source = request.query_params.get("source")
     sort = request.query_params.get("sort", "relevance")
@@ -819,6 +846,9 @@ async def api_sessions(request: Request) -> JSONResponse:
         limit: max entries (default 20)
         type: filter by session type — 'clinical', 'technical', or 'all' (default 'all')
     """
+    cb_resp = _circuit_breaker_503({"sessions": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     limit = _parse_limit(request, default=20)
     type_filter = request.query_params.get("type", "all").lower()
     try:
@@ -1357,6 +1387,9 @@ def _briefing_summary(content: str) -> dict:
 
 async def api_briefings(request: Request) -> JSONResponse:
     """GET /api/briefings — autonomous briefings + cost alerts from oncofiles diary."""
+    cb_resp = _circuit_breaker_503({"briefings": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     limit = _parse_limit(request, default=20)
     try:
         briefings_res, alerts_res = await asyncio.gather(
@@ -1409,6 +1442,9 @@ async def api_toxicity(request: Request) -> JSONResponse:
     GET: list toxicity logs (treatment events with event_type=toxicity_log).
     POST: create a new toxicity log entry.
     """
+    cb_resp = _circuit_breaker_503({"entries": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     if request.method == "POST":
         try:
             body = json.loads(await request.body())
@@ -2072,6 +2108,9 @@ async def api_medications(request: Request) -> JSONResponse:
     GET: list medication log entries + default regimen medications.
     POST: create a new medication log entry.
     """
+    cb_resp = _circuit_breaker_503({"medications": [], "adherence": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     if request.method == "POST":
         try:
             body = json.loads(await request.body())
@@ -2211,6 +2250,9 @@ async def api_weight(request: Request) -> JSONResponse:
     Aggregates weight from weight_measurement and toxicity_log events.
     Calculates % change from baseline and flags >5% loss.
     """
+    cb_resp = _circuit_breaker_503({"entries": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     limit = _parse_limit(request, default=50)
     pt = _get_patient_for_request(request)
     baseline = pt.baseline_weight_kg or 72.0
@@ -2321,6 +2363,9 @@ async def api_weight(request: Request) -> JSONResponse:
 
 async def api_cumulative_dose(request: Request) -> JSONResponse:
     """GET /api/cumulative-dose — cumulative oxaliplatin dose tracking."""
+    cb_resp = _circuit_breaker_503({"entries": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     lang = get_lang(request)
     pt = _get_patient_for_request(request)
     cycle = pt.current_cycle or 2
@@ -2466,6 +2511,9 @@ async def api_family_update(request: Request) -> JSONResponse:
     GET: list past family updates. Accepts ?lang=sk or ?lang=en.
     POST: generate and store a new family update.
     """
+    cb_resp = _circuit_breaker_503({"updates": [], "total": 0})
+    if cb_resp:
+        return cb_resp
     lang = request.query_params.get("lang", "sk")
     if lang not in ("sk", "en"):
         lang = "sk"
