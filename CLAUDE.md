@@ -6,7 +6,7 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 593 tests
+uv run pytest          # 595 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
@@ -50,6 +50,9 @@ uv run oncoteam-mcp    # stdio mode
 - `dashboard_api.py` parallel MCP fetches use `asyncio.gather` with 2s per-task timeout — add mocks for ALL gathered calls in tests or they'll fail
 - Nuxt `useFetch` query must use `computed()` (not plain object) for locale-reactive API calls
 - Dashboard uses **light theme** (colorMode: 'light') with CSS custom properties in `main.css` (--clinical-bg, --clinical-surface, etc.). DM Sans body + DM Serif Display headers. Gamification (XP, levels, streaks) was fully removed.
+- Dashboard **navigation** uses 4 grouped sections: Overview (Home, Patient, Timeline), Treatment (Protocol, Labs, Toxicity, Medications, Prep), Intelligence (Briefings, Research, Family Update, Dictionary), Operations (Agents, Prompts, Sessions, Documents). Sidebar defined in `layouts/default.vue` as `navigationSections` computed. Agents page is at `/agents` (NOT the index).
+- Dashboard **Home page** (`/`) fetches `/patient`, `/labs?limit=50`, `/briefings?limit=1`, `/timeline?limit=10` in parallel. Lab values merged across entries via `mergedLabSnapshot` computed (tumor markers and hematology often on different dated entries). Alerts collected from ALL entries via `flatMap`.
+- `api_labs` enrichment from `get_lab_trends_data` only triggers when ALL events have empty metadata (`all_empty`). Don't use `any()` — it triggers on every request and adds 15s latency from oncofiles, exceeding the 25s proxy timeout.
 - `oncofiles_client.py` uses a persistent module-level MCP client singleton — `_get_client()` / `_invalidate_client()`. Tests mock wrapper functions (e.g. `oncofiles_client.list_treatment_events`), not `call_oncofiles` directly.
 - `import collections` is at top of `dashboard_api.py`; rate limiter uses `collections.deque` — don't add a second import mid-file (E402)
 - `landing/Dockerfile` must explicitly COPY every static file — new files (robots.txt, llms.txt, og-image.png) won't be served unless added to COPY line
@@ -94,7 +97,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Testing
 
-- `uv run pytest` — full suite (593 tests, ~2.3s)
+- `uv run pytest` — full suite (595 tests, ~2.3s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -107,7 +110,7 @@ uv run oncoteam-mcp    # stdio mode
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 593 tests, ruff clean
+- 595 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
