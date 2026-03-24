@@ -61,50 +61,60 @@ const unassessedCount = computed(() => {
 async function assessBatch(trials: ResearchEntry[]) {
   if (!trials.length) return
   assessError.value = null
-  const ids = trials.map(t => t.external_id)
-  ids.forEach(id => assessingIds.value.add(id))
 
-  try {
-    const result = await $fetch<{
-      assessments: Array<{
-        nct_id: string
-        oncofiles_id: number
-        stage: FunnelStage
-        exclusion_reason: string | null
-        next_step: string
-        deadline_note: string | null
-      }>
-      cost_usd: number
-    }>('/api/oncoteam/research/assess-funnel', {
-      method: 'POST',
-      body: {
-        trials: trials.map(t => ({
-          id: t.id,
-          external_id: t.external_id,
-          title: t.title,
-          summary: t.summary,
-          relevance: t.relevance,
-          relevance_reason: t.relevance_reason,
-        })),
-      },
-    })
+  // Split into chunks of 15 (API max)
+  const BATCH_SIZE = 15
+  const chunks: ResearchEntry[][] = []
+  for (let i = 0; i < trials.length; i += BATCH_SIZE) {
+    chunks.push(trials.slice(i, i + BATCH_SIZE))
+  }
 
-    for (const a of result.assessments) {
-      setStage(a.nct_id, {
-        stage: a.stage,
-        exclusion_reason: a.exclusion_reason,
-        next_step: a.next_step,
-        deadline_note: a.deadline_note,
-        assessed_at: new Date().toISOString(),
+  for (const chunk of chunks) {
+    const ids = chunk.map(t => t.external_id)
+    ids.forEach(id => assessingIds.value.add(id))
+
+    try {
+      const result = await $fetch<{
+        assessments: Array<{
+          nct_id: string
+          oncofiles_id: number
+          stage: FunnelStage
+          exclusion_reason: string | null
+          next_step: string
+          deadline_note: string | null
+        }>
+        cost_usd: number
+      }>('/api/oncoteam/research/assess-funnel', {
+        method: 'POST',
+        body: {
+          trials: chunk.map(t => ({
+            id: t.id,
+            external_id: t.external_id,
+            title: t.title,
+            summary: t.summary,
+            relevance: t.relevance,
+            relevance_reason: t.relevance_reason,
+          })),
+        },
       })
+
+      for (const a of result.assessments) {
+        setStage(a.nct_id, {
+          stage: a.stage,
+          exclusion_reason: a.exclusion_reason,
+          next_step: a.next_step,
+          deadline_note: a.deadline_note,
+          assessed_at: new Date().toISOString(),
+        })
+      }
+      stageVersion.value++
     }
-    stageVersion.value++
-  }
-  catch (err) {
-    assessError.value = err instanceof Error ? err.message : 'Assessment failed'
-  }
-  finally {
-    ids.forEach(id => assessingIds.value.delete(id))
+    catch (err) {
+      assessError.value = err instanceof Error ? err.message : 'Assessment failed'
+    }
+    finally {
+      ids.forEach(id => assessingIds.value.delete(id))
+    }
   }
 }
 
