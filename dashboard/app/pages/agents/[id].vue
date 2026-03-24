@@ -40,7 +40,7 @@ const { data: runsData, status: runsStatus } = fetchApi<{
     messages: Array<{ role: string; content: any }>
     turns: number; started_at: string | null; completed_at: string | null
   }>
-}>(`/agents/${agentId.value}/runs?limit=20`, { lazy: true })
+}>(`/agents/${agentId.value}/runs?limit=50&lang=${locale.value}`, { lazy: true })
 
 const runs = computed(() => runsData.value?.runs || [])
 
