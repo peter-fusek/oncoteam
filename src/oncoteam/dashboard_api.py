@@ -3208,6 +3208,82 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
     )
 
 
+async def api_whatsapp_media(request: Request) -> JSONResponse:
+    """POST /api/internal/whatsapp-media — process WhatsApp media attachment.
+
+    Expects JSON body: {media_base64, content_type, filename, phone, patient_id}
+    Uploads to oncofiles, triggers AI analysis, returns document_id + summary.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
+
+    media_base64 = (body.get("media_base64") or "").strip()
+    content_type = (body.get("content_type") or "").strip()
+    filename = (body.get("filename") or "").strip()
+    phone = (body.get("phone") or "").strip()
+    patient_id = (body.get("patient_id") or "").strip()
+
+    if not media_base64 or not content_type or not filename:
+        return _cors_json(
+            {"error": "media_base64, content_type, and filename are required"},
+            status_code=400,
+            request=request,
+        )
+
+    # FUP limit check
+    if not _check_fup_ai_query():
+        return _cors_json(
+            {"error": "Monthly AI query limit exceeded"},
+            status_code=429,
+            request=request,
+        )
+
+    # Step 1: Upload document to oncofiles
+    try:
+        upload_result = await oncofiles_client.upload_document_via_mcp(
+            content_base64=media_base64,
+            filename=filename,
+            content_type=content_type,
+            patient_id=patient_id,
+        )
+    except Exception as exc:
+        record_suppressed_error("api_whatsapp_media", "upload_document", exc)
+        return _cors_json(
+            {"error": f"Failed to upload document: {exc}"},
+            status_code=502,
+            request=request,
+        )
+
+    document_id = ""
+    if isinstance(upload_result, dict):
+        document_id = str(upload_result.get("document_id", upload_result.get("id", "")))
+
+    # Step 2: Trigger OCR + AI analysis
+    summary = ""
+    if document_id:
+        try:
+            enhance_result = await oncofiles_client.enhance_document_via_mcp(document_id)
+            if isinstance(enhance_result, dict):
+                summary = enhance_result.get("summary", enhance_result.get("text", ""))
+        except Exception as exc:
+            record_suppressed_error("api_whatsapp_media", "enhance_document", exc)
+            summary = "Document uploaded but analysis failed."
+
+    _logger.info(
+        "WhatsApp media processed: phone=%s, file=%s, doc_id=%s",
+        phone[:6] + "..." if phone else "?",
+        filename,
+        document_id,
+    )
+
+    return _cors_json(
+        {"status": "ok", "document_id": document_id, "summary": summary},
+        request=request,
+    )
+
+
 async def api_onboard_patient(request: Request) -> JSONResponse:
     """POST /api/internal/onboard-patient — create a new patient in oncofiles and register locally.
 
@@ -3310,6 +3386,37 @@ async def api_onboarding_status(request: Request) -> JSONResponse:
 
     # Placeholder — will be expanded in #137 when the state machine is built
     return _cors_json({"phone": phone, "status": "unknown"}, request=request)
+
+
+# In-memory set of admin-approved WhatsApp phone numbers (#141)
+_approved_phones: set[str] = set()
+
+
+def is_phone_approved(phone: str) -> bool:
+    """Check if a phone number has been approved by an admin."""
+    return phone in _approved_phones
+
+
+async def api_approve_user(request: Request) -> JSONResponse:
+    """POST /api/internal/approve-user — admin approves a new WhatsApp user.
+
+    Expects JSON body: {phone}
+    Stores phone in the in-memory approved set.
+    Returns: {status: "approved", phone: str}
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
+
+    phone = (body.get("phone") or "").strip()
+    if not phone:
+        return _cors_json({"error": "phone is required"}, status_code=400, request=request)
+
+    _approved_phones.add(phone)
+    _logger.info("Admin approved WhatsApp user: %s", phone)
+
+    return _cors_json({"status": "approved", "phone": phone}, request=request)
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

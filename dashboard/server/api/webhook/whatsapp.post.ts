@@ -2,11 +2,66 @@ import twilio from 'twilio'
 import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
 import { getOnboardingState, setOnboardingState, isOnboarding } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
+import { isApproved } from '../../utils/approved-phones'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const MAX_MEDIA_ATTACHMENTS = 3
+
+function mimeToExt(contentType: string): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'application/pdf': 'pdf',
+  }
+  return map[contentType] || 'bin'
+}
+
+function generateMediaFilename(contentType: string): string {
+  const now = new Date()
+  const ts = now.toISOString().replace(/[-:T]/g, '').replace(/\..+/, '').slice(0, 15)
+  return `whatsapp_${ts}.${mimeToExt(contentType)}`
+}
+
+interface MediaAttachment {
+  url: string
+  contentType: string
+}
+
+function extractMedia(body: Record<string, unknown>): MediaAttachment[] {
+  const numMedia = parseInt(String(body?.NumMedia || '0'), 10)
+  if (numMedia <= 0) return []
+
+  const attachments: MediaAttachment[] = []
+  const count = Math.min(numMedia, MAX_MEDIA_ATTACHMENTS)
+  for (let i = 0; i < count; i++) {
+    const url = String(body?.[`MediaUrl${i}`] || '')
+    const contentType = String(body?.[`MediaContentType${i}`] || '')
+    if (url && contentType) {
+      attachments.push({ url, contentType })
+    }
+  }
+  return attachments
+}
+
+async function downloadTwilioMedia(
+  mediaUrl: string,
+  accountSid: string,
+  authToken: string,
+): Promise<ArrayBuffer> {
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
+  const response = await fetch(mediaUrl, {
+    headers: { Authorization: `Basic ${auth}` },
+    redirect: 'follow',
+  })
+  if (!response.ok) {
+    throw new Error(`Failed to download media: ${response.status} ${response.statusText}`)
+  }
+  return response.arrayBuffer()
+}
 
 function normalizePhone(phone: string): string {
   return phone.replace(/[\s\-()]/g, '')
@@ -77,9 +132,72 @@ export default defineEventHandler(async (event) => {
 
   // Phone allowlist check (mandatory — primary security gate)
   const allowedPhones = extractPhoneAllowlist(config.roleMap)
-  if (!allowedPhones.has(from)) {
+  const isAllowed = allowedPhones.has(from) || isApproved(from)
+  if (!isAllowed) {
     // Check if user is in onboarding flow
     if (isOnboarding(from)) {
+      // Handle media from onboarding users with a patient_id
+      const onboardingMedia = extractMedia(body)
+      const onboardingState = getOnboardingState(from)
+      if (onboardingMedia.length > 0 && onboardingState?.patientId) {
+        const oncoteamUrl = config.oncoteamApiUrl as string
+        const apiKey = (config.oncoteamApiKey || '') as string
+        const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+        const rawFrom = String(config.twilioWhatsappFrom || '+14155238886')
+        const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
+        const twilioTo = `whatsapp:${from}`
+
+        ;(async () => {
+          const results: string[] = []
+          for (const media of onboardingMedia) {
+            try {
+              const arrayBuffer = await downloadTwilioMedia(
+                media.url,
+                config.twilioAccountSid as string,
+                config.twilioAuthToken as string,
+              )
+              const base64 = Buffer.from(arrayBuffer).toString('base64')
+              const filename = generateMediaFilename(media.contentType)
+
+              const mediaResult = await $fetch<{ status: string; document_id: string; summary: string }>(
+                `${oncoteamUrl}/api/internal/whatsapp-media`,
+                {
+                  method: 'POST',
+                  body: {
+                    media_base64: base64,
+                    content_type: media.contentType,
+                    filename,
+                    phone: from,
+                    patient_id: onboardingState.patientId,
+                  },
+                  headers,
+                },
+              )
+              results.push(mediaResult.summary || 'Dokument bol nahraný.')
+            }
+            catch (err) {
+              console.error('[whatsapp-media-onboarding] Failed:', err)
+              results.push('Chyba pri spracovaní prílohy.')
+            }
+          }
+
+          try {
+            const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
+            await client.messages.create({
+              from: twilioFrom,
+              to: twilioTo,
+              body: results.join('\n\n').slice(0, 1500),
+            })
+          }
+          catch (err) {
+            console.error('[whatsapp-media-onboarding] Twilio send failed:', err)
+          }
+        })()
+
+        setResponseHeader(event, 'content-type', 'text/xml')
+        return twiml('Spracovávam dokument... 📄')
+      }
+
       const oncoteamUrl = config.oncoteamApiUrl as string
       const apiKey = (config.oncoteamApiKey || '') as string
       const onboardingResult = await handleOnboardingMessage(from, messageBody, oncoteamUrl, apiKey)
@@ -119,9 +237,81 @@ export default defineEventHandler(async (event) => {
     rateLimitMap.set(from, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
   }
 
+  // ── Media attachment handling ──────────────────────────────────────
+  const mediaAttachments = extractMedia(body)
+  if (mediaAttachments.length > 0) {
+    const oncoteamUrl = config.oncoteamApiUrl as string
+    const apiKey = (config.oncoteamApiKey || '') as string
+    const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+    const rawFrom = String(config.twilioWhatsappFrom || '+14155238886')
+    const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
+    const twilioTo = `whatsapp:${from}`
+
+    // Fire-and-forget: download, upload, analyze, respond via Twilio REST
+    ;(async () => {
+      const results: string[] = []
+      for (const media of mediaAttachments) {
+        try {
+          const arrayBuffer = await downloadTwilioMedia(
+            media.url,
+            config.twilioAccountSid as string,
+            config.twilioAuthToken as string,
+          )
+          const base64 = Buffer.from(arrayBuffer).toString('base64')
+          const filename = generateMediaFilename(media.contentType)
+
+          const result = await $fetch<{ status: string; document_id: string; summary: string }>(
+            `${oncoteamUrl}/api/internal/whatsapp-media`,
+            {
+              method: 'POST',
+              body: {
+                media_base64: base64,
+                content_type: media.contentType,
+                filename,
+                phone: from,
+                patient_id: '',
+              },
+              headers,
+            },
+          )
+          const summary = result.summary || 'Dokument bol nahraný.'
+          results.push(`${filename}: ${summary}`)
+        }
+        catch (err) {
+          console.error('[whatsapp-media] Failed to process attachment:', err)
+          results.push('Chyba pri spracovaní prílohy.')
+        }
+      }
+
+      // Send results via Twilio REST
+      const reply = results.join('\n\n').slice(0, 1500)
+      try {
+        const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
+        await client.messages.create({
+          from: twilioFrom,
+          to: twilioTo,
+          body: reply,
+        })
+      }
+      catch (err) {
+        console.error('[whatsapp-media] Twilio send failed:', err)
+      }
+
+      // Log the exchange
+      $fetch(`${oncoteamUrl}/api/internal/log-whatsapp`, {
+        method: 'POST',
+        body: { phone: from, user_message: `[media x${mediaAttachments.length}] ${messageBody}`, bot_response: reply },
+        headers,
+      }).catch(() => {})
+    })()
+
+    setResponseHeader(event, 'content-type', 'text/xml')
+    return twiml('Spracovávam dokument... 📄')
+  }
+
   // Process command and respond
   const oncoteamApiUrl = config.oncoteamApiUrl as string
-  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl)
+  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from)
 
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.

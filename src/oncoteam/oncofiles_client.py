@@ -573,6 +573,28 @@ async def get_journey_timeline(
     return await call_oncofiles("get_journey_timeline", args)
 
 
+async def upload_document_via_mcp(
+    content_base64: str,
+    filename: str,
+    content_type: str,
+    patient_id: str = "",
+) -> dict:
+    """Upload a document to oncofiles via MCP (base64-encoded content)."""
+    args: dict = {
+        "content_base64": content_base64,
+        "filename": filename,
+        "content_type": content_type,
+    }
+    if patient_id:
+        args["patient_id"] = patient_id
+    return await call_oncofiles("upload_document", args)
+
+
+async def enhance_document_via_mcp(document_id: str) -> dict:
+    """Trigger OCR + AI analysis on a document via oncofiles MCP."""
+    return await call_oncofiles("enhance_documents", {"document_id": document_id})
+
+
 async def get_related_documents(doc_id: int) -> dict:
     """Get cross-referenced documents (same visit, shared diagnoses, follow-ups)."""
     return await call_oncofiles("get_related_documents", {"doc_id": doc_id})

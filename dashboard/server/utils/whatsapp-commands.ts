@@ -1,9 +1,11 @@
+import { addApprovedPhone } from './approved-phones'
+
 const MAX_REPLY_LENGTH = 1500
 
 type Lang = 'sk' | 'en'
 
-const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus'])
-const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle'])
+const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval'])
+const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve'])
 
 const COMMAND_MAP: Record<string, string> = {
   // Slovak
@@ -15,6 +17,7 @@ const COMMAND_MAP: Record<string, string> = {
   naklady: 'cost',
   studie: 'trials',
   cyklus: 'cycle',
+  schval: 'approve',
   // English
   labs: 'labs',
   meds: 'meds',
@@ -26,6 +29,7 @@ const COMMAND_MAP: Record<string, string> = {
   cost: 'cost',
   trials: 'trials',
   cycle: 'cycle',
+  approve: 'approve',
 }
 
 function detectLang(input: string): Lang {
@@ -211,6 +215,84 @@ function formatCycle(data: Record<string, unknown>, lang: Lang): string {
   return truncate(text)
 }
 
+async function handleApproveCommand(
+  body: string,
+  oncoteamApiUrl: string,
+  lang: Lang,
+  fromPhone?: string,
+): Promise<CommandResult> {
+  // Admin check: only phones in the role map can approve
+  const config = useRuntimeConfig()
+  const adminPhones = extractAdminPhones(config.roleMap)
+  const callerPhone = fromPhone ? fromPhone.replace(/[\s\-()]/g, '') : ''
+
+  if (!callerPhone || !adminPhones.has(callerPhone)) {
+    return {
+      type: 'reply',
+      text: t(L(
+        'Tento prikaz je len pre administratorov.',
+        'This command is for admins only.',
+      ), lang),
+    }
+  }
+
+  // Extract phone number from command: "approve +421900111222" or "schval +421900111222"
+  const parts = body.trim().split(/\s+/)
+  const rawPhone = parts.slice(1).join('')
+  if (!rawPhone) {
+    return {
+      type: 'reply',
+      text: t(L(
+        'Pouzitie: *schval +421XXXXXXXXX*',
+        'Usage: *approve +421XXXXXXXXX*',
+      ), lang),
+    }
+  }
+
+  const phoneToApprove = normalizeApprovalPhone(rawPhone)
+  if (phoneToApprove.length < 8) {
+    return {
+      type: 'reply',
+      text: t(L(
+        'Neplatne telefonne cislo. Pouzitie: *schval +421XXXXXXXXX*',
+        'Invalid phone number. Usage: *approve +421XXXXXXXXX*',
+      ), lang),
+    }
+  }
+
+  try {
+    const apiKey = (config.oncoteamApiKey || '') as string
+    const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+
+    await $fetch(`${oncoteamApiUrl}/api/internal/approve-user`, {
+      method: 'POST',
+      body: { phone: phoneToApprove },
+      headers,
+    })
+
+    // Also add to local runtime set so webhook picks it up immediately
+    addApprovedPhone(phoneToApprove)
+
+    return {
+      type: 'reply',
+      text: t(L(
+        `Telefon ${phoneToApprove} schvaleny. Pouzivatel ma teraz pristup.`,
+        `Phone ${phoneToApprove} approved. User now has access.`,
+      ), lang),
+    }
+  }
+  catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return {
+      type: 'reply',
+      text: t(L(
+        `Chyba pri schvalovani: ${message}`,
+        `Approval error: ${message}`,
+      ), lang),
+    }
+  }
+}
+
 function helpText(lang: Lang): string {
   if (lang === 'en') {
     return `*Oncoteam WhatsApp*
@@ -249,13 +331,43 @@ export type CommandResult =
   | { type: 'reply'; text: string }
   | { type: 'async'; lang: Lang; message: string }
 
-export async function handleWhatsAppCommand(body: string, oncoteamApiUrl: string): Promise<CommandResult> {
+function extractAdminPhones(roleMapRaw: string | Record<string, { phone?: string }>): Set<string> {
+  try {
+    const roleMap = typeof roleMapRaw === 'string' ? JSON.parse(roleMapRaw || '{}') : roleMapRaw || {}
+    const phones = new Set<string>()
+    for (const config of Object.values(roleMap) as Array<{ phone?: string }>) {
+      if (config.phone) phones.add(config.phone.replace(/[\s\-()]/g, ''))
+    }
+    return phones
+  }
+  catch {
+    return new Set()
+  }
+}
+
+function normalizeApprovalPhone(raw: string): string {
+  // Strip spaces, dashes, parens; ensure + prefix
+  let phone = raw.replace(/[\s\-()]/g, '')
+  if (phone && !phone.startsWith('+')) phone = '+' + phone
+  return phone
+}
+
+export async function handleWhatsAppCommand(
+  body: string,
+  oncoteamApiUrl: string,
+  fromPhone?: string,
+): Promise<CommandResult> {
   const input = body.trim().toLowerCase().split(/\s+/)[0] || ''
   const lang = detectLang(input)
   const command = COMMAND_MAP[input]
 
   if (command === 'help') {
     return { type: 'reply', text: helpText(lang) }
+  }
+
+  // Admin-only: approve command
+  if (command === 'approve') {
+    return handleApproveCommand(body, oncoteamApiUrl, lang, fromPhone)
   }
 
   // Conversational fallback — handled async (Claude API takes 30-60s,

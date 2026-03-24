@@ -8,7 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from oncoteam.dashboard_api import api_onboard_patient, api_onboarding_status
+from oncoteam.dashboard_api import (
+    _approved_phones,
+    api_approve_user,
+    api_onboard_patient,
+    api_onboarding_status,
+    api_whatsapp_media,
+)
 
 
 class FakeRequest:
@@ -151,3 +157,170 @@ async def test_onboarding_status_invalid_json():
 
     assert response.status_code == 400
     assert "Invalid JSON" in data["error"]
+
+
+# ── POST /api/internal/approve-user ────────────────
+
+
+@pytest.fixture(autouse=True)
+def _clear_approved_phones():
+    """Clear approved phones set between tests."""
+    _approved_phones.clear()
+    yield
+    _approved_phones.clear()
+
+
+@pytest.mark.anyio
+async def test_approve_user_success():
+    """Approve a phone number successfully."""
+    request = FakeRequest({"phone": "+421900111222"})
+    response = await api_approve_user(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "approved"
+    assert data["phone"] == "+421900111222"
+
+    # Verify the phone is now in the approved set
+    from oncoteam.dashboard_api import is_phone_approved
+
+    assert is_phone_approved("+421900111222") is True
+
+
+@pytest.mark.anyio
+async def test_approve_user_missing_phone():
+    """Missing phone returns 400."""
+    request = FakeRequest({"phone": ""})
+    response = await api_approve_user(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 400
+    assert "required" in data["error"]
+
+
+@pytest.mark.anyio
+async def test_approve_user_invalid_json():
+    """Invalid JSON body returns 400."""
+    request = FakeRequest(None)
+    response = await api_approve_user(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 400
+    assert "Invalid JSON" in data["error"]
+
+
+@pytest.mark.anyio
+async def test_approve_user_idempotent():
+    """Approving the same phone twice works without error."""
+    request1 = FakeRequest({"phone": "+421900111222"})
+    await api_approve_user(request1)
+
+    request2 = FakeRequest({"phone": "+421900111222"})
+    response = await api_approve_user(request2)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "approved"
+
+
+# ── POST /api/internal/whatsapp-media ─────────────────
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.enhance_document_via_mcp", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api.oncofiles_client.upload_document_via_mcp", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api._check_fup_ai_query", return_value=True)
+async def test_whatsapp_media_success(mock_fup, mock_upload, mock_enhance):
+    """Upload + enhance succeeds, returns document_id and summary."""
+    mock_upload.return_value = {"document_id": "42", "filename": "test.jpg"}
+    mock_enhance.return_value = {"summary": "Lab results: WBC 5.2, HGB 12.1"}
+
+    request = FakeRequest(
+        {
+            "media_base64": "aGVsbG8=",
+            "content_type": "image/jpeg",
+            "filename": "whatsapp_20260324_120000.jpg",
+            "phone": "+421900111222",
+            "patient_id": "erika",
+        }
+    )
+    response = await api_whatsapp_media(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "ok"
+    assert data["document_id"] == "42"
+    assert "Lab results" in data["summary"]
+
+    mock_upload.assert_called_once_with(
+        content_base64="aGVsbG8=",
+        filename="whatsapp_20260324_120000.jpg",
+        content_type="image/jpeg",
+        patient_id="erika",
+    )
+    mock_enhance.assert_called_once_with("42")
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api._check_fup_ai_query", return_value=False)
+async def test_whatsapp_media_fup_exceeded(mock_fup):
+    """429 when monthly FUP limit is exceeded."""
+    request = FakeRequest(
+        {
+            "media_base64": "aGVsbG8=",
+            "content_type": "image/jpeg",
+            "filename": "test.jpg",
+            "phone": "+421900111222",
+            "patient_id": "",
+        }
+    )
+    response = await api_whatsapp_media(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 429
+    assert "limit" in data["error"].lower()
+
+
+@pytest.mark.anyio
+async def test_whatsapp_media_missing_fields():
+    """Missing required fields returns 400."""
+    request = FakeRequest({"media_base64": "", "content_type": "", "filename": ""})
+    response = await api_whatsapp_media(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 400
+    assert "required" in data["error"]
+
+
+@pytest.mark.anyio
+async def test_whatsapp_media_invalid_json():
+    """Invalid JSON body returns 400."""
+    request = FakeRequest(None)
+    response = await api_whatsapp_media(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 400
+    assert "Invalid JSON" in data["error"]
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.upload_document_via_mcp", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api._check_fup_ai_query", return_value=True)
+async def test_whatsapp_media_upload_failure(mock_fup, mock_upload):
+    """502 when upload to oncofiles fails."""
+    mock_upload.side_effect = ConnectionError("oncofiles unreachable")
+
+    request = FakeRequest(
+        {
+            "media_base64": "aGVsbG8=",
+            "content_type": "application/pdf",
+            "filename": "report.pdf",
+            "phone": "+421900111222",
+            "patient_id": "",
+        }
+    )
+    response = await api_whatsapp_media(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 502
+    assert "Failed to upload" in data["error"]

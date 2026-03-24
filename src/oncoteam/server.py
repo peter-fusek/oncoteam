@@ -26,6 +26,7 @@ from .dashboard_api import (
     api_agent_runs,
     api_agent_runs_all,
     api_agents,
+    api_approve_user,
     api_assess_funnel,
     api_autonomous,
     api_autonomous_cost,
@@ -57,6 +58,7 @@ from .dashboard_api import (
     api_trigger_agent,
     api_weight,
     api_whatsapp_chat,
+    api_whatsapp_media,
 )
 from .eligibility import check_eligibility
 from .models import ResearchSource
@@ -1019,12 +1021,18 @@ mcp.custom_route("/api/internal/document-webhook", methods=["OPTIONS"])(api_cors
 _trigger_agent = _auth_wrap(api_trigger_agent)
 mcp.custom_route("/api/internal/trigger-agent", methods=["POST"])(_trigger_agent)
 mcp.custom_route("/api/internal/trigger-agent", methods=["OPTIONS"])(api_cors_preflight)
+_whatsapp_media = _auth_wrap(api_whatsapp_media)
+mcp.custom_route("/api/internal/whatsapp-media", methods=["POST"])(_whatsapp_media)
+mcp.custom_route("/api/internal/whatsapp-media", methods=["OPTIONS"])(api_cors_preflight)
 _onboard_patient = _auth_wrap(api_onboard_patient)
 mcp.custom_route("/api/internal/onboard-patient", methods=["POST"])(_onboard_patient)
 mcp.custom_route("/api/internal/onboard-patient", methods=["OPTIONS"])(api_cors_preflight)
 _onboarding_status = _auth_wrap(api_onboarding_status)
 mcp.custom_route("/api/internal/onboarding-status", methods=["POST"])(_onboarding_status)
 mcp.custom_route("/api/internal/onboarding-status", methods=["OPTIONS"])(api_cors_preflight)
+_approve_user = _auth_wrap(api_approve_user)
+mcp.custom_route("/api/internal/approve-user", methods=["POST"])(_approve_user)
+mcp.custom_route("/api/internal/approve-user", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/bug-report", methods=["POST"])(_auth_wrap(api_bug_report))
 mcp.custom_route("/api/bug-report", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/research/assess-funnel", methods=["POST"])(_auth_wrap(api_assess_funnel))
