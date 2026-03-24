@@ -59,12 +59,13 @@ const { data: timeline } = fetchApi<{
 const latestLab = computed(() => {
   if (!labs.value?.entries) return null
   // Find first entry with actual values (skip entries with empty metadata)
-  return labs.value.entries.find(e => e.values && Object.keys(e.values).length > 0) ?? labs.value.entries[0] ?? null
+  return labs.value.entries.find(e => e.values && Object.keys(e.values).length > 0) ?? null
 })
 
 const labAlerts = computed(() => {
-  if (!latestLab.value?.alerts) return []
-  return latestLab.value.alerts
+  // Collect alerts from ALL entries, not just the latest
+  if (!labs.value?.entries) return []
+  return labs.value.entries.flatMap(e => e.alerts || [])
 })
 
 const latestBriefing = computed(() => briefings.value?.briefings?.[0] ?? null)
@@ -180,6 +181,9 @@ const EVENT_ICONS: Record<string, string> = {
         </div>
         <div v-else-if="labs?.unavailable" class="text-sm text-gray-500 py-4 text-center">
           {{ $t('documents.unavailable') }}
+        </div>
+        <div v-else-if="labs && !latestLab" class="text-sm text-gray-500 py-6 text-center">
+          <NuxtLink to="/labs" class="text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
         </div>
         <SkeletonLoader v-else variant="cards" />
       </div>
