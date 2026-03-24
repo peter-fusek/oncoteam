@@ -1,751 +1,281 @@
 <script setup lang="ts">
-import type { RoomDef } from '~/composables/useRoomNavigation'
-
 const { fetchApi } = useOncoteamApi()
+const { activeRole } = useUserRole()
+const { formatDate } = useFormatDate()
 const { t } = useI18n()
 
-const {
-  currentLevel, selectedRoom, selectedWorker, lastViewed,
-  markViewed, openRoom, openWorker, goBack, goToGrid,
-} = useRoomNavigation()
+// Parallel data fetches — all lazy, same pattern as other pages
+const { data: patient } = fetchApi<{
+  name: string
+  treatment_regimen: string
+  current_cycle: number
+  ecog: string
+  diagnosis_description: string
+  staging: string
+  biomarkers: Record<string, string | boolean>
+  excluded_therapies: Array<{ therapy: string; reason: string }> | Record<string, string>
+  active_therapies?: Array<{ name: string; status: string; warning?: string }>
+}>('/patient', { lazy: true })
 
-// ── Data fetching ────────────────────────────────
-
-const { data: status, status: statusFetch, error: statusError, refresh: refreshStatus } = fetchApi<{
-  status: string; version: string; session_id: string; tools_count: number
-}>('/status', { lazy: true })
-
-const { data: stats, refresh: refreshStats } = fetchApi<{
-  stats: Array<{ tool_name: string; status: string; count: number; avg_duration_ms: number }>
-}>('/stats', { lazy: true })
-
-const { data: activity, refresh: refreshActivity } = fetchApi<{
-  entries: Array<{
-    tool: string; status: string; duration_ms: number; timestamp: string
-    input: string; output: string; error: string
-  }>
-  total: number
-}>('/activity?limit=100', { lazy: true })
-
-const { data: autonomous, refresh: refreshAutonomous } = fetchApi<{
-  enabled: boolean; daily_cost: number
-  jobs?: Array<{ id: string; schedule: string; description: string; assigned_tool?: string }>
-}>('/autonomous', { lazy: true })
-
-const { data: costData, refresh: refreshCost } = fetchApi<{
-  today_spend: number; daily_cap: number; mtd_spend: number
-  expected_eom: number; remaining_credit: number; total_credit: number
-  days_remaining: number; budget_alert: boolean; month: string
-}>('/autonomous/cost', { lazy: true })
-
-const { data: labData, refresh: refreshLabs } = fetchApi<{
+const { data: labs } = fetchApi<{
   entries: Array<{
     date: string
+    values: Record<string, number>
     alerts: Array<{ param: string; value: number; threshold: number; action: string }>
+    value_statuses: Record<string, 'low' | 'high' | 'normal'>
+    directions: Record<string, 'up' | 'down' | 'stable'>
+    health_directions: Record<string, 'improving' | 'worsening' | 'stable'>
   }>
+  total: number
+  error?: string
+  unavailable?: boolean
 }>('/labs?limit=3', { lazy: true })
 
-// ── Helpers ──────────────────────────────────────
+const { data: briefings } = fetchApi<{
+  briefings: Array<{
+    id: number
+    title: string
+    content: string
+    entry_type: string
+    created_at: string
+    tags: string[]
+    questions_for_oncologist?: string[]
+    action_items?: string[]
+  }>
+  total: number
+}>('/briefings?limit=1', { lazy: true })
 
-function toolLabel(toolName: string): string {
-  const key = `agents.toolNames.${toolName}`
-  const label = t(key)
-  return label === key ? toolName.replace(/_/g, ' ') : label
-}
+const { data: timeline } = fetchApi<{
+  events: Array<{
+    id: number
+    event_date: string
+    event_type: string
+    title: string
+    cycle?: number
+  }>
+}>('/timeline?limit=10', { lazy: true })
 
-const toolStatsMap = computed(() =>
-  new Map((stats.value?.stats ?? []).map(s => [s.tool_name, s]))
-)
+// Computed helpers
+const latestLab = computed(() => labs.value?.entries?.[0] ?? null)
 
-const autonomousJobsMap = computed(() =>
-  new Map((autonomous.value?.jobs ?? []).map(j => [j.id, j]))
-)
-
-const toolJobsMap = computed(() => {
-  const map = new Map<string, Array<{ id: string; schedule: string; description: string }>>()
-  for (const job of (autonomous.value?.jobs ?? [])) {
-    const tool = job.assigned_tool
-    if (tool) {
-      if (!map.has(tool)) map.set(tool, [])
-      map.get(tool)!.push(job)
-    }
-  }
-  return map
+const labAlerts = computed(() => {
+  if (!latestLab.value?.alerts) return []
+  return latestLab.value.alerts
 })
 
-function getAgentStatus(tools: string[]): 'active' | 'recent' | 'idle' {
-  const recent = activity.value?.entries ?? []
-  const lastAct = recent.find(e => tools.includes(e.tool))
-  if (!lastAct) return 'idle'
-  const age = Date.now() - new Date(lastAct.timestamp).getTime()
-  if (age < 5 * 60_000) return 'active'
-  if (age < 60 * 60_000) return 'recent'
-  return 'idle'
-}
+const latestBriefing = computed(() => briefings.value?.briefings?.[0] ?? null)
 
-function statusLabel(s: string) {
-  if (s === 'active') return t('agents.statusActive')
-  if (s === 'recent') return t('agents.statusRecent')
-  return t('agents.statusIdle')
-}
-
-function statusIcon(s: string) {
-  if (s === 'active') return 'i-lucide-activity'
-  if (s === 'recent') return 'i-lucide-clock'
-  return 'i-lucide-pause-circle'
-}
-
-function newCountForTools(tools: string[]): number {
-  const cutoff = new Date(lastViewed.value).getTime()
-  return (activity.value?.entries ?? []).filter(
-    e => tools.includes(e.tool) && new Date(e.timestamp).getTime() > cutoff
-  ).length
-}
-
-function entriesForTools(tools: string[]) {
-  return (activity.value?.entries ?? []).filter(e => tools.includes(e.tool))
-}
-
-function lastActivityFor(tool: string) {
-  return (activity.value?.entries ?? []).find(e => e.tool === tool) ?? null
-}
-
-function relativeTime(ts: string): string {
-  const diff = Date.now() - new Date(ts).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return t('agents.statusActive').toLowerCase()
-  if (mins < 60) return `${mins}m`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h`
-  const days = Math.floor(hours / 24)
-  return `${days}d`
-}
-
-// ── Room definitions ─────────────────────────────
-
-const ROOM_STYLES: Record<string, { bg: string; border: string; accent: string; icon_bg: string }> = {
-  researchLab:      { bg: 'bg-blue-50',   border: 'border-blue-200', accent: 'text-blue-700',   icon_bg: 'bg-blue-100 text-blue-600' },
-  eligibilityCheck: { bg: 'bg-amber-50',  border: 'border-amber-200', accent: 'text-amber-700',  icon_bg: 'bg-amber-100 text-amber-600' },
-  clinicalProtocol: { bg: 'bg-rose-50',   border: 'border-rose-200', accent: 'text-rose-700',   icon_bg: 'bg-rose-100 text-rose-600' },
-  analyticsRoom:    { bg: 'bg-purple-50', border: 'border-purple-200', accent: 'text-purple-700', icon_bg: 'bg-purple-100 text-purple-600' },
-  reportRoom:       { bg: 'bg-emerald-50', border: 'border-emerald-200', accent: 'text-emerald-700', icon_bg: 'bg-emerald-100 text-emerald-600' },
-  documentVault:    { bg: 'bg-cyan-50',   border: 'border-cyan-200', accent: 'text-cyan-700',   icon_bg: 'bg-cyan-100 text-cyan-600' },
-  sessionLog:       { bg: 'bg-pink-50',   border: 'border-pink-200', accent: 'text-pink-700',   icon_bg: 'bg-pink-100 text-pink-600' },
-}
-
-const rooms = computed<RoomDef[]>(() => [
-  {
-    key: 'researchLab',
-    name: t('agents.rooms.researchLab'),
-    desc: t('agents.rooms.researchLabDesc'),
-    icon: 'i-lucide-flask-conical',
-    color: ROOM_STYLES.researchLab.bg,
-    border: ROOM_STYLES.researchLab.border,
-    statusColor: 'bg-blue-500',
-    tools: ['search_pubmed', 'search_clinical_trials', 'search_clinical_trials_adjacent'],
-    autonomousJobs: ['daily_research', 'trial_monitor'],
-    status: getAgentStatus(['search_pubmed', 'search_clinical_trials', 'search_clinical_trials_adjacent']),
-    totalCalls: ['search_pubmed', 'search_clinical_trials', 'search_clinical_trials_adjacent']
-      .reduce((sum, t) => sum + (toolStatsMap.value.get(t)?.count ?? 0), 0),
-  },
-  {
-    key: 'eligibilityCheck',
-    name: t('agents.rooms.eligibilityCheck'),
-    desc: t('agents.rooms.eligibilityCheckDesc'),
-    icon: 'i-lucide-target',
-    color: ROOM_STYLES.eligibilityCheck.bg,
-    border: ROOM_STYLES.eligibilityCheck.border,
-    statusColor: 'bg-amber-500',
-    tools: ['check_trial_eligibility', 'fetch_trial_details', 'fetch_pubmed_article'],
-    autonomousJobs: [],
-    status: getAgentStatus(['check_trial_eligibility', 'fetch_trial_details', 'fetch_pubmed_article']),
-    totalCalls: ['check_trial_eligibility', 'fetch_trial_details', 'fetch_pubmed_article']
-      .reduce((sum, t) => sum + (toolStatsMap.value.get(t)?.count ?? 0), 0),
-  },
-  {
-    key: 'clinicalProtocol',
-    name: t('agents.rooms.clinicalProtocol'),
-    desc: t('agents.rooms.clinicalProtocolDesc'),
-    icon: 'i-lucide-shield-check',
-    color: ROOM_STYLES.clinicalProtocol.bg,
-    border: ROOM_STYLES.clinicalProtocol.border,
-    statusColor: 'bg-rose-500',
-    tools: ['pre_cycle_check', 'tumor_marker_review', 'response_assessment'],
-    autonomousJobs: ['pre_cycle_check', 'tumor_marker_review', 'response_assessment'],
-    status: getAgentStatus(['pre_cycle_check', 'tumor_marker_review', 'response_assessment']),
-    totalCalls: ['pre_cycle_check', 'tumor_marker_review', 'response_assessment']
-      .reduce((sum, t) => sum + (toolStatsMap.value.get(t)?.count ?? 0), 0),
-  },
-  {
-    key: 'analyticsRoom',
-    name: t('agents.rooms.analyticsRoom'),
-    desc: t('agents.rooms.analyticsRoomDesc'),
-    icon: 'i-lucide-bar-chart-3',
-    color: ROOM_STYLES.analyticsRoom.bg,
-    border: ROOM_STYLES.analyticsRoom.border,
-    statusColor: 'bg-purple-500',
-    tools: ['analyze_labs', 'compare_labs', 'get_lab_trends'],
-    autonomousJobs: [],
-    status: getAgentStatus(['analyze_labs', 'compare_labs', 'get_lab_trends']),
-    totalCalls: ['analyze_labs', 'compare_labs', 'get_lab_trends']
-      .reduce((sum, t) => sum + (toolStatsMap.value.get(t)?.count ?? 0), 0),
-  },
-  {
-    key: 'reportRoom',
-    name: t('agents.rooms.reportRoom'),
-    desc: t('agents.rooms.reportRoomDesc'),
-    icon: 'i-lucide-file-text',
-    color: ROOM_STYLES.reportRoom.bg,
-    border: ROOM_STYLES.reportRoom.border,
-    statusColor: 'bg-emerald-500',
-    tools: ['daily_briefing', 'summarize_session', 'review_session'],
-    autonomousJobs: ['weekly_briefing', 'mtb_preparation'],
-    status: getAgentStatus(['daily_briefing', 'summarize_session', 'review_session']),
-    totalCalls: ['daily_briefing', 'summarize_session', 'review_session']
-      .reduce((sum, t) => sum + (toolStatsMap.value.get(t)?.count ?? 0), 0),
-  },
-  {
-    key: 'documentVault',
-    name: t('agents.rooms.documentVault'),
-    desc: t('agents.rooms.documentVaultDesc'),
-    icon: 'i-lucide-archive',
-    color: ROOM_STYLES.documentVault.bg,
-    border: ROOM_STYLES.documentVault.border,
-    statusColor: 'bg-cyan-500',
-    tools: ['search_documents', 'view_document', 'get_patient_context'],
-    autonomousJobs: ['file_scan'],
-    status: getAgentStatus(['search_documents', 'view_document', 'get_patient_context']),
-    totalCalls: ['search_documents', 'view_document', 'get_patient_context']
-      .reduce((sum, t) => sum + (toolStatsMap.value.get(t)?.count ?? 0), 0),
-  },
-  {
-    key: 'sessionLog',
-    name: t('agents.rooms.sessionLog'),
-    desc: t('agents.rooms.sessionLogDesc'),
-    icon: 'i-lucide-notebook-pen',
-    color: ROOM_STYLES.sessionLog.bg,
-    border: ROOM_STYLES.sessionLog.border,
-    statusColor: 'bg-pink-500',
-    tools: ['log_research_decision', 'log_session_note', 'create_improvement_issue'],
-    autonomousJobs: [],
-    status: getAgentStatus(['log_research_decision', 'log_session_note', 'create_improvement_issue']),
-    totalCalls: ['log_research_decision', 'log_session_note', 'create_improvement_issue']
-      .reduce((sum, t) => sum + (toolStatsMap.value.get(t)?.count ?? 0), 0),
-  },
-])
-
-// ── Key Insights ─────────────────────────────────
-
-function formatInsight(entry: { tool: string; input: string; output: string }): { line1: string; line2: string } {
-  const qm = entry.input?.match(/query='([^']*)'/) || entry.input?.match(/condition='([^']*)'/)
-  const q = qm?.[1]
-  const line1 = q
-    ? (q.length > 60 ? q.slice(0, 60) + '…' : q)
-    : (entry.input?.length > 60 ? entry.input.slice(0, 60) + '…' : entry.input || entry.tool)
-
-  const countMatch = entry.output?.match(/(\d+)\s+(articles?|trials?|results?|documents?|entries)/i)
-  const line2 = countMatch
-    ? `${countMatch[1]} ${countMatch[2]}`
-    : (entry.output?.length > 80 ? entry.output.slice(0, 80) + '…' : entry.output || '')
-
-  return { line1, line2 }
-}
-
-function keyInsightsForTools(tools: string[], limit = 5) {
-  return (activity.value?.entries ?? [])
-    .filter(e => tools.includes(e.tool) && e.status === 'ok' && e.output)
-    .slice(0, limit)
-    .map(e => ({ tool: e.tool, timestamp: e.timestamp, insight: formatInsight(e), entry: e }))
-}
-
-const roomInsights = computed(() =>
-  selectedRoom.value ? keyInsightsForTools(selectedRoom.value.tools) : []
-)
-
-const workerInsights = computed(() =>
-  selectedWorker.value ? keyInsightsForTools([selectedWorker.value]) : []
-)
-
-// ── Drilldown integration ────────────────────────
-
-const drilldown = useDrilldown()
-
-function openTaskDetail(entry: { tool: string; status: string; duration_ms: number; timestamp: string; input: string; output: string; error: string }) {
-  drilldown.open({
-    type: 'activity',
-    id: entry.timestamp,
-    label: toolLabel(entry.tool),
-    data: {
-      tool: entry.tool,
-      status: entry.status,
-      duration_ms: entry.duration_ms,
-      timestamp: entry.timestamp,
-      input: entry.input,
-      output: entry.output,
-      error: entry.error,
-    },
-  })
-}
-
-// ── Computed for current view ────────────────────
-
-const recentAlerts = computed(() => {
-  if (!labData.value?.entries) return []
-  return labData.value.entries
-    .filter(e => e.alerts?.length)
-    .flatMap(e => e.alerts.map(a => ({ ...a, date: e.date })))
+const upcomingEvents = computed(() => {
+  if (!timeline.value?.events) return []
+  const today = new Date().toISOString().slice(0, 10)
+  return timeline.value.events
+    .filter(e => e.event_date >= today)
+    .slice(0, 5)
 })
 
-const daysSinceLastLabs = computed(() => {
-  if (!labData.value?.entries?.length) return null
-  const latest = labData.value.entries[0]?.date
-  if (!latest) return null
-  const diff = Date.now() - new Date(latest).getTime()
-  return Math.floor(diff / 86400000)
-})
+const KEY_PARAMS = [
+  { key: 'ANC', label: 'ANC', unit: '/\u00b5L' },
+  { key: 'PLT', label: 'PLT', unit: '/\u00b5L' },
+  { key: 'hemoglobin', label: 'HGB', unit: 'g/dL' },
+  { key: 'CEA', label: 'CEA', unit: 'ng/mL' },
+  { key: 'CA_19_9', label: 'CA 19-9', unit: 'U/mL' },
+]
 
-const roomEntries = computed(() =>
-  selectedRoom.value ? entriesForTools(selectedRoom.value.tools) : []
-)
-
-const workerEntries = computed(() =>
-  selectedWorker.value
-    ? (activity.value?.entries ?? []).filter(e => e.tool === selectedWorker.value)
-    : []
-)
-
-const workerJobs = computed(() =>
-  selectedWorker.value ? (toolJobsMap.value.get(selectedWorker.value) ?? []) : []
-)
-
-const roomJobs = computed(() => {
-  if (!selectedRoom.value) return []
-  return selectedRoom.value.autonomousJobs
-    .map(id => autonomousJobsMap.value.get(id))
-    .filter(Boolean) as Array<{ id: string; schedule: string; description: string }>
-})
-
-// ── Refresh ──────────────────────────────────────
-
-async function refreshAll() {
-  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshCost(), refreshLabs()])
+function directionIcon(dir: string | undefined) {
+  if (dir === 'up') return '\u2191'
+  if (dir === 'down') return '\u2193'
+  return '\u2192'
 }
 
-const refreshInterval = ref<ReturnType<typeof setInterval>>()
-onMounted(() => {
-  nextTick(() => markViewed())
-  refreshInterval.value = setInterval(refreshAll, 30_000)
-})
-onUnmounted(() => {
-  clearInterval(refreshInterval.value)
-})
+function healthColor(hd: string | undefined) {
+  if (hd === 'improving') return 'text-emerald-600'
+  if (hd === 'worsening') return 'text-red-600'
+  return 'text-gray-500'
+}
+
+const EVENT_ICONS: Record<string, string> = {
+  chemotherapy: '\uD83D\uDC89',
+  lab_result: '\uD83E\uDDEA',
+  consultation: '\uD83D\uDC68\u200D\u2695\uFE0F',
+  imaging: '\uD83D\uDCF7',
+  surgery: '\uD83C\uDFE5',
+}
 </script>
 
 <template>
-  <div class="space-y-6">
-    <SkeletonLoader v-if="!status && statusFetch === 'pending'" variant="stat-grid" />
-    <ApiErrorBanner v-else-if="!status && statusFetch === 'error'" :error="statusError?.message" />
-    <template v-else>
+  <div class="space-y-5">
     <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 font-display">{{ $t('agents.title') }}</h1>
-        <p class="text-sm text-gray-500">{{ $t('agents.subtitle') }}</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2 text-xs">
-          <UIcon name="i-lucide-activity" class="w-3 h-3 text-emerald-500" />
-          <span class="text-gray-500">{{ status?.tools_count }} {{ $t('agents.tools').toLowerCase() }}</span>
-        </div>
-        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refreshAll" />
-      </div>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">{{ $t('home.title') }}</h1>
+      <p class="text-sm text-gray-500">{{ patient?.name }} &mdash; {{ $t('home.subtitle') }}</p>
     </div>
 
-    <!-- Emergency Alerts -->
-    <EmergencyAlert v-if="recentAlerts.length" :alerts="recentAlerts" />
-
-    <!-- Days Since Last Labs -->
-    <NuxtLink
-      v-if="daysSinceLastLabs != null && currentLevel === 0"
-      to="/labs"
-      class="flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors bg-white hover:bg-gray-50"
-      :class="daysSinceLastLabs > 14 ? 'border-amber-300 bg-amber-50' : 'border-gray-200'"
-    >
-      <UIcon
-        name="i-lucide-test-tube-diagonal"
-        :class="daysSinceLastLabs > 14 ? 'text-amber-600' : 'text-teal-600'"
-      />
-      <div class="flex-1">
-        <span class="text-sm text-gray-900">{{ $t('agents.lastLabs') }}</span>
-        <span class="text-xs text-gray-500 ml-2">
-          {{ daysSinceLastLabs === 0 ? $t('agents.today') : $t('agents.daysAgo', { n: daysSinceLastLabs }) }}
-        </span>
-      </div>
-      <UBadge
-        v-if="daysSinceLastLabs > 14"
-        color="warning"
-        variant="subtle"
-        size="xs"
-      >{{ $t('agents.labsOverdue') }}</UBadge>
-      <UIcon name="i-lucide-chevron-right" class="w-4 h-4 text-gray-400" />
-    </NuxtLink>
-
-    <!-- Autonomous Status + Budget Widget -->
-    <div v-if="autonomous?.enabled && currentLevel === 0" class="rounded-xl border bg-white p-4 space-y-3" :class="costData?.budget_alert ? 'border-amber-300' : 'border-gray-200'">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <UIcon name="i-lucide-bot" class="text-teal-600 w-4 h-4" />
-          <span class="text-sm font-medium text-gray-900">{{ $t('agents.autonomous') }}</span>
-          <UBadge color="success" variant="subtle" size="xs">{{ $t('common.active') }}</UBadge>
-        </div>
-        <UBadge v-if="costData?.budget_alert" color="warning" variant="subtle" size="xs">
-          <UIcon name="i-lucide-alert-triangle" class="w-3 h-3 mr-1" />
-          {{ $t('agents.budgetLow') }}
-        </UBadge>
-      </div>
-      <!-- Budget stats row -->
-      <div v-if="costData" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="text-center">
-          <div class="text-xs text-gray-500">{{ $t('agents.todaySpend') }}</div>
-          <div class="text-sm font-mono text-gray-900">${{ costData.today_spend.toFixed(2) }}</div>
-          <div class="text-[10px] text-gray-400">{{ $t('agents.capOf', { cap: costData.daily_cap.toFixed(0) }) }}</div>
-        </div>
-        <div class="text-center">
-          <div class="text-xs text-gray-500">{{ $t('agents.mtdSpend') }}</div>
-          <div class="text-sm font-mono text-gray-900">${{ costData.mtd_spend.toFixed(2) }}</div>
-          <div class="text-[10px] text-gray-400">{{ costData.month }}</div>
-        </div>
-        <div class="text-center">
-          <div class="text-xs text-gray-500">{{ $t('agents.expectedEom') }}</div>
-          <div class="text-sm font-mono text-gray-900">${{ costData.expected_eom.toFixed(2) }}</div>
-          <div class="text-[10px] text-gray-400">{{ $t('agents.projected') }}</div>
-        </div>
-        <div class="text-center">
-          <div class="text-xs text-gray-500">{{ $t('agents.remainingCredit') }}</div>
-          <div class="text-sm font-mono" :class="costData.budget_alert ? 'text-amber-600' : 'text-emerald-600'">${{ costData.remaining_credit.toFixed(2) }}</div>
-          <div class="text-[10px] text-gray-400">~{{ costData.days_remaining }}d</div>
+    <!-- Alerts -->
+    <div v-if="labAlerts.length" class="space-y-2">
+      <div
+        v-for="alert in labAlerts"
+        :key="alert.param"
+        class="flex items-center gap-3 rounded-lg border-l-4 border-red-400 bg-red-50 px-4 py-3"
+      >
+        <UIcon name="i-lucide-alert-triangle" class="h-5 w-5 text-red-500 shrink-0" />
+        <div class="text-sm">
+          <span class="font-semibold text-red-800">{{ alert.param }}</span>
+          <span class="text-red-700"> = {{ alert.value }} ({{ $t('home.threshold') }}: {{ alert.threshold }})</span>
+          <span class="text-red-600 ml-2">&mdash; {{ alert.action }}</span>
         </div>
       </div>
     </div>
+    <div v-else-if="latestLab" class="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+      <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
+      {{ $t('home.noAlerts') }}
+    </div>
 
-    <!-- ═══════════════ LEVEL 0: Room Grid ═══════════════ -->
-    <Transition name="fade" mode="out-in">
-      <div v-if="currentLevel === 0" key="grid">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button
-            v-for="room in rooms"
-            :key="room.key"
-            class="group relative rounded-xl border p-4 text-left transition-all hover:shadow-md cursor-pointer"
-            :class="[ROOM_STYLES[room.key]?.bg, ROOM_STYLES[room.key]?.border]"
-            @click="openRoom(room)"
-          >
-            <!-- Status + new badge -->
-            <div class="absolute top-3 right-3 flex items-center gap-1.5">
-              <UBadge
-                v-if="newCountForTools(room.tools) > 0"
-                color="primary"
-                variant="solid"
-                size="xs"
-              >
-                {{ newCountForTools(room.tools) }}
-              </UBadge>
-              <div class="flex items-center gap-1" :title="statusLabel(room.status)">
-                <UIcon :name="statusIcon(room.status)" class="w-3.5 h-3.5" :class="{
-                  'text-emerald-500': room.status === 'active',
-                  'text-amber-500': room.status === 'recent',
-                  'text-gray-400': room.status === 'idle',
-                }" />
-              </div>
-            </div>
-
-            <!-- Room header -->
-            <div class="flex items-center gap-3 mb-2">
-              <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="ROOM_STYLES[room.key]?.icon_bg">
-                <UIcon :name="room.icon" class="w-5 h-5" />
-              </div>
-              <div>
-                <div class="font-semibold text-gray-900 text-sm">{{ room.name }}</div>
-                <div class="text-xs text-gray-500">{{ room.desc }}</div>
-              </div>
-            </div>
-
-            <!-- Summary stats -->
-            <div class="flex items-center gap-3 mt-3 text-[10px] text-gray-500">
-              <span>{{ room.tools.length }} {{ $t('agents.workers').toLowerCase() }}</span>
-              <span v-if="room.totalCalls > 0">{{ $t('agents.calls', { count: room.totalCalls }) }}</span>
-              <span v-if="room.autonomousJobs.length > 0" class="flex items-center gap-0.5">
-                <UIcon name="i-lucide-timer" class="w-2.5 h-2.5" />
-                {{ room.autonomousJobs.length }}
-              </span>
-            </div>
-          </button>
+    <!-- Treatment Status + Recent Labs — 2 column grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Treatment Status -->
+      <div class="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ $t('home.treatmentStatus') }}</h2>
+        <div v-if="patient" class="space-y-3">
+          <div class="flex items-baseline justify-between">
+            <span class="text-2xl font-bold text-gray-900">{{ patient.treatment_regimen }}</span>
+            <UBadge variant="subtle" color="info" size="sm">{{ $t('home.cycle') }} {{ patient.current_cycle }}</UBadge>
+          </div>
+          <div class="text-sm text-gray-600">{{ patient.diagnosis_description }}</div>
+          <div class="flex gap-4 text-xs text-gray-500">
+            <span>{{ $t('home.staging') }}: <strong class="text-gray-700">{{ patient.staging }}</strong></span>
+            <span>ECOG: <strong class="text-gray-700">{{ patient.ecog }}</strong></span>
+          </div>
         </div>
+        <SkeletonLoader v-else variant="lines" />
       </div>
 
-      <!-- ═══════════════ LEVEL 1: Room → Workers ═══════════════ -->
-      <div v-else-if="currentLevel === 1 && selectedRoom" key="room">
-        <!-- Breadcrumb -->
-        <div class="flex items-center gap-2 mb-4">
-          <button class="text-xs text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1" @click="goToGrid">
-            <UIcon name="i-lucide-arrow-left" class="w-3 h-3" />
-            {{ $t('agents.backToRooms') }}
-          </button>
+      <!-- Recent Labs -->
+      <div class="rounded-xl border border-gray-200 bg-white p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.recentLabs') }}</h2>
+          <NuxtLink to="/labs" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
         </div>
-
-        <!-- Room header -->
-        <div class="rounded-xl border p-5 mb-5" :class="[ROOM_STYLES[selectedRoom.key]?.bg, ROOM_STYLES[selectedRoom.key]?.border]">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="ROOM_STYLES[selectedRoom.key]?.icon_bg">
-              <UIcon :name="selectedRoom.icon" class="w-6 h-6" />
-            </div>
-            <div>
-              <h2 class="text-lg font-bold text-gray-900 font-display">{{ selectedRoom.name }}</h2>
-              <p class="text-sm text-gray-500">{{ selectedRoom.desc }}</p>
-            </div>
-            <div class="ml-auto flex items-center gap-2">
-              <span class="text-xs text-gray-500">{{ statusLabel(selectedRoom.status) }}</span>
-              <UIcon :name="statusIcon(selectedRoom.status)" class="w-4 h-4" :class="{
-                'text-emerald-500': selectedRoom.status === 'active',
-                'text-amber-500': selectedRoom.status === 'recent',
-                'text-gray-400': selectedRoom.status === 'idle',
-              }" />
+        <div v-if="latestLab" class="space-y-2">
+          <div class="text-xs text-gray-500 mb-2">{{ formatDate(latestLab.date) }}</div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div
+              v-for="p in KEY_PARAMS"
+              :key="p.key"
+              class="rounded-lg bg-gray-50 px-3 py-2 text-center"
+            >
+              <div class="text-[10px] font-medium text-gray-400 uppercase">{{ p.label }}</div>
+              <div class="text-lg font-bold" :class="latestLab.value_statuses?.[p.key] === 'low' || latestLab.value_statuses?.[p.key] === 'high' ? 'text-red-600' : 'text-gray-900'">
+                {{ latestLab.values?.[p.key] != null ? (latestLab.values[p.key] > 1000 ? (latestLab.values[p.key] / 1000).toFixed(1) + 'k' : latestLab.values[p.key].toFixed(1)) : '\u2014' }}
+              </div>
+              <div class="text-xs" :class="healthColor(latestLab.health_directions?.[p.key])">
+                {{ directionIcon(latestLab.directions?.[p.key]) }}
+              </div>
             </div>
           </div>
         </div>
+        <div v-else-if="labs?.unavailable" class="text-sm text-gray-500 py-4 text-center">
+          {{ $t('documents.unavailable') }}
+        </div>
+        <SkeletonLoader v-else variant="cards" />
+      </div>
+    </div>
 
-        <!-- Workers grid -->
-        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{{ $t('agents.workers') }}</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-          <button
-            v-for="tool in selectedRoom.tools"
-            :key="tool"
-            class="rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer group"
-            @click="openWorker(tool)"
+    <!-- Latest Briefing (advocate only) -->
+    <div v-if="activeRole === 'advocate' && latestBriefing" class="rounded-xl border border-gray-200 bg-white p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.latestBriefing') }}</h2>
+        <NuxtLink to="/briefings" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
+      </div>
+      <div class="text-sm text-gray-700 line-clamp-3">{{ latestBriefing.content?.slice(0, 300) }}</div>
+      <div v-if="latestBriefing.questions_for_oncologist?.length" class="mt-3 flex items-center gap-2 text-xs text-amber-700">
+        <UIcon name="i-lucide-message-circle-question" class="h-4 w-4" />
+        {{ latestBriefing.questions_for_oncologist.length }} {{ $t('home.questionsForOncologist') }}
+      </div>
+      <div class="mt-1 text-xs text-gray-400">{{ formatDate(latestBriefing.created_at) }}</div>
+    </div>
+
+    <!-- Upcoming Events + Quick Links -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Upcoming -->
+      <div v-if="activeRole !== 'patient'" class="rounded-xl border border-gray-200 bg-white p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.upcoming') }}</h2>
+          <NuxtLink to="/timeline" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
+        </div>
+        <div v-if="upcomingEvents.length" class="space-y-2">
+          <div
+            v-for="evt in upcomingEvents"
+            :key="evt.id"
+            class="flex items-center gap-3 text-sm"
           >
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-900 group-hover:text-teal-700 transition-colors">
-                {{ toolLabel(tool) }}
-              </span>
-              <div class="flex items-center gap-1.5">
-                <UBadge
-                  v-if="newCountForTools([tool]) > 0"
-                  color="primary"
-                  variant="solid"
-                  size="xs"
-                >
-                  {{ newCountForTools([tool]) }}
-                </UBadge>
-                <UIcon :name="statusIcon(getAgentStatus([tool]))" class="w-3.5 h-3.5" :class="{
-                  'text-emerald-500': getAgentStatus([tool]) === 'active',
-                  'text-amber-500': getAgentStatus([tool]) === 'recent',
-                  'text-gray-400': getAgentStatus([tool]) === 'idle',
-                }" />
-              </div>
-            </div>
-            <div class="text-xs text-gray-500 space-y-0.5">
-              <div v-if="toolStatsMap.get(tool)">
-                {{ $t('agents.calls', { count: toolStatsMap.get(tool)!.count }) }}
-              </div>
-              <div v-if="lastActivityFor(tool)">
-                {{ $t('agents.lastActive', { time: relativeTime(lastActivityFor(tool)!.timestamp) }) }}
-              </div>
-              <div v-else class="text-gray-400">
-                {{ $t('agents.neverRun') }}
-              </div>
-            </div>
-            <div v-for="job in toolJobsMap.get(tool) || []" :key="job.id"
-                 class="flex items-center gap-1 text-[10px] text-gray-400 mt-1">
-              <UIcon name="i-lucide-timer" class="w-2.5 h-2.5" />
-              <span>{{ job.schedule }}</span>
-            </div>
-          </button>
-        </div>
-
-        <!-- Key Insights for this room -->
-        <div v-if="roomInsights.length > 0" class="mt-5">
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <UIcon name="i-lucide-sparkles" class="w-3 h-3 text-amber-500" />
-            {{ $t('agents.keyInsights') }}
-          </h3>
-          <div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-            <button
-              v-for="(insight, i) in roomInsights"
-              :key="i"
-              class="w-full px-4 py-2.5 flex items-start gap-3 text-xs hover:bg-gray-50 transition-colors text-left"
-              @click="openTaskDetail(insight.entry)"
-            >
-              <span class="text-gray-400 shrink-0 mt-0.5">{{ relativeTime(insight.timestamp) }}</span>
-              <div class="flex-1 min-w-0">
-                <div class="text-gray-700">{{ insight.insight.line1 }}</div>
-                <div v-if="insight.insight.line2" class="text-gray-400 mt-0.5">{{ insight.insight.line2 }}</div>
-              </div>
-              <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-300 shrink-0 mt-0.5" />
-            </button>
+            <span class="text-base">{{ EVENT_ICONS[evt.event_type] || '\uD83D\uDCC5' }}</span>
+            <span class="text-gray-700 flex-1">{{ evt.title }}</span>
+            <span class="text-xs text-gray-400 whitespace-nowrap">{{ formatDate(evt.event_date) }}</span>
           </div>
         </div>
-
-        <!-- Recent activity for this room -->
-        <div v-if="roomEntries.length > 0" class="mt-5">
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{{ $t('agents.activity') }}</h3>
-          <div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-            <button
-              v-for="(entry, i) in roomEntries.slice(0, 10)"
-              :key="i"
-              class="w-full px-4 py-2.5 flex items-center gap-3 text-sm hover:bg-gray-50 transition-colors text-left"
-              @click="openTaskDetail(entry)"
-            >
-              <UIcon
-                :name="entry.status === 'ok' ? 'i-lucide-check-circle' : 'i-lucide-x-circle'"
-                class="w-3.5 h-3.5 shrink-0"
-                :class="entry.status === 'ok' ? 'text-emerald-500' : 'text-red-500'"
-              />
-              <span class="text-xs text-gray-700 min-w-32">{{ toolLabel(entry.tool) }}</span>
-              <span v-if="entry.output" class="text-xs text-gray-400 truncate max-w-64">{{ entry.output }}</span>
-              <span class="text-gray-400 text-xs ml-auto shrink-0">{{ relativeTime(entry.timestamp) }}</span>
-            </button>
-          </div>
-        </div>
+        <div v-else class="text-sm text-gray-500 py-3 text-center">{{ $t('home.noUpcoming') }}</div>
       </div>
 
-      <!-- ═══════════════ LEVEL 2: Worker → Task History ═══════════════ -->
-      <div v-else-if="currentLevel === 2 && selectedRoom && selectedWorker" key="worker">
-        <!-- Breadcrumb -->
-        <div class="flex items-center gap-1.5 text-xs text-gray-500 mb-4">
-          <button class="hover:text-gray-900 transition-colors" @click="goToGrid">
-            {{ $t('agents.breadcrumbRooms') }}
-          </button>
-          <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-300" />
-          <button class="hover:text-gray-900 transition-colors" @click="goBack">
-            {{ selectedRoom.name }}
-          </button>
-          <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-300" />
-          <span class="text-teal-700 font-medium">{{ toolLabel(selectedWorker) }}</span>
-        </div>
-
-        <!-- Worker header -->
-        <div class="rounded-xl border border-gray-200 bg-white p-5 mb-5">
-          <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="ROOM_STYLES[selectedRoom.key]?.icon_bg">
-              <UIcon :name="selectedRoom.icon" class="w-5 h-5" />
-            </div>
-            <div>
-              <h2 class="text-lg font-bold text-gray-900 font-display">{{ toolLabel(selectedWorker) }}</h2>
-              <div class="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
-                <span v-if="toolStatsMap.get(selectedWorker)">
-                  {{ $t('agents.calls', { count: toolStatsMap.get(selectedWorker)!.count }) }}
-                </span>
-                <span v-if="lastActivityFor(selectedWorker)">
-                  {{ $t('agents.lastActive', { time: relativeTime(lastActivityFor(selectedWorker)!.timestamp) }) }}
-                </span>
-              </div>
-            </div>
-            <div class="ml-auto">
-              <UIcon :name="statusIcon(getAgentStatus([selectedWorker]))" class="w-4 h-4" :class="{
-                'text-emerald-500': getAgentStatus([selectedWorker]) === 'active',
-                'text-amber-500': getAgentStatus([selectedWorker]) === 'recent',
-                'text-gray-400': getAgentStatus([selectedWorker]) === 'idle',
-              }" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Assigned scheduled jobs -->
-        <div v-if="workerJobs.length" class="mb-5">
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            {{ $t('agents.scheduledJobs') }}
-          </h3>
-          <div v-for="job in workerJobs" :key="job.id"
-               class="rounded-lg border border-gray-200 bg-white px-4 py-3 mb-2">
-            <div class="text-sm text-gray-700">{{ job.description }}</div>
-            <div class="text-xs text-gray-400 mt-1">{{ job.schedule }}</div>
-          </div>
-        </div>
-
-        <!-- Key Insights for this worker -->
-        <div v-if="workerInsights.length > 0" class="mb-5">
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <UIcon name="i-lucide-sparkles" class="w-3 h-3 text-amber-500" />
-            {{ $t('agents.keyInsights') }}
-          </h3>
-          <div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-            <button
-              v-for="(insight, i) in workerInsights"
-              :key="i"
-              class="w-full px-4 py-2.5 flex items-start gap-3 text-xs hover:bg-gray-50 transition-colors text-left"
-              @click="openTaskDetail(insight.entry)"
-            >
-              <span class="text-gray-400 shrink-0 mt-0.5">{{ relativeTime(insight.timestamp) }}</span>
-              <div class="flex-1 min-w-0">
-                <div class="text-gray-700">{{ insight.insight.line1 }}</div>
-                <div v-if="insight.insight.line2" class="text-gray-400 mt-0.5">{{ insight.insight.line2 }}</div>
-              </div>
-              <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-300 shrink-0 mt-0.5" />
-            </button>
-          </div>
-        </div>
-
-        <!-- Task history -->
-        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{{ $t('agents.taskHistory') }}</h3>
-
-        <div v-if="workerEntries.length > 0" class="space-y-2">
-          <button
-            v-for="(entry, i) in workerEntries"
-            :key="i"
-            class="w-full rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
-            @click="openTaskDetail(entry)"
-          >
-            <div class="flex items-center gap-3 mb-2">
-              <UIcon
-                :name="entry.status === 'ok' ? 'i-lucide-check-circle' : 'i-lucide-x-circle'"
-                class="w-3.5 h-3.5 shrink-0"
-                :class="entry.status === 'ok' ? 'text-emerald-500' : 'text-red-500'"
-              />
-              <span class="text-xs text-gray-500">
-                {{ new Date(entry.timestamp).toLocaleString(
-                  $i18n.locale === 'sk' ? 'sk-SK' : 'en-US',
-                  { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }
-                ) }}
-              </span>
-              <span v-if="entry.duration_ms" class="text-[10px] text-gray-400">
-                {{ $t('agents.durationLabel', { ms: entry.duration_ms }) }}
-              </span>
-              <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-300 ml-auto" />
-            </div>
-
-            <!-- Input -->
-            <div v-if="entry.input" class="text-xs mb-1">
-              <span class="text-gray-400">{{ $t('agents.inputLabel') }}:</span>
-              <span class="text-gray-600 ml-1">{{ entry.input.length > 120 ? entry.input.slice(0, 120) + '...' : entry.input }}</span>
-            </div>
-
-            <!-- Output or Error -->
-            <div v-if="entry.error" class="text-xs">
-              <span class="text-red-600">{{ $t('agents.errorLabel') }}:</span>
-              <span class="text-red-500 ml-1">{{ entry.error.length > 120 ? entry.error.slice(0, 120) + '...' : entry.error }}</span>
-            </div>
-            <div v-else-if="entry.output" class="text-xs">
-              <span class="text-gray-400">{{ $t('agents.outputLabel') }}:</span>
-              <span class="text-gray-600 ml-1">{{ entry.output.length > 120 ? entry.output.slice(0, 120) + '...' : entry.output }}</span>
-            </div>
-          </button>
-        </div>
-
-        <div v-else class="text-center py-12 text-sm text-gray-400">
-          {{ $t('agents.noHistory') }}
+      <!-- Quick Links -->
+      <div class="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ $t('home.quickActions') }}</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <template v-if="activeRole === 'advocate'">
+            <NuxtLink to="/toxicity" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-thermometer" class="h-4 w-4 text-gray-400" />
+              {{ $t('home.logToxicity') }}
+            </NuxtLink>
+            <NuxtLink to="/labs" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-test-tube-diagonal" class="h-4 w-4 text-gray-400" />
+              {{ $t('home.addLabs') }}
+            </NuxtLink>
+            <NuxtLink to="/prep" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-file-check" class="h-4 w-4 text-gray-400" />
+              {{ $t('home.preCycleCheck') }}
+            </NuxtLink>
+            <NuxtLink to="/family-update" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-heart-handshake" class="h-4 w-4 text-gray-400" />
+              {{ $t('home.generateUpdate') }}
+            </NuxtLink>
+          </template>
+          <template v-else-if="activeRole === 'patient'">
+            <NuxtLink to="/toxicity" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-thermometer" class="h-4 w-4 text-gray-400" />
+              {{ $t('home.logToxicity') }}
+            </NuxtLink>
+            <NuxtLink to="/medications" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-pill" class="h-4 w-4 text-gray-400" />
+              {{ $t('nav.medications') }}
+            </NuxtLink>
+            <NuxtLink to="/family-update" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-heart-handshake" class="h-4 w-4 text-gray-400" />
+              {{ $t('home.generateUpdate') }}
+            </NuxtLink>
+            <NuxtLink to="/timeline" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-calendar-clock" class="h-4 w-4 text-gray-400" />
+              {{ $t('nav.timeline') }}
+            </NuxtLink>
+          </template>
+          <template v-else>
+            <NuxtLink to="/protocol" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-clipboard-check" class="h-4 w-4 text-gray-400" />
+              {{ $t('home.viewProtocol') }}
+            </NuxtLink>
+            <NuxtLink to="/prep" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-file-check" class="h-4 w-4 text-gray-400" />
+              {{ $t('home.preCycleCheck') }}
+            </NuxtLink>
+            <NuxtLink to="/labs" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-test-tube-diagonal" class="h-4 w-4 text-gray-400" />
+              {{ $t('nav.labs') }}
+            </NuxtLink>
+            <NuxtLink to="/research" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+              <UIcon name="i-lucide-microscope" class="h-4 w-4 text-gray-400" />
+              {{ $t('nav.research') }}
+            </NuxtLink>
+          </template>
         </div>
       </div>
-    </Transition>
-    </template>
+    </div>
   </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>

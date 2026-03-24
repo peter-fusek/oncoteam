@@ -3,6 +3,7 @@
     "name": "Oncoteam"
   },
   "nav": {
+    "home": "Home",
     "agents": "Agents",
     "patient": "Patient",
     "protocol": "Protocol",
@@ -17,7 +18,35 @@
     "sessions": "Sessions",
     "familyUpdate": "Family Update",
     "documents": "Documents",
-    "dictionary": "Dictionary"
+    "dictionary": "Dictionary",
+    "sections": {
+      "overview": "Overview",
+      "treatment": "Treatment",
+      "intelligence": "Intelligence",
+      "operations": "Operations"
+    }
+  },
+  "home": {
+    "title": "Dashboard",
+    "subtitle": "Treatment overview and alerts",
+    "alerts": "Alerts",
+    "noAlerts": "No active alerts",
+    "treatmentStatus": "Treatment Status",
+    "recentLabs": "Recent Labs",
+    "latestBriefing": "Latest Briefing",
+    "upcoming": "Upcoming",
+    "noUpcoming": "No upcoming events",
+    "quickActions": "Quick Actions",
+    "logToxicity": "Log Toxicity",
+    "addLabs": "Add Labs",
+    "preCycleCheck": "Pre-Cycle Check",
+    "generateUpdate": "Family Update",
+    "viewProtocol": "Protocol",
+    "viewAll": "View all",
+    "cycle": "Cycle",
+    "staging": "Staging",
+    "threshold": "threshold",
+    "questionsForOncologist": "questions for oncologist"
   },
   "common": {
     "save": "Save",

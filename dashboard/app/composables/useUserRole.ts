@@ -1,23 +1,25 @@
 const PAGE_ACCESS: Record<string, string[]> = {
-  '/': ['advocate'],
+  '/': ['advocate', 'patient', 'doctor'],
   '/patient': ['advocate', 'patient', 'doctor'],
+  '/timeline': ['advocate', 'patient', 'doctor'],
   '/protocol': ['advocate', 'doctor'],
+  '/labs': ['advocate', 'doctor'],
   '/toxicity': ['advocate', 'patient', 'doctor'],
   '/medications': ['advocate', 'patient'],
-  '/labs': ['advocate', 'doctor'],
-  '/briefings': ['advocate'],
   '/prep': ['advocate', 'doctor'],
+  '/briefings': ['advocate'],
   '/research': ['advocate', 'doctor'],
-  '/timeline': ['advocate', 'patient', 'doctor'],
-  '/sessions': ['advocate'],
   '/family-update': ['advocate', 'patient'],
+  '/dictionary': ['advocate', 'patient', 'doctor'],
+  '/agents': ['advocate'],
+  '/sessions': ['advocate'],
   '/documents': ['advocate'],
 }
 
 const LANDING_PAGES: Record<string, string> = {
   advocate: '/',
-  patient: '/patient',
-  doctor: '/labs',
+  patient: '/',
+  doctor: '/',
 }
 
 export function useUserRole() {

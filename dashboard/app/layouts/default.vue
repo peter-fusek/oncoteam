@@ -33,25 +33,55 @@ const ROLE_DOTS: Record<string, string> = {
   doctor: 'bg-purple-500',
 }
 
-const allNavItems = computed(() => [
-  { label: t('nav.agents'), icon: 'i-lucide-brain-circuit', to: '/' },
-  { label: t('nav.patient'), icon: 'i-lucide-user-round', to: '/patient' },
-  { label: t('nav.protocol'), icon: 'i-lucide-clipboard-check', to: '/protocol' },
-  { label: t('nav.toxicity'), icon: 'i-lucide-thermometer', to: '/toxicity' },
-  { label: t('nav.medications'), icon: 'i-lucide-pill', to: '/medications' },
-  { label: t('nav.labs'), icon: 'i-lucide-test-tube-diagonal', to: '/labs' },
-  { label: t('nav.briefings'), icon: 'i-lucide-bot', to: '/briefings' },
-  { label: t('nav.prep'), icon: 'i-lucide-file-check', to: '/prep' },
-  { label: t('nav.research'), icon: 'i-lucide-microscope', to: '/research' },
-  { label: t('nav.timeline'), icon: 'i-lucide-calendar-clock', to: '/timeline' },
-  { label: t('nav.prompts'), icon: 'i-lucide-terminal', to: '/prompts' },
-  { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
-  { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
-  { label: t('nav.documents'), icon: 'i-lucide-file-scan', to: '/documents' },
-  { label: t('nav.dictionary'), icon: 'i-lucide-book-open', to: '/dictionary' },
-])
+interface NavSection {
+  label: string
+  items: Array<{ label: string; icon: string; to: string }>
+}
 
-const navigation = computed(() => allNavItems.value.filter(item => canAccess(item.to)))
+const navigationSections = computed<NavSection[]>(() => {
+  const sections: NavSection[] = [
+    {
+      label: t('nav.sections.overview'),
+      items: [
+        { label: t('nav.home'), icon: 'i-lucide-layout-dashboard', to: '/' },
+        { label: t('nav.patient'), icon: 'i-lucide-user-round', to: '/patient' },
+        { label: t('nav.timeline'), icon: 'i-lucide-calendar-clock', to: '/timeline' },
+      ],
+    },
+    {
+      label: t('nav.sections.treatment'),
+      items: [
+        { label: t('nav.protocol'), icon: 'i-lucide-clipboard-check', to: '/protocol' },
+        { label: t('nav.labs'), icon: 'i-lucide-test-tube-diagonal', to: '/labs' },
+        { label: t('nav.toxicity'), icon: 'i-lucide-thermometer', to: '/toxicity' },
+        { label: t('nav.medications'), icon: 'i-lucide-pill', to: '/medications' },
+        { label: t('nav.prep'), icon: 'i-lucide-file-check', to: '/prep' },
+      ],
+    },
+    {
+      label: t('nav.sections.intelligence'),
+      items: [
+        { label: t('nav.briefings'), icon: 'i-lucide-bot', to: '/briefings' },
+        { label: t('nav.research'), icon: 'i-lucide-microscope', to: '/research' },
+        { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
+        { label: t('nav.dictionary'), icon: 'i-lucide-book-open', to: '/dictionary' },
+      ],
+    },
+    {
+      label: t('nav.sections.operations'),
+      items: [
+        { label: t('nav.agents'), icon: 'i-lucide-brain-circuit', to: '/agents' },
+        { label: t('nav.prompts'), icon: 'i-lucide-terminal', to: '/prompts' },
+        { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
+        { label: t('nav.documents'), icon: 'i-lucide-file-scan', to: '/documents' },
+      ],
+    },
+  ]
+
+  return sections
+    .map(s => ({ ...s, items: s.items.filter(item => canAccess(item.to)) }))
+    .filter(s => s.items.length > 0)
+})
 
 const roleSwitcherOpen = ref(false)
 const roleSwitcherRef = ref<HTMLElement | null>(null)
@@ -165,9 +195,16 @@ async function logout() {
         </span>
       </div>
 
-      <!-- Navigation -->
+      <!-- Navigation (grouped sections) -->
       <nav class="flex-1 overflow-y-auto px-2">
-        <UNavigationMenu :items="navigation" orientation="vertical" />
+        <template v-for="(section, i) in navigationSections" :key="i">
+          <div v-if="section.items.length" class="mt-3 first:mt-0">
+            <p class="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              {{ section.label }}
+            </p>
+            <UNavigationMenu :items="section.items" orientation="vertical" />
+          </div>
+        </template>
       </nav>
 
       <!-- Footer -->
@@ -256,9 +293,16 @@ async function logout() {
             </span>
           </div>
 
-          <!-- Navigation -->
+          <!-- Navigation (grouped sections) -->
           <nav class="flex-1 overflow-y-auto px-2">
-            <UNavigationMenu :items="navigation" orientation="vertical" />
+            <template v-for="(section, i) in navigationSections" :key="i">
+              <div v-if="section.items.length" class="mt-3 first:mt-0">
+                <p class="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  {{ section.label }}
+                </p>
+                <UNavigationMenu :items="section.items" orientation="vertical" />
+              </div>
+            </template>
           </nav>
 
           <!-- Footer -->

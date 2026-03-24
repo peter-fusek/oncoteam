@@ -3,6 +3,7 @@
     "name": "Oncoteam"
   },
   "nav": {
+    "home": "Domov",
     "agents": "Agenti",
     "patient": "Pacient",
     "protocol": "Protokol",
@@ -17,7 +18,35 @@
     "sessions": "Sedenia",
     "familyUpdate": "Správa pre rodinu",
     "documents": "Dokumenty",
-    "dictionary": "Slovník"
+    "dictionary": "Slovník",
+    "sections": {
+      "overview": "Prehľad",
+      "treatment": "Liečba",
+      "intelligence": "Analýzy",
+      "operations": "Prevádzka"
+    }
+  },
+  "home": {
+    "title": "Prehľad",
+    "subtitle": "Prehľad liečby a upozornenia",
+    "alerts": "Upozornenia",
+    "noAlerts": "Žiadne aktívne upozornenia",
+    "treatmentStatus": "Stav liečby",
+    "recentLabs": "Posledné laboratóriá",
+    "latestBriefing": "Posledný briefing",
+    "upcoming": "Nadchádzajúce",
+    "noUpcoming": "Žiadne nadchádzajúce udalosti",
+    "quickActions": "Rýchle akcie",
+    "logToxicity": "Zaznamenať toxicitu",
+    "addLabs": "Pridať výsledky",
+    "preCycleCheck": "Pred-cyklová kontrola",
+    "generateUpdate": "Správa pre rodinu",
+    "viewProtocol": "Protokol",
+    "viewAll": "Zobraziť všetko",
+    "cycle": "Cyklus",
+    "staging": "Štádium",
+    "threshold": "prah",
+    "questionsForOncologist": "otázky pre onkológa"
   },
   "common": {
     "save": "Uložiť",
