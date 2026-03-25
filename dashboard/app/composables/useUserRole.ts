@@ -27,7 +27,7 @@ export function useUserRole() {
   const { user } = useUserSession()
 
   const activeRole = computed(() => user.value?.activeRole || 'advocate')
-  const roles = computed(() => user.value?.roles || ['advocate'])
+  const roles = computed(() => [...new Set(user.value?.roles || ['advocate'])])
   const hasMultipleRoles = computed(() => roles.value.length > 1)
   const landingPage = computed(() => LANDING_PAGES[activeRole.value] || '/')
 
