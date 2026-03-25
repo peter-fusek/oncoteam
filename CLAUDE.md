@@ -97,7 +97,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Testing
 
-- `uv run pytest` — full suite (595 tests, ~2.3s)
+- `uv run pytest` — full suite (620 tests, ~2.3s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
