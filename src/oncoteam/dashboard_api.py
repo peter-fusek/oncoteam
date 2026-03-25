@@ -813,11 +813,18 @@ async def api_timeline(request: Request) -> JSONResponse:
     if cb_resp:
         return cb_resp
     limit = _parse_limit(request, default=50)
+    cache_key = f"timeline:{limit}:{request.query_params}"
+    if cache_key in _timeline_cache:
+        cached_time, cached_response = _timeline_cache[cache_key]
+        if time.time() - cached_time < _TIMELINE_CACHE_TTL:
+            return cached_response
     try:
-        result = await oncofiles_client.list_treatment_events(limit=limit)
+        result = await asyncio.wait_for(
+            oncofiles_client.list_treatment_events(limit=limit), timeout=8.0
+        )
         events = _filter_test(_extract_list(result, "events"), request)
         events = _deduplicate_timeline(events)
-        return _cors_json(
+        response = _cors_json(
             {
                 "events": [
                     {
@@ -833,8 +840,13 @@ async def api_timeline(request: Request) -> JSONResponse:
                 "total": len(events),
             }
         )
+        _timeline_cache[cache_key] = (time.time(), response)
+        return response
     except Exception as e:
         record_suppressed_error("api_timeline", "fetch", e)
+        # Serve stale cache on error
+        if cache_key in _timeline_cache:
+            return _timeline_cache[cache_key][1]
         return _cors_json({"error": str(e), "events": [], "total": 0}, status_code=502)
 
 
@@ -1171,6 +1183,14 @@ async def api_autonomous_cost(request: Request) -> JSONResponse:
 _protocol_cache: dict[str, tuple[float, JSONResponse]] = {}
 _PROTOCOL_CACHE_TTL = 30  # seconds
 
+# TTL caches for oncofiles-dependent endpoints (#173 — prevent hanging requests)
+_timeline_cache: dict[str, tuple[float, JSONResponse]] = {}
+_TIMELINE_CACHE_TTL = 60  # seconds
+_briefings_cache: dict[str, tuple[float, JSONResponse]] = {}
+_BRIEFINGS_CACHE_TTL = 120  # seconds — briefings change infrequently
+_labs_cache: dict[str, tuple[float, JSONResponse]] = {}
+_LABS_CACHE_TTL = 60  # seconds
+
 
 async def api_protocol(request: Request) -> JSONResponse:
     """GET /api/protocol — clinical protocol data (thresholds, milestones, dose mods)."""
@@ -1489,6 +1509,11 @@ async def api_briefings(request: Request) -> JSONResponse:
     if cb_resp:
         return cb_resp
     limit = _parse_limit(request, default=20)
+    cache_key = f"briefings:{limit}:{request.query_params}"
+    if cache_key in _briefings_cache:
+        cached_time, cached_response = _briefings_cache[cache_key]
+        if time.time() - cached_time < _BRIEFINGS_CACHE_TTL:
+            return cached_response
     try:
         briefings_res, alerts_res = await asyncio.gather(
             oncofiles_client.search_conversations(entry_type="autonomous_briefing", limit=limit),
@@ -1511,7 +1536,7 @@ async def api_briefings(request: Request) -> JSONResponse:
                     continue
                 seen_alerts.add(key)
             deduped.append(e)
-        return _cors_json(
+        response = _cors_json(
             {
                 "briefings": [
                     {
@@ -1529,8 +1554,12 @@ async def api_briefings(request: Request) -> JSONResponse:
                 "total": len(deduped),
             }
         )
+        _briefings_cache[cache_key] = (time.time(), response)
+        return response
     except Exception as e:
         record_suppressed_error("api_briefings", "fetch", e)
+        if cache_key in _briefings_cache:
+            return _briefings_cache[cache_key][1]
         return _cors_json({"error": str(e), "briefings": [], "total": 0}, status_code=502)
 
 
@@ -1647,6 +1676,8 @@ async def api_labs(request: Request) -> JSONResponse:
                 notes=body.get("notes", ""),
                 metadata=values,
             )
+            # Invalidate labs cache on new data
+            _labs_cache.clear()
             return _cors_json({"created": True, "result": result})
         except Exception as e:
             record_suppressed_error("api_labs", "create", e)
@@ -1654,8 +1685,16 @@ async def api_labs(request: Request) -> JSONResponse:
 
     # GET: list lab results
     limit = _parse_limit(request, default=50)
+    cache_key = f"labs:{limit}:{request.query_params}"
+    if cache_key in _labs_cache:
+        cached_time, cached_response = _labs_cache[cache_key]
+        if time.time() - cached_time < _LABS_CACHE_TTL:
+            return cached_response
     try:
-        result = await oncofiles_client.list_treatment_events(event_type="lab_result", limit=limit)
+        result = await asyncio.wait_for(
+            oncofiles_client.list_treatment_events(event_type="lab_result", limit=limit),
+            timeout=8.0,
+        )
         events = _filter_test(_extract_list(result, "events"), request)
 
         # Fallback: try lab_values table if no events exist OR all events
@@ -1849,15 +1888,20 @@ async def api_labs(request: Request) -> JSONResponse:
                             )
             entry["suspects"] = suspects
 
-        return _cors_json(
+        response = _cors_json(
             {
                 "entries": entries,
                 "total": len(entries),
                 "reference_ranges": LAB_REFERENCE_RANGES,
             }
         )
+        _labs_cache[cache_key] = (time.time(), response)
+        return response
     except Exception as e:
         record_suppressed_error("api_labs", "fetch", e)
+        # Serve stale cache on error
+        if cache_key in _labs_cache:
+            return _labs_cache[cache_key][1]
         return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
 
 

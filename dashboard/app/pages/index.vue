@@ -7,7 +7,7 @@ const { t } = useI18n()
 // Client-only fetches — server:false prevents SSR from attempting these calls,
 // which caused 503 timeouts when oncofiles was slow (16s+ TTFB → Railway edge 503).
 // Shell renders instantly from SSR, data fills in via client-side fetches.
-const { data: patient } = fetchApi<{
+const { data: patient, status: patientStatus } = fetchApi<{
   name: string
   treatment_regimen: string
   current_cycle: number
@@ -19,7 +19,7 @@ const { data: patient } = fetchApi<{
   active_therapies?: Array<{ name: string; status: string; warning?: string }>
 }>('/patient', { lazy: true, server: false })
 
-const { data: labs } = fetchApi<{
+const { data: labs, status: labsStatus, error: labsError } = fetchApi<{
   entries: Array<{
     date: string
     values: Record<string, number>
@@ -33,7 +33,7 @@ const { data: labs } = fetchApi<{
   unavailable?: boolean
 }>('/labs?limit=10', { lazy: true, server: false })
 
-const { data: briefings } = fetchApi<{
+const { data: briefings, status: briefingsStatus } = fetchApi<{
   briefings: Array<{
     id: number
     title: string
@@ -47,7 +47,7 @@ const { data: briefings } = fetchApi<{
   total: number
 }>('/briefings?limit=1', { lazy: true, server: false })
 
-const { data: timeline } = fetchApi<{
+const { data: timeline, status: timelineStatus } = fetchApi<{
   events: Array<{
     id: number
     event_date: string
@@ -200,10 +200,12 @@ const EVENT_ICONS: Record<string, string> = {
             </div>
           </div>
         </div>
-        <div v-else-if="labs?.unavailable" class="text-sm text-gray-500 py-4 text-center">
-          {{ $t('documents.unavailable') }}
+        <div v-else-if="labsError || labs?.unavailable || (labsStatus === 'error')" class="text-sm text-gray-500 py-6 text-center space-y-2">
+          <UIcon name="i-lucide-wifi-off" class="h-5 w-5 mx-auto text-gray-300" />
+          <p>{{ $t('common.dataUnavailable') }}</p>
+          <NuxtLink to="/labs" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
         </div>
-        <div v-else-if="labs && !mergedLabSnapshot" class="text-sm text-gray-500 py-6 text-center">
+        <div v-else-if="labs && !mergedLabSnapshot && labsStatus !== 'pending'" class="text-sm text-gray-500 py-6 text-center">
           <NuxtLink to="/labs" class="text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
         </div>
         <SkeletonLoader v-else variant="cards" />
@@ -211,17 +213,21 @@ const EVENT_ICONS: Record<string, string> = {
     </div>
 
     <!-- Latest Briefing (advocate only) -->
-    <div v-if="activeRole === 'advocate' && latestBriefing" class="rounded-xl border border-gray-200 bg-white p-5">
+    <div v-if="activeRole === 'advocate'" class="rounded-xl border border-gray-200 bg-white p-5">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.latestBriefing') }}</h2>
         <NuxtLink to="/briefings" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
       </div>
-      <div class="text-sm text-gray-700 line-clamp-3">{{ latestBriefing.content?.slice(0, 300) }}</div>
-      <div v-if="latestBriefing.questions_for_oncologist?.length" class="mt-3 flex items-center gap-2 text-xs text-amber-700">
-        <UIcon name="i-lucide-message-circle-question" class="h-4 w-4" />
-        {{ latestBriefing.questions_for_oncologist.length }} {{ $t('home.questionsForOncologist') }}
-      </div>
-      <div class="mt-1 text-xs text-gray-400">{{ formatDate(latestBriefing.created_at) }}</div>
+      <template v-if="latestBriefing">
+        <div class="text-sm text-gray-700 line-clamp-3">{{ latestBriefing.content?.slice(0, 300) }}</div>
+        <div v-if="latestBriefing.questions_for_oncologist?.length" class="mt-3 flex items-center gap-2 text-xs text-amber-700">
+          <UIcon name="i-lucide-message-circle-question" class="h-4 w-4" />
+          {{ latestBriefing.questions_for_oncologist.length }} {{ $t('home.questionsForOncologist') }}
+        </div>
+        <div class="mt-1 text-xs text-gray-400">{{ formatDate(latestBriefing.created_at) }}</div>
+      </template>
+      <SkeletonLoader v-else-if="briefingsStatus === 'pending'" variant="lines" />
+      <div v-else class="text-sm text-gray-500 py-3 text-center">{{ $t('common.dataUnavailable') }}</div>
     </div>
 
     <!-- Upcoming Events + Quick Links -->

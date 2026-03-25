@@ -46,6 +46,22 @@ def _clear_rate_limiters():
 
 
 @pytest.fixture(autouse=True)
+def _clear_api_caches():
+    """Clear TTL caches between tests to avoid cross-test pollution."""
+    import oncoteam.dashboard_api as mod
+
+    mod._protocol_cache.clear()
+    mod._timeline_cache.clear()
+    mod._briefings_cache.clear()
+    mod._labs_cache.clear()
+    yield
+    mod._protocol_cache.clear()
+    mod._timeline_cache.clear()
+    mod._briefings_cache.clear()
+    mod._labs_cache.clear()
+
+
+@pytest.fixture(autouse=True)
 def _mock_circuit_breaker_closed():
     """Default circuit breaker to closed so api_labs/api_documents don't fast-fail."""
     with patch(

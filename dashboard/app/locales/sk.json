@@ -65,6 +65,7 @@
     "error": "Chyba",
     "saved": "Uložené",
     "noData": "Žiadne údaje",
+    "dataUnavailable": "Údaje dočasne nedostupné",
     "showTestData": "Zobraziť testovacie údaje",
     "back": "Späť",
     "viewSource": "Zobraziť zdroj",

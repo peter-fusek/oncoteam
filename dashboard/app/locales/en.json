@@ -65,6 +65,7 @@
     "error": "Error",
     "saved": "Saved",
     "noData": "No data available",
+    "dataUnavailable": "Data temporarily unavailable",
     "showTestData": "Show test data",
     "back": "Back",
     "viewSource": "View source",
