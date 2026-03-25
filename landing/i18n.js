@@ -125,7 +125,15 @@ const translations = {
     "demo.mock.plt": "PLT \u2265 75,000/\u00b5L \u2014 269,000",
     "demo.mock.creat": "Creatinine \u2264 1.5x ULN \u2014 0.42",
     "demo.mock.bili": "Bilirubin \u2264 1.5x ULN \u2014 normal",
-    "demo.mock.protocolinsight": "Pre-cycle safety check: 1 flag requires physician review before C3"
+    "demo.mock.protocolinsight": "Pre-cycle safety check: 1 flag requires physician review before C3",
+    "demo.tab.chat": "Chat",
+    "demo.mock.whatsapp": "WHATSAPP",
+    "demo.mock.chatreply1": "&#x1F4CA; <strong>Labs (Mar 19):</strong> ANC 1,150 &#x2193;, PLT 269k, HGB 118 &#x2191;<br>CEA 733 &#x2193;62%, CA19-9 22.3k &#x2193;68%<br><em>ANC below threshold \u2014 discuss with oncologist before C3</em>",
+    "demo.mock.chatq2": "next cycle?",
+    "demo.mock.chatreply2": "&#x1F4C5; Cycle 3 mFOLFOX6 \u2014 pending physician review (ANC hold).<br>Pre-cycle checklist: 1/4 flags. Ask oncologist about dose reduction.",
+    "demo.mock.claudeai": "CLAUDE.AI (MCP CONNECTOR)",
+    "demo.mock.claudeq": "Find clinical trials for KRAS G12S mCRC in Slovakia",
+    "demo.mock.claudereply": "&#x1F50D; Searched ClinicalTrials.gov + EU registries (SK, CZ, AT, HU).<br><strong>3 matches:</strong> pan-KRAS inhibitor (Phase II, Bratislava), ICI+chemo combo (Phase III, Vienna), anti-TIGIT trial (Budapest).<br><em>All compatible with current KRAS G12S + active VTE profile.</em>"
   },
   sk: {
     "nav.dashboard": "Dashboard",
@@ -253,7 +261,15 @@ const translations = {
     "demo.mock.plt": "PLT \u2265 75 000/\u00b5L \u2014 269 000",
     "demo.mock.creat": "Kreatinin \u2264 1,5x ULN \u2014 0,42",
     "demo.mock.bili": "Bilirub\u00edn \u2264 1,5x ULN \u2014 norm\u00e1l",
-    "demo.mock.protocolinsight": "Predcyklov\u00e1 kontrola: 1 pr\u00edznak vy\u017eaduje pos\u00fadenie lek\u00e1rom pred C3"
+    "demo.mock.protocolinsight": "Predcyklov\u00e1 kontrola: 1 pr\u00edznak vy\u017eaduje pos\u00fadenie lek\u00e1rom pred C3",
+    "demo.tab.chat": "Chat",
+    "demo.mock.whatsapp": "WHATSAPP",
+    "demo.mock.chatreply1": "&#x1F4CA; <strong>Laby (19. mar):</strong> ANC 1 150 &#x2193;, PLT 269k, HGB 118 &#x2191;<br>CEA 733 &#x2193;62 %, CA19-9 22,3k &#x2193;68 %<br><em>ANC pod prahom \u2014 konzultujte s onkol\u00f3gom pred C3</em>",
+    "demo.mock.chatq2": "\u010fal\u0161\u00ed cyklus?",
+    "demo.mock.chatreply2": "&#x1F4C5; Cyklus 3 mFOLFOX6 \u2014 \u010dak\u00e1 na pos\u00fadenie lek\u00e1rom (ANC pozastavenie).<br>Predcyklov\u00fd kontroln\u00fd zoznam: 1/4 pr\u00edznakov. Op\u00fdtajte sa onkol\u00f3ga na zn\u00ed\u017eenie d\u00e1vky.",
+    "demo.mock.claudeai": "CLAUDE.AI (MCP KONEKTOR)",
+    "demo.mock.claudeq": "N\u00e1jdi klinick\u00e9 \u0161t\u00fadie pre KRAS G12S mCRC na Slovensku",
+    "demo.mock.claudereply": "&#x1F50D; Preh\u013eadan\u00e9 ClinicalTrials.gov + EU registre (SK, CZ, AT, HU).<br><strong>3 zhody:</strong> pan-KRAS inhib\u00edtor (F\u00e1za II, Bratislava), ICI+chemo kombo (F\u00e1za III, Viede\u0148), anti-TIGIT \u0161t\u00fadia (Budape\u0161\u0165).<br><em>V\u0161etky kompatibiln\u00e9 s aktu\u00e1lnym profilom KRAS G12S + akt\u00edvna VTE.</em>"
   }
 };
 
@@ -275,6 +291,12 @@ function setLanguage(lang) {
   });
   document.querySelectorAll(".lang-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.lang === lang);
+  });
+  // Pass language to cross-site links (#156)
+  document.querySelectorAll('a[href*="oncofiles.com"]').forEach(function(a) {
+    var url = new URL(a.href);
+    url.searchParams.set("lang", lang);
+    a.href = url.toString();
   });
   localStorage.setItem("oncoteam-lang", lang);
 }

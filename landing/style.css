@@ -1206,6 +1206,46 @@ body {
   color: #991b1b;
 }
 
+/* ── Chat mockup ─────────────────────────────── */
+.mock-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.mock-chat-msg {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  max-width: 85%;
+}
+.mock-chat-user {
+  background: var(--primary);
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  font-weight: 500;
+}
+.mock-chat-bot {
+  background: #f0f0f0;
+  color: var(--text-primary);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.mock-chat-bot strong { color: var(--primary-dark); }
+.mock-chat-bot em { font-size: 0.78rem; opacity: 0.8; }
+.mock-divider {
+  height: 1px;
+  background: #e5e5e5;
+  margin: 16px 0;
+}
+
+/* Demo panel transition */
+.demo-panel {
+  transition: opacity 0.3s ease;
+}
+
 /* ── Ecosystem ───────────────────────────────── */
 .ecosystem {
   padding: 100px 0;

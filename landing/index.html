@@ -115,6 +115,7 @@
         <button class="demo-tab" data-demo="labs" data-i18n="demo.tab.labs">Lab Trends</button>
         <button class="demo-tab" data-demo="funnel" data-i18n="demo.tab.funnel">Trial Funnel</button>
         <button class="demo-tab" data-demo="protocol" data-i18n="demo.tab.protocol">Protocol</button>
+        <button class="demo-tab" data-demo="chat" data-i18n="demo.tab.chat">Chat</button>
       </div>
       <div class="demo-browser">
         <div class="browser-chrome">
@@ -197,6 +198,23 @@
                 <div class="mock-check mock-check-ok" data-i18n-html="demo.mock.bili">Bilirubin &le; 1.5x ULN &mdash; normal</div>
               </div>
               <div class="mock-insight" data-i18n="demo.mock.protocolinsight">Pre-cycle safety check: 1 flag requires physician review before C3</div>
+            </div>
+          </div>
+          <div class="demo-panel" data-demo="chat">
+            <div class="demo-mockup demo-mockup-chat">
+              <div class="mock-label" data-i18n="demo.mock.whatsapp">WHATSAPP</div>
+              <div class="mock-chat">
+                <div class="mock-chat-msg mock-chat-user">labky</div>
+                <div class="mock-chat-msg mock-chat-bot" data-i18n-html="demo.mock.chatreply1">&#x1F4CA; <strong>Labs (Mar 19):</strong> ANC 1,150 &#x2193;, PLT 269k, HGB 118 &#x2191;<br>CEA 733 &#x2193;62%, CA19-9 22.3k &#x2193;68%<br><em>ANC below threshold &mdash; discuss with oncologist before C3</em></div>
+                <div class="mock-chat-msg mock-chat-user" data-i18n="demo.mock.chatq2">next cycle?</div>
+                <div class="mock-chat-msg mock-chat-bot" data-i18n-html="demo.mock.chatreply2">&#x1F4C5; Cycle 3 mFOLFOX6 &mdash; pending physician review (ANC hold).<br>Pre-cycle checklist: 1/4 flags. Ask oncologist about dose reduction.</div>
+              </div>
+              <div class="mock-divider"></div>
+              <div class="mock-label" data-i18n="demo.mock.claudeai">CLAUDE.AI (MCP CONNECTOR)</div>
+              <div class="mock-chat">
+                <div class="mock-chat-msg mock-chat-user" data-i18n="demo.mock.claudeq">Find clinical trials for KRAS G12S mCRC in Slovakia</div>
+                <div class="mock-chat-msg mock-chat-bot" data-i18n-html="demo.mock.claudereply">&#x1F50D; Searched ClinicalTrials.gov + EU registries (SK, CZ, AT, HU).<br><strong>3 matches:</strong> pan-KRAS inhibitor (Phase II, Bratislava), ICI+chemo combo (Phase III, Vienna), anti-TIGIT trial (Budapest).<br><em>All compatible with current KRAS G12S + active VTE profile.</em></div>
+              </div>
             </div>
           </div>
         </div>
@@ -580,19 +598,68 @@
 
   <script src="i18n.js?v=46"></script>
   <script>
-  // Demo tab switching
-  document.querySelectorAll('.demo-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.demo;
-      document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.demo-panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.querySelector(`.demo-panel[data-demo="${target}"]`).classList.add('active');
-      if (typeof gtag === 'function') {
-        gtag('event', 'demo_tab_click', { tab_name: target });
-      }
+  // Demo tab switching with auto-rotate
+  (function() {
+    var tabs = Array.from(document.querySelectorAll('.demo-tab'));
+    var panels = document.querySelectorAll('.demo-panel');
+    var currentIndex = 0;
+    var rotateTimer = null;
+    var resumeTimer = null;
+    var ROTATE_INTERVAL = 5000;
+    var RESUME_DELAY = 10000;
+
+    function switchTo(index) {
+      currentIndex = index;
+      var target = tabs[index].dataset.demo;
+      tabs.forEach(function(t) { t.classList.remove('active'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      tabs[index].classList.add('active');
+      document.querySelector('.demo-panel[data-demo="' + target + '"]').classList.add('active');
+    }
+
+    function rotateNext() {
+      switchTo((currentIndex + 1) % tabs.length);
+    }
+
+    function startRotation() {
+      stopRotation();
+      rotateTimer = setInterval(rotateNext, ROTATE_INTERVAL);
+    }
+
+    function stopRotation() {
+      if (rotateTimer) { clearInterval(rotateTimer); rotateTimer = null; }
+      if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+    }
+
+    function pauseAndResume() {
+      stopRotation();
+      resumeTimer = setTimeout(startRotation, RESUME_DELAY);
+    }
+
+    tabs.forEach(function(tab, i) {
+      tab.addEventListener('click', function() {
+        switchTo(i);
+        pauseAndResume();
+        if (typeof gtag === 'function') {
+          gtag('event', 'demo_tab_click', { tab_name: tab.dataset.demo });
+        }
+      });
     });
-  });
+
+    // Pause on hover
+    var demoSection = document.querySelector('.demo-browser');
+    if (demoSection) {
+      demoSection.addEventListener('mouseenter', function() { stopRotation(); });
+      demoSection.addEventListener('mouseleave', function() { startRotation(); });
+    }
+
+    // Pause when not visible
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) { stopRotation(); } else { startRotation(); }
+    });
+
+    startRotation();
+  })();
   </script>
 </body>
 </html>
