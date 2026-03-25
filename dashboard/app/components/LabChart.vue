@@ -108,10 +108,14 @@ const chartData = computed(() => {
         return '#374151'
       },
       anchor: 'end' as const,
-      align: 'top' as const,
-      offset: 8,
-      padding: 4,
-      font: { size: 10, weight: 'bold' as const, family: 'DM Sans' },
+      align: (ctx: any) => {
+        // Avoid overlap: place label below point if near chart top
+        const yPixel = ctx.chart.scales.y.getPixelForValue(ctx.dataset.data[ctx.dataIndex])
+        return yPixel < 30 ? 'bottom' : 'top'
+      },
+      offset: 6,
+      padding: 2,
+      font: { size: 9, weight: 'bold' as const, family: 'DM Sans' },
       formatter: (val: number) => val?.toLocaleString() ?? '',
     },
   })
