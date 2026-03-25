@@ -469,6 +469,19 @@ def _parse_agent_run_entry(e: dict, default_task_name: str = "unknown") -> dict:
     }
 
 
+MAX_REQUEST_BODY_BYTES = 1_000_000  # 1 MB — prevents oversized POST payloads
+
+
+async def _parse_json_body(request: Request) -> dict:
+    """Parse JSON body with size limit. Raises ValueError if too large."""
+    body = await request.body()
+    if len(body) > MAX_REQUEST_BODY_BYTES:
+        raise ValueError(
+            f"Request body too large ({len(body)} bytes, max {MAX_REQUEST_BODY_BYTES})"
+        )
+    return json.loads(body)
+
+
 def _parse_limit(request: Request, default: int = 50, max_val: int = 500) -> int:
     """Parse and cap `limit` query param. Safe against non-integer values."""
     try:

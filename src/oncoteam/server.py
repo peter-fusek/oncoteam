@@ -1062,6 +1062,32 @@ def main() -> None:
 
         from starlette.middleware import Middleware
         from starlette.middleware.cors import CORSMiddleware
+        from starlette.types import ASGIApp, Receive, Scope, Send
+
+        class SecurityHeadersMiddleware:
+            """Add standard security headers to all HTTP responses."""
+
+            def __init__(self, app: ASGIApp) -> None:
+                self.app = app
+
+            async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+                if scope["type"] != "http":
+                    await self.app(scope, receive, send)
+                    return
+
+                async def send_with_headers(message: dict) -> None:
+                    if message["type"] == "http.response.start":
+                        security = [
+                            (b"x-content-type-options", b"nosniff"),
+                            (b"x-frame-options", b"DENY"),
+                            (b"referrer-policy", b"strict-origin-when-cross-origin"),
+                            (b"strict-transport-security", b"max-age=31536000; includeSubDomains"),
+                        ]
+                        existing = message.get("headers", [])
+                        message["headers"] = list(existing) + security
+                    await send(message)
+
+                await self.app(scope, receive, send_with_headers)
 
         async def _run_http():
             # FastMCP 3.x lifespan is broken in HTTP transport (double-wrap bug).
@@ -1077,6 +1103,7 @@ def main() -> None:
                 host=MCP_HOST,
                 port=MCP_PORT,
                 middleware=[
+                    Middleware(SecurityHeadersMiddleware),
                     Middleware(
                         CORSMiddleware,
                         allow_origins=DASHBOARD_ALLOWED_ORIGINS or ["*"],
