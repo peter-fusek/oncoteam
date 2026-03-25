@@ -200,8 +200,12 @@ async def _invalidate_client(token: str | None = None) -> None:
     async with _get_lock():
         client = _persistent_clients.pop(key, None)
         if client is not None:
-            with contextlib.suppress(Exception):
+            try:
                 await client.__aexit__(None, None, None)
+            except Exception as e:
+                from .activity_logger import record_suppressed_error
+
+                record_suppressed_error("oncofiles_client", "close_connection", e)
             tok_label = key[:8] if key else "default"
             _logger.debug("Closed oncofiles connection (token=%s...)", tok_label)
 
@@ -305,8 +309,16 @@ async def search_documents(
     return await call_oncofiles("search_documents", args)
 
 
+def _validate_id(value: str | int, name: str = "id") -> str:
+    """Validate document/file IDs at the boundary before sending to oncofiles."""
+    s = str(value).strip()
+    if not s or len(s) > 200:
+        raise ValueError(f"Invalid {name}: must be 1-200 chars")
+    return s
+
+
 async def view_document(file_id: str) -> dict:
-    return await call_oncofiles("view_document", {"file_id": file_id})
+    return await call_oncofiles("view_document", {"file_id": _validate_id(file_id, "file_id")})
 
 
 async def analyze_labs(file_id: str | None = None, limit: int = 10) -> dict:
@@ -321,7 +333,8 @@ async def compare_labs(file_id_a: str, file_id_b: str) -> dict:
 
 
 async def get_document(document_id: int) -> dict:
-    return await call_oncofiles("get_document_by_id", {"doc_id": document_id})
+    doc_id = int(_validate_id(document_id, "doc_id"))
+    return await call_oncofiles("get_document_by_id", {"doc_id": doc_id})
 
 
 async def set_agent_state(key: str, value: dict, agent_id: str = "oncoteam") -> dict:

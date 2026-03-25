@@ -1407,7 +1407,7 @@ async def api_protocol_cycles(request: Request) -> JSONResponse:
                     # Extract lab values from notes/data
                     data_field = lab.get("data") or {}
                     if isinstance(data_field, str):
-                        with contextlib.suppress(Exception):
+                        with contextlib.suppress(json.JSONDecodeError, ValueError, TypeError):
                             data_field = json.loads(data_field)
                     values = data_field if isinstance(data_field, dict) else {}
                     # Check each threshold parameter

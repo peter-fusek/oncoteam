@@ -1068,10 +1068,10 @@ def main() -> None:
             # Start the autonomous scheduler explicitly within the event loop.
             start_scheduler()
             # Load persisted approved phones from oncofiles (non-critical)
-            import contextlib
-
-            with contextlib.suppress(Exception):
+            try:
                 await load_approved_phones()
+            except Exception as e:
+                logging.warning("Failed to load approved phones at startup: %s", e)
             await mcp.run_async(
                 transport=MCP_TRANSPORT,
                 host=MCP_HOST,
