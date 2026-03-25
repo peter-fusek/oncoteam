@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
 import logging
 import time
@@ -34,6 +33,9 @@ _circuit_open_until: float = 0.0
 
 # Per-call timeout (seconds) — prevents indefinite hangs when oncofiles is slow.
 CALL_TIMEOUT = 20.0
+# Max time to wait for a semaphore slot before rejecting the request (#173).
+# Prevents zombie queue buildup when timed-out proxy requests keep holding slots.
+SEMAPHORE_WAIT_TIMEOUT = 8.0
 
 # ── Concurrency limiter ─────────────────────────────────────────────────
 # Limits parallel oncofiles calls to prevent OOM on the server side.
@@ -220,6 +222,40 @@ def _parse_result(result: object) -> dict | list | str:
     return str(result)
 
 
+async def _call_with_retry(
+    tool_name: str, arguments: dict, token: str | None
+) -> dict | list | str:
+    """Execute an MCP call with one retry on failure."""
+    global _circuit_failures, _circuit_open_until, _total_errors, _total_circuit_trips
+    for attempt in range(2):
+        try:
+            client = await _get_client(token)
+            result = await asyncio.wait_for(
+                client.call_tool(tool_name, arguments),
+                timeout=CALL_TIMEOUT,
+            )
+            _circuit_failures = 0
+            return _parse_result(result)
+        except Exception:
+            if attempt == 0:
+                await _invalidate_client(token)
+                await asyncio.sleep(0.5)
+                continue
+            _total_errors += 1
+            _circuit_failures += 1
+            if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
+                _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
+                _total_circuit_trips += 1
+                _logger.error(
+                    "oncofiles circuit breaker OPEN after %d failures "
+                    "— blocking calls for %ds",
+                    _circuit_failures,
+                    CIRCUIT_BREAKER_COOLDOWN,
+                )
+            raise
+    raise RuntimeError("_call_with_retry: unreachable")
+
+
 async def call_oncofiles(
     tool_name: str, arguments: dict, *, token: str | None = None
 ) -> dict | list | str:
@@ -254,46 +290,42 @@ async def call_oncofiles(
         _total_errors += 1
         raise
 
-    # Concurrency limiter — queue excess calls instead of piling on.
+    # Concurrency limiter — queue excess calls with timeout (#173).
+    # Timeout prevents zombie queue buildup when proxy-cancelled requests hold slots.
     sem = _get_semaphore()
     is_heavy = tool_name in _HEAVY_TOOLS
     if sem.locked():
         _total_queued += 1
         _logger.debug("oncofiles call queued (%s) — max %d", tool_name, MAX_CONCURRENT_CALLS)
 
-    async with sem:
+    try:
+        await asyncio.wait_for(sem.acquire(), timeout=SEMAPHORE_WAIT_TIMEOUT)
+    except TimeoutError:
+        _total_errors += 1
+        raise TimeoutError(
+            f"oncofiles queue full for {tool_name} — rejected after "
+            f"{SEMAPHORE_WAIT_TIMEOUT}s wait"
+        ) from None
+    try:
         # Heavy queries get an extra gate — max 1 concurrent.
-        heavy_ctx = _get_heavy_semaphore() if is_heavy else contextlib.nullcontext()
-        async with heavy_ctx:
-            for attempt in range(2):
-                try:
-                    client = await _get_client(token)
-                    result = await asyncio.wait_for(
-                        client.call_tool(tool_name, arguments),
-                        timeout=CALL_TIMEOUT,
-                    )
-                    # Success — reset circuit breaker.
-                    _circuit_failures = 0
-                    return _parse_result(result)
-                except Exception:
-                    if attempt == 0:
-                        await _invalidate_client(token)
-                        await asyncio.sleep(0.5)
-                        continue
-                    # Second failure — update circuit breaker.
-                    _total_errors += 1
-                    _circuit_failures += 1
-                    if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
-                        _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
-                        _total_circuit_trips += 1
-                        _logger.error(
-                            "oncofiles circuit breaker OPEN after %d failures "
-                            "— blocking calls for %ds",
-                            _circuit_failures,
-                            CIRCUIT_BREAKER_COOLDOWN,
-                        )
-                    raise
-    raise RuntimeError("call_oncofiles: unreachable")
+        if is_heavy:
+            heavy_sem = _get_heavy_semaphore()
+            try:
+                await asyncio.wait_for(heavy_sem.acquire(), timeout=SEMAPHORE_WAIT_TIMEOUT)
+            except TimeoutError:
+                _total_errors += 1
+                raise TimeoutError(
+                    f"oncofiles heavy-query queue full for {tool_name} — rejected after "
+                    f"{SEMAPHORE_WAIT_TIMEOUT}s wait"
+                ) from None
+            try:
+                return await _call_with_retry(tool_name, arguments, token)
+            finally:
+                heavy_sem.release()
+        else:
+            return await _call_with_retry(tool_name, arguments, token)
+    finally:
+        sem.release()
 
 
 async def search_documents(

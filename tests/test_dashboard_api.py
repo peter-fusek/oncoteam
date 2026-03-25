@@ -319,7 +319,7 @@ async def test_api_timeline_returns_events(mock_list):
 
     assert response.status_code == 200
     assert data["total"] == 1
-    assert data["events"][0]["type"] == "chemo_cycle"
+    assert data["events"][0]["event_type"] == "chemo_cycle"
     assert data["events"][0]["title"] == "mFOLFOX6 C1"
 
 

@@ -829,8 +829,8 @@ async def api_timeline(request: Request) -> JSONResponse:
                 "events": [
                     {
                         "id": e.get("id"),
-                        "date": e.get("event_date"),
-                        "type": e.get("event_type"),
+                        "event_date": e.get("event_date"),
+                        "event_type": e.get("event_type"),
                         "title": e.get("title"),
                         "notes": e.get("notes"),
                         "source": _build_source_ref(e, "treatment_event"),

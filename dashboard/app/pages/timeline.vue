@@ -5,8 +5,8 @@ const { formatDate } = useFormatDate()
 const { data: timeline, status: timelineStatus, error: timelineError, refresh } = fetchApi<{
   events: Array<{
     id: number
-    date: string
-    type: string
+    event_date: string
+    event_type: string
     title: string
     notes: string
   }>
@@ -105,23 +105,23 @@ const drilldown = useDrilldown()
 
       <div v-for="event in timeline.events" :key="event.id" class="relative pb-6 last:pb-0">
         <!-- Dot -->
-        <div class="absolute -left-4 top-3 w-3 h-3 rounded-full border-2" :class="dotColor(event.type)" />
+        <div class="absolute -left-4 top-3 w-3 h-3 rounded-full border-2" :class="dotColor(event.event_type)" />
 
         <div
           class="rounded-lg border border-gray-200 bg-white p-4 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
           @click="drilldown.open({ type: 'treatment_event', id: event.id, label: event.title })"
         >
           <div class="flex items-start gap-3">
-            <span class="text-lg">{{ typeEmoji[event.type] ?? '📅' }}</span>
+            <span class="text-lg">{{ typeEmoji[event.event_type] ?? '📅' }}</span>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-gray-900 text-sm">{{ event.title }}</span>
-                <UBadge variant="subtle" size="xs" color="neutral">{{ $t(`timeline.eventTypes.${event.type}`, event.type) }}</UBadge>
+                <UBadge variant="subtle" size="xs" color="neutral">{{ $t(`timeline.eventTypes.${event.event_type}`, event.event_type) }}</UBadge>
                 <UBadge v-if="getCycleNumber(event.title)" variant="subtle" size="xs" color="info">
                   {{ $t('timeline.cycleBadge', { n: getCycleNumber(event.title) }) }}
                 </UBadge>
               </div>
-              <div class="text-xs text-gray-500 mt-1">{{ formatDate(event.date) }}</div>
+              <div class="text-xs text-gray-500 mt-1">{{ formatDate(event.event_date) }}</div>
               <p v-if="event.notes" class="text-xs text-gray-500 mt-2">{{ event.notes }}</p>
 
               <!-- Milestone callouts -->
