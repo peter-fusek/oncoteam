@@ -8,6 +8,8 @@ Oncoteam was built by Peter Fusek — a software engineer, not a doctor — when
 
 Alongside Oncoteam (the intelligence layer), he built [Oncofiles](https://github.com/peter-fusek/oncofiles) — the data layer that organizes all medical documents from Google Drive. Oncofiles structures and connects them. Oncoteam turns them into understanding, questions, and action.
 
+An [Instarea](https://www.instarea.com) project.
+
 ## Who It's For
 
 - Cancer patients who want to understand and track their own treatment
@@ -20,29 +22,58 @@ Alongside Oncoteam (the intelligence layer), he built [Oncofiles](https://github
 - Explains lab results in plain language with trend charts, safety thresholds, and cycle-over-cycle comparisons
 - Prepares personalized questions before every oncologist visit based on your latest data
 - Searches clinical trials from ClinicalTrials.gov and EU registries across 14 European countries, matched to your molecular profile
+- AI-powered trial funnel: classifies each trial into excluded / later line / watching / action needed
 - Cross-references your treatment with medical textbooks (DeVita), NCCN protocols, and latest PubMed research
 - Tracks treatment trends — tumor markers, blood counts, inflammation indices — so you can see if treatment is working
+- Pre-cycle safety checks with automated hold/go recommendations
 - Sends WhatsApp alerts for safety issues, weekly briefings, and trial updates
 - Provides bilingual interface (Slovak/English) with medical and plain-language modes
 - Generates family-friendly treatment summaries shareable via WhatsApp or print
+- WhatsApp onboarding: 8-step state machine with media attachments and admin approval
+- 18 autonomous AI agents for monitoring, research, and reporting
 - Stores all patient data in your own Google Drive (GDPR compliant)
 
-## Access
+## Stats
 
-- **Dashboard**: Visual overview of treatment, trends, timelines — https://dashboard.oncoteam.cloud
-- **WhatsApp**: Chat anytime for quick answers, summaries, and alerts
-- **Claude.ai / ChatGPT**: Deep analysis and Q&A via MCP protocol
+- 24 MCP tools
+- 21 dashboard API routes
+- 18 autonomous agents
+- 620 passing tests
+- ~10,700 lines of Python
+- Multi-patient support with per-patient scheduling and OAuth
 
 ## Architecture
 
 - Built on the Model Context Protocol (MCP) — open standard for AI tool integration
 - Two-layer architecture: Oncofiles (data/persistence) + Oncoteam (intelligence)
-- Patient data stored in patient-owned Google Drive
-- Dashboard built with Nuxt 4, backend with Python/FastMCP
+- Patient data stored in patient-owned Google Drive — no local database
+- Dashboard built with Nuxt 4 (SSR), backend with Python 3.12 / FastMCP 3.0+
+- Deployed on Railway with zero-downtime deploys
+- Circuit breaker + semaphore concurrency control for resilience
+- Free tier: 200 documents, 500 AI queries/month, 100 agent runs/month
+
+## Integrations
+
+- Claude AI (autonomous agent loop, deep analysis)
+- PubMed (NCBI E-utilities)
+- ClinicalTrials.gov (API v2)
+- EU Clinical Trials registries
+- WhatsApp (Twilio)
+- Google Drive (via Oncofiles)
+- Model Context Protocol (MCP)
+
+## Access
+
+- **Website**: https://oncoteam.cloud
+- **Dashboard**: https://dashboard.oncoteam.cloud
+- **WhatsApp**: Chat anytime for quick answers, summaries, and alerts
+- **Claude.ai**: Deep analysis and Q&A via MCP connector
 
 ## Links
 
 - Website: https://oncoteam.cloud
 - Dashboard: https://dashboard.oncoteam.cloud
 - GitHub: https://github.com/peter-fusek/oncoteam
+- Oncofiles: https://github.com/peter-fusek/oncofiles
 - Author: Peter Fusek (https://www.linkedin.com/in/peterfusek/)
+- Company: Instarea (https://www.instarea.com)

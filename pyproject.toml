@@ -2,7 +2,31 @@
 name = "oncoteam"
 version = "0.45.0"
 description = "AI-powered patient advocacy tool for cancer treatment — understand labs, ask the right questions, find clinical trials, never miss a thing"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
+authors = [
+    { name = "Peter Fusek", email = "peterfusek1980@gmail.com" },
+]
+keywords = [
+    "cancer",
+    "oncology",
+    "patient-advocacy",
+    "clinical-trials",
+    "lab-analysis",
+    "mcp",
+    "ai",
+    "treatment-management",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Framework :: Pydantic :: 2",
+]
 dependencies = [
     "fastmcp>=3.1.0",
     "httpx>=0.27.0",
@@ -19,6 +43,14 @@ dev = [
     "ruff>=0.8.0",
     "respx>=0.22.0",
 ]
+
+[project.urls]
+Homepage = "https://oncoteam.cloud"
+Dashboard = "https://dashboard.oncoteam.cloud"
+Repository = "https://github.com/peter-fusek/oncoteam"
+Issues = "https://github.com/peter-fusek/oncoteam/issues"
+Author = "https://www.linkedin.com/in/peterfusek/"
+Company = "https://www.instarea.com"
 
 [project.scripts]
 oncoteam-mcp = "oncoteam.server:main"
