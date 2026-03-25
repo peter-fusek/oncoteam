@@ -6,7 +6,7 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 595 tests
+uv run pytest          # 620 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
@@ -125,5 +125,13 @@ uv run oncoteam-mcp    # stdio mode
 | `MCP_BEARER_TOKEN` | Auth token for MCP connections | **Yes for HTTP** |
 | `DASHBOARD_API_KEY` | Auth key for /api/* endpoints | **Yes for HTTP** |
 | `DASHBOARD_ALLOWED_ORIGINS` | Comma-separated CORS origins | **Yes for HTTP** |
-| `GITHUB_TOKEN` | Fine-grained PAT for issue creation | No |
+| `GITHUB_TOKEN` | Fine-grained PAT for issue creation (oncoteam-bug-reporter, expires Jun 23 2026) | No |
 | `NCBI_API_KEY` | NCBI E-utilities API key | No |
+
+## Security (from Sprint 54 hardening)
+
+- `SecurityHeadersMiddleware` in `server.py` adds X-Content-Type-Options, X-Frame-Options, HSTS, Referrer-Policy to all HTTP responses
+- `_parse_json_body()` in `dashboard_api.py` enforces 1MB request body limit for POST endpoints
+- `_validate_id()` in `oncofiles_client.py` validates document/file IDs at the boundary (1-200 chars)
+- `oncofiles_client.py` uses lazy import for `record_suppressed_error` to avoid circular import with `activity_logger.py`
+- `landing/i18n.js` uses `data-i18n-html` attribute (via `innerHTML`) for demo mockup strings containing HTML entities/tags — safe because all values are hardcoded static strings, no user input
