@@ -130,7 +130,7 @@ cd dashboard && pnpm dev
 | MCP Tools | 24 |
 | Dashboard API routes | 21 |
 | Autonomous agents | 18 |
-| Tests | 620 passing |
+| Tests | 630 passing |
 | Python LOC | ~10,700 |
 
 ## Privacy & Security

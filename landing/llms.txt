@@ -40,7 +40,7 @@ An [Instarea](https://www.instarea.com) project.
 - 500+ clinical trials monitored across US and EU registries
 - 6 specialist roles (lab analyst, trial researcher, protocol checker, briefing writer, family communicator, appointment prep)
 - 24 MCP tools, 21 dashboard API routes
-- 620 passing tests, ~10,700 lines of Python
+- 630 passing tests, ~10,700 lines of Python
 - Multi-patient support with per-patient scheduling and OAuth
 
 ## Architecture
