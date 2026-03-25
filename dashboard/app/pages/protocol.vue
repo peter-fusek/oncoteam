@@ -18,7 +18,7 @@ const { data: protocol, status: protocolStatus, error: protocolError, refresh } 
     current_regimen?: { regimen: string; cycle: number }
     nutrition?: { weight_kg: number; date: string; baseline_kg: number }
   }
-}>('/protocol', { lazy: true, timeout: 15000 })
+}>('/protocol', { lazy: true, server: false, timeout: 15000 })
 
 const { data: cumDose } = fetchApi<{
   drug: string
@@ -30,7 +30,7 @@ const { data: cumDose } = fetchApi<{
   pct_to_next: number
   all_thresholds: Array<{ at: number; action: string; severity: string }>
   max_recommended: number
-}>('/cumulative-dose', { lazy: true })
+}>('/cumulative-dose', { lazy: true, server: false })
 
 const { data: cycleHistory } = fetchApi<{
   cycles: Array<{
@@ -41,7 +41,7 @@ const { data: cycleHistory } = fetchApi<{
     source_event_id: number | null
   }>
   current_cycle: number
-}>('/protocol/cycles', { lazy: true })
+}>('/protocol/cycles', { lazy: true, server: false })
 
 const { t } = useI18n()
 

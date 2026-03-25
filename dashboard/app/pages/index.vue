@@ -4,7 +4,9 @@ const { activeRole } = useUserRole()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
 
-// Parallel data fetches — all lazy, same pattern as other pages
+// Client-only fetches — server:false prevents SSR from attempting these calls,
+// which caused 503 timeouts when oncofiles was slow (16s+ TTFB → Railway edge 503).
+// Shell renders instantly from SSR, data fills in via client-side fetches.
 const { data: patient } = fetchApi<{
   name: string
   treatment_regimen: string
@@ -15,7 +17,7 @@ const { data: patient } = fetchApi<{
   biomarkers: Record<string, string | boolean>
   excluded_therapies: Array<{ therapy: string; reason: string }> | Record<string, string>
   active_therapies?: Array<{ name: string; status: string; warning?: string }>
-}>('/patient', { lazy: true })
+}>('/patient', { lazy: true, server: false })
 
 const { data: labs } = fetchApi<{
   entries: Array<{
@@ -29,7 +31,7 @@ const { data: labs } = fetchApi<{
   total: number
   error?: string
   unavailable?: boolean
-}>('/labs?limit=50', { lazy: true })
+}>('/labs?limit=10', { lazy: true, server: false })
 
 const { data: briefings } = fetchApi<{
   briefings: Array<{
@@ -43,7 +45,7 @@ const { data: briefings } = fetchApi<{
     action_items?: string[]
   }>
   total: number
-}>('/briefings?limit=1', { lazy: true })
+}>('/briefings?limit=1', { lazy: true, server: false })
 
 const { data: timeline } = fetchApi<{
   events: Array<{
@@ -53,7 +55,7 @@ const { data: timeline } = fetchApi<{
     title: string
     cycle?: number
   }>
-}>('/timeline?limit=10', { lazy: true })
+}>('/timeline?limit=10', { lazy: true, server: false })
 
 // Computed helpers
 // Merge most recent value for each key parameter across all entries

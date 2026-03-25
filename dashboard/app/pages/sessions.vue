@@ -16,7 +16,7 @@ const { data: sessions, status: sessionsStatus, error: sessionsError, refresh } 
   total: number
   type_counts: { clinical: number; technical: number }
   error?: string
-}>(() => `/sessions?limit=50&type=${typeFilter.value}`, { lazy: true, watch: [typeFilter] })
+}>(() => `/sessions?limit=50&type=${typeFilter.value}`, { lazy: true, server: false, watch: [typeFilter] })
 
 const drilldown = useDrilldown()
 

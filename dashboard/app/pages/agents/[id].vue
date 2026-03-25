@@ -12,7 +12,7 @@ const { data: agentsData } = fetchApi<{
     model: string; schedule: string; cooldown_hours: number; max_turns: number
     whatsapp_enabled: boolean; last_run: string | null; enabled: boolean
   }>
-}>('/agents', { lazy: true })
+}>('/agents', { lazy: true, server: false })
 
 const agent = computed(() =>
   agentsData.value?.agents?.find((a: any) => a.id === agentId.value),
@@ -22,7 +22,7 @@ const agent = computed(() =>
 const { data: configData } = fetchApi<{
   id: string; prompt_template: string
   [key: string]: any
-}>(`/agents/${agentId.value}/config`, { lazy: true })
+}>(`/agents/${agentId.value}/config`, { lazy: true, server: false })
 
 const promptTemplate = computed(() => configData.value?.prompt_template || '')
 const isDynamicPrompt = computed(() => promptTemplate.value.startsWith('[Dynamic'))
@@ -40,7 +40,7 @@ const { data: runsData, status: runsStatus } = fetchApi<{
     messages: Array<{ role: string; content: any }>
     turns: number; started_at: string | null; completed_at: string | null
   }>
-}>(`/agents/${agentId.value}/runs?limit=50&lang=${locale.value}`, { lazy: true })
+}>(`/agents/${agentId.value}/runs?limit=50&lang=${locale.value}`, { lazy: true, server: false })
 
 const runs = computed(() => runsData.value?.runs || [])
 

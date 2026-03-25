@@ -35,7 +35,7 @@ const { data: docs, status: docsStatus, error: docsError, refresh } = fetchApi<{
     missing_metadata: number
   }
   error?: string
-}>(apiUrl, { lazy: true, watch: [apiUrl] })
+}>(apiUrl, { lazy: true, server: false, watch: [apiUrl] })
 
 function setFilter(f: string) {
   activeFilter.value = f

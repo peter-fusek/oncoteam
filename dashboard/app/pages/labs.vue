@@ -19,11 +19,11 @@ const { data: labs, status: labsStatus, error: labsError, refresh } = fetchApi<{
   reference_ranges: Record<string, { min: number; max: number; unit: string; note?: string }>
   total: number
   error?: string
-}>('/labs', { lazy: true })
+}>('/labs', { lazy: true, server: false })
 
 const { data: protocol } = fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; action: string }>
-}>('/protocol', { lazy: true })
+}>('/protocol', { lazy: true, server: false })
 
 // Rookie/Pro mode
 const proMode = ref(false)

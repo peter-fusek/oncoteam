@@ -13,11 +13,11 @@ const {
 
 const { data: status, status: statusFetch, error: statusError, refresh: refreshStatus } = fetchApi<{
   status: string; version: string; session_id: string; tools_count: number
-}>('/status', { lazy: true })
+}>('/status', { lazy: true, server: false })
 
 const { data: stats, refresh: refreshStats } = fetchApi<{
   stats: Array<{ tool_name: string; status: string; count: number; avg_duration_ms: number }>
-}>('/stats', { lazy: true })
+}>('/stats', { lazy: true, server: false })
 
 const { data: activity, refresh: refreshActivity } = fetchApi<{
   entries: Array<{
@@ -25,25 +25,25 @@ const { data: activity, refresh: refreshActivity } = fetchApi<{
     input: string; output: string; error: string
   }>
   total: number
-}>('/activity?limit=100', { lazy: true })
+}>('/activity?limit=100', { lazy: true, server: false })
 
 const { data: autonomous, refresh: refreshAutonomous } = fetchApi<{
   enabled: boolean; daily_cost: number
   jobs?: Array<{ id: string; schedule: string; description: string; assigned_tool?: string }>
-}>('/autonomous', { lazy: true })
+}>('/autonomous', { lazy: true, server: false })
 
 const { data: costData, refresh: refreshCost } = fetchApi<{
   today_spend: number; daily_cap: number; mtd_spend: number
   expected_eom: number; remaining_credit: number; total_credit: number
   days_remaining: number; budget_alert: boolean; month: string
-}>('/autonomous/cost', { lazy: true })
+}>('/autonomous/cost', { lazy: true, server: false })
 
 const { data: labData, refresh: refreshLabs } = fetchApi<{
   entries: Array<{
     date: string
     alerts: Array<{ param: string; value: number; threshold: number; action: string }>
   }>
-}>('/labs?limit=3', { lazy: true })
+}>('/labs?limit=3', { lazy: true, server: false })
 
 // Fetch registered agents for the scheduled agents section (#135)
 const { data: agentsRegistry, refresh: refreshAgents } = fetchApi<{
@@ -52,7 +52,7 @@ const { data: agentsRegistry, refresh: refreshAgents } = fetchApi<{
     model: string; schedule: string; cooldown_hours: number; max_turns: number
     whatsapp_enabled: boolean; last_run: string | null; enabled: boolean
   }>
-}>('/agents', { lazy: true })
+}>('/agents', { lazy: true, server: false })
 
 const registeredAgents = computed(() => agentsRegistry.value?.agents || [])
 

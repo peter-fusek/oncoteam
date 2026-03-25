@@ -28,7 +28,7 @@ const { data: meds, status: medsStatus, error: medsError, refresh } = fetchApi<{
   }
   total: number
   error?: string
-}>('/medications', { lazy: true })
+}>('/medications', { lazy: true, server: false })
 
 const showForm = ref(false)
 const form = reactive({

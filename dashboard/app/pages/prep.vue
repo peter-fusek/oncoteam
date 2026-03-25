@@ -3,12 +3,12 @@ const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
 // Fetch all data in parallel (lazy, non-blocking)
-const { data: patient, status: patientStatus, error: patientError } = fetchApi<Record<string, any>>('/patient', { lazy: true })
-const { data: protocol } = fetchApi<Record<string, any>>('/protocol', { lazy: true })
-const { data: toxicity } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/toxicity?limit=5', { lazy: true })
-const { data: labs } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/labs?limit=5', { lazy: true })
-const { data: briefings } = fetchApi<{ briefings: Array<Record<string, any>>; total: number }>('/briefings?limit=3', { lazy: true })
-const { data: research } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/research?limit=10', { lazy: true })
+const { data: patient, status: patientStatus, error: patientError } = fetchApi<Record<string, any>>('/patient', { lazy: true, server: false })
+const { data: protocol } = fetchApi<Record<string, any>>('/protocol', { lazy: true, server: false })
+const { data: toxicity } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/toxicity?limit=5', { lazy: true, server: false })
+const { data: labs } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/labs?limit=5', { lazy: true, server: false })
+const { data: briefings } = fetchApi<{ briefings: Array<Record<string, any>>; total: number }>('/briefings?limit=3', { lazy: true, server: false })
+const { data: research } = fetchApi<{ entries: Array<Record<string, any>>; total: number }>('/research?limit=10', { lazy: true, server: false })
 
 // Latest toxicity entry
 const latestToxicity = computed(() => toxicity.value?.entries?.[0] ?? null)

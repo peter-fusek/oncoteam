@@ -13,13 +13,13 @@ const { data: briefings, status: briefingsStatus, error: briefingsError, refresh
   }>
   total: number
   error?: string
-}>('/briefings', { lazy: true })
+}>('/briefings', { lazy: true, server: false })
 
 const { data: autonomous } = fetchApi<{
   enabled: boolean
   daily_cost: number
   jobs?: Array<{ id: string; schedule: string; description: string }>
-}>('/autonomous', { lazy: true })
+}>('/autonomous', { lazy: true, server: false })
 
 function extractQuestions(content: string): string[] {
   const lines = content.split('\n')

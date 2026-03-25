@@ -7,7 +7,7 @@ const sortBy = ref<'relevance' | 'date' | 'source'>('relevance')
 // Watched trials from clinical protocol
 const { data: protocol } = fetchApi<{
   watched_trials: string[]
-}>('/protocol', { lazy: true })
+}>('/protocol', { lazy: true, server: false })
 
 const { data: research, status: researchStatus, error: researchError, refresh } = fetchApi<{
   entries: Array<{
@@ -23,7 +23,7 @@ const { data: research, status: researchStatus, error: researchError, refresh } 
   }>
   total: number
   error?: string
-}>('/research?per_page=100&sort=relevance', { lazy: true })
+}>('/research?per_page=100&sort=relevance', { lazy: true, server: false })
 
 // Split entries into trials and literature
 const trialEntries = computed(() => {

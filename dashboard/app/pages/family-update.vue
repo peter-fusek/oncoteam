@@ -14,7 +14,7 @@ const { data: updates, status: updatesStatus, error: updatesError, refresh } = f
   }>
   total: number
   error?: string
-}>('/family-update', { lazy: true })
+}>('/family-update', { lazy: true, server: false })
 
 const generating = ref(false)
 const latestGenerated = ref('')

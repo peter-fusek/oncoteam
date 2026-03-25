@@ -30,11 +30,11 @@ const { data: patient, status: patientStatus, error: patientError } = fetchApi<{
     indication?: string
     cycle?: number
   }>
-}>('/patient', { lazy: true })
+}>('/patient', { lazy: true, server: false })
 
 const { data: protocol } = fetchApi<{
   safety_flags: Record<string, { rule: string; source: string }>
-}>('/protocol', { lazy: true, timeout: 15000 })
+}>('/protocol', { lazy: true, server: false, timeout: 15000 })
 
 const { data: researchData } = fetchApi<{
   items: Array<{
@@ -47,7 +47,7 @@ const { data: researchData } = fetchApi<{
     summary?: string
     external_url?: string
   }>
-}>('/research?limit=5', { lazy: true })
+}>('/research?limit=5', { lazy: true, server: false })
 
 const topStudies = computed(() =>
   (researchData.value?.items ?? []).slice(0, 3)

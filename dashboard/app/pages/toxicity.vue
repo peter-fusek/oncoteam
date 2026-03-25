@@ -13,7 +13,7 @@ const { data: toxicity, status: toxicityStatus, error: toxicityError, refresh } 
   }>
   total: number
   error?: string
-}>('/toxicity', { lazy: true })
+}>('/toxicity', { lazy: true, server: false })
 
 const { data: weightData } = fetchApi<{
   entries: Array<{
@@ -26,7 +26,7 @@ const { data: weightData } = fetchApi<{
   alerts: Array<{ date: string; weight_kg: number; loss_pct: number; action: string; severity: string }>
   nutrition_escalation: Array<{ loss_pct: number; action: string; severity: string }>
   total: number
-}>('/weight', { lazy: true })
+}>('/weight', { lazy: true, server: false })
 
 const grades = [0, 1, 2, 3, 4]
 const gradeLabels = computed(() => {

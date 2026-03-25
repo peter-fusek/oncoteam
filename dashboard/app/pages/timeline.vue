@@ -12,12 +12,12 @@ const { data: timeline, status: timelineStatus, error: timelineError, refresh } 
   }>
   total: number
   error?: string
-}>('/timeline', { lazy: true })
+}>('/timeline', { lazy: true, server: false })
 
 const { data: protocol } = fetchApi<{
   milestones: Array<{ cycle: number; action: string; description: string }>
   current_cycle: number
-}>('/protocol', { lazy: true })
+}>('/protocol', { lazy: true, server: false })
 
 const typeEmoji: Record<string, string> = {
   chemo_cycle: '💊',

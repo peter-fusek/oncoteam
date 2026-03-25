@@ -19,6 +19,7 @@ export function useOncoteamApi() {
     return useFetch<T>(url, {
       query,
       timeout: 28000, // Must exceed server proxy timeout (25s) to avoid premature client abort
+      server: false, // Client-only — SSR data fetches caused 503s (Railway edge 17s timeout)
       ...opts,
     })
   }

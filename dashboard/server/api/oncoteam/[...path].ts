@@ -1,8 +1,13 @@
 /**
  * Catch-all proxy: forwards /api/oncoteam/<path> to the Python backend.
- * Auth is server-side only — no secrets reach the browser.
+ * Session-gated — requires authenticated user. API key stays server-side.
  */
 export default defineEventHandler(async (event) => {
+  const session = await getUserSession(event)
+  if (!session.user) {
+    throw createError({ statusCode: 401, message: 'Not authenticated' })
+  }
+
   const config = useRuntimeConfig()
   const path = getRouterParam(event, 'path') || ''
   const query = getQuery(event)
