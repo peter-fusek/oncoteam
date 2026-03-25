@@ -14,7 +14,7 @@ const translations = {
     "demo.tab.funnel": "Trial Funnel",
     "demo.tab.protocol": "Protocol",
     "story.title": "Born from Real Life",
-    "story.p1": "When Erika was diagnosed with metastatic colorectal cancer, her husband Peter \u2014 a software engineer, not a doctor \u2014 found himself buried in lab results, genetic reports, and treatment protocols he didn\u2019t understand. Every oncologist visit felt too short. Every new test raised questions he didn\u2019t know how to ask.",
+    "story.p1": "When Erika was diagnosed with metastatic colorectal cancer, her husband Peter \u2014 an entrepreneur and technology enthusiast, not a doctor \u2014 found himself buried in lab results, genetic reports, and treatment protocols he didn\u2019t understand. Every oncologist visit felt too short. Every new test raised questions he didn\u2019t know how to ask.",
     "story.p2": "So he built Oncoteam. Not as a replacement for their oncologist, but as a tool to help him keep up \u2014 to understand the numbers, prepare the right questions, track what\u2019s changing, and search for clinical trials that no single doctor has time to systematically monitor across Europe and the US.",
     "story.p3": "Alongside Oncoteam, he built Oncofiles \u2014 the data layer that organizes all medical documents from Google Drive: lab results, pathology reports, CT scans, genetic tests. Oncofiles structures and connects them. Oncoteam makes them useful \u2014 it\u2019s the intelligence layer that turns raw medical data into understanding, questions, and action.",
     "manifesto.text": "This is not a replacement for your oncologist. It\u2019s a tool that helps you \u2014 the patient, the spouse, the son, the daughter \u2014 keep up with a situation that moves faster than any one person can track. Not because you don\u2019t trust your doctor, but because even the best doctor has hundreds of patients and fifteen minutes per visit.",
@@ -75,7 +75,7 @@ const translations = {
     "gs.free.docs": "medical documents",
     "gs.free.queries": "AI queries / month",
     "gs.free.agents": "autonomous agent runs / month",
-    "gs.free.note": "Enough for 6+ months of active treatment. No credit card required. Premium tiers coming based on demand.",
+    "gs.free.note": "These limits are yours and we won\u2019t reduce them. We don\u2019t have a commercial model yet \u2014 our priority is the patient and getting the product right, not monetization. If that ever changes, you\u2019ll be the first to know.",
     "tech.title": "Integrates With",
     "ecosystem.title": "Two Products, One Mission",
     "ecosystem.subtitle": "Your medical data, organized and understood.",
@@ -85,7 +85,7 @@ const translations = {
     "ecosystem.team.text": "Turns organized data into understanding. Lab trends, trial matching, appointment prep, family updates \u2014 powered by AI, controlled by you.",
     "contact.title": "Get in Touch",
     "contact.bug": "Report a Bug",
-    "contact.role": " \u2014 Engineering Manager & Founder",
+    "contact.role": " \u2014 Entrepreneur & Founder",
     "contact.subtitle": "Oncoteam was built for a real patient by a family member who needed it. If you\u2019re in a similar situation and want to learn more, reach out \u2014 we\u2019ve been there.",
     "privacy.title": "Your Data, Your Control",
     "privacy.gdpr.title": "GDPR Compliant",
@@ -97,7 +97,33 @@ const translations = {
     "privacy.audit.title": "Full Transparency",
     "privacy.audit.text": "Every data access and AI decision is logged. You can see exactly what Oncoteam read, analyzed, and recommended \u2014 and why.",
     "footer.rights": "Built by a patient advocate, for patient advocates.",
-    "footer.disclaimer": "Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions."
+    "footer.disclaimer": "Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.",
+    "demo.mock.alert": "ANC = 1,150 (threshold: 1,500) \u2014 hold chemo",
+    "demo.mock.status": "TREATMENT STATUS",
+    "demo.mock.cycle": "Cycle 3 \u00b7 Stage IV mCRC",
+    "demo.mock.labs": "RECENT LABS",
+    "demo.mock.briefing": "Latest AI Briefing: EU Clinical Trial Monitor \u2014 3 new trials matched...",
+    "demo.mock.markers": "TUMOR MARKERS \u2014 3 CYCLES",
+    "demo.mock.prec1": "Pre-C1 (Feb)",
+    "demo.mock.prec2": "Pre-C2 (Feb)",
+    "demo.mock.prec3": "Pre-C3 (Mar)",
+    "demo.mock.labinsight": "Excellent treatment response \u2014 CEA declined 62% over 3 cycles",
+    "demo.mock.funnel": "CLINICAL TRIAL FUNNEL \u2014 AI-CLASSIFIED",
+    "demo.mock.excluded": "Excluded <span>20</span>",
+    "demo.mock.later": "Later Line <span>2</span>",
+    "demo.mock.watching": "Watching <span>14</span>",
+    "demo.mock.bev": "Bevacizumab risk (VTE)",
+    "demo.mock.checkpoint": "Checkpoint mono (MSS)",
+    "demo.mock.registries": "3L+ registries",
+    "demo.mock.pankras": "pan-KRAS trials",
+    "demo.mock.ici": "ICI combinations",
+    "demo.mock.funnelinsight": "36 trials classified by AI in 15 seconds \u2014 $0.025 total",
+    "demo.mock.checklist": "PRE-CYCLE 3 CHECKLIST \u2014 mFOLFOX6",
+    "demo.mock.anc": "ANC \u2265 1,500/\u00b5L \u2014 <strong>1,150 (HOLD)</strong>",
+    "demo.mock.plt": "PLT \u2265 75,000/\u00b5L \u2014 269,000",
+    "demo.mock.creat": "Creatinine \u2264 1.5x ULN \u2014 0.42",
+    "demo.mock.bili": "Bilirubin \u2264 1.5x ULN \u2014 normal",
+    "demo.mock.protocolinsight": "Pre-cycle safety check: 1 flag requires physician review before C3"
   },
   sk: {
     "nav.dashboard": "Dashboard",
@@ -114,7 +140,7 @@ const translations = {
     "demo.tab.funnel": "Lievik \u0161t\u00fadi\u00ed",
     "demo.tab.protocol": "Protokol",
     "story.title": "Vzniklo zo \u017eivota",
-    "story.p1": "Ke\u010f Erike diagnostikovali metastatick\u00fd kolorekt\u00e1lny karcin\u00f3m, jej man\u017eel Peter \u2014 softv\u00e9rov\u00fd in\u017einier, nie lek\u00e1r \u2014 sa ocitol zahraben\u00fd v laborat\u00f3rnych v\u00fdsledkoch, genetick\u00fdch spr\u00e1vach a lie\u010debn\u00fdch protokoloch, ktor\u00fdm nerozumel. Ka\u017ed\u00e1 n\u00e1v\u0161teva onkol\u00f3ga bola pr\u00edli\u0161 kr\u00e1tka. Ka\u017ed\u00e9 nov\u00e9 vy\u0161etrenie prinieslo ot\u00e1zky, ktor\u00e9 nevedel polo\u017ei\u0165.",
+    "story.p1": "Ke\u010f Erike diagnostikovali metastatick\u00fd kolorekt\u00e1lny karcin\u00f3m, jej man\u017eel Peter \u2014 podnikate\u013e a technologick\u00fd nad\u0161enec, nie lek\u00e1r \u2014 sa ocitol zahraben\u00fd v laborat\u00f3rnych v\u00fdsledkoch, genetick\u00fdch spr\u00e1vach a lie\u010debn\u00fdch protokoloch, ktor\u00fdm nerozumel. Ka\u017ed\u00e1 n\u00e1v\u0161teva onkol\u00f3ga bola pr\u00edli\u0161 kr\u00e1tka. Ka\u017ed\u00e9 nov\u00e9 vy\u0161etrenie prinieslo ot\u00e1zky, ktor\u00e9 nevedel polo\u017ei\u0165.",
     "story.p2": "A tak postavil Oncoteam. Nie ako n\u00e1hradu onkol\u00f3ga, ale ako n\u00e1stroj, ktor\u00fd mu pom\u00e1ha dr\u017ea\u0165 krok \u2014 rozumie\u0165 \u010d\u00edslam, pripravi\u0165 spr\u00e1vne ot\u00e1zky, sledova\u0165 \u010do sa men\u00ed a vyh\u013ead\u00e1va\u0165 klinick\u00e9 \u0161t\u00fadie, ktor\u00e9 \u017eiaden lek\u00e1r nem\u00e1 \u010das systematicky monitorova\u0165 naprieč Eur\u00f3pou a USA.",
     "story.p3": "Spolu s Oncoteamom postavil Oncofiles \u2014 d\u00e1tov\u00fa vrstvu, ktor\u00e1 organizuje v\u0161etky medic\u00ednske dokumenty z Google Drive: laborat\u00f3rne v\u00fdsledky, patologick\u00e9 spr\u00e1vy, CT vy\u0161etrenia, genetick\u00e9 testy. Oncofiles ich \u0161trukt\u00faruje a prep\u00e1ja. Oncoteam z nich rob\u00ed u\u017eito\u010dn\u00e9 inform\u00e1cie \u2014 je to inteligentn\u00e1 vrstva, ktor\u00e1 premie\u0148a surov\u00e9 medic\u00ednske d\u00e1ta na porozumenie, ot\u00e1zky a akciu.",
     "manifesto.text": "Toto nie je n\u00e1hrada onkol\u00f3ga. Je to n\u00e1stroj, ktor\u00fd pom\u00e1ha v\u00e1m \u2014 pacientovi, partnerovi, synovi, dc\u00e9re \u2014 dr\u017ea\u0165 krok so situ\u00e1ciou, ktor\u00e1 sa vyv\u00edja r\u00fdchlej\u0161ie, ne\u017e dok\u00e1\u017ee sledova\u0165 jeden \u010dlovek. Nie preto, \u017ee by ste lek\u00e1rovi ned\u00f4verovali, ale preto, \u017ee aj ten najlep\u0161\u00ed lek\u00e1r m\u00e1 stovky pacientov a p\u00e4tn\u00e1s\u0165 min\u00fat na jednu n\u00e1v\u0161tevu.",
@@ -135,7 +161,7 @@ const translations = {
     "features.title": "\u010co z\u00edskate",
     "features.subtitle": "V\u0161etko, \u010do patient advocate potrebuje, vysvetlen\u00e9 v jazyku, ktor\u00fd si vyberiete.",
     "features.labs.title": "Porozumejte v\u00fdsledkom",
-    "features.labs.text": "Vidzte, \u010do ka\u017ed\u00e9 \u010d\u00edslo znamen\u00e1, \u010di sa zlep\u0161uje alebo zhor\u0161uje a ako sa porovn\u00e1va s predch\u00e1dzaj\u00facimi cyklami. Z\u00e1palov\u00e9 indexy, bezpe\u010dnostn\u00e9 prahy a grafy trendov \u2014 v zrozumite\u013enom jazyku alebo odbornej terminol\u00f3gii, na jedno kliknutie.",
+    "features.labs.text": "Pozrite sa, \u010do ka\u017ed\u00e9 \u010d\u00edslo znamen\u00e1, \u010di sa zlep\u0161uje alebo zhor\u0161uje a ako sa porovn\u00e1va s predch\u00e1dzaj\u00facimi cyklami. Z\u00e1palov\u00e9 indexy, bezpe\u010dnostn\u00e9 prahy a grafy trendov \u2014 v zrozumite\u013enom jazyku alebo odbornej terminol\u00f3gii, na jedno kliknutie.",
     "features.questions.title": "Kla\u010fte spr\u00e1vne ot\u00e1zky",
     "features.questions.text": "Pred ka\u017edou n\u00e1v\u0161tevou onkol\u00f3ga dostanete personalizovan\u00fd zoznam ot\u00e1zok na z\u00e1klade aktu\u00e1lnych v\u00fdsledkov, f\u00e1zy lie\u010dby a zmien od poslednej n\u00e1v\u0161tevy. Pr\u00ed\u010fte pripraven\u00ed, nie zmäten\u00ed.",
     "features.trials.title": "N\u00e1jdite \u0161t\u00fadie, pre ktor\u00e9 sp\u013a\u0148ate krit\u00e9ri\u00e1",
@@ -146,8 +172,8 @@ const translations = {
     "features.mobile.text": "Chatujte cez WhatsApp kedyko\u013evek \u2014 sp\u00fdtajte sa na v\u00fdsledok, skontrolujte termin \u010fal\u0161ieho cyklu alebo si nechajte urobi\u0165 r\u00fdchle zhrnutie. Otvorte dashboard pre trendy, \u010dasov\u00e9 osi a podrobnosti. Je to po ruke, ke\u010f to potrebujete.",
     "features.language.title": "Odborn\u00fd \u2194 Zrozumite\u013en\u00fd jazyk",
     "features.language.text": "Ka\u017ed\u00fd medic\u00ednsky pojem, skratka a laborat\u00f3rna hodnota vysvetlen\u00e1 slovami, ktor\u00fdm rozumiete. Prep\u00ednajte medzi zrozumite\u013en\u00fdm a klinick\u00fdm jazykom jedn\u00fdm klikom. U\u010dte sa vlastn\u00fdm tempom \u2014 alebo jednoducho dostanete odpove\u010f.",
-    "features.trends.title": "Vidzte, ako lie\u010dba funguje",
-    "features.trends.text": "Vizu\u00e1lne trendy n\u00e1dorov\u00fdch markerov, krvn\u00e9ho obrazu a z\u00e1palov\u00fdch indexov naprieč cyklami. Vidzte trajekt\u00f3riu \u2014 funguje lie\u010dba? Id\u00fa \u010d\u00edsla spr\u00e1vnym smerom? \u017diadne h\u00e1danie.",
+    "features.trends.title": "Sledujte, ako lie\u010dba funguje",
+    "features.trends.text": "Vizu\u00e1lne trendy n\u00e1dorov\u00fdch markerov, krvn\u00e9ho obrazu a z\u00e1palov\u00fdch indexov naprieč cyklami. Sledujte trajekt\u00f3riu \u2014 funguje lie\u010dba? Id\u00fa \u010d\u00edsla spr\u00e1vnym smerom? \u017diadne h\u00e1danie.",
     "features.family.title": "Informujte svoju rodinu",
     "features.family.text": "Vytvorte jasn\u00e9, \u013eudsk\u00e9 s\u00fahrny lie\u010dby pre \u010dlenov rodiny, ktor\u00ed chc\u00fa pom\u00f4c\u0165, ale nevedia ako sa sp\u00fdta\u0165. Zdie\u013eajte cez WhatsApp alebo tla\u010d \u2014 na pochopenie netreba medic\u00ednsky titul.",
     "gs.title": "Za\u010dnite v 5 krokoch",
@@ -175,7 +201,7 @@ const translations = {
     "gs.free.docs": "medic\u00ednskych dokumentov",
     "gs.free.queries": "AI dotazov / mesiac",
     "gs.free.agents": "auton\u00f3mnych agentov / mesiac",
-    "gs.free.note": "Dosta\u010duj\u00face na 6+ mesiacov akt\u00edvnej lie\u010dby. Bez kreditnej karty. Pr\u00e9miov\u00e9 pl\u00e1ny pod\u013ea dopytu.",
+    "gs.free.note": "Tieto limity s\u00fa va\u0161e a nebudeme v\u00e1m ich zni\u017eova\u0165. Komer\u010dn\u00fd model zatia\u013e nem\u00e1me \u2014 prioritou je pacient a vyladenie produktu, nie monetiz\u00e1cia. Ke\u010f sa to zmen\u00ed, dozviete sa to ako prv\u00ed.",
     "tech.title": "Integruje sa s",
     "ecosystem.title": "Dva produkty, jedna misia",
     "ecosystem.subtitle": "Va\u0161e medic\u00ednske d\u00e1ta, organizovan\u00e9 a pochopen\u00e9.",
@@ -185,7 +211,7 @@ const translations = {
     "ecosystem.team.text": "Premie\u0148a organizovan\u00e9 d\u00e1ta na porozumenie. Trendy labov, matching \u0161t\u00fadi\u00ed, pr\u00edprava na n\u00e1v\u0161tevu, spr\u00e1vy pre rodinu \u2014 poháňané AI, pod va\u0161ou kontrolou.",
     "contact.title": "Kontakt",
     "contact.bug": "Nahl\u00e1si\u0165 chybu",
-    "contact.role": " \u2014 Engineering Manager & Zakladate\u013e",
+    "contact.role": " \u2014 Podnikate\u013e & Zakladate\u013e",
     "contact.subtitle": "Oncoteam vznikol pre re\u00e1lneho pacienta. Postavil ho rodinn\u00fd pr\u00edslu\u0161n\u00edk, ktor\u00fd to potreboval. Ak ste v podobnej situ\u00e1cii a chcete sa dozvedie\u0165 viac, ozvite sa \u2014 boli sme tam tie\u017e.",
     "privacy.title": "Va\u0161e d\u00e1ta, va\u0161a kontrola",
     "privacy.gdpr.title": "S\u00falad s GDPR",
@@ -195,9 +221,35 @@ const translations = {
     "privacy.access.title": "Viacvrstvov\u00e9 zabezpe\u010denie",
     "privacy.access.text": "Google OAuth, API autentifik\u00e1cia a \u0161ifrovan\u00e9 pripojenia. \u017diadny neopr\u00e1vnen\u00fd pr\u00edstup k \u00fadajom pacienta \u2014 nikdy.",
     "privacy.audit.title": "\u00dapln\u00e1 transparentnos\u0165",
-    "privacy.audit.text": "Ka\u017ed\u00fd pr\u00edstup k d\u00e1tam a rozhodnutie AI je zaznamenan\u00e9. Vidzte presne, \u010do Oncoteam pre\u010d\u00edtal, analyzoval a odporu\u010dil \u2014 a pre\u010do.",
+    "privacy.audit.text": "Ka\u017ed\u00fd pr\u00edstup k d\u00e1tam a rozhodnutie AI je zaznamenan\u00e9. Pozrite sa presne, \u010do Oncoteam pre\u010d\u00edtal, analyzoval a odporu\u010dil \u2014 a pre\u010do.",
     "footer.rights": "Vytvoren\u00e9 patient advocatom, pre patient advocatov.",
-    "footer.disclaimer": "Oncoteam je AI n\u00e1stroj na podporu rozhodovania. Nenahradzuje odborn\u00fa lek\u00e1rsku radu. V\u017edy sa pora\u010fte so svoj\u00edm onkol\u00f3gom o lie\u010debn\u00fdch rozhodnutiach."
+    "footer.disclaimer": "Oncoteam je AI n\u00e1stroj na podporu rozhodovania. Nenahradzuje odborn\u00fa lek\u00e1rsku radu. V\u017edy sa pora\u010fte so svoj\u00edm onkol\u00f3gom o lie\u010debn\u00fdch rozhodnutiach.",
+    "demo.mock.alert": "ANC = 1 150 (prah: 1 500) \u2014 pozastavte chemoterapiu",
+    "demo.mock.status": "STAV LIE\u010cBY",
+    "demo.mock.cycle": "Cyklus 3 \u00b7 \u0160t\u00e1dium IV mCRC",
+    "demo.mock.labs": "POSLEDN\u00c9 V\u00ddSLEDKY",
+    "demo.mock.briefing": "Posledn\u00fd AI briefing: EU monitor klinick\u00fdch \u0161t\u00fadi\u00ed \u2014 3 nov\u00e9 zhody...",
+    "demo.mock.markers": "N\u00c1DOROV\u00c9 MARKERY \u2014 3 CYKLY",
+    "demo.mock.prec1": "Pred C1 (feb)",
+    "demo.mock.prec2": "Pred C2 (feb)",
+    "demo.mock.prec3": "Pred C3 (mar)",
+    "demo.mock.labinsight": "V\u00fdborn\u00e1 odpove\u010f na lie\u010dbu \u2014 CEA klesol o 62 % za 3 cykly",
+    "demo.mock.funnel": "LIEVIK KLINICK\u00ddCH \u0160T\u00daDI\u00cd \u2014 AI KLASIFIK\u00c1CIA",
+    "demo.mock.excluded": "Vyl\u00fa\u010den\u00e9 <span>20</span>",
+    "demo.mock.later": "Neskor\u0161ia l\u00ednia <span>2</span>",
+    "demo.mock.watching": "Sledovan\u00e9 <span>14</span>",
+    "demo.mock.bev": "Bevacizumab riziko (VTE)",
+    "demo.mock.checkpoint": "Checkpoint mono (MSS)",
+    "demo.mock.registries": "3L+ registre",
+    "demo.mock.pankras": "pan-KRAS \u0161t\u00fadie",
+    "demo.mock.ici": "ICI kombin\u00e1cie",
+    "demo.mock.funnelinsight": "36 \u0161t\u00fadi\u00ed klasifikovan\u00fdch AI za 15 sek\u00fand \u2014 $0,025 celkom",
+    "demo.mock.checklist": "KONTROLN\u00dd ZOZNAM PRED CYKLOM 3 \u2014 mFOLFOX6",
+    "demo.mock.anc": "ANC \u2265 1 500/\u00b5L \u2014 <strong>1 150 (POZASTAVENIE)</strong>",
+    "demo.mock.plt": "PLT \u2265 75 000/\u00b5L \u2014 269 000",
+    "demo.mock.creat": "Kreatinin \u2264 1,5x ULN \u2014 0,42",
+    "demo.mock.bili": "Bilirub\u00edn \u2264 1,5x ULN \u2014 norm\u00e1l",
+    "demo.mock.protocolinsight": "Predcyklov\u00e1 kontrola: 1 pr\u00edznak vy\u017eaduje pos\u00fadenie lek\u00e1rom pred C3"
   }
 };
 
@@ -207,6 +259,14 @@ function setLanguage(lang) {
     const key = el.getAttribute("data-i18n");
     if (translations[lang] && translations[lang][key]) {
       el.textContent = translations[lang][key];
+    }
+  });
+  // Static HTML translations for demo mockups (contains entities like &ge; and tags like <strong>).
+  // Safe: all values are hardcoded in the translations object above, no user input.
+  document.querySelectorAll("[data-i18n-html]").forEach(el => {
+    const key = el.getAttribute("data-i18n-html");
+    if (translations[lang] && translations[lang][key]) {
+      el.innerHTML = translations[lang][key];
     }
   });
   document.querySelectorAll(".lang-btn").forEach(btn => {

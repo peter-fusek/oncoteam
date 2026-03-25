@@ -75,7 +75,7 @@
   <!-- Navigation -->
   <nav class="top-nav">
     <div class="container nav-container">
-      <div class="logo">oncoteam</div>
+      <a href="/" class="logo">oncoteam</a>
       <div class="nav-right">
         <a href="https://dashboard.oncoteam.cloud" class="btn btn-secondary btn-sm" data-i18n="nav.dashboard">Dashboard</a>
         <a href="https://github.com/peter-fusek/oncoteam" class="btn btn-sm btn-ghost">GitHub</a>
@@ -128,15 +128,15 @@
         <div class="browser-content">
           <div class="demo-panel active" data-demo="dashboard">
             <div class="demo-mockup demo-mockup-home">
-              <div class="mock-alert">ANC = 1,150 (threshold: 1,500) — hold chemo</div>
+              <div class="mock-alert" data-i18n-html="demo.mock.alert">ANC = 1,150 (threshold: 1,500) &mdash; hold chemo</div>
               <div class="mock-grid">
                 <div class="mock-card">
-                  <div class="mock-label">TREATMENT STATUS</div>
+                  <div class="mock-label" data-i18n="demo.mock.status">TREATMENT STATUS</div>
                   <div class="mock-big">mFOLFOX6 90%</div>
-                  <div class="mock-sub">Cycle 3 &middot; Stage IV mCRC</div>
+                  <div class="mock-sub" data-i18n-html="demo.mock.cycle">Cycle 3 &middot; Stage IV mCRC</div>
                 </div>
                 <div class="mock-card">
-                  <div class="mock-label">RECENT LABS</div>
+                  <div class="mock-label" data-i18n="demo.mock.labs">RECENT LABS</div>
                   <div class="mock-labs">
                     <span class="mock-lab mock-lab-red">ANC 1.1k &darr;</span>
                     <span class="mock-lab">PLT 269k &darr;</span>
@@ -148,55 +148,55 @@
                   </div>
                 </div>
               </div>
-              <div class="mock-briefing">Latest AI Briefing: EU Clinical Trial Monitor — 3 new trials matched...</div>
+              <div class="mock-briefing" data-i18n="demo.mock.briefing">Latest AI Briefing: EU Clinical Trial Monitor &mdash; 3 new trials matched...</div>
             </div>
           </div>
           <div class="demo-panel" data-demo="labs">
             <div class="demo-mockup demo-mockup-labs">
-              <div class="mock-label">TUMOR MARKERS — 3 CYCLES</div>
+              <div class="mock-label" data-i18n="demo.mock.markers">TUMOR MARKERS &mdash; 3 CYCLES</div>
               <div class="mock-chart">
                 <div class="mock-chart-bar" style="height:90%"><span>CEA 1,912</span></div>
                 <div class="mock-chart-bar" style="height:72%"><span>1,560</span></div>
                 <div class="mock-chart-bar mock-chart-good" style="height:38%"><span>733 (-62%)</span></div>
               </div>
               <div class="mock-chart-labels">
-                <span>Pre-C1 (Feb)</span><span>Pre-C2 (Feb)</span><span>Pre-C3 (Mar)</span>
+                <span data-i18n="demo.mock.prec1">Pre-C1 (Feb)</span><span data-i18n="demo.mock.prec2">Pre-C2 (Feb)</span><span data-i18n="demo.mock.prec3">Pre-C3 (Mar)</span>
               </div>
-              <div class="mock-insight">Excellent treatment response — CEA declined 62% over 3 cycles</div>
+              <div class="mock-insight" data-i18n="demo.mock.labinsight">Excellent treatment response &mdash; CEA declined 62% over 3 cycles</div>
             </div>
           </div>
           <div class="demo-panel" data-demo="funnel">
             <div class="demo-mockup demo-mockup-funnel">
-              <div class="mock-label">CLINICAL TRIAL FUNNEL — AI-CLASSIFIED</div>
+              <div class="mock-label" data-i18n="demo.mock.funnel">CLINICAL TRIAL FUNNEL &mdash; AI-CLASSIFIED</div>
               <div class="mock-funnel">
                 <div class="mock-funnel-col mock-col-red">
-                  <div class="mock-funnel-header">Excluded <span>20</span></div>
-                  <div class="mock-funnel-item">Bevacizumab risk (VTE)</div>
-                  <div class="mock-funnel-item">Checkpoint mono (MSS)</div>
+                  <div class="mock-funnel-header" data-i18n-html="demo.mock.excluded">Excluded <span>20</span></div>
+                  <div class="mock-funnel-item" data-i18n="demo.mock.bev">Bevacizumab risk (VTE)</div>
+                  <div class="mock-funnel-item" data-i18n="demo.mock.checkpoint">Checkpoint mono (MSS)</div>
                 </div>
                 <div class="mock-funnel-col mock-col-gray">
-                  <div class="mock-funnel-header">Later Line <span>2</span></div>
-                  <div class="mock-funnel-item">3L+ registries</div>
+                  <div class="mock-funnel-header" data-i18n-html="demo.mock.later">Later Line <span>2</span></div>
+                  <div class="mock-funnel-item" data-i18n="demo.mock.registries">3L+ registries</div>
                 </div>
                 <div class="mock-funnel-col mock-col-blue">
-                  <div class="mock-funnel-header">Watching <span>14</span></div>
-                  <div class="mock-funnel-item">pan-KRAS trials</div>
-                  <div class="mock-funnel-item">ICI combinations</div>
+                  <div class="mock-funnel-header" data-i18n-html="demo.mock.watching">Watching <span>14</span></div>
+                  <div class="mock-funnel-item" data-i18n="demo.mock.pankras">pan-KRAS trials</div>
+                  <div class="mock-funnel-item" data-i18n="demo.mock.ici">ICI combinations</div>
                 </div>
               </div>
-              <div class="mock-insight">36 trials classified by AI in 15 seconds — $0.025 total</div>
+              <div class="mock-insight" data-i18n="demo.mock.funnelinsight">36 trials classified by AI in 15 seconds &mdash; $0.025 total</div>
             </div>
           </div>
           <div class="demo-panel" data-demo="protocol">
             <div class="demo-mockup demo-mockup-protocol">
-              <div class="mock-label">PRE-CYCLE 3 CHECKLIST — mFOLFOX6</div>
+              <div class="mock-label" data-i18n="demo.mock.checklist">PRE-CYCLE 3 CHECKLIST &mdash; mFOLFOX6</div>
               <div class="mock-checklist">
-                <div class="mock-check mock-check-warn">ANC &ge; 1,500/&mu;L — <strong>1,150 (HOLD)</strong></div>
-                <div class="mock-check mock-check-ok">PLT &ge; 75,000/&mu;L — 269,000</div>
-                <div class="mock-check mock-check-ok">Creatinine &le; 1.5x ULN — 0.42</div>
-                <div class="mock-check mock-check-ok">Bilirubin &le; 1.5x ULN — normal</div>
+                <div class="mock-check mock-check-warn" data-i18n-html="demo.mock.anc">ANC &ge; 1,500/&mu;L &mdash; <strong>1,150 (HOLD)</strong></div>
+                <div class="mock-check mock-check-ok" data-i18n-html="demo.mock.plt">PLT &ge; 75,000/&mu;L &mdash; 269,000</div>
+                <div class="mock-check mock-check-ok" data-i18n-html="demo.mock.creat">Creatinine &le; 1.5x ULN &mdash; 0.42</div>
+                <div class="mock-check mock-check-ok" data-i18n-html="demo.mock.bili">Bilirubin &le; 1.5x ULN &mdash; normal</div>
               </div>
-              <div class="mock-insight">Pre-cycle safety check: 1 flag requires physician review before C3</div>
+              <div class="mock-insight" data-i18n="demo.mock.protocolinsight">Pre-cycle safety check: 1 flag requires physician review before C3</div>
             </div>
           </div>
         </div>
@@ -409,9 +409,9 @@
           <strong data-i18n="gs.whatsapp.label">Fastest way to start:</strong>
           <span data-i18n="gs.whatsapp.text"> Message us on WhatsApp and we'll walk you through setup.</span>
         </div>
-        <a href="https://wa.me/14155238886" class="btn btn-primary gs-whatsapp-btn" target="_blank" rel="noopener">
+        <a href="https://wa.me/421903124356" class="btn btn-primary gs-whatsapp-btn" target="_blank" rel="noopener">
           <span data-i18n="gs.whatsapp.btn">WhatsApp</span>
-          <span class="gs-whatsapp-number">+1 (415) 523-8886</span>
+          <span class="gs-whatsapp-number">+421 903 124 356</span>
         </a>
       </div>
 
@@ -526,7 +526,7 @@
           <span class="contact-icon">&#9679;</span>
           <span data-i18n="contact.bug">Report a Bug</span>
         </a>
-        <a href="https://github.com/peter-fusek" class="contact-link">
+        <a href="https://github.com/peter-fusek/oncoteam" class="contact-link">
           <span class="contact-icon">&#9679;</span>
           GitHub
         </a>

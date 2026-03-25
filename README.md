@@ -58,7 +58,7 @@ None of this is anyone's fault. It's just the reality of modern oncology:
 4. **Connect AI connectors** — add Oncoteam + Oncofiles in [Claude.ai Settings > Connectors](https://claude.ai/settings/connectors)
 5. **Start using** — open the dashboard or message on WhatsApp
 
-> **Free during active treatment**: 200 medical documents, 500 AI queries/month, 100 autonomous agent runs/month. No credit card required.
+> **Free. Period.** 200 medical documents, 500 AI queries/month, 100 autonomous agent runs/month. No credit card required. These limits are yours and we won't reduce them.
 
 ## Architecture
 
@@ -143,7 +143,7 @@ cd dashboard && pnpm dev
 
 ## The Story
 
-Oncoteam was built by **Peter Fusek** — a software engineer, not a doctor — when his wife Erika was diagnosed with metastatic colorectal cancer. Buried in lab results, genetic reports, and treatment protocols he didn't understand, he built what he needed: a tool to keep up with a situation that moves faster than any one person can track.
+Oncoteam was built by **Peter Fusek** — an entrepreneur and technology enthusiast, not a doctor — when his wife Erika was diagnosed with metastatic colorectal cancer. Buried in lab results, genetic reports, and treatment protocols he didn't understand, he built what he needed: a tool to keep up with a situation that moves faster than any one person can track.
 
 Not as a replacement for their oncologist, but as a tool to help him understand the numbers, prepare the right questions, track what's changing, and search for clinical trials that no single doctor has time to systematically monitor.
 
@@ -154,7 +154,7 @@ Not as a replacement for their oncologist, but as a tool to help him understand 
 - **Website**: [oncoteam.cloud](https://oncoteam.cloud)
 - **Dashboard**: [dashboard.oncoteam.cloud](https://dashboard.oncoteam.cloud)
 - **Oncofiles**: [github.com/peter-fusek/oncofiles](https://github.com/peter-fusek/oncofiles)
-- **Author**: [Peter Fusek](https://www.linkedin.com/in/peterfusek/) — Engineering Manager & Founder
+- **Author**: [Peter Fusek](https://www.linkedin.com/in/peterfusek/) — Entrepreneur & Founder
 - **Company**: [Instarea](https://www.instarea.com)
 
 ---

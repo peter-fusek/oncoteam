@@ -4,7 +4,7 @@
 
 ## The Story
 
-Oncoteam was built by Peter Fusek — a software engineer, not a doctor — when his wife Erika was diagnosed with metastatic colorectal cancer. Buried in lab results, genetic reports, and treatment protocols he didn't understand, he built what he needed: a tool to keep up with a situation that moves faster than any one person can track.
+Oncoteam was built by Peter Fusek — an entrepreneur and technology enthusiast, not a doctor — when his wife Erika was diagnosed with metastatic colorectal cancer. Buried in lab results, genetic reports, and treatment protocols he didn't understand, he built what he needed: a tool to keep up with a situation that moves faster than any one person can track.
 
 Alongside Oncoteam (the intelligence layer), he built [Oncofiles](https://github.com/peter-fusek/oncofiles) — the data layer that organizes all medical documents from Google Drive. Oncofiles structures and connects them. Oncoteam turns them into understanding, questions, and action.
 
