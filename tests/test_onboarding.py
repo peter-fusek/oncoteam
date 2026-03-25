@@ -180,6 +180,7 @@ async def test_onboarding_status_invalid_json():
 def _clear_approved_phones():
     """Clear approved phones set between tests."""
     import oncoteam.dashboard_api as _mod
+
     _approved_phones.clear()
     _mod._approved_phones_loaded = False
     yield

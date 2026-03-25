@@ -1069,6 +1069,7 @@ def main() -> None:
             start_scheduler()
             # Load persisted approved phones from oncofiles (non-critical)
             import contextlib
+
             with contextlib.suppress(Exception):
                 await load_approved_phones()
             await mcp.run_async(
