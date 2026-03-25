@@ -35,11 +35,12 @@ An [Instarea](https://www.instarea.com) project.
 
 ## Stats
 
-- 24 MCP tools
-- 21 dashboard API routes
-- 18 autonomous agents
-- 620 passing tests
-- ~10,700 lines of Python
+- 18 AI agents working autonomously per patient
+- 50+ tasks per patient per week (briefings, trial searches, lab checks, alerts)
+- 500+ clinical trials monitored across US and EU registries
+- 6 specialist roles (lab analyst, trial researcher, protocol checker, briefing writer, family communicator, appointment prep)
+- 24 MCP tools, 21 dashboard API routes
+- 620 passing tests, ~10,700 lines of Python
 - Multi-patient support with per-patient scheduling and OAuth
 
 ## Architecture
