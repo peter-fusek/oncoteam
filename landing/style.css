@@ -69,7 +69,9 @@ body {
   font-size: 1.3rem;
   color: var(--primary);
   letter-spacing: -0.03em;
+  text-decoration: none;
 }
+.logo:hover { opacity: 0.8; }
 
 .nav-right {
   display: flex;
