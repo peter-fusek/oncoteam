@@ -18,7 +18,7 @@ export function useOncoteamApi() {
 
     return useFetch<T>(url, {
       query,
-      timeout: 12000,
+      timeout: 28000, // Must exceed server proxy timeout (25s) to avoid premature client abort
       ...opts,
     })
   }
