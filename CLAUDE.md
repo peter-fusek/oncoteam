@@ -91,6 +91,20 @@ uv run oncoteam-mcp    # stdio mode
 - `api_labs` POST path clears `_labs_cache` on new data.
 - Dashboard `index.vue` must capture `status` and `error` from `fetchApi` — the v-if chain needs `labsStatus`/`labsError` to show "Data unavailable" instead of going blank.
 - `dashboard/railway.toml` configures health check at `/api/health` (no-auth, no oncofiles dependency).
+- Dashboard composables MUST use `useState()` (not module-level `ref()`) for SSR-safe state. Module-level refs cause hydration mismatches and blank pages on refresh. Fixed in: `useTestDataToggle`, `useDrilldown`, `useActivePatient`.
+- `dashboard/app/error.vue` catches runtime errors visibly (instead of blank white page). Uses `clearError({ redirect: '/' })`.
+- `/demo` route bypasses auth (excluded in `auth.global.ts`), uses `layout: false`, static mock data only.
+- `api_labs` strips non-numeric values from `entry["values"]` before sending to frontend — prevents raw JSON objects in table cells.
+- `api_detail` has circuit breaker check at the top + 8s timeouts on research/fallback fetches — prevents proxy timeout 503s.
+- `_classify_session_type()` uses tag-based classification (`sys:` → technical, `clin:` → clinical) with title 2x weight and 500-char body scan.
+- `_translate_for_family()` merges lab values from up to 5 entries (limit=5) to include tumor markers + hematology in one report.
+- `patient_context.get_genetic_profile()` uses `asyncio.Semaphore(3)` + two-pass optimization (summaries first, full docs only if markers missing, cap 10 docs). Without this, 100+ concurrent `view_document` calls overwhelm oncofiles queue.
+- `pubmed_client._request_with_retry()` handles 429 responses with `Retry-After` header (up to 2 retries, max 10s wait).
+- Research funnel `_FUNNEL_SYSTEM_PROMPT` includes surgical history + explicit later-line classification rules. Without these, Haiku defaults to "Watching" for 2L/3L trials.
+- `eligibility.py` has programmatic later-line regex (`second-line|refractory|post-progression|salvage`) — runs before AI funnel assessment.
+- `useFunnelStage.ts` stores movement audit log in localStorage (`funnel-log::` prefix), keeps 500 entries. `setStage()` auto-logs movements.
+- `/health` endpoint includes `autonomous_enabled` + `scheduler` status (running, job count, job IDs) for remote diagnostics.
+- `scheduler.get_scheduler_status()` exposes APScheduler state. `AUTONOMOUS_ENABLED` must be `true`/`1`/`yes` in Railway env.
 
 ## Key commands
 
