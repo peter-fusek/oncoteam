@@ -21,7 +21,6 @@ from .clinical_protocol import (
 from .config import ANTHROPIC_API_KEY, AUTONOMOUS_COST_LIMIT, AUTONOMOUS_MODEL
 from .eligibility import check_eligibility
 from .patient_context import (
-    PATIENT,
     RESEARCH_TERMS,
     build_biomarker_rules,
     build_patient_profile_text,
@@ -41,7 +40,8 @@ _DEFAULT_COST = (3.0 / 1_000_000, 15.0 / 1_000_000)  # fallback
 
 # Daily cost accumulator (reset by scheduler at midnight).
 # Thread-safe: _track_cost is sync, runs atomically in asyncio's single-threaded loop.
-_daily_cost: float = 0.0
+# Per-patient keyed dict; "global" key tracks total across all patients.
+_daily_cost: dict[str, float] = {}
 _daily_cost_reset_date: str = ""
 
 
@@ -343,7 +343,7 @@ TOOLS = [
 ]
 
 
-async def execute_tool(name: str, inputs: dict) -> str:
+async def execute_tool(name: str, inputs: dict, *, patient_id: str = "erika") -> str:
     """Dispatch tool call to the appropriate async handler."""
     try:
         if name == "search_pubmed":
@@ -372,7 +372,7 @@ async def execute_tool(name: str, inputs: dict) -> str:
             trial = await clinicaltrials_client.fetch_trial(inputs["nct_id"])
             if trial is None:
                 return json.dumps({"error": f"Trial {inputs['nct_id']} not found"})
-            result = check_eligibility(trial, PATIENT)
+            result = check_eligibility(trial, get_patient(patient_id))
             return json.dumps(result.model_dump())
 
         if name == "search_documents":
@@ -433,23 +433,32 @@ async def execute_tool(name: str, inputs: dict) -> str:
         return json.dumps({"error": str(e)})
 
 
-def _track_cost(input_tokens: int, output_tokens: int, model: str = "") -> float:
+def _track_cost(
+    input_tokens: int, output_tokens: int, model: str = "", patient_id: str = "erika"
+) -> float:
     """Track cost and return the cost for this call."""
     global _daily_cost, _daily_cost_reset_date
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     if _daily_cost_reset_date != today:
-        _daily_cost = 0.0
+        _daily_cost = {}
         _daily_cost_reset_date = today
 
     cost_in, cost_out = _MODEL_COSTS.get(model, _DEFAULT_COST)
     cost = (input_tokens * cost_in) + (output_tokens * cost_out)
-    _daily_cost += cost
+    _daily_cost[patient_id] = _daily_cost.get(patient_id, 0.0) + cost
+    _daily_cost["global"] = _daily_cost.get("global", 0.0) + cost
     return cost
 
 
-def get_daily_cost() -> float:
-    """Return accumulated cost for today."""
-    return _daily_cost
+def get_daily_cost(patient_id: str | None = None) -> float:
+    """Return accumulated cost for today.
+
+    If patient_id is given, return that patient's cost.
+    Otherwise return total across all patients.
+    """
+    if patient_id:
+        return _daily_cost.get(patient_id, 0.0)
+    return _daily_cost.get("global", 0.0)
 
 
 def _unwrap_agent_state(state: dict | None) -> dict:
@@ -477,7 +486,7 @@ async def _persist_daily_cost() -> None:
     try:
         await oncofiles_client.set_agent_state(
             "autonomous_daily_cost",
-            {"date": today, "cost_usd": round(_daily_cost, 4)},
+            {"date": today, "cost_usd": round(get_daily_cost(), 4)},
         )
     except Exception as e:
         logger.warning("Failed to persist daily cost: %s", e)
@@ -507,9 +516,10 @@ async def _restore_daily_cost() -> None:
         raw = await oncofiles_client.get_agent_state("autonomous_daily_cost")
         state = _unwrap_agent_state(raw)
         if state.get("date") == today:
-            _daily_cost = float(state.get("cost_usd", 0.0))
+            restored = float(state.get("cost_usd", 0.0))
+            _daily_cost["global"] = restored
             _daily_cost_reset_date = today
-            logger.info("Restored daily cost from DB: $%.4f", _daily_cost)
+            logger.info("Restored daily cost from DB: $%.4f", restored)
     except Exception as e:
         logger.debug("Failed to restore daily cost: %s", e)
 
@@ -517,13 +527,14 @@ async def _restore_daily_cost() -> None:
 async def _notify_cost_cap_reached() -> None:
     """Store a cost alert briefing so dashboard/WhatsApp can surface it."""
     today = datetime.now(UTC).strftime("%Y-%m-%d")
+    total = get_daily_cost()
     try:
         await log_to_diary(
-            title=f"Cost cap reached — ${_daily_cost:.2f} / ${AUTONOMOUS_COST_LIMIT:.2f}",
+            title=f"Cost cap reached — ${total:.2f} / ${AUTONOMOUS_COST_LIMIT:.2f}",
             content=(
                 f"## Autonomous Agent Cost Alert\n\n"
                 f"**Date**: {today}\n"
-                f"**Daily spend**: ${_daily_cost:.2f}\n"
+                f"**Daily spend**: ${total:.2f}\n"
                 f"**Daily cap**: ${AUTONOMOUS_COST_LIMIT:.2f}\n\n"
                 f"All remaining scheduled tasks for today have been **paused**.\n"
                 f"Tasks will resume tomorrow at midnight UTC.\n\n"
@@ -532,7 +543,7 @@ async def _notify_cost_cap_reached() -> None:
             entry_type="cost_alert",
             tags=["sys:cost-alert", f"date:{today}"],
         )
-        logger.warning("Cost cap alert stored: $%.2f / $%.2f", _daily_cost, AUTONOMOUS_COST_LIMIT)
+        logger.warning("Cost cap alert stored: $%.2f / $%.2f", total, AUTONOMOUS_COST_LIMIT)
     except Exception as e:
         logger.error("Failed to store cost alert: %s", e)
 
@@ -647,15 +658,16 @@ async def run_autonomous_task(
 
     Returns dict with thinking, tool_calls, response, token counts, cost.
     """
-    global _daily_cost
-
     # Restore persisted cost on first call (cold start recovery)
     if not _daily_cost_reset_date:
         await _restore_daily_cost()
 
-    if _daily_cost >= AUTONOMOUS_COST_LIMIT:
+    if get_daily_cost() >= AUTONOMOUS_COST_LIMIT:
         return {
-            "error": f"Daily cost limit ${AUTONOMOUS_COST_LIMIT:.2f} reached (${_daily_cost:.2f})",
+            "error": (
+                f"Daily cost limit ${AUTONOMOUS_COST_LIMIT:.2f} "
+                f"reached (${get_daily_cost():.2f})"
+            ),
             "thinking": [],
             "tool_calls": [],
             "response": "",
@@ -710,7 +722,7 @@ async def run_autonomous_task(
         result["input_tokens"] += response.usage.input_tokens
         result["output_tokens"] += response.usage.output_tokens
         call_cost = _track_cost(
-            response.usage.input_tokens, response.usage.output_tokens, effective_model
+            response.usage.input_tokens, response.usage.output_tokens, effective_model, patient_id
         )
         result["cost"] += call_cost
 
@@ -744,7 +756,7 @@ async def run_autonomous_task(
                     block.name,
                     json.dumps(block.input)[:200],
                 )
-                tool_output = await execute_tool(block.name, block.input)
+                tool_output = await execute_tool(block.name, block.input, patient_id=patient_id)
                 result["tool_calls"].append(
                     {"tool": block.name, "input": block.input, "output": tool_output}
                 )
@@ -758,8 +770,8 @@ async def run_autonomous_task(
         messages.append({"role": "user", "content": tool_results})
 
         # Check cost limit mid-run
-        if _daily_cost >= AUTONOMOUS_COST_LIMIT:
-            logger.warning("Daily cost limit reached mid-task: $%.2f", _daily_cost)
+        if get_daily_cost() >= AUTONOMOUS_COST_LIMIT:
+            logger.warning("Daily cost limit reached mid-task: $%.2f", get_daily_cost())
             result["response"] += "\n\n[COST LIMIT REACHED — task stopped]"
             await _persist_daily_cost()
             await _notify_cost_cap_reached()

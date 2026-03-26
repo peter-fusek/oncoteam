@@ -13,15 +13,19 @@ from .agent_registry import get_cooldown
 from .autonomous import run_autonomous_task
 from .clinical_protocol import WATCHED_TRIALS, format_pre_cycle_checklist, get_milestones_for_cycle
 from .config import AUTONOMOUS_MODEL_LIGHT
-from .patient_context import PATIENT, RESEARCH_TERMS, format_whatsapp_header
+from .patient_context import (
+    format_whatsapp_header,
+    get_patient,
+    get_patient_research_terms,
+)
 
 
-async def _should_skip(task_name: str) -> bool:
+async def _should_skip(task_name: str, patient_id: str = "erika") -> bool:
     """Check if task ran recently enough to skip this execution."""
     cooldown_hours = get_cooldown(task_name)
     if cooldown_hours <= 0:
         return False
-    state = await _get_state(f"last_{task_name}")
+    state = await _get_state(f"last_{task_name}:{patient_id}")
     ts = _extract_timestamp(state)
     if not ts:
         return False  # Never ran — let it run
@@ -146,12 +150,13 @@ async def _log_task(task_name: str, result: dict) -> None:
 # ── Clinical Protocol Tasks ───────────────────
 
 
-async def run_pre_cycle_check() -> dict:
+async def run_pre_cycle_check(patient_id: str = "erika") -> dict:
     """Pre-cycle safety check before each FOLFOX infusion."""
-    if await _should_skip("pre_cycle_check"):
+    if await _should_skip("pre_cycle_check", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: pre_cycle_check")
-    cycle = PATIENT.current_cycle or 2
+    logger.info(">>> Starting task: pre_cycle_check (patient=%s)", patient_id)
+    patient = get_patient(patient_id)
+    cycle = patient.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
     milestone_text = (
         "\n".join(f"- Cycle {m['cycle']}: {m['description']}" for m in milestones)
@@ -175,7 +180,9 @@ Instructions:
 Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropathy grade.
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=10, task_name="pre_cycle_check")
+        result = await run_autonomous_task(
+            prompt, max_turns=10, task_name="pre_cycle_check", patient_id=patient_id
+        )
     except Exception as e:
         logger.error("!!! Failed task: pre_cycle_check — %s", e)
         raise
@@ -186,7 +193,7 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
     )
     await _log_task("pre_cycle_check", result)
     await _set_state(
-        "last_pre_cycle_check",
+        f"last_pre_cycle_check:{patient_id}",
         {
             "cycle": cycle,
             "timestamp": datetime.now(UTC).isoformat(),
@@ -211,11 +218,11 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
     return result
 
 
-async def run_tumor_marker_review() -> dict:
+async def run_tumor_marker_review(patient_id: str = "erika") -> dict:
     """Review CEA and CA 19-9 tumor marker trends."""
-    if await _should_skip("tumor_marker_review"):
+    if await _should_skip("tumor_marker_review", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: tumor_marker_review")
+    logger.info(">>> Starting task: tumor_marker_review (patient=%s)", patient_id)
     prompt = """\
 Review tumor marker trends (CEA, CA 19-9).
 
@@ -230,7 +237,9 @@ Instructions:
 Reference ESMO guidelines for marker interpretation in mCRC monitoring.
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=8, task_name="tumor_marker_review")
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="tumor_marker_review", patient_id=patient_id
+        )
     except Exception as e:
         logger.error("!!! Failed task: tumor_marker_review — %s", e)
         raise
@@ -241,18 +250,19 @@ Reference ESMO guidelines for marker interpretation in mCRC monitoring.
     )
     await _log_task("tumor_marker_review", result)
     await _set_state(
-        "last_tumor_marker_review",
+        f"last_tumor_marker_review:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
 
 
-async def run_response_assessment() -> dict:
+async def run_response_assessment(patient_id: str = "erika") -> dict:
     """Check if response imaging is due and prepare assessment template."""
-    if await _should_skip("response_assessment"):
+    if await _should_skip("response_assessment", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: response_assessment")
-    cycle = PATIENT.current_cycle or 2
+    logger.info(">>> Starting task: response_assessment (patient=%s)", patient_id)
+    patient = get_patient(patient_id)
+    cycle = patient.current_cycle or 2
     prompt = f"""\
 Response assessment check for cycle {cycle}.
 
@@ -267,7 +277,9 @@ Instructions:
 RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressive disease)
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=8, task_name="response_assessment")
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="response_assessment", patient_id=patient_id
+        )
     except Exception as e:
         logger.error("!!! Failed task: response_assessment — %s", e)
         raise
@@ -278,7 +290,7 @@ RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressi
     )
     await _log_task("response_assessment", result)
     await _set_state(
-        "last_response_assessment",
+        f"last_response_assessment:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
@@ -287,12 +299,13 @@ RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressi
 # ── Research Tasks ─────────────────────────────
 
 
-async def run_daily_research() -> dict:
+async def run_daily_research(patient_id: str = "erika") -> dict:
     """Daily PubMed research scan with all curated search terms."""
-    if await _should_skip("daily_research"):
+    if await _should_skip("daily_research", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: daily_research")
-    terms_text = "\n".join(f"- {t}" for t in RESEARCH_TERMS)
+    logger.info(">>> Starting task: daily_research (patient=%s)", patient_id)
+    research_terms = get_patient_research_terms(patient_id)
+    terms_text = "\n".join(f"- {t}" for t in research_terms)
     prompt = f"""\
 Run daily research scan for relevant new literature.
 
@@ -310,7 +323,9 @@ Focus on: treatment advances for KRAS G12S mCRC, FOLFOX optimization,
 novel targets, clinical trial results.
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=12, task_name="daily_research")
+        result = await run_autonomous_task(
+            prompt, max_turns=12, task_name="daily_research", patient_id=patient_id
+        )
     except Exception as e:
         logger.error("!!! Failed task: daily_research — %s", e)
         raise
@@ -321,7 +336,7 @@ novel targets, clinical trial results.
     )
     await _log_task("daily_research", result)
     await _set_state(
-        "last_daily_research",
+        f"last_daily_research:{patient_id}",
         {
             "timestamp": datetime.now(UTC).isoformat(),
             "tool_calls": len(result.get("tool_calls", [])),
@@ -331,11 +346,11 @@ novel targets, clinical trial results.
     return result
 
 
-async def run_trial_monitor() -> dict:
+async def run_trial_monitor(patient_id: str = "erika") -> dict:
     """Monitor clinical trials across EU (14 countries incl. major CRC centers)."""
-    if await _should_skip("trial_monitor"):
+    if await _should_skip("trial_monitor", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: trial_monitor")
+    logger.info(">>> Starting task: trial_monitor (patient=%s)", patient_id)
     watched = "\n".join(f"- {t}" for t in WATCHED_TRIALS)
 
     # Load previously seen NCT IDs to detect new trials
@@ -381,7 +396,9 @@ Prioritize trials at centers within practical travel distance from Bratislava:
 - Tier 3 (rest of EU): flag but note travel burden
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=12, task_name="trial_monitor")
+        result = await run_autonomous_task(
+            prompt, max_turns=12, task_name="trial_monitor", patient_id=patient_id
+        )
     except Exception as e:
         logger.error("!!! Failed task: trial_monitor — %s", e)
         raise
@@ -392,7 +409,7 @@ Prioritize trials at centers within practical travel distance from Bratislava:
     )
     await _log_task("trial_monitor", result)
     await _set_state(
-        "last_trial_monitor",
+        f"last_trial_monitor:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
 
@@ -412,12 +429,12 @@ Prioritize trials at centers within practical travel distance from Bratislava:
     return result
 
 
-async def run_file_scan() -> dict:
+async def run_file_scan(patient_id: str = "erika") -> dict:
     """Scan oncofiles for new document uploads."""
-    if await _should_skip("file_scan"):
+    if await _should_skip("file_scan", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: file_scan")
-    state = await _get_state("last_file_scan")
+    logger.info(">>> Starting task: file_scan (patient=%s)", patient_id)
+    state = await _get_state(f"last_file_scan:{patient_id}")
     last_scan = _extract_timestamp(state)
 
     prompt = f"""\
@@ -434,7 +451,8 @@ Search categories: "pathology", "genetics", "labs", "imaging"
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="file_scan", model=AUTONOMOUS_MODEL_LIGHT
+            prompt, max_turns=8, task_name="file_scan", model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: file_scan — %s", e)
@@ -446,7 +464,7 @@ Search categories: "pathology", "genetics", "labs", "imaging"
     )
     await _log_task("file_scan", result)
     await _set_state(
-        "last_file_scan",
+        f"last_file_scan:{patient_id}",
         {
             "timestamp": datetime.now(UTC).isoformat(),
         },
@@ -457,12 +475,13 @@ Search categories: "pathology", "genetics", "labs", "imaging"
 # ── Reporting Tasks ────────────────────────────
 
 
-async def run_weekly_briefing() -> dict:
+async def run_weekly_briefing(patient_id: str = "erika") -> dict:
     """Compile weekly briefing: research, trials, labs, treatment progress."""
-    if await _should_skip("weekly_briefing"):
+    if await _should_skip("weekly_briefing", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: weekly_briefing")
-    cycle = PATIENT.current_cycle or 2
+    logger.info(">>> Starting task: weekly_briefing (patient=%s)", patient_id)
+    patient = get_patient(patient_id)
+    cycle = patient.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
     milestone_text = (
         "\n".join(f"- Cycle {m['cycle']}: {m['description']}" for m in milestones)
@@ -494,7 +513,9 @@ Structure the briefing with clear sections:
 - Questions for Oncologist
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=12, task_name="weekly_briefing")
+        result = await run_autonomous_task(
+            prompt, max_turns=12, task_name="weekly_briefing", patient_id=patient_id
+        )
     except Exception as e:
         logger.error("!!! Failed task: weekly_briefing — %s", e)
         raise
@@ -505,7 +526,7 @@ Structure the briefing with clear sections:
     )
     await _log_task("weekly_briefing", result)
     await _set_state(
-        "last_weekly_briefing",
+        f"last_weekly_briefing:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
 
@@ -525,11 +546,11 @@ Structure the briefing with clear sections:
     return result
 
 
-async def run_lab_sync() -> dict:
+async def run_lab_sync(patient_id: str = "erika") -> dict:
     """Extract lab values from oncofiles documents and store as structured lab data."""
-    if await _should_skip("lab_sync"):
+    if await _should_skip("lab_sync", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: lab_sync")
+    logger.info(">>> Starting task: lab_sync (patient=%s)", patient_id)
     prompt = """\
 Extract structured lab data from uploaded documents and store as lab values.
 
@@ -550,7 +571,8 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="lab_sync", model=AUTONOMOUS_MODEL_LIGHT
+            prompt, max_turns=8, task_name="lab_sync", model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: lab_sync — %s", e)
@@ -562,7 +584,7 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
     )
     await _log_task("lab_sync", result)
     await _set_state(
-        "last_lab_sync",
+        f"last_lab_sync:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
 
@@ -607,11 +629,11 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
     return result
 
 
-async def run_toxicity_extraction() -> dict:
+async def run_toxicity_extraction(patient_id: str = "erika") -> dict:
     """Extract toxicity grades from doctor visit notes/reports."""
-    if await _should_skip("toxicity_extraction"):
+    if await _should_skip("toxicity_extraction", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: toxicity_extraction")
+    logger.info(">>> Starting task: toxicity_extraction (patient=%s)", patient_id)
     prompt = """\
 Search for doctor visit notes and extract NCI-CTCAE toxicity assessments.
 
@@ -627,7 +649,8 @@ This creates the baseline toxicity history from existing medical documents.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="toxicity_extraction", model=AUTONOMOUS_MODEL_LIGHT
+            prompt, max_turns=8, task_name="toxicity_extraction", model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: toxicity_extraction — %s", e)
@@ -639,17 +662,17 @@ This creates the baseline toxicity history from existing medical documents.
     )
     await _log_task("toxicity_extraction", result)
     await _set_state(
-        "last_toxicity_extraction",
+        f"last_toxicity_extraction:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
 
 
-async def run_weight_extraction() -> dict:
+async def run_weight_extraction(patient_id: str = "erika") -> dict:
     """Extract weight/BMI from doctor visit notes and store as weight_measurement events."""
-    if await _should_skip("weight_extraction"):
+    if await _should_skip("weight_extraction", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: weight_extraction")
+    logger.info(">>> Starting task: weight_extraction (patient=%s)", patient_id)
     prompt = """\
 Search for doctor visit notes and extract weight/BMI data.
 
@@ -668,7 +691,8 @@ Focus on creating structured weight history from existing medical documents.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="weight_extraction", model=AUTONOMOUS_MODEL_LIGHT
+            prompt, max_turns=8, task_name="weight_extraction", model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: weight_extraction — %s", e)
@@ -680,18 +704,21 @@ Focus on creating structured weight history from existing medical documents.
     )
     await _log_task("weight_extraction", result)
     await _set_state(
-        "last_weight_extraction",
+        f"last_weight_extraction:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
 
 
-async def _run_single_doc_task(task_name: str, document_id: int, prompt: str) -> dict:
+async def _run_single_doc_task(
+    task_name: str, document_id: int, prompt: str, patient_id: str = "erika"
+) -> dict:
     """Run a single-document autonomous task with standard logging."""
-    logger.info(">>> Starting task: %s (doc %d)", task_name, document_id)
+    logger.info(">>> Starting task: %s (doc %d, patient=%s)", task_name, document_id, patient_id)
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=6, task_name=task_name, model=AUTONOMOUS_MODEL_LIGHT
+            prompt, max_turns=6, task_name=task_name, model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: %s (doc %d) — %s", task_name, document_id, e)
@@ -974,12 +1001,13 @@ def _classify_doc_type(response_text: str, metadata: dict) -> str:
     return "other"
 
 
-async def run_family_update() -> dict:
+async def run_family_update(patient_id: str = "erika") -> dict:
     """Generate weekly family update in Slovak from current clinical data."""
-    if await _should_skip("family_update"):
+    if await _should_skip("family_update", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: family_update")
-    cycle = PATIENT.current_cycle or 2
+    logger.info(">>> Starting task: family_update (patient=%s)", patient_id)
+    patient = get_patient(patient_id)
+    cycle = patient.current_cycle or 2
     prompt = f"""\
 Napíš týždennú správu pre rodinu pacientky v slovenčine.
 
@@ -999,7 +1027,9 @@ Používaj správnu slovenskú lekársku terminológiu (onkológ, chemoterapia, 
 Vyhni sa zbytočným odborným detailom.
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=10, task_name="family_update")
+        result = await run_autonomous_task(
+            prompt, max_turns=10, task_name="family_update", patient_id=patient_id
+        )
     except Exception as e:
         logger.error("!!! Failed task: family_update — %s", e)
         raise
@@ -1010,7 +1040,7 @@ Vyhni sa zbytočným odborným detailom.
     )
     await _log_task("family_update", result)
     await _set_state(
-        "last_family_update",
+        f"last_family_update:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
 
@@ -1030,11 +1060,11 @@ Vyhni sa zbytočným odborným detailom.
     return result
 
 
-async def run_medication_adherence_check() -> dict:
+async def run_medication_adherence_check(patient_id: str = "erika") -> dict:
     """Check if today's medication adherence was logged. Flag missing Clexane."""
-    if await _should_skip("medication_adherence_check"):
+    if await _should_skip("medication_adherence_check", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: medication_adherence_check")
+    logger.info(">>> Starting task: medication_adherence_check (patient=%s)", patient_id)
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     prompt = f"""\
 Check medication adherence for today ({today}).
@@ -1053,6 +1083,7 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
             max_turns=6,
             task_name="medication_adherence_check",
             model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: medication_adherence_check — %s", e)
@@ -1064,7 +1095,7 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
     )
     await _log_task("medication_adherence_check", result)
     await _set_state(
-        "last_medication_adherence_check",
+        f"last_medication_adherence_check:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
 
@@ -1081,11 +1112,11 @@ This is a safety check: Clexane non-compliance with active VJI thrombosis is dan
     return result
 
 
-async def run_mtb_preparation() -> dict:
+async def run_mtb_preparation(patient_id: str = "erika") -> dict:
     """Prepare tumor board (MTB) presentation summary."""
-    if await _should_skip("mtb_preparation"):
+    if await _should_skip("mtb_preparation", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: mtb_preparation")
+    logger.info(">>> Starting task: mtb_preparation (patient=%s)", patient_id)
     prompt = """\
 Prepare a multidisciplinary tumor board (MTB) summary.
 
@@ -1107,7 +1138,9 @@ Structure for MDT presentation:
 - Recommendations
 """
     try:
-        result = await run_autonomous_task(prompt, max_turns=10, task_name="mtb_preparation")
+        result = await run_autonomous_task(
+            prompt, max_turns=10, task_name="mtb_preparation", patient_id=patient_id
+        )
     except Exception as e:
         logger.error("!!! Failed task: mtb_preparation — %s", e)
         raise
@@ -1118,7 +1151,7 @@ Structure for MDT presentation:
     )
     await _log_task("mtb_preparation", result)
     await _set_state(
-        "last_mtb_preparation",
+        f"last_mtb_preparation:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
@@ -1150,11 +1183,11 @@ async def _send_whatsapp(msg: str, recipient: str | None = None) -> dict:
         return resp.json()
 
 
-async def run_self_improvement() -> dict:
+async def run_self_improvement(patient_id: str = "erika") -> dict:
     """Analyze recent conversations and activity to suggest improvements."""
-    if await _should_skip("self_improvement"):
+    if await _should_skip("self_improvement", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: self_improvement")
+    logger.info(">>> Starting task: self_improvement (patient=%s)", patient_id)
     prompt = """\
 Analyze recent oncoteam activity and conversations to identify improvement opportunities.
 
@@ -1177,7 +1210,8 @@ Focus on patterns, not individual events. Be specific and actionable.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="self_improvement", model=AUTONOMOUS_MODEL_LIGHT
+            prompt, max_turns=8, task_name="self_improvement", model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: self_improvement — %s", e)
@@ -1189,17 +1223,17 @@ Focus on patterns, not individual events. Be specific and actionable.
     )
     await _log_task("self_improvement", result)
     await _set_state(
-        "last_self_improvement",
+        f"last_self_improvement:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
 
 
-async def run_protocol_review() -> dict:
+async def run_protocol_review(patient_id: str = "erika") -> dict:
     """Review clinical protocol against latest evidence from oncofiles research."""
-    if await _should_skip("protocol_review"):
+    if await _should_skip("protocol_review", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: protocol_review")
+    logger.info(">>> Starting task: protocol_review (patient=%s)", patient_id)
     prompt = """\
 Review the current clinical protocol against latest evidence stored in oncofiles.
 
@@ -1220,7 +1254,8 @@ Focus on actionable changes that would affect current patient management.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="protocol_review", model=AUTONOMOUS_MODEL_LIGHT
+            prompt, max_turns=8, task_name="protocol_review", model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: protocol_review — %s", e)
@@ -1232,13 +1267,13 @@ Focus on actionable changes that would affect current patient management.
     )
     await _log_task("protocol_review", result)
     await _set_state(
-        "last_protocol_review",
+        f"last_protocol_review:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result
 
 
-async def run_daily_cost_report() -> dict:
+async def run_daily_cost_report(patient_id: str = "erika") -> dict:
     """Send morning clinical summary + cost via WhatsApp (no Claude API call)."""
     from .autonomous import get_daily_cost
     from .config import ANTHROPIC_CREDIT_BALANCE, AUTONOMOUS_COST_LIMIT
@@ -1292,7 +1327,8 @@ async def run_daily_cost_report() -> dict:
             lines.append("Labky: nedostupné\n")
 
         # --- Cycle section ---
-        lines.append(f"*Cyklus {PATIENT.current_cycle or 3}* — mFOLFOX6")
+        patient = get_patient(patient_id)
+        lines.append(f"*Cyklus {patient.current_cycle or 3}* — {patient.treatment_regimen}")
         lines.append("")
 
         # --- Cost section ---
@@ -1332,11 +1368,11 @@ async def run_daily_cost_report() -> dict:
         return {"ok": False, "error": str(e)}
 
 
-async def run_funnel_assess() -> dict:
+async def run_funnel_assess(patient_id: str = "erika") -> dict:
     """Auto-classify new clinical trials into funnel stages."""
-    if await _should_skip("funnel_assess"):
+    if await _should_skip("funnel_assess", patient_id):
         return {"skipped": True, "reason": "cooldown"}
-    logger.info(">>> Starting task: funnel_assess")
+    logger.info(">>> Starting task: funnel_assess (patient=%s)", patient_id)
     prompt = """\
 Classify recently discovered clinical trials into funnel stages for the patient.
 
@@ -1361,7 +1397,8 @@ Focus on NEW trials not previously classified. Be concise.\
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="funnel_assess", model=AUTONOMOUS_MODEL_LIGHT
+            prompt, max_turns=8, task_name="funnel_assess", model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id,
         )
     except Exception as e:
         logger.error("!!! Failed task: funnel_assess — %s", e)
@@ -1373,7 +1410,7 @@ Focus on NEW trials not previously classified. Be concise.\
     )
     await _log_task("funnel_assess", result)
     await _set_state(
-        "last_funnel_assess",
+        f"last_funnel_assess:{patient_id}",
         {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
     )
     return result

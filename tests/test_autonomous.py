@@ -156,7 +156,7 @@ class TestCostTracking:
     def test_track_cost(self):
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         mod._daily_cost_reset_date = ""
 
         cost = _track_cost(1000, 500)
@@ -166,7 +166,7 @@ class TestCostTracking:
     def test_cost_accumulates(self):
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         mod._daily_cost_reset_date = ""
 
         cost1 = _track_cost(1000, 500)
@@ -176,7 +176,7 @@ class TestCostTracking:
     def test_track_cost_sonnet_rates(self):
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         mod._daily_cost_reset_date = ""
 
         cost = _track_cost(1_000_000, 1_000_000, "claude-sonnet-4-6")
@@ -186,7 +186,7 @@ class TestCostTracking:
     def test_track_cost_haiku_rates(self):
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         mod._daily_cost_reset_date = ""
 
         cost = _track_cost(1_000_000, 1_000_000, "claude-haiku-4-5-20251001")
@@ -196,11 +196,11 @@ class TestCostTracking:
     def test_haiku_cheaper_than_sonnet(self):
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         mod._daily_cost_reset_date = ""
         haiku_cost = _track_cost(1000, 500, "claude-haiku-4-5-20251001")
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         sonnet_cost = _track_cost(1000, 500, "claude-sonnet-4-6")
 
         assert haiku_cost < sonnet_cost
@@ -347,7 +347,7 @@ class TestRunAutonomousTask:
     async def test_cost_limit_abort(self):
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 100.0  # Over limit
+        mod._daily_cost = {"global": 100.0}  # Over limit
         mod._daily_cost_reset_date = ""
 
         result = await run_autonomous_task("test prompt")
@@ -355,14 +355,14 @@ class TestRunAutonomousTask:
         assert "cost limit" in result["error"].lower()
 
         # Reset
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
 
     @pytest.mark.asyncio
     async def test_basic_run_no_tools(self):
         """Test a simple run where Claude responds without using tools."""
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         mod._daily_cost_reset_date = ""
 
         mock_response = MagicMock()
@@ -395,7 +395,7 @@ class TestRunAutonomousTask:
         """Test that thinking blocks are captured."""
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         mod._daily_cost_reset_date = ""
 
         mock_response = MagicMock()
@@ -428,7 +428,7 @@ class TestRunAutonomousTask:
         """Test that citations are extracted from text blocks."""
         import oncoteam.autonomous as mod
 
-        mod._daily_cost = 0.0
+        mod._daily_cost = {}
         mod._daily_cost_reset_date = ""
 
         mock_response = MagicMock()

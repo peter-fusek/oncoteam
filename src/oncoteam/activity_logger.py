@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import collections
 import inspect
 import json
 import time
@@ -14,8 +15,9 @@ from . import oncofiles_client
 _session_id: str | None = None
 
 # ── Suppressed error buffer ──────────────────────
+# Bounded deque auto-evicts oldest entries when full (no unbounded growth).
 
-_suppressed_errors: list[dict] = []
+_suppressed_errors: collections.deque = collections.deque(maxlen=100)
 
 
 def record_suppressed_error(tool: str, phase: str, error: Exception) -> None:
@@ -32,10 +34,8 @@ def record_suppressed_error(tool: str, phase: str, error: Exception) -> None:
 
 
 def get_suppressed_errors() -> list[dict]:
-    """Return and clear the suppressed error buffer."""
-    errors = list(_suppressed_errors)
-    _suppressed_errors.clear()
-    return errors
+    """Return recent suppressed errors (up to 100, oldest auto-evicted)."""
+    return list(_suppressed_errors)
 
 
 def get_session_id() -> str:

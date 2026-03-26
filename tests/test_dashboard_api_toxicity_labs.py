@@ -54,7 +54,7 @@ async def test_api_toxicity_get_returns_entries(mock_list):
     assert data["total"] == 1
     assert data["entries"][0]["date"] == "2026-03-01"
     assert data["entries"][0]["metadata"]["neuropathy"] == 1
-    mock_list.assert_called_once_with(event_type="toxicity_log", limit=50)
+    mock_list.assert_called_once_with(event_type="toxicity_log", limit=50, token=None)
 
 
 @pytest.mark.anyio

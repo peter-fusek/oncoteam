@@ -13,6 +13,16 @@ from .config import ONCOFILES_MCP_TOKEN, ONCOFILES_MCP_URL
 
 _logger = logging.getLogger("oncoteam.oncofiles_client")
 
+
+def _get_correlation_id() -> str:
+    """Get the current request correlation ID (lazy import to avoid circular)."""
+    try:
+        from .dashboard_api import get_correlation_id
+
+        return get_correlation_id()
+    except (ImportError, AttributeError):
+        return ""
+
 if not ONCOFILES_MCP_URL:
     _logger.warning("ONCOFILES_MCP_URL not set — oncofiles calls will fail")
 if ONCOFILES_MCP_URL and not ONCOFILES_MCP_TOKEN:
@@ -25,11 +35,38 @@ _client_lock: asyncio.Lock | None = None
 
 # ── Circuit breaker ──────────────────────────────────────────────────────
 # After CIRCUIT_BREAKER_THRESHOLD consecutive failures within the window,
-# all calls fail-fast for CIRCUIT_BREAKER_COOLDOWN seconds.
+# calls fail-fast for CIRCUIT_BREAKER_COOLDOWN seconds.
+# Per-token state: each patient token gets its own circuit breaker.
+# Global breaker: if 3+ per-token breakers are open, treat as global failure.
 CIRCUIT_BREAKER_THRESHOLD = 5
 CIRCUIT_BREAKER_COOLDOWN = 30  # seconds
+CIRCUIT_BREAKER_GLOBAL_OPEN_COUNT = 3
+
+_circuit_state: dict[str, dict] = {}  # token_key → {"failures": int, "open_until": float}
+
+# Legacy global counters kept for backward-compat with health/diagnostics.
 _circuit_failures: int = 0
 _circuit_open_until: float = 0.0
+
+
+def _circuit_key(token: str | None) -> str:
+    """Derive circuit breaker key from token."""
+    return (token or "")[:16] or "default"
+
+
+def _get_circuit(token: str | None) -> dict:
+    """Get or create per-token circuit state."""
+    key = _circuit_key(token)
+    if key not in _circuit_state:
+        _circuit_state[key] = {"failures": 0, "open_until": 0.0}
+    return _circuit_state[key]
+
+
+def _is_globally_open() -> bool:
+    """True if 3+ per-token breakers are open (global failure)."""
+    now = time.monotonic()
+    open_count = sum(1 for s in _circuit_state.values() if s["open_until"] > now)
+    return open_count >= CIRCUIT_BREAKER_GLOBAL_OPEN_COUNT
 
 # Per-call timeout (seconds) — prevents indefinite hangs when oncofiles is slow.
 CALL_TIMEOUT = 20.0
@@ -38,10 +75,11 @@ CALL_TIMEOUT = 20.0
 SEMAPHORE_WAIT_TIMEOUT = 8.0
 
 # ── Concurrency limiter ─────────────────────────────────────────────────
-# Limits parallel oncofiles calls to prevent OOM on the server side.
-# Excess calls queue behind the semaphore rather than piling on.
-MAX_CONCURRENT_CALLS = 3
-_concurrency_semaphore: asyncio.Semaphore | None = None
+# Two priority lanes: "express" (dashboard reads) and "normal" (agent writes).
+# Express gets 2 slots, normal gets 1 — dashboard never waits for agents.
+MAX_CONCURRENT_CALLS = 3  # legacy reference for diagnostics
+_dashboard_semaphore: asyncio.Semaphore | None = None  # express: 2 slots
+_agent_semaphore: asyncio.Semaphore | None = None  # normal: 1 slot
 
 # Heavy queries (search_conversations, search_documents) get their own
 # stricter semaphore — max 1 concurrent to avoid server OOM.
@@ -58,11 +96,15 @@ _rss_last_checked: float = 0.0
 _total_rss_backoffs: int = 0
 
 
-def _get_semaphore() -> asyncio.Semaphore:
-    global _concurrency_semaphore
-    if _concurrency_semaphore is None:
-        _concurrency_semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    return _concurrency_semaphore
+def _get_semaphore(priority: str = "express") -> asyncio.Semaphore:
+    global _dashboard_semaphore, _agent_semaphore
+    if priority == "normal":
+        if _agent_semaphore is None:
+            _agent_semaphore = asyncio.Semaphore(1)
+        return _agent_semaphore
+    if _dashboard_semaphore is None:
+        _dashboard_semaphore = asyncio.Semaphore(2)
+    return _dashboard_semaphore
 
 
 def _get_heavy_semaphore() -> asyncio.Semaphore:
@@ -139,9 +181,20 @@ async def _check_rss_backoff() -> None:
 def get_circuit_breaker_status() -> dict:
     """Return circuit breaker + concurrency + RSS state for health/diagnostics."""
     now = time.monotonic()
-    is_open = _circuit_open_until > now
+    is_open = _circuit_open_until > now or _is_globally_open()
     rss_backing_off = _rss_backoff_until > now
-    sem = _get_semaphore()
+    sem = _get_semaphore("express")
+    # Per-token breakdown
+    per_token: dict[str, dict] = {}
+    for key, st in _circuit_state.items():
+        tok_open = st["open_until"] > now
+        per_token[key] = {
+            "state": "open" if tok_open else "closed",
+            "failures": st["failures"],
+            "cooldown_remaining_s": (
+                round(max(0, st["open_until"] - now), 1) if tok_open else 0
+            ),
+        }
     return {
         "state": "open" if is_open else "closed",
         "consecutive_failures": _circuit_failures,
@@ -160,6 +213,7 @@ def get_circuit_breaker_status() -> dict:
         "rss_backoff_remaining_s": (
             round(max(0, _rss_backoff_until - now), 1) if rss_backing_off else 0
         ),
+        "per_token": per_token,
     }
 
 
@@ -225,6 +279,7 @@ def _parse_result(result: object) -> dict | list | str:
 async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -> dict | list | str:
     """Execute an MCP call with one retry on failure."""
     global _circuit_failures, _circuit_open_until, _total_errors, _total_circuit_trips
+    circuit = _get_circuit(token)
     for attempt in range(2):
         try:
             client = await _get_client(token)
@@ -233,6 +288,7 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
                 timeout=CALL_TIMEOUT,
             )
             _circuit_failures = 0
+            circuit["failures"] = 0
             return _parse_result(result)
         except Exception:
             if attempt == 0:
@@ -241,6 +297,9 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
                 continue
             _total_errors += 1
             _circuit_failures += 1
+            circuit["failures"] += 1
+            if circuit["failures"] >= CIRCUIT_BREAKER_THRESHOLD:
+                circuit["open_until"] = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
             if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
                 _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
                 _total_circuit_trips += 1
@@ -254,13 +313,19 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
 
 
 async def call_oncofiles(
-    tool_name: str, arguments: dict, *, token: str | None = None
+    tool_name: str,
+    arguments: dict,
+    *,
+    token: str | None = None,
+    priority: str = "express",
 ) -> dict | list | str:
     """Call an oncofiles MCP tool, reusing a persistent connection.
 
     Args:
         token: Optional patient-specific bearer token. None = default (Erika).
                Each token scopes all data to one patient automatically.
+        priority: "express" (dashboard reads, 2 slots) or "normal"
+                  (agent writes, 1 slot).
 
     Includes RSS backoff, concurrency limiter, heavy-query gate,
     circuit breaker, per-call timeout, and retry with backoff.
@@ -272,9 +337,11 @@ async def call_oncofiles(
 
     # Circuit breaker — fail fast when oncofiles is known to be down.
     now = time.monotonic()
-    if _circuit_open_until > now:
+    # Check per-token breaker first, then global legacy breaker
+    circuit = _get_circuit(token)
+    if circuit["open_until"] > now or _circuit_open_until > now or _is_globally_open():
         _total_errors += 1
-        remaining = _circuit_open_until - now
+        remaining = max(circuit["open_until"] - now, _circuit_open_until - now, 0)
         raise ConnectionError(
             f"oncofiles circuit breaker open — retrying in {remaining:.0f}s "
             f"(after {CIRCUIT_BREAKER_THRESHOLD} consecutive failures)"
@@ -289,11 +356,14 @@ async def call_oncofiles(
 
     # Concurrency limiter — queue excess calls with timeout (#173).
     # Timeout prevents zombie queue buildup when proxy-cancelled requests hold slots.
-    sem = _get_semaphore()
+    sem = _get_semaphore(priority)
     is_heavy = tool_name in _HEAVY_TOOLS
     if sem.locked():
         _total_queued += 1
-        _logger.debug("oncofiles call queued (%s) — max %d", tool_name, MAX_CONCURRENT_CALLS)
+        cid = _get_correlation_id()
+        _logger.debug(
+            "oncofiles call queued (%s, priority=%s) [%s]", tool_name, priority, cid
+        )
 
     try:
         await asyncio.wait_for(sem.acquire(), timeout=SEMAPHORE_WAIT_TIMEOUT)
@@ -328,13 +398,15 @@ async def search_documents(
     text: str,
     category: str | None = None,
     limit: int | None = None,
+    *,
+    token: str | None = None,
 ) -> dict:
     args: dict = {"text": text}
     if category:
         args["category"] = category
     if limit is not None:
         args["limit"] = limit
-    return await call_oncofiles("search_documents", args)
+    return await call_oncofiles("search_documents", args, token=token)
 
 
 def _validate_id(value: str | int, name: str = "id") -> str:
@@ -345,35 +417,46 @@ def _validate_id(value: str | int, name: str = "id") -> str:
     return s
 
 
-async def view_document(file_id: str) -> dict:
-    return await call_oncofiles("view_document", {"file_id": _validate_id(file_id, "file_id")})
-
-
-async def analyze_labs(file_id: str | None = None, limit: int = 10) -> dict:
-    args: dict = {"limit": limit}
-    if file_id:
-        args["file_id"] = file_id
-    return await call_oncofiles("analyze_labs", args)
-
-
-async def compare_labs(file_id_a: str, file_id_b: str) -> dict:
-    return await call_oncofiles("compare_labs", {"file_id_a": file_id_a, "file_id_b": file_id_b})
-
-
-async def get_document(document_id: int) -> dict:
-    doc_id = int(_validate_id(document_id, "doc_id"))
-    return await call_oncofiles("get_document_by_id", {"doc_id": doc_id})
-
-
-async def set_agent_state(key: str, value: dict, agent_id: str = "oncoteam") -> dict:
+async def view_document(file_id: str, *, token: str | None = None) -> dict:
     return await call_oncofiles(
-        "set_agent_state",
-        {"key": key, "value": json.dumps(value), "agent_id": agent_id},
+        "view_document", {"file_id": _validate_id(file_id, "file_id")}, token=token
     )
 
 
-async def get_agent_state(key: str, agent_id: str = "oncoteam") -> dict:
-    return await call_oncofiles("get_agent_state", {"key": key, "agent_id": agent_id})
+async def analyze_labs(
+    file_id: str | None = None, limit: int = 10, *, token: str | None = None
+) -> dict:
+    args: dict = {"limit": limit}
+    if file_id:
+        args["file_id"] = file_id
+    return await call_oncofiles("analyze_labs", args, token=token)
+
+
+async def compare_labs(file_id_a: str, file_id_b: str, *, token: str | None = None) -> dict:
+    return await call_oncofiles(
+        "compare_labs", {"file_id_a": file_id_a, "file_id_b": file_id_b}, token=token
+    )
+
+
+async def get_document(document_id: int, *, token: str | None = None) -> dict:
+    doc_id = int(_validate_id(document_id, "doc_id"))
+    return await call_oncofiles("get_document_by_id", {"doc_id": doc_id}, token=token)
+
+
+async def set_agent_state(
+    key: str, value: dict, agent_id: str = "oncoteam", *, token: str | None = None
+) -> dict:
+    return await call_oncofiles(
+        "set_agent_state",
+        {"key": key, "value": json.dumps(value), "agent_id": agent_id},
+        token=token,
+    )
+
+
+async def get_agent_state(
+    key: str, agent_id: str = "oncoteam", *, token: str | None = None
+) -> dict:
+    return await call_oncofiles("get_agent_state", {"key": key, "agent_id": agent_id}, token=token)
 
 
 async def add_research_entry(
@@ -383,6 +466,8 @@ async def add_research_entry(
     summary: str = "",
     tags: list[str] | None = None,
     raw_data: str = "",
+    *,
+    token: str | None = None,
 ) -> dict:
     return await call_oncofiles(
         "add_research_entry",
@@ -394,14 +479,17 @@ async def add_research_entry(
             "tags": json.dumps(tags or []),
             "raw_data": raw_data,
         },
+        token=token,
     )
 
 
-async def search_research(text: str, source: str | None = None, limit: int = 20) -> dict:
+async def search_research(
+    text: str, source: str | None = None, limit: int = 20, *, token: str | None = None
+) -> dict:
     args: dict = {"text": text, "limit": limit}
     if source:
         args["source"] = source
-    return await call_oncofiles("search_research", args)
+    return await call_oncofiles("search_research", args, token=token)
 
 
 async def add_treatment_event(
@@ -410,6 +498,8 @@ async def add_treatment_event(
     title: str,
     notes: str = "",
     metadata: dict | None = None,
+    *,
+    token: str | None = None,
 ) -> dict:
     return await call_oncofiles(
         "add_treatment_event",
@@ -420,14 +510,17 @@ async def add_treatment_event(
             "notes": notes,
             "metadata": json.dumps(metadata or {}),
         },
+        token=token,
     )
 
 
-async def list_treatment_events(event_type: str | None = None, limit: int = 50) -> dict:
+async def list_treatment_events(
+    event_type: str | None = None, limit: int = 50, *, token: str | None = None
+) -> dict:
     args: dict = {"limit": limit}
     if event_type:
         args["event_type"] = event_type
-    return await call_oncofiles("list_treatment_events", args)
+    return await call_oncofiles("list_treatment_events", args, token=token)
 
 
 # ── Activity log wrappers ──────────────────────
@@ -443,6 +536,8 @@ async def add_activity_log(
     status: str = "ok",
     error_message: str | None = None,
     tags: list[str] | None = None,
+    *,
+    token: str | None = None,
 ) -> dict:
     args: dict = {
         "session_id": session_id,
@@ -460,7 +555,7 @@ async def add_activity_log(
         args["error_message"] = error_message
     if tags:
         args["tags"] = json.dumps(tags)
-    return await call_oncofiles("add_activity_log", args)
+    return await call_oncofiles("add_activity_log", args, token=token)
 
 
 async def search_activity_log(
@@ -471,6 +566,8 @@ async def search_activity_log(
     date_from: str | None = None,
     date_to: str | None = None,
     limit: int = 50,
+    *,
+    token: str | None = None,
 ) -> dict:
     args: dict = {"limit": limit}
     if session_id:
@@ -485,46 +582,54 @@ async def search_activity_log(
         args["date_from"] = date_from
     if date_to:
         args["date_to"] = date_to
-    return await call_oncofiles("search_activity_log", args)
+    return await call_oncofiles("search_activity_log", args, token=token)
 
 
 # ── Additional v0.8 wrappers ─────────────────────
 
 
-async def list_agent_states(agent_id: str = "oncoteam", limit: int = 20) -> dict:
-    return await call_oncofiles("list_agent_states", {"agent_id": agent_id, "limit": limit})
+async def list_agent_states(
+    agent_id: str = "oncoteam", limit: int = 20, *, token: str | None = None
+) -> dict:
+    return await call_oncofiles(
+        "list_agent_states", {"agent_id": agent_id, "limit": limit}, token=token
+    )
 
 
-async def get_treatment_event(event_id: int) -> dict:
-    return await call_oncofiles("get_treatment_event", {"event_id": event_id})
+async def get_treatment_event(event_id: int, *, token: str | None = None) -> dict:
+    return await call_oncofiles("get_treatment_event", {"event_id": event_id}, token=token)
 
 
-async def list_research_entries(source: str | None = None, limit: int = 20) -> dict:
+async def list_research_entries(
+    source: str | None = None, limit: int = 20, *, token: str | None = None
+) -> dict:
     args: dict = {"limit": limit}
     if source:
         args["source"] = source
-    return await call_oncofiles("list_research_entries", args)
+    return await call_oncofiles("list_research_entries", args, token=token)
 
 
 async def get_activity_stats(
     agent_id: str = "oncoteam",
     date_from: str | None = None,
     date_to: str | None = None,
+    *,
+    token: str | None = None,
 ) -> dict:
     args: dict = {"agent_id": agent_id}
     if date_from:
         args["date_from"] = date_from
     if date_to:
         args["date_to"] = date_to
-    return await call_oncofiles("get_activity_stats", args)
+    return await call_oncofiles("get_activity_stats", args, token=token)
 
 
-async def get_research_entry(entry_id: int) -> dict:
-    return await call_oncofiles("get_research_entry", {"entry_id": entry_id})
+async def get_research_entry(entry_id: int, *, token: str | None = None) -> dict:
+    return await call_oncofiles("get_research_entry", {"entry_id": entry_id}, token=token)
 
 
-async def get_conversation(entry_id: int) -> dict:
-    return await call_oncofiles("get_conversation", {"entry_id": entry_id})
+async def get_conversation(entry_id: int, *, token: str | None = None) -> dict:
+    return await call_oncofiles("get_conversation", {"entry_id": entry_id}, token=token)
 
 
 # ── Conversation wrappers ──────────────────────
@@ -537,6 +642,8 @@ async def log_conversation(
     participant: str = "oncoteam",
     tags: str | None = None,
     document_ids: str | None = None,
+    *,
+    token: str | None = None,
 ) -> dict:
     args: dict = {
         "title": title,
@@ -548,7 +655,7 @@ async def log_conversation(
         args["tags"] = tags
     if document_ids:
         args["document_ids"] = document_ids
-    return await call_oncofiles("log_conversation", args)
+    return await call_oncofiles("log_conversation", args, token=token)
 
 
 async def search_conversations(
@@ -559,6 +666,8 @@ async def search_conversations(
     date_to: str | None = None,
     tags: str | None = None,
     limit: int = 20,
+    *,
+    token: str | None = None,
 ) -> dict:
     args: dict = {"limit": limit}
     if text:
@@ -573,13 +682,15 @@ async def search_conversations(
         args["date_to"] = date_to
     if tags:
         args["tags"] = tags
-    return await call_oncofiles("search_conversations", args)
+    return await call_oncofiles("search_conversations", args, token=token)
 
 
 async def store_lab_values(
     document_id: int,
     lab_date: str,
     values_json: str,
+    *,
+    token: str | None = None,
 ) -> dict:
     return await call_oncofiles(
         "store_lab_values",
@@ -588,30 +699,35 @@ async def store_lab_values(
             "lab_date": lab_date,
             "values": values_json,
         },
+        token=token,
     )
 
 
 async def get_lab_trends_data(
     parameter: str | None = None,
     limit: int = 20,
+    *,
+    token: str | None = None,
 ) -> dict:
     args: dict = {"limit": limit}
     if parameter:
         args["parameter"] = parameter
-    return await call_oncofiles("get_lab_trends", args)
+    return await call_oncofiles("get_lab_trends", args, token=token)
 
 
 async def get_journey_timeline(
     date_from: str | None = None,
     date_to: str | None = None,
     limit: int = 50,
+    *,
+    token: str | None = None,
 ) -> dict:
     args: dict = {"limit": limit}
     if date_from:
         args["date_from"] = date_from
     if date_to:
         args["date_to"] = date_to
-    return await call_oncofiles("get_journey_timeline", args)
+    return await call_oncofiles("get_journey_timeline", args, token=token)
 
 
 async def upload_document_via_mcp(
@@ -619,6 +735,8 @@ async def upload_document_via_mcp(
     filename: str,
     content_type: str,
     patient_id: str = "",
+    *,
+    token: str | None = None,
 ) -> dict:
     """Upload a document to oncofiles via MCP (base64-encoded content)."""
     args: dict = {
@@ -628,27 +746,29 @@ async def upload_document_via_mcp(
     }
     if patient_id:
         args["patient_id"] = patient_id
-    return await call_oncofiles("upload_document", args)
+    return await call_oncofiles("upload_document", args, token=token)
 
 
-async def enhance_document_via_mcp(document_id: str) -> dict:
+async def enhance_document_via_mcp(document_id: str, *, token: str | None = None) -> dict:
     """Trigger OCR + AI analysis on a document via oncofiles MCP."""
-    return await call_oncofiles("enhance_documents", {"document_id": document_id})
+    return await call_oncofiles("enhance_documents", {"document_id": document_id}, token=token)
 
 
-async def get_related_documents(doc_id: int) -> dict:
+async def get_related_documents(doc_id: int, *, token: str | None = None) -> dict:
     """Get cross-referenced documents (same visit, shared diagnoses, follow-ups)."""
-    return await call_oncofiles("get_related_documents", {"doc_id": doc_id})
+    return await call_oncofiles("get_related_documents", {"doc_id": doc_id}, token=token)
 
 
-async def get_lab_safety_check() -> dict:
+async def get_lab_safety_check(*, token: str | None = None) -> dict:
     """Pre-cycle lab safety check against mFOLFOX6 thresholds."""
-    return await call_oncofiles("get_lab_safety_check", {})
+    return await call_oncofiles("get_lab_safety_check", {}, token=token)
 
 
-async def get_precycle_checklist(cycle_number: int = 3) -> dict:
+async def get_precycle_checklist(cycle_number: int = 3, *, token: str | None = None) -> dict:
     """Full pre-cycle checklist: lab safety + toxicity + VTE + general assessment."""
-    return await call_oncofiles("get_precycle_checklist", {"cycle_number": cycle_number})
+    return await call_oncofiles(
+        "get_precycle_checklist", {"cycle_number": cycle_number}, token=token
+    )
 
 
 # ── REST API wrappers (non-MCP) ──────────────────

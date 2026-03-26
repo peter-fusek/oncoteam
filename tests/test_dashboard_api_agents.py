@@ -288,7 +288,7 @@ async def test_agent_runs_all_returns_traces():
     assert data["runs"][1]["task_name"] == "trial_monitor"
     assert data["runs"][1]["tool_call_count"] == 1
     # Should use sys:agent-run tag only (no agent-specific filter)
-    mock_search.assert_called_once_with(tags="sys:agent-run", limit=50)
+    mock_search.assert_called_once_with(tags="sys:agent-run", limit=50, token=None)
 
 
 @pytest.mark.anyio

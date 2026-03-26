@@ -50,7 +50,7 @@ async def test_detail_treatment_event(mock_get):
     assert body["data"]["title"] == "C3 mFOLFOX6"
     assert body["data"]["metadata"] == {"dose_percent": 100}
     assert body["source"]["oncofiles_id"] == 5
-    mock_get.assert_awaited_once_with(5)
+    mock_get.assert_awaited_once_with(5, token=None)
 
 
 # ── research ────────────────────────────

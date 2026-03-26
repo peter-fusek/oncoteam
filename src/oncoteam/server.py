@@ -1002,11 +1002,11 @@ def _auth_wrap(handler):
         err = _check_api_auth(request)
         if err is not None:
             return err
-        _dashboard_mod._CURRENT_REQUEST = request
+        _token = _dashboard_mod._CURRENT_REQUEST.set(request)
         try:
             return await handler(request)
         finally:
-            _dashboard_mod._CURRENT_REQUEST = None
+            _dashboard_mod._CURRENT_REQUEST.reset(_token)
 
     wrapper.__name__ = handler.__name__
     return wrapper

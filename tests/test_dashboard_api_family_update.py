@@ -47,7 +47,7 @@ async def test_api_family_update_get_returns_entries(mock_search):
     assert response.status_code == 200
     assert data["total"] == 1
     assert data["updates"][0]["title"] == "Týždenná správa pre rodinu"
-    mock_search.assert_called_once_with(entry_type="family_update", limit=20)
+    mock_search.assert_called_once_with(entry_type="family_update", limit=20, token=None)
 
 
 @pytest.mark.anyio

@@ -43,10 +43,12 @@ class TestSuppressedErrors:
         assert errors[0]["type"] == "ValueError"
         assert "timestamp" in errors[0]
 
-    def test_get_clears_buffer(self):
+    def test_get_returns_without_clearing(self):
+        """get_suppressed_errors() returns snapshot without clearing (bounded deque)."""
         record_suppressed_error("t", "p", RuntimeError("x"))
         assert len(get_suppressed_errors()) == 1
-        assert len(get_suppressed_errors()) == 0
+        # Deque-based buffer does NOT clear on read — entries persist until evicted
+        assert len(get_suppressed_errors()) == 1
 
     def test_multiple_errors(self):
         record_suppressed_error("a", "p1", ValueError("e1"))

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import contextlib
+import contextvars
 import json
 import logging
 import math
@@ -56,6 +57,7 @@ from .patient_context import (
     THERAPY_CATEGORIES,
     get_patient,
     get_patient_localized,
+    get_patient_token,
 )
 
 VERSION = "0.44.0"
@@ -163,6 +165,13 @@ def _get_patient_for_request(request: Request):
         return get_patient(pid)
     except KeyError:
         return PATIENT  # fallback to Erika
+
+
+def _get_token_for_patient(patient_id: str) -> str | None:
+    """Get the oncofiles bearer token for a patient. None = default (Erika)."""
+    if not patient_id or patient_id == "erika":
+        return None  # Use default ONCOFILES_MCP_TOKEN
+    return get_patient_token(patient_id)
 
 
 def _extract_output_data(tool_name: str | None, output_str: str | None) -> dict | None:
@@ -467,7 +476,25 @@ def _get_cors_origin(request: Request) -> str:
     return ""
 
 
-_CURRENT_REQUEST: Request | None = None
+_CURRENT_REQUEST: contextvars.ContextVar[Request | None] = contextvars.ContextVar(
+    "_CURRENT_REQUEST", default=None
+)
+
+# ── Request correlation ID ─────────────────────────────────────────────
+# Short UUID generated per API request for log correlation.
+_CORRELATION_ID: contextvars.ContextVar[str] = contextvars.ContextVar("_CORRELATION_ID", default="")
+
+
+def _new_correlation_id() -> str:
+    """Generate a short correlation ID (8 hex chars)."""
+    import uuid
+
+    return uuid.uuid4().hex[:8]
+
+
+def get_correlation_id() -> str:
+    """Return current request's correlation ID (empty if none)."""
+    return _CORRELATION_ID.get()
 
 
 def _parse_agent_run_entry(e: dict, default_task_name: str = "unknown") -> dict:
@@ -550,17 +577,26 @@ def _cors_json(
 
         data["last_updated"] = _dt.now(UTC).isoformat()
     response = JSONResponse(data, status_code=status_code)
-    req = request or _CURRENT_REQUEST
+    req = request or _CURRENT_REQUEST.get()
     origin = _get_cors_origin(req) if req else ""
     response.headers["Access-Control-Allow-Origin"] = origin or "null"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Vary"] = "Origin"
+    cid = _CORRELATION_ID.get()
+    if cid:
+        response.headers["X-Correlation-ID"] = cid
     return response
 
 
 def _check_api_auth(request: Request) -> JSONResponse | None:
-    """Check API key auth. Returns error response if unauthorized, None if OK."""
+    """Check API key auth. Returns error response if unauthorized, None if OK.
+
+    Also generates a correlation ID for this request and stores it in ContextVar.
+    """
+    # Generate correlation ID for every request (even failed auth)
+    _CORRELATION_ID.set(_new_correlation_id())
+
     if not DASHBOARD_API_KEY:
         if MCP_TRANSPORT == "stdio":
             return None  # Dev mode: auth disabled for local stdio
@@ -581,9 +617,12 @@ def _check_api_auth(request: Request) -> JSONResponse | None:
 # ── Rate limiter ─────────────────────────────────
 # Two-tier sliding window: general API + strict limit for expensive endpoints
 # that trigger Claude API calls (WhatsApp chat, agent triggers, document pipeline).
+# Per-patient keyed + global safety valve.
 _RATE_LIMIT_WINDOW = 60  # seconds
-_RATE_LIMIT_MAX = 120  # general requests per window
-_rate_timestamps: collections.deque = collections.deque()
+_RATE_LIMIT_MAX = 120  # per-patient requests per window
+_RATE_LIMIT_GLOBAL_MAX = 600  # global safety valve across all patients
+_rate_timestamps: dict[str, collections.deque] = {}
+_rate_global: collections.deque = collections.deque()
 
 # Expensive endpoints: Claude API calls cost real money
 _EXPENSIVE_RATE_WINDOW = 300  # 5 minutes
@@ -591,15 +630,30 @@ _EXPENSIVE_RATE_MAX = 10  # max 10 Claude API calls per 5 min
 _expensive_timestamps: collections.deque = collections.deque()
 
 
-def _check_rate_limit() -> bool:
-    """Return True if within rate limit, False if exceeded."""
+def _check_rate_limit(patient_id: str = "global") -> bool:
+    """Return True if within rate limit, False if exceeded.
+
+    Checks per-patient limit and global safety valve.
+    """
     now = time.time()
+
+    # Global safety valve
     cutoff = now - _RATE_LIMIT_WINDOW
-    while _rate_timestamps and _rate_timestamps[0] < cutoff:
-        _rate_timestamps.popleft()
-    if len(_rate_timestamps) >= _RATE_LIMIT_MAX:
+    while _rate_global and _rate_global[0] < cutoff:
+        _rate_global.popleft()
+    if len(_rate_global) >= _RATE_LIMIT_GLOBAL_MAX:
         return False
-    _rate_timestamps.append(now)
+    _rate_global.append(now)
+
+    # Per-patient limit
+    if patient_id not in _rate_timestamps:
+        _rate_timestamps[patient_id] = collections.deque()
+    dq = _rate_timestamps[patient_id]
+    while dq and dq[0] < cutoff:
+        dq.popleft()
+    if len(dq) >= _RATE_LIMIT_MAX:
+        return False
+    dq.append(now)
     return True
 
 
@@ -797,9 +851,13 @@ async def api_activity(request: Request) -> JSONResponse:
     cb_resp = _circuit_breaker_503({"entries": [], "total": 0})
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=50)
     try:
-        result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=limit)
+        result = await oncofiles_client.search_activity_log(
+            agent_id="oncoteam", limit=limit, token=token
+        )
         entries = _filter_test(_extract_list(result, "entries"), request)
         enriched = []
         for e in entries:
@@ -833,8 +891,12 @@ async def api_stats(request: Request) -> JSONResponse:
     Computes stats from filtered activity entries so counts match
     what /api/activity returns (excluding test entries).
     """
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     try:
-        result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=500)
+        result = await oncofiles_client.search_activity_log(
+            agent_id="oncoteam", limit=500, token=token
+        )
         entries = _filter_test(_extract_list(result, "entries"), request)
         counts: dict[str, dict] = {}
         for e in entries:
@@ -862,15 +924,20 @@ async def api_timeline(request: Request) -> JSONResponse:
     cb_resp = _circuit_breaker_503({"events": [], "total": 0})
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=50)
-    cache_key = f"timeline:{limit}:{request.query_params}"
+    cache_key = _cache_key("timeline", patient_id, str(limit), str(request.query_params))
     if cache_key in _timeline_cache:
         cached_time, cached_response = _timeline_cache[cache_key]
         if time.time() - cached_time < _TIMELINE_CACHE_TTL:
             return cached_response
     try:
-        result = await asyncio.wait_for(
-            oncofiles_client.list_treatment_events(limit=limit), timeout=8.0
+        result = await _deduplicated_fetch(
+            cache_key,
+            lambda: asyncio.wait_for(
+                oncofiles_client.list_treatment_events(limit=limit, token=token), timeout=8.0
+            ),
         )
         events = _filter_test(_extract_list(result, "events"), request)
         events = _deduplicate_timeline(events)
@@ -891,6 +958,7 @@ async def api_timeline(request: Request) -> JSONResponse:
             }
         )
         _timeline_cache[cache_key] = (time.time(), response)
+        _cache_evict(_timeline_cache)
         return response
     except Exception as e:
         record_suppressed_error("api_timeline", "fetch", e)
@@ -930,13 +998,17 @@ async def api_research(request: Request) -> JSONResponse:
     )
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=100)
     source = request.query_params.get("source")
     sort = request.query_params.get("sort", "relevance")
     page = max(1, int(request.query_params.get("page", "1")))
     per_page = max(1, min(100, int(request.query_params.get("per_page", "10"))))
     try:
-        result = await oncofiles_client.list_research_entries(source=source, limit=limit)
+        result = await oncofiles_client.list_research_entries(
+            source=source, limit=limit, token=token
+        )
         entries = _filter_test(_extract_list(result, "entries"), request)
         items = []
         for e in entries:
@@ -1008,11 +1080,13 @@ async def api_sessions(request: Request) -> JSONResponse:
     cb_resp = _circuit_breaker_503({"sessions": [], "total": 0})
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=20)
     type_filter = request.query_params.get("type", "all").lower()
     try:
         result = await oncofiles_client.search_conversations(
-            entry_type="session_summary", limit=limit
+            entry_type="session_summary", limit=limit, token=token
         )
         entries = _filter_test(_extract_list(result, "entries"), request)
         entries = [e for e in entries if _is_oncology_session(e)]
@@ -1230,6 +1304,24 @@ async def api_autonomous_cost(request: Request) -> JSONResponse:
     )
 
 
+# ── Cache helpers (patient-scoped) ────────────────────────────────────────
+_CACHE_MAX_SIZE = 200
+
+
+def _cache_key(prefix: str, patient_id: str, *extra: str) -> str:
+    """Build cache key scoped to patient."""
+    parts = [prefix, patient_id or "erika"] + list(extra)
+    return ":".join(parts)
+
+
+def _cache_evict(cache: dict) -> None:
+    """Evict oldest entries if cache exceeds max size."""
+    if len(cache) > _CACHE_MAX_SIZE:
+        entries = sorted(cache.items(), key=lambda x: x[1][0])
+        for k, _ in entries[: len(entries) // 5]:
+            del cache[k]
+
+
 _protocol_cache: dict[str, tuple[float, JSONResponse]] = {}
 _PROTOCOL_CACHE_TTL = 30  # seconds
 
@@ -1241,15 +1333,40 @@ _BRIEFINGS_CACHE_TTL = 120  # seconds — briefings change infrequently
 _labs_cache: dict[str, tuple[float, JSONResponse]] = {}
 _LABS_CACHE_TTL = 60  # seconds
 
+# ── Request deduplication ────────────────────────────────────────────
+# Concurrent identical requests share a single in-flight fetch.
+_pending_requests: dict[str, asyncio.Future] = {}
+
+
+async def _deduplicated_fetch(cache_key: str, fetcher) -> any:
+    """Deduplicate concurrent fetches: if a fetch for cache_key is
+    already in flight, await its result instead of making a second call."""
+    if cache_key in _pending_requests:
+        return await asyncio.shield(_pending_requests[cache_key])
+    loop = asyncio.get_event_loop()
+    future = loop.create_future()
+    _pending_requests[cache_key] = future
+    try:
+        result = await fetcher()
+        future.set_result(result)
+        return result
+    except Exception as e:
+        future.set_exception(e)
+        raise
+    finally:
+        _pending_requests.pop(cache_key, None)
+
 
 async def api_protocol(request: Request) -> JSONResponse:
     """GET /api/protocol — clinical protocol data (thresholds, milestones, dose mods)."""
     from .clinical_protocol import resolve_protocol
 
     lang = get_lang(request)
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
 
     # Short-lived response cache to avoid repeated MCP calls (#106 perf fix)
-    cache_key = f"{lang}:{request.query_params}"
+    cache_key = _cache_key("protocol", patient_id, lang, str(request.query_params))
     if cache_key in _protocol_cache:
         cached_time, cached_response = _protocol_cache[cache_key]
         if time.time() - cached_time < _PROTOCOL_CACHE_TTL:
@@ -1264,9 +1381,11 @@ async def api_protocol(request: Request) -> JSONResponse:
     try:
         lab_result, events_result, trends_result = await asyncio.wait_for(
             asyncio.gather(
-                oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
-                oncofiles_client.list_treatment_events(limit=20),
-                oncofiles_client.get_lab_trends_data(limit=200),
+                oncofiles_client.list_treatment_events(
+                    event_type="lab_result", limit=1, token=token
+                ),
+                oncofiles_client.list_treatment_events(limit=20, token=token),
+                oncofiles_client.get_lab_trends_data(limit=200, token=token),
                 return_exceptions=True,
             ),
             timeout=5.0,
@@ -1425,6 +1544,7 @@ async def api_protocol(request: Request) -> JSONResponse:
     data["real_values"] = real_values
     response = _cors_json(data)
     _protocol_cache[cache_key] = (time.time(), response)
+    _cache_evict(_protocol_cache)
     return response
 
 
@@ -1433,14 +1553,20 @@ async def api_protocol_cycles(request: Request) -> JSONResponse:
     from .clinical_protocol import LAB_SAFETY_THRESHOLDS, check_lab_safety
 
     pt = _get_patient_for_request(request)
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     cycle = pt.current_cycle or 3
 
     # Fetch lab results and chemo events
     try:
         lab_result, chemo_result = await asyncio.wait_for(
             asyncio.gather(
-                oncofiles_client.list_treatment_events(event_type="lab_result", limit=50),
-                oncofiles_client.list_treatment_events(event_type="chemotherapy", limit=50),
+                oncofiles_client.list_treatment_events(
+                    event_type="lab_result", limit=50, token=token
+                ),
+                oncofiles_client.list_treatment_events(
+                    event_type="chemotherapy", limit=50, token=token
+                ),
             ),
             timeout=10.0,
         )
@@ -1558,17 +1684,26 @@ async def api_briefings(request: Request) -> JSONResponse:
     cb_resp = _circuit_breaker_503({"briefings": [], "total": 0})
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=20)
-    cache_key = f"briefings:{limit}:{request.query_params}"
+    cache_key = _cache_key("briefings", patient_id, str(limit), str(request.query_params))
     if cache_key in _briefings_cache:
         cached_time, cached_response = _briefings_cache[cache_key]
         if time.time() - cached_time < _BRIEFINGS_CACHE_TTL:
             return cached_response
     try:
-        briefings_res, alerts_res = await asyncio.gather(
-            oncofiles_client.search_conversations(entry_type="autonomous_briefing", limit=limit),
-            oncofiles_client.search_conversations(entry_type="cost_alert", limit=5),
-            return_exceptions=True,
+        briefings_res, alerts_res = await _deduplicated_fetch(
+            cache_key,
+            lambda: asyncio.gather(
+                oncofiles_client.search_conversations(
+                    entry_type="autonomous_briefing", limit=limit, token=token
+                ),
+                oncofiles_client.search_conversations(
+                    entry_type="cost_alert", limit=5, token=token
+                ),
+                return_exceptions=True,
+            ),
         )
         briefings = (
             _extract_list(briefings_res, "entries") if isinstance(briefings_res, dict) else []
@@ -1605,6 +1740,7 @@ async def api_briefings(request: Request) -> JSONResponse:
             }
         )
         _briefings_cache[cache_key] = (time.time(), response)
+        _cache_evict(_briefings_cache)
         return response
     except Exception as e:
         record_suppressed_error("api_briefings", "fetch", e)
@@ -1622,6 +1758,8 @@ async def api_toxicity(request: Request) -> JSONResponse:
     cb_resp = _circuit_breaker_503({"entries": [], "total": 0})
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     if request.method == "POST":
         try:
             body = json.loads(await request.body())
@@ -1656,6 +1794,7 @@ async def api_toxicity(request: Request) -> JSONResponse:
                 title=f"Toxicity log {body['date']}",
                 notes=body.get("notes", ""),
                 metadata=metadata,
+                token=token,
             )
             return _cors_json({"created": True, "result": result})
         except Exception as e:
@@ -1666,7 +1805,7 @@ async def api_toxicity(request: Request) -> JSONResponse:
     limit = _parse_limit(request, default=50)
     try:
         result = await oncofiles_client.list_treatment_events(
-            event_type="toxicity_log", limit=limit
+            event_type="toxicity_log", limit=limit, token=token
         )
         events = _filter_test(_extract_list(result, "events"), request)
         return _cors_json(
@@ -1708,6 +1847,9 @@ async def api_labs(request: Request) -> JSONResponse:
             status_code=503,
         )
 
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
+
     if request.method == "POST":
         try:
             body = json.loads(await request.body())
@@ -1725,6 +1867,7 @@ async def api_labs(request: Request) -> JSONResponse:
                 title=f"Lab results {body['date']}",
                 notes=body.get("notes", ""),
                 metadata=values,
+                token=token,
             )
             # Invalidate labs cache on new data
             _labs_cache.clear()
@@ -1735,15 +1878,20 @@ async def api_labs(request: Request) -> JSONResponse:
 
     # GET: list lab results
     limit = _parse_limit(request, default=50)
-    cache_key = f"labs:{limit}:{request.query_params}"
+    cache_key = _cache_key("labs", patient_id, str(limit), str(request.query_params))
     if cache_key in _labs_cache:
         cached_time, cached_response = _labs_cache[cache_key]
         if time.time() - cached_time < _LABS_CACHE_TTL:
             return cached_response
     try:
-        result = await asyncio.wait_for(
-            oncofiles_client.list_treatment_events(event_type="lab_result", limit=limit),
-            timeout=8.0,
+        result = await _deduplicated_fetch(
+            cache_key,
+            lambda: asyncio.wait_for(
+                oncofiles_client.list_treatment_events(
+                    event_type="lab_result", limit=limit, token=token
+                ),
+                timeout=8.0,
+            ),
         )
         events = _filter_test(_extract_list(result, "events"), request)
 
@@ -1752,7 +1900,7 @@ async def api_labs(request: Request) -> JSONResponse:
         all_empty = events and all(not e.get("metadata") for e in events)
         if not events or all_empty:
             try:
-                trends = await oncofiles_client.get_lab_trends_data(limit=200)
+                trends = await oncofiles_client.get_lab_trends_data(limit=200, token=token)
                 values_list = _extract_list(trends, "values")
                 if values_list:
                     # Group by lab_date → single entry per date
@@ -1786,7 +1934,7 @@ async def api_labs(request: Request) -> JSONResponse:
         # Fallback 2: try analyze_labs (unstructured document analysis)
         if not events:
             try:
-                analysis = await oncofiles_client.analyze_labs(limit=limit)
+                analysis = await oncofiles_client.analyze_labs(limit=limit, token=token)
                 if isinstance(analysis, dict):
                     lab_sets = analysis.get("lab_results", analysis.get("results", []))
                     if isinstance(lab_sets, list):
@@ -1952,6 +2100,7 @@ async def api_labs(request: Request) -> JSONResponse:
             }
         )
         _labs_cache[cache_key] = (time.time(), response)
+        _cache_evict(_labs_cache)
         return response
     except Exception as e:
         record_suppressed_error("api_labs", "fetch", e)
@@ -1965,6 +2114,8 @@ async def api_detail(request: Request) -> JSONResponse:
     """GET /api/detail/{type}/{id} — fetch full detail for any data element."""
     detail_type = request.path_params.get("type", "")
     detail_id = request.path_params.get("id", "")
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
 
     # Fail fast if oncofiles is down
     cb = oncofiles_client.get_circuit_breaker_status()
@@ -1980,7 +2131,7 @@ async def api_detail(request: Request) -> JSONResponse:
         related: list[dict] = []
 
         if detail_type == "treatment_event":
-            raw = await oncofiles_client.get_treatment_event(int(detail_id))
+            raw = await oncofiles_client.get_treatment_event(int(detail_id), token=token)
             data = raw if isinstance(raw, dict) else {"raw": raw}
             source["oncofiles_id"] = int(detail_id)
             # Parse metadata if string
@@ -1992,14 +2143,16 @@ async def api_detail(request: Request) -> JSONResponse:
         elif detail_type == "research":
             try:
                 raw = await asyncio.wait_for(
-                    oncofiles_client.get_research_entry(int(detail_id)), timeout=8.0
+                    oncofiles_client.get_research_entry(int(detail_id), token=token),
+                    timeout=8.0,
                 )
                 data = raw if isinstance(raw, dict) else {"raw": raw}
             except Exception:
                 # Fallback: fetch list and filter (with timeout)
                 try:
                     result = await asyncio.wait_for(
-                        oncofiles_client.list_research_entries(limit=100), timeout=8.0
+                        oncofiles_client.list_research_entries(limit=100, token=token),
+                        timeout=8.0,
                     )
                     entries = _extract_list(result, "entries")
                     match = [e for e in entries if e.get("id") == int(detail_id)]
@@ -2028,10 +2181,10 @@ async def api_detail(request: Request) -> JSONResponse:
         elif detail_type == "agent_run":
             # Full agent run trace — no truncation on tool outputs
             try:
-                raw = await oncofiles_client.get_conversation(int(detail_id))
+                raw = await oncofiles_client.get_conversation(int(detail_id), token=token)
                 entry = raw if isinstance(raw, dict) else {"raw": raw}
             except Exception:
-                result = await oncofiles_client.search_conversations(limit=100)
+                result = await oncofiles_client.search_conversations(limit=100, token=token)
                 entries = _extract_list(result, "entries")
                 match = [e for e in entries if e.get("id") == int(detail_id)]
                 entry = match[0] if match else {"error": "not found"}
@@ -2050,17 +2203,17 @@ async def api_detail(request: Request) -> JSONResponse:
 
         elif detail_type == "conversation":
             try:
-                raw = await oncofiles_client.get_conversation(int(detail_id))
+                raw = await oncofiles_client.get_conversation(int(detail_id), token=token)
                 data = raw if isinstance(raw, dict) else {"raw": raw}
             except Exception:
-                result = await oncofiles_client.search_conversations(limit=100)
+                result = await oncofiles_client.search_conversations(limit=100, token=token)
                 entries = _extract_list(result, "entries")
                 match = [e for e in entries if e.get("id") == int(detail_id)]
                 data = match[0] if match else {"error": "not found"}
             source["oncofiles_id"] = int(detail_id)
 
         elif detail_type == "document":
-            raw = await oncofiles_client.get_document(int(detail_id))
+            raw = await oncofiles_client.get_document(int(detail_id), token=token)
             data = raw if isinstance(raw, dict) else {"raw": raw}
             source["oncofiles_id"] = int(detail_id)
             # Prefer gdrive_url from oncofiles v3.11+ response; fallback to computing from ID
@@ -2075,7 +2228,7 @@ async def api_detail(request: Request) -> JSONResponse:
             file_id = data.get("file_id")
             if file_id:
                 try:
-                    content = await oncofiles_client.view_document(file_id)
+                    content = await oncofiles_client.view_document(file_id, token=token)
                     data["content"] = content
                 except Exception:
                     pass  # Content fetch failed — metadata still available
@@ -2109,7 +2262,9 @@ async def api_detail(request: Request) -> JSONResponse:
 
         elif detail_type == "activity":
             # Fetch from activity log by searching recent entries
-            result = await oncofiles_client.search_activity_log(agent_id="oncoteam", limit=200)
+            result = await oncofiles_client.search_activity_log(
+                agent_id="oncoteam", limit=200, token=token
+            )
             entries = _extract_list(result, "entries")
             match = [e for e in entries if str(e.get("id")) == str(detail_id)]
             data = match[0] if match else {"error": "not found"}
@@ -2121,7 +2276,7 @@ async def api_detail(request: Request) -> JSONResponse:
 
         elif detail_type == "medication":
             # Fetch medication log entry (treatment event)
-            raw = await oncofiles_client.get_treatment_event(int(detail_id))
+            raw = await oncofiles_client.get_treatment_event(int(detail_id), token=token)
             data = raw if isinstance(raw, dict) else {"raw": raw}
             source["oncofiles_id"] = int(detail_id)
             meta = data.get("metadata", {})
@@ -2225,8 +2380,10 @@ _DOCUMENTS_CACHE_TTL = 120  # 2 minutes — heavy query, cache aggressively
 
 async def api_documents(request: Request) -> JSONResponse:
     """GET /api/documents — document status matrix from oncofiles."""
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     filter_param = request.query_params.get("filter", "all")
-    cache_key = f"docs:{filter_param}"
+    cache_key = _cache_key("docs", patient_id, filter_param)
 
     # Serve from cache if fresh
     if cache_key in _documents_cache:
@@ -2253,9 +2410,14 @@ async def api_documents(request: Request) -> JSONResponse:
         )
 
     try:
-        result = await asyncio.wait_for(
-            oncofiles_client.call_oncofiles("get_document_status_matrix", {"filter": filter_param}),
-            timeout=12.0,
+        result = await _deduplicated_fetch(
+            cache_key,
+            lambda: asyncio.wait_for(
+                oncofiles_client.call_oncofiles(
+                    "get_document_status_matrix", {"filter": filter_param}, token=token
+                ),
+                timeout=12.0,
+            ),
         )
         docs = result if isinstance(result, list) else result.get("documents", [])
         # Compute summary counts
@@ -2281,6 +2443,7 @@ async def api_documents(request: Request) -> JSONResponse:
             }
         )
         _documents_cache[cache_key] = (time.time(), response)
+        _cache_evict(_documents_cache)
         return response
     except Exception as e:
         record_suppressed_error("api_documents", "fetch", e)
@@ -2347,6 +2510,8 @@ async def api_medications(request: Request) -> JSONResponse:
     cb_resp = _circuit_breaker_503({"medications": [], "adherence": [], "total": 0})
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     if request.method == "POST":
         try:
             body = json.loads(await request.body())
@@ -2364,6 +2529,7 @@ async def api_medications(request: Request) -> JSONResponse:
                     title=f"Adherence {body['date']}",
                     notes=body.get("notes", ""),
                     metadata={"medications": body["medications"]},
+                    token=token,
                 )
                 return _cors_json(
                     {"created": True, "event_type": "medication_adherence", "result": result}
@@ -2387,6 +2553,7 @@ async def api_medications(request: Request) -> JSONResponse:
                 title=f"{body['name']} {body['date']}",
                 notes=body.get("notes", ""),
                 metadata={"name": body["name"], **metadata},
+                token=token,
             )
             return _cors_json({"created": True, "result": result})
         except Exception as e:
@@ -2397,8 +2564,12 @@ async def api_medications(request: Request) -> JSONResponse:
     limit = _parse_limit(request, default=50)
     try:
         med_result, adh_result = await asyncio.gather(
-            oncofiles_client.list_treatment_events(event_type="medication_log", limit=limit),
-            oncofiles_client.list_treatment_events(event_type="medication_adherence", limit=7),
+            oncofiles_client.list_treatment_events(
+                event_type="medication_log", limit=limit, token=token
+            ),
+            oncofiles_client.list_treatment_events(
+                event_type="medication_adherence", limit=7, token=token
+            ),
             return_exceptions=True,
         )
 
@@ -2489,6 +2660,8 @@ async def api_weight(request: Request) -> JSONResponse:
     cb_resp = _circuit_breaker_503({"entries": [], "total": 0})
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=50)
     pt = _get_patient_for_request(request)
     baseline = pt.baseline_weight_kg or 72.0
@@ -2496,8 +2669,12 @@ async def api_weight(request: Request) -> JSONResponse:
     try:
         # Fetch both weight_measurement and toxicity_log events in parallel
         weight_result, toxicity_result = await asyncio.gather(
-            oncofiles_client.list_treatment_events(event_type="weight_measurement", limit=limit),
-            oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=limit),
+            oncofiles_client.list_treatment_events(
+                event_type="weight_measurement", limit=limit, token=token
+            ),
+            oncofiles_client.list_treatment_events(
+                event_type="toxicity_log", limit=limit, token=token
+            ),
             return_exceptions=True,
         )
 
@@ -2841,6 +3018,8 @@ async def api_family_update(request: Request) -> JSONResponse:
     cb_resp = _circuit_breaker_503({"updates": [], "total": 0})
     if cb_resp:
         return cb_resp
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     lang = request.query_params.get("lang", "sk")
     if lang not in ("sk", "en"):
         lang = "sk"
@@ -2860,9 +3039,15 @@ async def api_family_update(request: Request) -> JSONResponse:
             # Fetch latest data in parallel (limit=5 for labs to merge tumor markers + hematology)
             labs_data, toxicity_data, weight_data = None, None, None
             results = await asyncio.gather(
-                oncofiles_client.list_treatment_events(event_type="lab_result", limit=5),
-                oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=1),
-                oncofiles_client.list_treatment_events(event_type="weight_measurement", limit=5),
+                oncofiles_client.list_treatment_events(
+                    event_type="lab_result", limit=5, token=token
+                ),
+                oncofiles_client.list_treatment_events(
+                    event_type="toxicity_log", limit=1, token=token
+                ),
+                oncofiles_client.list_treatment_events(
+                    event_type="weight_measurement", limit=5, token=token
+                ),
                 return_exceptions=True,
             )
 
@@ -2937,6 +3122,7 @@ async def api_family_update(request: Request) -> JSONResponse:
                     content=content,
                     entry_type="family_update",
                     tags=f"lang:{post_lang}",
+                    token=token,
                 )
             except Exception as store_err:
                 record_suppressed_error("api_family_update", "store", store_err)
@@ -2950,7 +3136,7 @@ async def api_family_update(request: Request) -> JSONResponse:
     limit = _parse_limit(request, default=20)
     try:
         result = await oncofiles_client.search_conversations(
-            entry_type="family_update", limit=limit
+            entry_type="family_update", limit=limit, token=token
         )
         entries = _filter_test(_extract_list(result, "entries"), request)
         updates = [
@@ -3038,12 +3224,15 @@ async def api_agent_config(request: Request) -> JSONResponse:
 async def api_agent_runs(request: Request) -> JSONResponse:
     """Return recent run traces for a specific agent (#92)."""
     agent_id = request.path_params.get("id", "")
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=10)
 
     try:
         result = await oncofiles_client.search_conversations(
             tags=f"task:{agent_id},sys:agent-run",
             limit=limit,
+            token=token,
         )
     except Exception as e:
         record_suppressed_error("api_agent_runs", f"fetch:{agent_id}", e)
@@ -3062,12 +3251,15 @@ async def api_agent_runs(request: Request) -> JSONResponse:
 
 async def api_agent_runs_all(request: Request) -> JSONResponse:
     """Return recent run traces across ALL agents — single MCP call (#113)."""
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=50)
 
     try:
         result = await oncofiles_client.search_conversations(
             tags="sys:agent-run",
             limit=limit,
+            token=token,
         )
     except Exception as e:
         record_suppressed_error("api_agent_runs_all", "fetch", e)
@@ -3164,6 +3356,7 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             max_turns=3,
             task_name="whatsapp_chat",
             model=AUTONOMOUS_MODEL_LIGHT,
+            patient_id=patient_id or "erika",
         )
 
         response_text = result.get("response", "")

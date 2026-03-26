@@ -135,7 +135,7 @@ async def test_api_activity_returns_entries(mock_search):
     assert data["total"] == 2
     assert data["entries"][0]["tool"] == "search_pubmed"
     assert data["entries"][0]["duration_ms"] == 120
-    mock_search.assert_called_once_with(agent_id="oncoteam", limit=50)
+    mock_search.assert_called_once_with(agent_id="oncoteam", limit=50, token=None)
 
 
 @pytest.mark.anyio
@@ -147,7 +147,7 @@ async def test_api_activity_with_limit(mock_search):
     data = json.loads(response.body)
 
     assert data["total"] == 0
-    mock_search.assert_called_once_with(agent_id="oncoteam", limit=5)
+    mock_search.assert_called_once_with(agent_id="oncoteam", limit=5, token=None)
 
 
 @pytest.mark.anyio
@@ -416,7 +416,7 @@ async def test_api_research_returns_entries(mock_list):
     assert data["page"] == 1
     assert data["per_page"] == 10
     assert data["total_pages"] == 1
-    mock_list.assert_called_once_with(source=None, limit=100)
+    mock_list.assert_called_once_with(source=None, limit=100, token=None)
 
 
 @pytest.mark.anyio
@@ -498,7 +498,7 @@ async def test_api_research_with_source_filter(mock_list):
     data = json.loads(response.body)
 
     assert data["total"] == 0
-    mock_list.assert_called_once_with(source="clinicaltrials", limit=5)
+    mock_list.assert_called_once_with(source="clinicaltrials", limit=5, token=None)
 
 
 @pytest.mark.anyio
@@ -541,7 +541,7 @@ async def test_api_sessions_returns_entries(mock_search):
     assert data["sessions"][0]["session_type"] == "clinical"
     assert "type_counts" in data
     assert data["type_counts"]["clinical"] == 1
-    mock_search.assert_called_once_with(entry_type="session_summary", limit=20)
+    mock_search.assert_called_once_with(entry_type="session_summary", limit=20, token=None)
 
 
 @pytest.mark.anyio
@@ -1068,3 +1068,59 @@ async def test_api_sessions_defaults_clinical_for_ambiguous(mock_search):
 
     # Ambiguous session defaults to clinical
     assert data["sessions"][0]["session_type"] == "clinical"
+
+
+# ── OT-1: Patient token threading ────────────────────
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
+async def test_timeline_passes_patient_token(mock_get_token, mock_list):
+    """Non-erika patient_id causes a different token to be passed to oncofiles."""
+    mock_list.return_value = {"events": []}
+    request = _make_request("/api/timeline", "patient_id=jan")
+    response = await api_timeline(request)
+
+    assert response.status_code == 200
+    mock_get_token.assert_called_once_with("jan")
+    mock_list.assert_called_once_with(limit=50, token="tok_jan_123")
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_timeline_erika_uses_default_token(mock_list):
+    """Default patient (erika) uses token=None (default ONCOFILES_MCP_TOKEN)."""
+    mock_list.return_value = {"events": []}
+    request = _make_request("/api/timeline")
+    await api_timeline(request)
+    mock_list.assert_called_once_with(limit=50, token=None)
+
+
+# ── OT-2: Cache scoping per patient_id ──────────────
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_cache_scoped_per_patient(mock_list):
+    """Two different patient_ids get independent cache entries."""
+    import oncoteam.dashboard_api as mod
+
+    mock_list.return_value = {"events": [{"id": 1, "event_date": "2026-01-01", "title": "t"}]}
+
+    # Request for erika
+    req_erika = _make_request("/api/timeline", "patient_id=erika")
+    await api_timeline(req_erika)
+
+    # Request for jan (different patient)
+    req_jan = _make_request("/api/timeline", "patient_id=jan")
+    await api_timeline(req_jan)
+
+    # Both should have made separate oncofiles calls (2 calls, not 1)
+    assert mock_list.call_count == 2
+
+    # Verify cache has separate entries
+    erika_keys = [k for k in mod._timeline_cache if ":erika:" in k]
+    jan_keys = [k for k in mod._timeline_cache if ":jan:" in k]
+    assert len(erika_keys) >= 1
+    assert len(jan_keys) >= 1
