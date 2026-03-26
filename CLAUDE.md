@@ -68,7 +68,7 @@ uv run oncoteam-mcp    # stdio mode
 - `_normalize_lab_values()` converts G/L → /µL for ANC (<30), PLT (<1000), ABS_LYMPH (<30), and maps HGB→hemoglobin
 - `api_labs` outlier detection flags CEA/CA_19_9 entries with >90% single-reading change as `suspects[]`
 - `oncofiles_client.py` has circuit breaker (5 fails → 30s cooldown), 20s per-call timeout, 0.5s retry backoff. `get_circuit_breaker_status()` exposes state for health endpoints.
-- `oncofiles_client.py` concurrency: max 3 parallel calls (semaphore), heavy queries (`search_conversations`, `search_documents`) max 1 concurrent. Excess calls queue, not reject.
+- `oncofiles_client.py` concurrency: max 3 parallel calls (semaphore), heavy queries (`search_conversations`, `search_documents`) max 1 concurrent. `SEMAPHORE_WAIT_TIMEOUT=8s` rejects requests that can't acquire a slot (prevents zombie queue buildup from proxy-cancelled requests).
 - `oncofiles_client.py` RSS backoff: checks oncofiles `/health` every 60s (throttled). RSS >= 400MB → 30s backoff, >= 450MB → 2min. Don't reduce `RSS_CHECK_INTERVAL` below 30s — per-call health checks cause dashboard proxy timeouts.
 - `api_whatsapp_chat` checks circuit breaker before calling Claude API — returns clear Slovak/English message if oncofiles is down, saving API cost.
 - Agent schedules are staggered to avoid morning pile-on: weekly_briefing 05:00, daily_cost 06:00, trial_monitor 07:45, daily_research 09:00, protocol_review Wed 11:30. Don't cluster agents within 30min of each other.
@@ -83,6 +83,14 @@ uv run oncoteam-mcp    # stdio mode
 - Dashboard `useActivePatient` composable tracks active patient. `useOncoteamApi` includes `patient_id` in all API queries. Patient switcher in sidebar (advocate-only, activates when >1 patient).
 - **NEVER apply Erika's biomarker rules (KRAS G12S, anti-EGFR excluded) to other patients** — each patient has different cancer type, biomarkers, drug contraindications. Use `build_biomarker_rules(patient)` to generate per-patient rules.
 
+
+- `dashboard/server/api/oncoteam/[...path].ts` has session auth guard — `getUserSession()` check returns 401 for unauthenticated requests. All API calls go through this proxy.
+- All dashboard pages use `{ lazy: true, server: false }` in `fetchApi` — SSR renders shell only, data loads client-side. This is enforced centrally in `useOncoteamApi.ts`. Without `server: false`, Railway's 17s edge timeout causes 503.
+- TTL caches in `dashboard_api.py`: `_timeline_cache` (60s), `_briefings_cache` (120s), `_labs_cache` (60s), `_protocol_cache` (30s). Tests must clear ALL caches — `conftest.py` has autouse `_clear_api_caches` fixture.
+- `api_timeline` returns `event_date`/`event_type` fields (not `date`/`type`) — matches frontend TypeScript interface in `index.vue`.
+- `api_labs` POST path clears `_labs_cache` on new data.
+- Dashboard `index.vue` must capture `status` and `error` from `fetchApi` — the v-if chain needs `labsStatus`/`labsError` to show "Data unavailable" instead of going blank.
+- `dashboard/railway.toml` configures health check at `/api/health` (no-auth, no oncofiles dependency).
 
 ## Key commands
 
