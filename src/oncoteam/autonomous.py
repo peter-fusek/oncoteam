@@ -665,8 +665,7 @@ async def run_autonomous_task(
     if get_daily_cost() >= AUTONOMOUS_COST_LIMIT:
         return {
             "error": (
-                f"Daily cost limit ${AUTONOMOUS_COST_LIMIT:.2f} "
-                f"reached (${get_daily_cost():.2f})"
+                f"Daily cost limit ${AUTONOMOUS_COST_LIMIT:.2f} reached (${get_daily_cost():.2f})"
             ),
             "thinking": [],
             "tool_calls": [],

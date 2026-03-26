@@ -451,7 +451,10 @@ Search categories: "pathology", "genetics", "labs", "imaging"
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="file_scan", model=AUTONOMOUS_MODEL_LIGHT,
+            prompt,
+            max_turns=8,
+            task_name="file_scan",
+            model=AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:
@@ -571,7 +574,10 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="lab_sync", model=AUTONOMOUS_MODEL_LIGHT,
+            prompt,
+            max_turns=8,
+            task_name="lab_sync",
+            model=AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:
@@ -649,7 +655,10 @@ This creates the baseline toxicity history from existing medical documents.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="toxicity_extraction", model=AUTONOMOUS_MODEL_LIGHT,
+            prompt,
+            max_turns=8,
+            task_name="toxicity_extraction",
+            model=AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:
@@ -691,7 +700,10 @@ Focus on creating structured weight history from existing medical documents.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="weight_extraction", model=AUTONOMOUS_MODEL_LIGHT,
+            prompt,
+            max_turns=8,
+            task_name="weight_extraction",
+            model=AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:
@@ -717,7 +729,10 @@ async def _run_single_doc_task(
     logger.info(">>> Starting task: %s (doc %d, patient=%s)", task_name, document_id, patient_id)
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=6, task_name=task_name, model=AUTONOMOUS_MODEL_LIGHT,
+            prompt,
+            max_turns=6,
+            task_name=task_name,
+            model=AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:
@@ -1210,7 +1225,10 @@ Focus on patterns, not individual events. Be specific and actionable.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="self_improvement", model=AUTONOMOUS_MODEL_LIGHT,
+            prompt,
+            max_turns=8,
+            task_name="self_improvement",
+            model=AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:
@@ -1254,7 +1272,10 @@ Focus on actionable changes that would affect current patient management.
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="protocol_review", model=AUTONOMOUS_MODEL_LIGHT,
+            prompt,
+            max_turns=8,
+            task_name="protocol_review",
+            model=AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:
@@ -1397,7 +1418,10 @@ Focus on NEW trials not previously classified. Be concise.\
 """
     try:
         result = await run_autonomous_task(
-            prompt, max_turns=8, task_name="funnel_assess", model=AUTONOMOUS_MODEL_LIGHT,
+            prompt,
+            max_turns=8,
+            task_name="funnel_assess",
+            model=AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:

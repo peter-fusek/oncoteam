@@ -60,9 +60,7 @@ async def test_documents_returns_list(mock_call):
     assert data["summary"]["ocr_complete"] == 1
     assert data["summary"]["missing_ocr"] == 1
     assert data["summary"]["missing_metadata"] == 1
-    mock_call.assert_called_once_with(
-        "get_document_status_matrix", {"filter": "all"}, token=None
-    )
+    mock_call.assert_called_once_with("get_document_status_matrix", {"filter": "all"}, token=None)
 
 
 @pytest.mark.anyio

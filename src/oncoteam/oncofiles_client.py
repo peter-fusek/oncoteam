@@ -23,6 +23,7 @@ def _get_correlation_id() -> str:
     except (ImportError, AttributeError):
         return ""
 
+
 if not ONCOFILES_MCP_URL:
     _logger.warning("ONCOFILES_MCP_URL not set — oncofiles calls will fail")
 if ONCOFILES_MCP_URL and not ONCOFILES_MCP_TOKEN:
@@ -67,6 +68,7 @@ def _is_globally_open() -> bool:
     now = time.monotonic()
     open_count = sum(1 for s in _circuit_state.values() if s["open_until"] > now)
     return open_count >= CIRCUIT_BREAKER_GLOBAL_OPEN_COUNT
+
 
 # Per-call timeout (seconds) — prevents indefinite hangs when oncofiles is slow.
 CALL_TIMEOUT = 20.0
@@ -191,9 +193,7 @@ def get_circuit_breaker_status() -> dict:
         per_token[key] = {
             "state": "open" if tok_open else "closed",
             "failures": st["failures"],
-            "cooldown_remaining_s": (
-                round(max(0, st["open_until"] - now), 1) if tok_open else 0
-            ),
+            "cooldown_remaining_s": (round(max(0, st["open_until"] - now), 1) if tok_open else 0),
         }
     return {
         "state": "open" if is_open else "closed",
@@ -361,9 +361,7 @@ async def call_oncofiles(
     if sem.locked():
         _total_queued += 1
         cid = _get_correlation_id()
-        _logger.debug(
-            "oncofiles call queued (%s, priority=%s) [%s]", tool_name, priority, cid
-        )
+        _logger.debug("oncofiles call queued (%s, priority=%s) [%s]", tool_name, priority, cid)
 
     try:
         await asyncio.wait_for(sem.acquire(), timeout=SEMAPHORE_WAIT_TIMEOUT)
