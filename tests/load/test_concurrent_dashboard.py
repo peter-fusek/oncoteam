@@ -9,7 +9,7 @@ Verifies:
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -19,7 +19,6 @@ from oncoteam import oncofiles_client
 
 def _make_request(patient_id: str = "erika"):
     """Create a mock Starlette Request with query params."""
-    from starlette.datastructures import Headers, QueryParams
     from starlette.requests import Request
 
     scope = {
@@ -53,7 +52,6 @@ def _clear_all_state():
 async def test_10_users_same_patient_dedup():
     """10 users requesting same patient's timeline = 1 oncofiles call."""
     call_count = 0
-    original_list = oncofiles_client.list_treatment_events
 
     async def mock_list_events(**kwargs):
         nonlocal call_count
@@ -108,7 +106,9 @@ async def test_10_users_different_patients_no_leakage():
 
     # Each patient should have triggered a call with their own token
     unique_tokens = set(call_log)
-    assert len(unique_tokens) == 10, f"Expected 10 unique tokens, got {len(unique_tokens)}: {unique_tokens}"
+    assert len(unique_tokens) == 10, (
+        f"Expected 10 unique tokens, got {len(unique_tokens)}: {unique_tokens}"
+    )
 
 
 @pytest.mark.asyncio
@@ -138,11 +138,15 @@ async def test_cache_isolation_under_concurrency():
         patient = "jan" if token == "token_jan" else "erika"
         call_count[patient] += 1
         await asyncio.sleep(0.05)
-        return {"events": [{"id": 1, "event_type": "chemo", "event_date": "2026-03-01", "patient": patient}]}
+        event = {"id": 1, "event_type": "chemo", "event_date": "2026-03-01", "patient": patient}
+        return {"events": [event]}
 
     with (
         patch.object(oncofiles_client, "list_treatment_events", side_effect=mock_list_events),
-        patch("oncoteam.dashboard_api.get_patient_token", side_effect=lambda pid: f"token_{pid}" if pid != "erika" else None),
+        patch(
+            "oncoteam.dashboard_api.get_patient_token",
+            side_effect=lambda pid: f"token_{pid}" if pid != "erika" else None,
+        ),
     ):
         # Interleave requests for two patients
         requests = []
