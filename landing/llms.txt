@@ -66,7 +66,8 @@ An [Instarea](https://www.instarea.com) project.
 ## Access
 
 - **Website**: https://oncoteam.cloud
-- **Dashboard**: https://dashboard.oncoteam.cloud
+- **Live Demo**: https://dashboard.oncoteam.cloud/demo (no login required, sample data)
+- **Dashboard**: https://dashboard.oncoteam.cloud (Google sign-in)
 - **WhatsApp**: Chat anytime for quick answers, summaries, and alerts
 - **Claude.ai**: Deep analysis and Q&A via MCP connector
 
