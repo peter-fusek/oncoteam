@@ -17,6 +17,7 @@ const props = defineProps<{
   trial: ResearchEntry
   assessment: FunnelAssessment | null
   isAssessing: boolean
+  isWatched?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -62,6 +63,14 @@ const stageItems = computed(() =>
           <UButton icon="i-lucide-move" variant="ghost" size="xs" color="neutral" @click.stop />
         </UDropdownMenu>
       </div>
+    </div>
+
+    <!-- Watched badge -->
+    <div v-if="isWatched" class="flex items-center gap-1 mb-1">
+      <UBadge variant="subtle" size="xs" color="primary">
+        <UIcon name="i-lucide-bookmark" class="w-2.5 h-2.5 mr-0.5" />
+        Monitored
+      </UBadge>
     </div>
 
     <!-- Title -->

@@ -185,7 +185,7 @@ const drilldown = useDrilldown()
     </div>
 
     <!-- Funnel board -->
-    <TrialFunnelBoard v-if="activeTab === 'funnel'" :trials="trialEntries" />
+    <TrialFunnelBoard v-if="activeTab === 'funnel'" :trials="trialEntries" :watched-trials="protocol?.watched_trials || []" />
 
     <!-- Entries list -->
     <div v-if="activeTab !== 'funnel' && displayEntries.length" class="space-y-3">

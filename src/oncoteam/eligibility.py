@@ -111,6 +111,23 @@ def assess_research_relevance(
                 reason="HER2-targeted therapy — patient is HER2 negative",
             )
 
+    # Rule 1b: Later-line trials — patient is on 1L, these are 2L/3L+
+    _later_line_re = re.compile(
+        r"(?:second|third|2nd|3rd|2l|3l|later)\s*(?:-?\s*)?line"
+        r"|previously\s+treated"
+        r"|refractory"
+        r"|after\s+(?:progression|failure)\s+(?:on|of)"
+        r"|post[- ]?progression"
+        r"|salvage\s+therap",
+        re.IGNORECASE,
+    )
+    if _later_line_re.search(text):
+        # Still relevant but not for current line — medium relevance with annotation
+        return ResearchRelevance(
+            score="medium",
+            reason="Later-line trial (2L/3L+) — patient is on 1st line",
+        )
+
     # Check for checkpoint monotherapy in MSS context
     checkpoint_words = _CHECKPOINT_MONO & words
     if checkpoint_words:

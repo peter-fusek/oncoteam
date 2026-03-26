@@ -15,7 +15,20 @@ interface ResearchEntry {
 
 const props = defineProps<{
   trials: ResearchEntry[]
+  watchedTrials?: string[]
 }>()
+
+// Match watched trial names against funnel entries (fuzzy: check if trial title contains watched name)
+function isWatched(trial: ResearchEntry): boolean {
+  if (!props.watchedTrials?.length) return false
+  const titleLower = trial.title.toLowerCase()
+  return props.watchedTrials.some(w => {
+    // Extract key trial name from watched string (e.g. "HARMONi-GI3 (ivonescimab + FOLFOX)" → "harmoni-gi3")
+    const nameMatch = w.match(/^([^(]+)/)
+    const name = (nameMatch?.[1] || w).trim().toLowerCase()
+    return titleLower.includes(name) || name.includes(trial.external_id?.toLowerCase() || '---')
+  })
+}
 
 const { activeRole } = useUserRole()
 const { getStage, setStage, moveStage, clearAll, getAllStages, FUNNEL_STAGES } = useFunnelStage()
@@ -198,6 +211,7 @@ onMounted(() => {
             :trial="item.trial"
             :assessment="item.assessment"
             :is-assessing="assessingIds.has(item.trial.external_id)"
+            :is-watched="isWatched(item.trial)"
             @move="(s) => handleMove(item.trial.external_id, s)"
             @click="handleClick(item.trial)"
           />

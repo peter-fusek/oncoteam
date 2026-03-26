@@ -82,24 +82,47 @@ const modelLabels: Record<string, string> = {
     </div>
 
     <!-- Config cards -->
-    <div v-if="agent" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="rounded-lg border border-gray-200 bg-white p-3">
-        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Model</p>
-        <p class="text-sm font-medium text-gray-900 mt-1">{{ modelLabels[agent.model] || agent.model }}</p>
-      </div>
-      <div class="rounded-lg border border-gray-200 bg-white p-3">
-        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Schedule</p>
-        <p class="text-sm font-medium text-gray-900 mt-1">{{ agent.schedule }}</p>
-      </div>
-      <div class="rounded-lg border border-gray-200 bg-white p-3">
-        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Last Run</p>
-        <p class="text-sm font-medium text-gray-900 mt-1">{{ agent.last_run ? timeAgo(agent.last_run) : 'Never' }}</p>
-      </div>
-      <div class="rounded-lg border border-gray-200 bg-white p-3">
-        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Category</p>
-        <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium" :class="categoryColors[agent.category] || 'bg-gray-500/20 text-gray-500'">
+    <div v-if="agent" class="space-y-3">
+      <!-- Status badges -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <UBadge :color="agent.enabled ? 'success' : 'error'" variant="subtle" size="xs">
+          {{ agent.enabled ? 'Enabled' : 'Disabled' }}
+        </UBadge>
+        <UBadge v-if="agent.whatsapp_enabled" color="success" variant="subtle" size="xs">
+          <UIcon name="i-lucide-message-circle" class="w-2.5 h-2.5 mr-0.5" />
+          WhatsApp
+        </UBadge>
+        <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium" :class="categoryColors[agent.category] || 'bg-gray-500/20 text-gray-500'">
           {{ agent.category }}
         </span>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div class="rounded-lg border border-gray-200 bg-white p-3">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider">Model</p>
+          <p class="text-sm font-medium text-gray-900 mt-1">{{ modelLabels[agent.model] || agent.model }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-3">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider">Schedule</p>
+          <p class="text-sm font-medium text-gray-900 mt-1">{{ agent.schedule }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-3">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider">Last Run</p>
+          <p class="text-sm font-medium text-gray-900 mt-1">{{ agent.last_run ? timeAgo(agent.last_run) : 'Never' }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-3">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider">Cooldown</p>
+          <p class="text-sm font-medium text-gray-900 mt-1">{{ agent.cooldown_hours }}h</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-3">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider">Max Turns</p>
+          <p class="text-sm font-medium text-gray-900 mt-1">{{ agent.max_turns || '—' }}</p>
+        </div>
+        <div v-if="configData?.assigned_tool" class="rounded-lg border border-gray-200 bg-white p-3">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wider">Primary Tool</p>
+          <p class="text-sm font-medium text-gray-900 mt-1 font-mono text-xs">{{ configData.assigned_tool }}</p>
+        </div>
       </div>
     </div>
 
