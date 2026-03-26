@@ -31,7 +31,8 @@ function isWatched(trial: ResearchEntry): boolean {
 }
 
 const { activeRole } = useUserRole()
-const { getStage, setStage, moveStage, clearAll, getAllStages, FUNNEL_STAGES } = useFunnelStage()
+const { getStage, setStage, moveStage, toggleActive, clearAll, getAllStages, getLog, FUNNEL_STAGES } = useFunnelStage()
+const showLog = ref(false)
 const drilldown = useDrilldown()
 
 const assessingIds = ref<Set<string>>(new Set())
@@ -169,20 +170,49 @@ onMounted(() => {
           Assessing {{ assessingIds.size }} trials...
         </span>
       </div>
-      <UButton
-        v-if="activeRole === 'advocate'"
-        icon="i-lucide-sparkles"
-        variant="soft"
-        size="xs"
-        color="primary"
-        :loading="assessingIds.size > 0"
-        @click="assessAll"
-      >
-        Assess All
-      </UButton>
+      <div class="flex items-center gap-2">
+        <UButton
+          icon="i-lucide-history"
+          variant="ghost"
+          size="xs"
+          color="neutral"
+          @click="showLog = !showLog"
+        >
+          Log
+        </UButton>
+        <UButton
+          v-if="activeRole === 'advocate'"
+          icon="i-lucide-sparkles"
+          variant="soft"
+          size="xs"
+          color="primary"
+          :loading="assessingIds.size > 0"
+          @click="assessAll"
+        >
+          Assess All
+        </UButton>
+      </div>
     </div>
 
     <ApiErrorBanner :error="assessError" />
+
+    <!-- Movement audit log -->
+    <div v-if="showLog" class="rounded-xl border border-gray-200 bg-white p-4 max-h-64 overflow-y-auto">
+      <h3 class="text-xs font-semibold text-gray-700 mb-2">Movement Audit Log</h3>
+      <div v-if="getLog().length === 0" class="text-xs text-gray-400 py-3 text-center">No movements recorded yet</div>
+      <div v-else class="space-y-1">
+        <div v-for="(entry, i) in getLog().slice(0, 50)" :key="i" class="flex items-center gap-2 text-xs text-gray-600">
+          <span class="text-gray-400 font-mono w-32 shrink-0">{{ new Date(entry.datetime).toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</span>
+          <code class="text-teal-700 text-[10px]">{{ entry.nct_id }}</code>
+          <span class="text-gray-400">{{ entry.from }}</span>
+          <UIcon name="i-lucide-arrow-right" class="w-3 h-3 text-gray-300" />
+          <span class="font-medium">{{ entry.to }}</span>
+          <UBadge variant="subtle" size="xs" :color="entry.actor === 'auto-assess' ? 'info' : 'warning'">
+            {{ entry.actor }}
+          </UBadge>
+        </div>
+      </div>
+    </div>
 
     <!-- Kanban columns -->
     <div class="flex gap-3 overflow-x-auto pb-4">
@@ -214,6 +244,7 @@ onMounted(() => {
             :is-watched="isWatched(item.trial)"
             @move="(s) => handleMove(item.trial.external_id, s)"
             @click="handleClick(item.trial)"
+            @toggle-active="() => { toggleActive(item.trial.external_id); stageVersion++ }"
           />
         </div>
 

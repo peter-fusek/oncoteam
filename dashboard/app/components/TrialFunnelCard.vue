@@ -23,7 +23,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   move: [stage: FunnelStage]
   click: []
+  toggleActive: []
 }>()
+
+const isActive = computed(() => props.assessment?.active !== false)
 
 const { FUNNEL_STAGES } = useFunnelStage()
 
@@ -45,7 +48,7 @@ const stageItems = computed(() =>
 <template>
   <div
     class="rounded-xl border border-gray-200 bg-white p-3 hover:shadow-sm transition-all cursor-pointer"
-    :class="{ 'opacity-50': isAssessing }"
+    :class="{ 'opacity-50': isAssessing, 'opacity-40 grayscale': !isActive }"
     @click="emit('click')"
   >
     <!-- Header: NCT ID + relevance + move menu -->
@@ -55,6 +58,14 @@ const stageItems = computed(() =>
         <UBadge variant="subtle" size="xs" :color="relevanceColors[trial.relevance] || 'neutral'">
           {{ trial.relevance }}
         </UBadge>
+        <UButton
+          :icon="isActive ? 'i-lucide-eye' : 'i-lucide-eye-off'"
+          variant="ghost"
+          size="xs"
+          :color="isActive ? 'neutral' : 'warning'"
+          :title="isActive ? 'Mark as passive' : 'Mark as active'"
+          @click.stop="emit('toggleActive')"
+        />
         <UDropdownMenu
           :items="stageItems"
           :popper="{ placement: 'bottom-end' }"

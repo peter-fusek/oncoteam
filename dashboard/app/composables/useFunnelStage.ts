@@ -9,6 +9,16 @@ export interface FunnelAssessment {
   deadline_note: string | null
   assessed_at: string
   manually_moved?: boolean
+  active?: boolean // true = actively watching, false = dimmed/passive
+}
+
+export interface FunnelLogEntry {
+  datetime: string
+  nct_id: string
+  from: FunnelStage | 'unassessed'
+  to: FunnelStage
+  actor: 'auto-assess' | 'manual'
+  reason: string
 }
 
 export function useFunnelStage() {
@@ -16,6 +26,10 @@ export function useFunnelStage() {
 
   function storageKey(nctId: string): string {
     return `funnel::${activePatientId.value || 'default'}::${nctId}`
+  }
+
+  function logKey(): string {
+    return `funnel-log::${activePatientId.value || 'default'}`
   }
 
   function getStage(nctId: string): FunnelAssessment | null {
@@ -27,9 +41,29 @@ export function useFunnelStage() {
     catch { return null }
   }
 
-  function setStage(nctId: string, assessment: FunnelAssessment): void {
+  function setStage(nctId: string, assessment: FunnelAssessment, actor: 'auto-assess' | 'manual' = 'auto-assess', reason?: string): void {
     if (!import.meta.client) return
+    const existing = getStage(nctId)
+    const fromStage = existing?.stage ?? 'unassessed'
+
+    // Default active to true for new assessments
+    if (assessment.active === undefined) {
+      assessment.active = existing?.active ?? true
+    }
+
     localStorage.setItem(storageKey(nctId), JSON.stringify(assessment))
+
+    // Log the movement if stage changed
+    if (fromStage !== assessment.stage) {
+      addLogEntry({
+        datetime: new Date().toISOString(),
+        nct_id: nctId,
+        from: fromStage as FunnelStage | 'unassessed',
+        to: assessment.stage,
+        actor,
+        reason: reason || assessment.next_step || 'Stage changed',
+      })
+    }
   }
 
   function moveStage(nctId: string, newStage: FunnelStage): void {
@@ -41,7 +75,16 @@ export function useFunnelStage() {
       deadline_note: existing?.deadline_note ?? null,
       assessed_at: new Date().toISOString(),
       manually_moved: true,
-    })
+      active: existing?.active ?? true,
+    }, 'manual', `Moved to ${newStage}`)
+  }
+
+  function toggleActive(nctId: string): void {
+    if (!import.meta.client) return
+    const existing = getStage(nctId)
+    if (!existing) return
+    existing.active = !(existing.active ?? true)
+    localStorage.setItem(storageKey(nctId), JSON.stringify(existing))
   }
 
   function getAllStages(): Record<string, FunnelAssessment> {
@@ -72,5 +115,28 @@ export function useFunnelStage() {
     toRemove.forEach(k => localStorage.removeItem(k))
   }
 
-  return { getStage, setStage, moveStage, getAllStages, clearAll, FUNNEL_STAGES }
+  // Movement audit log
+  function addLogEntry(entry: FunnelLogEntry): void {
+    if (!import.meta.client) return
+    try {
+      const raw = localStorage.getItem(logKey())
+      const log: FunnelLogEntry[] = raw ? JSON.parse(raw) : []
+      log.unshift(entry) // newest first
+      // Keep last 500 entries
+      if (log.length > 500) log.length = 500
+      localStorage.setItem(logKey(), JSON.stringify(log))
+    }
+    catch { /* ignore storage errors */ }
+  }
+
+  function getLog(): FunnelLogEntry[] {
+    if (!import.meta.client) return []
+    try {
+      const raw = localStorage.getItem(logKey())
+      return raw ? JSON.parse(raw) : []
+    }
+    catch { return [] }
+  }
+
+  return { getStage, setStage, moveStage, toggleActive, getAllStages, clearAll, getLog, FUNNEL_STAGES }
 }
