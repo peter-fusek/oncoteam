@@ -86,7 +86,7 @@ uv run oncoteam-mcp    # stdio mode
 
 - `dashboard/server/api/oncoteam/[...path].ts` has session auth guard — `getUserSession()` check returns 401 for unauthenticated requests. All API calls go through this proxy.
 - All dashboard pages use `{ lazy: true, server: false }` in `fetchApi` — SSR renders shell only, data loads client-side. This is enforced centrally in `useOncoteamApi.ts`. Without `server: false`, Railway's 17s edge timeout causes 503.
-- TTL caches in `dashboard_api.py`: `_timeline_cache` (60s), `_briefings_cache` (120s), `_labs_cache` (60s), `_protocol_cache` (30s). Tests must clear ALL caches — `conftest.py` has autouse `_clear_api_caches` fixture.
+- TTL caches in `dashboard_api.py`: `_timeline_cache` (60s), `_briefings_cache` (120s), `_labs_cache` (60s), `_protocol_cache` (30s), `_documents_cache` (120s). Tests must clear ALL caches — `conftest.py` has autouse `_clear_api_caches` fixture.
 - `api_timeline` returns `event_date`/`event_type` fields (not `date`/`type`) — matches frontend TypeScript interface in `index.vue`.
 - `api_labs` POST path clears `_labs_cache` on new data.
 - Dashboard `index.vue` must capture `status` and `error` from `fetchApi` — the v-if chain needs `labsStatus`/`labsError` to show "Data unavailable" instead of going blank.
