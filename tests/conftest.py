@@ -54,11 +54,13 @@ def _clear_api_caches():
     mod._timeline_cache.clear()
     mod._briefings_cache.clear()
     mod._labs_cache.clear()
+    mod._documents_cache.clear()
     yield
     mod._protocol_cache.clear()
     mod._timeline_cache.clear()
     mod._briefings_cache.clear()
     mod._labs_cache.clear()
+    mod._documents_cache.clear()
 
 
 @pytest.fixture(autouse=True)

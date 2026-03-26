@@ -2219,13 +2219,27 @@ async def api_diagnostics(request: Request) -> JSONResponse:
     )
 
 
+_documents_cache: dict[str, tuple[float, JSONResponse]] = {}
+_DOCUMENTS_CACHE_TTL = 120  # 2 minutes — heavy query, cache aggressively
+
+
 async def api_documents(request: Request) -> JSONResponse:
     """GET /api/documents — document status matrix from oncofiles."""
     filter_param = request.query_params.get("filter", "all")
+    cache_key = f"docs:{filter_param}"
+
+    # Serve from cache if fresh
+    if cache_key in _documents_cache:
+        cached_time, cached_response = _documents_cache[cache_key]
+        if time.time() - cached_time < _DOCUMENTS_CACHE_TTL:
+            return cached_response
 
     # Fail fast if oncofiles is down — don't wait 20s for timeout
     cb = oncofiles_client.get_circuit_breaker_status()
     if cb["state"] == "open":
+        # Serve stale cache if available
+        if cache_key in _documents_cache:
+            return _documents_cache[cache_key][1]
         return _cors_json(
             {
                 "error": "Database temporarily unavailable. Try again in a minute.",
@@ -2239,8 +2253,9 @@ async def api_documents(request: Request) -> JSONResponse:
         )
 
     try:
-        result = await oncofiles_client.call_oncofiles(
-            "get_document_status_matrix", {"filter": filter_param}
+        result = await asyncio.wait_for(
+            oncofiles_client.call_oncofiles("get_document_status_matrix", {"filter": filter_param}),
+            timeout=12.0,
         )
         docs = result if isinstance(result, list) else result.get("documents", [])
         # Compute summary counts
@@ -2252,7 +2267,7 @@ async def api_documents(request: Request) -> JSONResponse:
         missing_metadata = sum(
             1 for d in docs if d.get("metadata_status") in ("missing", "incomplete", None)
         )
-        return _cors_json(
+        response = _cors_json(
             {
                 "documents": docs,
                 "total": total,
@@ -2265,8 +2280,13 @@ async def api_documents(request: Request) -> JSONResponse:
                 },
             }
         )
+        _documents_cache[cache_key] = (time.time(), response)
+        return response
     except Exception as e:
         record_suppressed_error("api_documents", "fetch", e)
+        # Serve stale cache on error
+        if cache_key in _documents_cache:
+            return _documents_cache[cache_key][1]
         return _cors_json(
             {
                 "error": str(e),
