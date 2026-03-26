@@ -6,7 +6,7 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 630 tests
+uv run pytest          # 637 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
@@ -106,6 +106,21 @@ uv run oncoteam-mcp    # stdio mode
 - `/health` endpoint includes `autonomous_enabled` + `scheduler` status (running, job count, job IDs) for remote diagnostics.
 - `scheduler.get_scheduler_status()` exposes APScheduler state. `AUTONOMOUS_ENABLED` must be `true`/`1`/`yes` in Railway env.
 
+### Multi-user hardening (Sprint 57)
+- All `oncofiles_client` wrapper functions accept `*, token: str | None = None` — pass patient-specific token for non-erika patients via `_get_token_for_patient(patient_id)`.
+- All 5 TTL caches use `_cache_key(prefix, patient_id, ...)` — NEVER use a cache key without patient_id.
+- `_CURRENT_REQUEST` is a `contextvars.ContextVar`, NOT a global. Set/reset in `_auth_wrap()`.
+- `_suppressed_errors` is `collections.deque(maxlen=100)` — bounded, never cleared on read.
+- `_deduplicated_fetch()` coalesces concurrent identical requests via `asyncio.Future` — used on api_timeline, api_labs, api_briefings, api_documents.
+- `_rate_timestamps` is `dict[str, deque]` keyed by patient_id. `_rate_global` is the 600/min safety valve.
+- `_daily_cost` in `autonomous.py` is `dict[str, float]` keyed by patient_id (+ "global" key for total).
+- `oncofiles_client` has two semaphore lanes: `_dashboard_semaphore` (2 slots) and `_agent_semaphore` (1 slot). `call_oncofiles(priority="express")` is the default for dashboard.
+- Circuit breaker state is `_circuit_state: dict[str, dict]` keyed by token prefix. `_is_globally_open()` trips when 3+ per-token breakers are open.
+- `_CORRELATION_ID` ContextVar generated per request in `_check_api_auth()`. Included in `X-Correlation-ID` response header.
+- All 18 `run_*()` functions in `autonomous_tasks.py` accept `patient_id: str = "erika"`. State keys include patient_id: `f"last_{task_name}:{patient_id}"`.
+- Load tests in `tests/load/` — always run after concurrency changes.
+- **Always run `uv run ruff format --check` after agent edits** — agents frequently miss formatting.
+
 ## Key commands
 
 - `uv run oncoteam-mcp` — run MCP server (stdio)
@@ -119,7 +134,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Testing
 
-- `uv run pytest` — full suite (630 tests, ~2.3s)
+- `uv run pytest` — full suite (637 tests, ~4.5s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -132,7 +147,7 @@ uv run oncoteam-mcp    # stdio mode
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 595 tests, ruff clean
+- 637 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
