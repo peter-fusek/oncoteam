@@ -43,6 +43,7 @@ def _get_task_functions() -> dict:
         run_daily_research,
         run_family_update,
         run_file_scan,
+        run_funnel_assess,
         run_lab_sync,
         run_medication_adherence_check,
         run_mtb_preparation,
@@ -75,6 +76,7 @@ def _get_task_functions() -> dict:
         "medication_adherence_check": run_medication_adherence_check,
         "daily_cost_report": run_daily_cost_report,
         "self_improvement": run_self_improvement,
+        "funnel_assess": run_funnel_assess,
     }
 
 

@@ -476,6 +476,44 @@ Instructions:
 This is a safety check: Clexane non-compliance with active VJI thrombosis is dangerous.\
 """,
     ),
+    # === Research Funnel Auto-Assess (Haiku) ===
+    AgentConfig(
+        id="funnel_assess",
+        name=L("Automatická klasifikácia štúdií", "Trial funnel auto-assessment"),
+        description=L(
+            "Automatická klasifikácia nových klinických štúdií do lievikovej kategórie",
+            "Automatically classify new clinical trials into funnel stages",
+        ),
+        schedule_display=L("utorok + piatok 10:00", "Tuesday + Friday 10:00"),
+        category=AgentCategory.RESEARCH,
+        model="light",
+        schedule_type=ScheduleType.CRON,
+        schedule_params={"day_of_week": "tue,fri", "hour": 10, "minute": 0},
+        misfire_grace_time=86400,
+        cooldown_hours=48,
+        max_turns=8,
+        assigned_tool="search_clinical_trials",
+        prompt_template="""\
+Classify recently discovered clinical trials into funnel stages for the patient.
+
+Instructions:
+1. Use search_clinical_trials to find recent trials matching patient profile
+2. For each trial, determine the funnel stage:
+   - **Excluded**: biomarker contraindication or eligibility hard-stop
+   - **Later Line**: trial is for 2L/3L+ (patient is 1L mFOLFOX6)
+   - **Watching**: relevant but not actionable yet
+   - **Eligible Now**: patient meets criteria, trial recruiting in EU/Slovakia
+   - **Action Needed**: eligible AND enrollment closing soon
+3. Patient rules:
+   - KRAS G12S (NOT G12C) — anti-EGFR EXCLUDED
+   - pMMR/MSS — checkpoint monotherapy NOT indicated
+   - HER2 negative — HER2-targeted NOT indicated
+   - Prior palliative resection — "unresectable only" trials EXCLUDED
+   - Active VTE on Clexane — bevacizumab HIGH RISK
+4. Log a briefing with the classification results and any new findings
+5. Flag any trials that moved from Watching to Eligible Now\
+""",
+    ),
 ]
 
 # ── Registry ───────────────────────────────────

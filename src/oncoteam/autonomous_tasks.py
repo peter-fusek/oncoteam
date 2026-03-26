@@ -1330,3 +1330,50 @@ async def run_daily_cost_report() -> dict:
         logger.error("!!! Failed task: daily_cost_report — %s", e)
         record_suppressed_error("daily_cost_report", "send", e)
         return {"ok": False, "error": str(e)}
+
+
+async def run_funnel_assess() -> dict:
+    """Auto-classify new clinical trials into funnel stages."""
+    if await _should_skip("funnel_assess"):
+        return {"skipped": True, "reason": "cooldown"}
+    logger.info(">>> Starting task: funnel_assess")
+    prompt = """\
+Classify recently discovered clinical trials into funnel stages for the patient.
+
+Instructions:
+1. Use search_clinical_trials to find recent trials matching patient profile
+2. For each trial, determine the funnel stage:
+   - Excluded: biomarker contraindication or eligibility hard-stop
+   - Later Line: trial is for 2L/3L+ (patient is 1L mFOLFOX6)
+   - Watching: relevant but not actionable yet
+   - Eligible Now: patient meets criteria, trial recruiting in EU/Slovakia
+   - Action Needed: eligible AND enrollment closing soon
+3. Patient rules:
+   - KRAS G12S (NOT G12C) — anti-EGFR EXCLUDED
+   - pMMR/MSS — checkpoint monotherapy NOT indicated
+   - HER2 negative — HER2-targeted NOT indicated
+   - Prior palliative resection — "unresectable only" trials EXCLUDED
+   - Active VTE on Clexane — bevacizumab HIGH RISK
+4. Log a briefing with the classification results and any new findings
+5. Flag any trials that moved from Watching to Eligible Now
+
+Focus on NEW trials not previously classified. Be concise.\
+"""
+    try:
+        result = await run_autonomous_task(
+            prompt, max_turns=8, task_name="funnel_assess", model=AUTONOMOUS_MODEL_LIGHT
+        )
+    except Exception as e:
+        logger.error("!!! Failed task: funnel_assess — %s", e)
+        raise
+    logger.info(
+        "<<< Completed task: funnel_assess (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
+    await _log_task("funnel_assess", result)
+    await _set_state(
+        "last_funnel_assess",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+    )
+    return result

@@ -17,7 +17,7 @@ from oncoteam.agent_registry import (
 
 class TestAgentRegistry:
     def test_all_agents_loaded(self):
-        assert len(AGENT_REGISTRY) == 18
+        assert len(AGENT_REGISTRY) == 19
 
     def test_no_duplicate_ids(self):
         ids = list(AGENT_REGISTRY.keys())
@@ -97,19 +97,19 @@ class TestGetCooldown:
 class TestGetEnabledAgents:
     def test_returns_all_enabled(self):
         agents = get_enabled_agents()
-        assert len(agents) == 18
+        assert len(agents) == 19
 
     def test_exclude_system(self):
         agents = get_enabled_agents(exclude_system=True)
         for a in agents:
             assert a.category != AgentCategory.SYSTEM
-        assert len(agents) == 15
+        assert len(agents) == 16
 
 
 class TestGetDashboardJobs:
     def test_returns_jobs(self):
         jobs = get_dashboard_jobs("en")
-        assert len(jobs) == 15  # excludes system agents
+        assert len(jobs) == 16  # excludes system agents
 
     def test_jobs_have_required_fields(self):
         for job in get_dashboard_jobs("en"):
