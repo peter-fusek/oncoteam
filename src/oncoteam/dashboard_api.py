@@ -608,7 +608,8 @@ def _check_api_auth(request: Request) -> JSONResponse | None:
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
     if token == DASHBOARD_API_KEY:
-        if not _check_rate_limit():
+        pid = request.query_params.get("patient_id", "global")
+        if not _check_rate_limit(pid):
             return _cors_json({"error": "Rate limit exceeded"}, status_code=429, request=request)
         return None  # Authorized
     return _cors_json({"error": "Unauthorized"}, status_code=401, request=request)
@@ -637,15 +638,14 @@ def _check_rate_limit(patient_id: str = "global") -> bool:
     """
     now = time.time()
 
-    # Global safety valve
+    # Check global safety valve (don't append yet — TOCTOU fix #201)
     cutoff = now - _RATE_LIMIT_WINDOW
     while _rate_global and _rate_global[0] < cutoff:
         _rate_global.popleft()
     if len(_rate_global) >= _RATE_LIMIT_GLOBAL_MAX:
         return False
-    _rate_global.append(now)
 
-    # Per-patient limit
+    # Check per-patient limit (don't append yet)
     if patient_id not in _rate_timestamps:
         _rate_timestamps[patient_id] = collections.deque()
     dq = _rate_timestamps[patient_id]
@@ -653,6 +653,9 @@ def _check_rate_limit(patient_id: str = "global") -> bool:
         dq.popleft()
     if len(dq) >= _RATE_LIMIT_MAX:
         return False
+
+    # Both checks passed — now record
+    _rate_global.append(now)
     dq.append(now)
     return True
 
@@ -1269,8 +1272,8 @@ async def api_autonomous_cost(request: Request) -> JSONResponse:
         state = _unwrap_agent_state(raw)
         if state.get("month") == now.strftime("%Y-%m"):
             mtd_spend = round(float(state.get("cost_usd", 0.0)) + today_spend, 4)
-    except Exception:
-        pass
+    except Exception as e:
+        record_suppressed_error("api_autonomous_cost", "fetch_mtd", e)
 
     # Project EOM spend (linear extrapolation)
     if day_of_month > 0:
@@ -1350,8 +1353,11 @@ async def _deduplicated_fetch(cache_key: str, fetcher) -> any:
         result = await fetcher()
         future.set_result(result)
         return result
-    except Exception as e:
-        future.set_exception(e)
+    except BaseException as e:
+        # Catch BaseException (incl. CancelledError) to ensure future is
+        # always resolved — otherwise waiters hang indefinitely (#201)
+        if not future.done():
+            future.set_exception(e)
         raise
     finally:
         _pending_requests.pop(cache_key, None)
