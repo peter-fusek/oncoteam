@@ -148,3 +148,15 @@ def stop_scheduler() -> None:
     _standalone_scheduler.shutdown(wait=False)
     logger.info("Autonomous scheduler stopped")
     _standalone_scheduler = None
+
+
+def get_scheduler_status() -> dict:
+    """Return scheduler status for health endpoints."""
+    if _standalone_scheduler is None:
+        return {"running": False, "jobs": 0}
+    jobs = _standalone_scheduler.get_jobs()
+    return {
+        "running": _standalone_scheduler.running,
+        "jobs": len(jobs),
+        "job_ids": [j.id for j in jobs],
+    }

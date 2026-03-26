@@ -6,16 +6,15 @@
  * Patient ID is included in all API queries for multi-patient scoping.
  */
 
-const activePatientId = ref('erika')
-
-// Known patients with display info. Seeded with Erika.
-// When new patients onboard, they're added to the user's session patientIds
-// and their display info is fetched from the backend.
-const patientDisplayInfo = ref<Record<string, { name: string; diagnosis: string }>>({
-  erika: { name: 'Erika F.', diagnosis: 'mCRC (C18.7)' },
-})
-
 export function useActivePatient() {
+  const activePatientId = useState('activePatientId', () => 'erika')
+
+  // Known patients with display info. Seeded with Erika.
+  // When new patients onboard, they're added to the user's session patientIds
+  // and their display info is fetched from the backend.
+  const patientDisplayInfo = useState<Record<string, { name: string; diagnosis: string }>>('patientDisplayInfo', () => ({
+    erika: { name: 'Erika F.', diagnosis: 'mCRC (C18.7)' },
+  }))
   const { user } = useUserSession()
   const { activeRole } = useUserRole()
 

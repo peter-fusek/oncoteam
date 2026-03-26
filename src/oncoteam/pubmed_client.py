@@ -34,13 +34,33 @@ def _base_params() -> dict:
     return params
 
 
+async def _request_with_retry(
+    client: httpx.AsyncClient, url: str, params: dict, max_retries: int = 2
+) -> httpx.Response:
+    """Make an HTTP request with retry-after handling for 429 responses."""
+    for attempt in range(max_retries + 1):
+        resp = await client.get(url, params=params)
+        if resp.status_code == 429:
+            retry_after = resp.headers.get("Retry-After", "2")
+            try:
+                wait = min(float(retry_after), 10.0)
+            except ValueError:
+                wait = 2.0
+            if attempt < max_retries:
+                await asyncio.sleep(wait)
+                await _rate_limit()
+                continue
+        resp.raise_for_status()
+        return resp
+    return resp  # shouldn't reach here
+
+
 async def fetch_article(pmid: str) -> PubMedArticle | None:
     """Fetch a single PubMed article by PMID via efetch."""
     async with httpx.AsyncClient(timeout=30) as client:
         await _rate_limit()
         params = {**_base_params(), "db": "pubmed", "id": pmid}
-        resp = await client.get(f"{NCBI_BASE_URL}/efetch.fcgi", params=params)
-        resp.raise_for_status()
+        resp = await _request_with_retry(client, f"{NCBI_BASE_URL}/efetch.fcgi", params)
         articles = _parse_efetch(resp.text)
         return articles[0] if articles else None
 
@@ -51,8 +71,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> list[PubMedArticle
         # Step 1: esearch to get PMIDs
         await _rate_limit()
         params = {**_base_params(), "db": "pubmed", "term": query, "retmax": max_results}
-        resp = await client.get(f"{NCBI_BASE_URL}/esearch.fcgi", params=params)
-        resp.raise_for_status()
+        resp = await _request_with_retry(client, f"{NCBI_BASE_URL}/esearch.fcgi", params)
 
         pmids = _parse_esearch(resp.text)
         if not pmids:
@@ -61,8 +80,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> list[PubMedArticle
         # Step 2: efetch to get article details
         await _rate_limit()
         params = {**_base_params(), "db": "pubmed", "id": ",".join(pmids)}
-        resp = await client.get(f"{NCBI_BASE_URL}/efetch.fcgi", params=params)
-        resp.raise_for_status()
+        resp = await _request_with_retry(client, f"{NCBI_BASE_URL}/efetch.fcgi", params)
 
         return _parse_efetch(resp.text)
 

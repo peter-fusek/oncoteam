@@ -487,7 +487,7 @@ async function submitLab() {
                       class="tabular-nums"
                       :class="entry.alerts?.some((a: any) => a.param === p.key) ? 'text-red-700 font-bold' : entry.value_statuses?.[p.key] === 'low' || entry.value_statuses?.[p.key] === 'high' ? 'text-amber-700 font-semibold' : 'text-gray-900'"
                     >
-                      {{ typeof entry.values[p.key] === 'number' ? entry.values[p.key].toLocaleString() : entry.values[p.key] }}
+                      {{ typeof entry.values[p.key] === 'number' ? entry.values[p.key].toLocaleString() : String(entry.values[p.key]) }}
                     </span>
                     <!-- Direction arrow -->
                     <span

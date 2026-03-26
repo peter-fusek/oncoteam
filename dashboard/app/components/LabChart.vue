@@ -111,9 +111,10 @@ const chartData = computed(() => {
       align: (ctx: any) => {
         // Avoid overlap: place label below point if near chart top
         const yPixel = ctx.chart.scales.y.getPixelForValue(ctx.dataset.data[ctx.dataIndex])
-        return yPixel < 30 ? 'bottom' : 'top'
+        return yPixel < 40 ? 'bottom' : 'top'
       },
-      offset: 6,
+      offset: 8,
+      clamp: true,
       padding: 2,
       font: { size: 9, weight: 'bold' as const, family: 'DM Sans' },
       formatter: (val: number) => val?.toLocaleString() ?? '',
@@ -157,7 +158,7 @@ const chartOptions = computed(() => ({
   },
   scales: {
     x: {
-      ticks: { color: '#6b7280', font: { size: 10, family: 'DM Sans' } },
+      ticks: { color: '#6b7280', font: { size: 9, family: 'DM Sans' }, maxRotation: 45, autoSkip: true, maxTicksLimit: 8 },
       grid: { color: '#f3f4f6' },
       border: { color: '#e5e7eb' },
     },
@@ -171,11 +172,13 @@ const chartOptions = computed(() => ({
 
 // Determine trend summary
 const trendSummary = computed(() => {
-  const nonNull = props.values.filter((v): v is number => v != null)
+  const nonNull = props.values.filter((v): v is number => v != null && typeof v === 'number' && isFinite(v))
   if (nonNull.length < 2) return null
   const last = nonNull[nonNull.length - 1]
   const prev = nonNull[nonNull.length - 2]
+  if (prev === 0) return { direction: last > 0 ? 'up' : 'stable' as const, pctChange: '—', last }
   const pctChange = ((last - prev) / prev) * 100
+  if (!isFinite(pctChange)) return null
   return {
     direction: last > prev ? 'up' : last < prev ? 'down' : 'stable',
     pctChange: Math.abs(pctChange).toFixed(1),

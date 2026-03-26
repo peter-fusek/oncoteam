@@ -413,6 +413,15 @@ onUnmounted(() => {
       <UIcon name="i-lucide-chevron-right" class="w-4 h-4 text-gray-400" />
     </NuxtLink>
 
+    <!-- Autonomous Disabled Warning -->
+    <div v-if="autonomous && !autonomous.enabled && currentLevel === 0" class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div class="flex items-center gap-2">
+        <UIcon name="i-lucide-pause-circle" class="text-amber-500 w-4 h-4" />
+        <span class="text-sm font-medium text-amber-800">{{ $t('agents.autonomousDisabled') }}</span>
+      </div>
+      <p class="text-xs text-amber-600 mt-1">{{ $t('agents.autonomousDisabledHint') }}</p>
+    </div>
+
     <!-- Autonomous Status + Budget Widget -->
     <div v-if="autonomous?.enabled && currentLevel === 0" class="rounded-xl border bg-white p-4 space-y-3" :class="costData?.budget_alert ? 'border-amber-300' : 'border-gray-200'">
       <div class="flex items-center justify-between">

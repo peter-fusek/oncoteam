@@ -86,6 +86,8 @@
     "noActivity": "No activity logged yet",
     "stats": "Statistics",
     "autonomous": "Autonomous Tasks",
+    "autonomousDisabled": "Autonomous tasks are disabled",
+    "autonomousDisabledHint": "Set AUTONOMOUS_ENABLED=true in environment to activate scheduled agents.",
     "nextRun": "Next run",
     "lastRun": "Last run",
     "noTasks": "No autonomous tasks configured",

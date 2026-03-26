@@ -222,9 +222,7 @@ def _parse_result(result: object) -> dict | list | str:
     return str(result)
 
 
-async def _call_with_retry(
-    tool_name: str, arguments: dict, token: str | None
-) -> dict | list | str:
+async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -> dict | list | str:
     """Execute an MCP call with one retry on failure."""
     global _circuit_failures, _circuit_open_until, _total_errors, _total_circuit_trips
     for attempt in range(2):
@@ -247,8 +245,7 @@ async def _call_with_retry(
                 _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
                 _total_circuit_trips += 1
                 _logger.error(
-                    "oncofiles circuit breaker OPEN after %d failures "
-                    "— blocking calls for %ds",
+                    "oncofiles circuit breaker OPEN after %d failures — blocking calls for %ds",
                     _circuit_failures,
                     CIRCUIT_BREAKER_COOLDOWN,
                 )
@@ -303,8 +300,7 @@ async def call_oncofiles(
     except TimeoutError:
         _total_errors += 1
         raise TimeoutError(
-            f"oncofiles queue full for {tool_name} — rejected after "
-            f"{SEMAPHORE_WAIT_TIMEOUT}s wait"
+            f"oncofiles queue full for {tool_name} — rejected after {SEMAPHORE_WAIT_TIMEOUT}s wait"
         ) from None
     try:
         # Heavy queries get an extra gate — max 1 concurrent.

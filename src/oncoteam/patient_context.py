@@ -643,21 +643,28 @@ _BIOMARKER_PATTERNS: dict[str, list[re.Pattern]] = {
 _GENETIC_SEARCH_TERMS = ["genetik", "HER2", "FISH", "NGS", "KRAS", "BRAF", "MSI", "pathology"]
 
 
+# Concurrency limit for oncofiles calls — prevents overwhelming the queue.
+# Oncofiles has max 3 general + max 1 heavy semaphore slots with 8s timeout.
+# Exceeding this causes mass rejections (126 suppressed errors in one session).
+_ONCOFILES_CONCURRENCY = asyncio.Semaphore(3)
+
+
 async def get_genetic_profile() -> dict[str, str]:
     """Fetch genetic/biomarker data from oncofiles documents.
 
-    Uses asyncio.gather to batch search and view calls (fix N+1 #96).
+    Uses semaphore-bounded concurrency to avoid overwhelming oncofiles.
     """
     profile = dict(PATIENT.biomarkers)
 
-    # Batch all search calls in parallel
+    # Search with bounded concurrency (3 at a time)
     async def _search(term: str) -> list[dict]:
-        try:
-            result = await oncofiles_client.search_documents(text=term)
-            return result.get("documents", []) if isinstance(result, dict) else []
-        except Exception as e:
-            record_suppressed_error("patient_context", f"search_{term}", e)
-            return []
+        async with _ONCOFILES_CONCURRENCY:
+            try:
+                result = await oncofiles_client.search_documents(text=term)
+                return result.get("documents", []) if isinstance(result, dict) else []
+            except Exception as e:
+                record_suppressed_error("patient_context", f"search_{term}", e)
+                return []
 
     search_results = await asyncio.gather(*[_search(t) for t in _GENETIC_SEARCH_TERMS])
 
@@ -671,19 +678,42 @@ async def get_genetic_profile() -> dict[str, str]:
                 seen_ids.add(doc_id)
                 doc_ids.append(doc_id)
 
-    # Batch all view calls in parallel
-    async def _view(doc_id: str) -> str:
-        try:
-            content = await oncofiles_client.view_document(doc_id)
-            return _extract_text(content)
-        except Exception as e:
-            record_suppressed_error("patient_context", f"view_{doc_id}", e)
-            return ""
+    # Prefer document summaries over full content when available
+    # Full view_document is expensive — use summary field from search results
+    doc_summaries: dict[str, str] = {}
+    for docs in search_results:
+        for doc in docs:
+            doc_id = str(doc.get("id", ""))
+            summary = doc.get("summary") or doc.get("description") or ""
+            if doc_id and summary:
+                doc_summaries[doc_id] = summary
 
-    texts = await asyncio.gather(*[_view(d) for d in doc_ids])
-    for text in texts:
-        if text:
-            _update_biomarkers(profile, text)
+    # First pass: extract biomarkers from summaries (no API calls needed)
+    for doc_id in doc_ids:
+        summary = doc_summaries.get(doc_id, "")
+        if summary:
+            _update_biomarkers(profile, summary)
+
+    # Second pass: fetch full content only for docs that might have more data
+    # Skip if we already have all common biomarkers filled
+    common_markers = {"KRAS", "NRAS", "BRAF", "HER2", "MSI"}
+    missing = common_markers - set(profile.keys())
+    if missing and doc_ids:
+
+        async def _view(doc_id: str) -> str:
+            async with _ONCOFILES_CONCURRENCY:
+                try:
+                    content = await oncofiles_client.view_document(doc_id)
+                    return _extract_text(content)
+                except Exception as e:
+                    record_suppressed_error("patient_context", f"view_{doc_id}", e)
+                    return ""
+
+        # Cap at 10 documents max to avoid queue overload
+        texts = await asyncio.gather(*[_view(d) for d in doc_ids[:10]])
+        for text in texts:
+            if text:
+                _update_biomarkers(profile, text)
 
     return profile
 

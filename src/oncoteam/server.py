@@ -948,9 +948,18 @@ async def get_clinical_protocol(section: str | None = None, lang: str = "en") ->
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health(request: Request) -> JSONResponse:
-    return JSONResponse(
-        {"status": "ok", "server": "oncoteam", "version": VERSION, "commit": GIT_COMMIT}
-    )
+    from .config import AUTONOMOUS_ENABLED
+    from .scheduler import get_scheduler_status
+
+    data = {
+        "status": "ok",
+        "server": "oncoteam",
+        "version": VERSION,
+        "commit": GIT_COMMIT,
+        "autonomous_enabled": AUTONOMOUS_ENABLED,
+        "scheduler": get_scheduler_status(),
+    }
+    return JSONResponse(data)
 
 
 mcp.custom_route("/health/deep", methods=["GET"])(api_health_deep)

@@ -1,5 +1,4 @@
-const showTestData = ref(false)
-
 export function useTestDataToggle() {
+  const showTestData = useState('showTestData', () => false)
   return { showTestData }
 }

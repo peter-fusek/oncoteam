@@ -280,16 +280,12 @@ _TECHNICAL_KEYWORDS = (
     "deploy",
     "sprint",
     "debug",
-    "fix",
     "ci/cd",
     "ci pipeline",
-    "test",
-    "version",
     "migration",
     "refactor",
     "infra",
     "railway",
-    "render",
     "dockerfile",
     "eslint",
     "ruff",
@@ -297,10 +293,32 @@ _TECHNICAL_KEYWORDS = (
     "pipeline",
     "pr review",
     "pull request",
+    "nuxt",
+    "dashboard bug",
+    "pnpm",
+    "typescript",
+    "vue",
+    "api endpoint",
+    "503",
+    "timeout",
+    "semaphore",
+    "proxy",
+    "backend",
+    "frontend",
+    "css",
+    "build",
+    "commit",
+    "git",
+    "branch",
+    "merge",
+    "linting",
+    "formatting",
+    "env var",
+    "bug fix",
+    "code review",
 )
 _CLINICAL_KEYWORDS = (
     "chemo",
-    "lab",
     "toxicity",
     "briefing",
     "cycle",
@@ -310,9 +328,7 @@ _CLINICAL_KEYWORDS = (
     "onkolog",
     "vysetrenie",
     "kontrola",
-    "patient",
     "pacient",
-    "treatment",
     "liecba",
     "neuropathy",
     "nausea",
@@ -321,18 +337,52 @@ _CLINICAL_KEYWORDS = (
     "trial",
     "biomarker",
     "dose",
-    "safety",
+    "lab result",
+    "hemoglobin",
+    "platelet",
+    "tumor marker",
+    "kras",
+    "braf",
+    "egfr",
+    "msi",
+    "staging",
+    "metast",
+    "oncologist",
+    "pre-cycle",
+    "adverse event",
 )
+# Tags that strongly indicate technical sessions
+_TECHNICAL_TAG_PREFIXES = ("sys:", "task:deploy", "task:sprint", "task:fix", "task:refactor")
 
 
 def _classify_session_type(entry: dict) -> str:
-    """Classify a session as 'clinical' or 'technical'."""
+    """Classify a session as 'clinical' or 'technical'.
+
+    Uses keyword matching in title (2x weight) and content (first 500 chars).
+    Tags with sys: or task: prefixes strongly indicate technical sessions.
+    """
     title = (entry.get("title") or "").lower()
     content = (entry.get("content") or "").lower()
-    text = f"{title} {content[:300]}"
+    tags = entry.get("tags") or []
+    if isinstance(tags, str):
+        tags = [t.strip() for t in tags.split(",")]
 
-    tech_hits = sum(1 for kw in _TECHNICAL_KEYWORDS if kw in text)
-    clin_hits = sum(1 for kw in _CLINICAL_KEYWORDS if kw in text)
+    # Tag-based strong signal
+    tag_text = " ".join(str(t).lower() for t in tags)
+    for prefix in _TECHNICAL_TAG_PREFIXES:
+        if prefix in tag_text:
+            return "technical"
+    # Clinical tag signal
+    if any(t.lower().startswith("clin:") or t.lower().startswith("bio:") for t in tags):
+        return "clinical"
+
+    # Keyword scoring: title counts double
+    title_text = title
+    body_text = content[:500]
+    tech_hits = sum(2 for kw in _TECHNICAL_KEYWORDS if kw in title_text)
+    tech_hits += sum(1 for kw in _TECHNICAL_KEYWORDS if kw in body_text)
+    clin_hits = sum(2 for kw in _CLINICAL_KEYWORDS if kw in title_text)
+    clin_hits += sum(1 for kw in _CLINICAL_KEYWORDS if kw in body_text)
 
     if tech_hits > clin_hits:
         return "technical"
@@ -1860,6 +1910,12 @@ async def api_labs(request: Request) -> JSONResponse:
             entry["directions"] = directions
             entry["health_directions"] = health_dirs
 
+        # Strip non-numeric values from entries (prevents raw JSON in frontend)
+        for entry in entries:
+            entry["values"] = {
+                k: v for k, v in entry["values"].items() if isinstance(v, (int, float))
+            }
+
         # Outlier detection: flag entries with >90% single-reading change
         # (e.g., CEA 1559→6 is medically impossible in 1 week)
         outlier_params = {"CEA", "CA_19_9"}
@@ -1910,6 +1966,14 @@ async def api_detail(request: Request) -> JSONResponse:
     detail_type = request.path_params.get("type", "")
     detail_id = request.path_params.get("id", "")
 
+    # Fail fast if oncofiles is down
+    cb = oncofiles_client.get_circuit_breaker_status()
+    if cb["state"] == "open":
+        return _cors_json(
+            {"error": "Database temporarily unavailable", "type": detail_type, "id": detail_id},
+            status_code=503,
+        )
+
     try:
         data: dict = {}
         source: dict = {"oncofiles_id": None, "gdrive_file_id": None, "gdrive_url": None}
@@ -1927,14 +1991,24 @@ async def api_detail(request: Request) -> JSONResponse:
 
         elif detail_type == "research":
             try:
-                raw = await oncofiles_client.get_research_entry(int(detail_id))
+                raw = await asyncio.wait_for(
+                    oncofiles_client.get_research_entry(int(detail_id)), timeout=8.0
+                )
                 data = raw if isinstance(raw, dict) else {"raw": raw}
             except Exception:
-                # Fallback: fetch list and filter
-                result = await oncofiles_client.list_research_entries(limit=100)
-                entries = _extract_list(result, "entries")
-                match = [e for e in entries if e.get("id") == int(detail_id)]
-                data = match[0] if match else {"error": "not found"}
+                # Fallback: fetch list and filter (with timeout)
+                try:
+                    result = await asyncio.wait_for(
+                        oncofiles_client.list_research_entries(limit=100), timeout=8.0
+                    )
+                    entries = _extract_list(result, "entries")
+                    match = [e for e in entries if e.get("id") == int(detail_id)]
+                    data = match[0] if match else {"error": "not found"}
+                except TimeoutError:
+                    return _cors_json(
+                        {"error": "Request timed out", "type": detail_type, "id": detail_id},
+                        status_code=504,
+                    )
             source["oncofiles_id"] = int(detail_id)
             # Build external link
             ext_id = data.get("external_id", "")
@@ -2547,7 +2621,7 @@ def _translate_for_family(
     lang: str = "sk",
     patient=None,
 ) -> str:
-    """Translate clinical data to plain language for family members."""
+    """Translate clinical data to comprehensive plain language for family members."""
     pt = patient or PATIENT
     parts: list[str] = []
     cycle = pt.current_cycle or 2
@@ -2555,7 +2629,7 @@ def _translate_for_family(
     if lang == "sk":
         parts.append(f"Liečba prebieha — cyklus {cycle} z chemoterapie mFOLFOX6.\n")
 
-        # Labs
+        # Blood counts
         if labs and isinstance(labs, dict):
             anc = labs.get("ANC")
             if anc is not None:
@@ -2566,19 +2640,57 @@ def _translate_for_family(
                         f"Krvné hodnoty (ANC {anc}) sú nižšie — onkológ rozhodne o ďalšom postupe."
                     )
 
+            # Tumor markers
+            cea = labs.get("CEA")
+            ca199 = labs.get("CA_19_9")
+            if cea is not None or ca199 is not None:
+                parts.append("")
+                parts.append("Nádorové markery:")
+                if cea is not None:
+                    parts.append(f"  CEA: {cea:,.1f} ng/mL")
+                if ca199 is not None:
+                    parts.append(f"  CA 19-9: {ca199:,.1f} U/mL")
+                # Note: trend info would need previous values, but we provide current snapshot
+
+            # Hemoglobin
+            hgb = labs.get("hemoglobin")
+            if hgb is not None and hgb < 10:
+                parts.append(
+                    f"Hemoglobín ({hgb:.1f} g/dL) je nižší — sleduje sa, "
+                    "prípadne sa zváži transfúzia."
+                )
+
+            # Platelets
+            plt_val = labs.get("PLT")
+            if plt_val is not None and plt_val < 100000:
+                parts.append(f"Krvné doštičky ({plt_val:,.0f}/µL) sú nižšie — sleduje sa.")
+
         # Toxicity
         if toxicity and isinstance(toxicity, dict):
+            tox_items: list[str] = []
             neuro = toxicity.get("neuropathy", 0)
             if neuro and neuro >= 1:
-                parts.append(
-                    "Mierne brnenie v prstoch rúk/nôh (bežný vedľajší účinok, sleduje sa)."
+                tox_items.append(
+                    "mierne brnenie v prstoch rúk/nôh (bežný vedľajší účinok, sleduje sa)"
                 )
             fatigue = toxicity.get("fatigue", 0)
             if fatigue and fatigue >= 2:
-                parts.append(
-                    "Zvýšená únava — zvláda väčšinu bežných denných aktivít, "
-                    "ale rýchlejšie sa unaví."
+                tox_items.append(
+                    "zvýšená únava — zvláda väčšinu bežných aktivít, ale rýchlejšie sa unaví"
                 )
+            nausea = toxicity.get("nausea", 0)
+            if nausea and nausea >= 1:
+                tox_items.append("mierna nevoľnosť (kontrolovaná liekmi)")
+            diarrhea = toxicity.get("diarrhea", 0)
+            if diarrhea and diarrhea >= 1:
+                tox_items.append("občasné zažívacie ťažkosti")
+            if tox_items:
+                parts.append("")
+                parts.append("Vedľajšie účinky:")
+                for item in tox_items:
+                    parts.append(f"  - {item}")
+            else:
+                parts.append("\nVedľajšie účinky sú minimálne.")
 
         # Weight
         if weight_data:
@@ -2589,23 +2701,26 @@ def _translate_for_family(
                     (weight_data.get("baseline_weight_kg", 72) - latest["weight_kg"]),
                     1,
                 )
-                parts.append(f"Úbytok hmotnosti o {loss_kg} kg, konzultácia s nutricionistom.")
+                parts.append(f"\nÚbytok hmotnosti o {loss_kg} kg — konzultácia s nutricionistom.")
             else:
-                parts.append("Hmotnosť je stabilná.")
+                parts.append("\nHmotnosť je stabilná.")
 
         # Milestones
         if milestones:
-            for m in milestones[:2]:
+            parts.append("")
+            parts.append("Najbližšie kroky:")
+            for m in milestones[:3]:
                 desc = m.get("description", "")
-                if "CT" in desc or "imaging" in desc.lower():
-                    parts.append(f"CT vyšetrenie naplánované okolo cyklu {m.get('cycle', '?')}.")
-                else:
-                    parts.append(f"Míľnik: {desc} (cyklus {m.get('cycle', '?')}).")
+                parts.append(f"  - {desc} (cyklus {m.get('cycle', '?')})")
+
+        parts.append("")
+        parts.append("Všetky údaje sú pre informáciu — detaily konzultujte s ošetrujúcim lekárom.")
 
     else:
         # English
         parts.append(f"Treatment is ongoing — cycle {cycle} of mFOLFOX6 chemotherapy.\n")
 
+        # Blood counts
         if labs and isinstance(labs, dict):
             anc = labs.get("ANC")
             if anc is not None:
@@ -2617,32 +2732,82 @@ def _translate_for_family(
                         "the oncologist will decide on next steps."
                     )
 
-        if toxicity and isinstance(toxicity, dict):
-            neuro = toxicity.get("neuropathy", 0)
-            if neuro and neuro >= 1:
-                parts.append("Mild tingling in fingers/toes (common side effect, being monitored).")
-            fatigue = toxicity.get("fatigue", 0)
-            if fatigue and fatigue >= 2:
+            # Tumor markers
+            cea = labs.get("CEA")
+            ca199 = labs.get("CA_19_9")
+            if cea is not None or ca199 is not None:
+                parts.append("")
+                parts.append("Tumor markers:")
+                if cea is not None:
+                    parts.append(f"  CEA: {cea:,.1f} ng/mL")
+                if ca199 is not None:
+                    parts.append(f"  CA 19-9: {ca199:,.1f} U/mL")
+
+            # Hemoglobin
+            hgb = labs.get("hemoglobin")
+            if hgb is not None and hgb < 10:
                 parts.append(
-                    "Increased fatigue — able to manage most daily activities "
-                    "but tires more quickly."
+                    f"Hemoglobin ({hgb:.1f} g/dL) is lower — being monitored, "
+                    "transfusion may be considered."
                 )
 
+            # Platelets
+            plt_val = labs.get("PLT")
+            if plt_val is not None and plt_val < 100000:
+                parts.append(f"Platelets ({plt_val:,.0f}/µL) are lower — being monitored.")
+
+        # Toxicity
+        if toxicity and isinstance(toxicity, dict):
+            tox_items: list[str] = []
+            neuro = toxicity.get("neuropathy", 0)
+            if neuro and neuro >= 1:
+                tox_items.append(
+                    "mild tingling in fingers/toes (common side effect, being monitored)"
+                )
+            fatigue = toxicity.get("fatigue", 0)
+            if fatigue and fatigue >= 2:
+                tox_items.append(
+                    "increased fatigue — able to manage most daily activities "
+                    "but tires more quickly"
+                )
+            nausea = toxicity.get("nausea", 0)
+            if nausea and nausea >= 1:
+                tox_items.append("mild nausea (controlled with medication)")
+            diarrhea = toxicity.get("diarrhea", 0)
+            if diarrhea and diarrhea >= 1:
+                tox_items.append("occasional digestive issues")
+            if tox_items:
+                parts.append("")
+                parts.append("Side effects:")
+                for item in tox_items:
+                    parts.append(f"  - {item}")
+            else:
+                parts.append("\nSide effects are minimal.")
+
+        # Weight
         if weight_data:
             alerts = weight_data.get("alerts", [])
             if alerts:
                 latest = alerts[-1]
                 parts.append(
-                    f"Weight loss of {latest['loss_pct']}% — "
+                    f"\nWeight loss of {latest['loss_pct']}% — "
                     "nutritional support consultation recommended."
                 )
             else:
-                parts.append("Weight is stable.")
+                parts.append("\nWeight is stable.")
 
+        # Milestones
         if milestones:
-            for m in milestones[:2]:
+            parts.append("")
+            parts.append("Upcoming steps:")
+            for m in milestones[:3]:
                 desc = m.get("description", "")
-                parts.append(f"Upcoming: {desc} (cycle {m.get('cycle', '?')}).")
+                parts.append(f"  - {desc} (cycle {m.get('cycle', '?')})")
+
+        parts.append("")
+        parts.append(
+            "All information is for reference — discuss details with the treating physician."
+        )
 
     return "\n".join(parts)
 
@@ -2672,10 +2837,10 @@ async def api_family_update(request: Request) -> JSONResponse:
             if post_lang not in ("sk", "en"):
                 post_lang = "sk"
 
-            # Fetch latest data in parallel
+            # Fetch latest data in parallel (limit=5 for labs to merge tumor markers + hematology)
             labs_data, toxicity_data, weight_data = None, None, None
             results = await asyncio.gather(
-                oncofiles_client.list_treatment_events(event_type="lab_result", limit=1),
+                oncofiles_client.list_treatment_events(event_type="lab_result", limit=5),
                 oncofiles_client.list_treatment_events(event_type="toxicity_log", limit=1),
                 oncofiles_client.list_treatment_events(event_type="weight_measurement", limit=5),
                 return_exceptions=True,
@@ -2683,12 +2848,18 @@ async def api_family_update(request: Request) -> JSONResponse:
 
             if not isinstance(results[0], Exception):
                 events = _extract_list(results[0], "events")
-                if events:
-                    meta = events[0].get("metadata", {})
+                # Merge most recent value for each parameter across entries
+                merged: dict = {}
+                for ev in events:
+                    meta = ev.get("metadata", {})
                     if isinstance(meta, str):
                         with contextlib.suppress(json.JSONDecodeError, TypeError):
                             meta = json.loads(meta)
-                    labs_data = meta
+                    if isinstance(meta, dict):
+                        for k, v in meta.items():
+                            if k not in merged and isinstance(v, (int, float)):
+                                merged[k] = v
+                labs_data = merged or None
 
             if not isinstance(results[1], Exception):
                 events = _extract_list(results[1], "events")

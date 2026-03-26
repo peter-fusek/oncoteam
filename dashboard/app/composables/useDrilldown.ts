@@ -17,13 +17,12 @@ interface DetailResponse {
   related: Array<{ type: string; id: string | number; label: string }>
 }
 
-const isOpen = ref(false)
-const stack = ref<DrilldownItem[]>([])
-const detail = ref<DetailResponse | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
 export function useDrilldown() {
+  const isOpen = useState('drilldown-open', () => false)
+  const stack = useState<DrilldownItem[]>('drilldown-stack', () => [])
+  const detail = useState<DetailResponse | null>('drilldown-detail', () => null)
+  const loading = useState('drilldown-loading', () => false)
+  const error = useState<string | null>('drilldown-error', () => null)
   const current = computed(() => stack.value.length ? stack.value[stack.value.length - 1] : null)
 
   async function fetchDetail(item: DrilldownItem) {

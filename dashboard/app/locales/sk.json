@@ -86,6 +86,8 @@
     "noActivity": "Zatiaľ žiadna aktivita",
     "stats": "Štatistiky",
     "autonomous": "Autonómne úlohy",
+    "autonomousDisabled": "Autonómne úlohy sú vypnuté",
+    "autonomousDisabledHint": "Nastavte AUTONOMOUS_ENABLED=true v prostredí pre aktiváciu plánovaných agentov.",
     "nextRun": "Ďalšie spustenie",
     "lastRun": "Posledné spustenie",
     "noTasks": "Žiadne autonómne úlohy",
