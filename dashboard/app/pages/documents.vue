@@ -16,15 +16,17 @@ const { data: docs, status: docsStatus, error: docsError, refresh } = fetchApi<{
     id: number
     filename: string
     category: string | null
-    ocr_status: string | null
-    ai_summary_status: string | null
-    metadata_status: string | null
-    sync_status: string | null
-    renamed: boolean | null
-    tags: string[]
-    updated_at: string | null
-    created_at: string | null
-    gdrive_url: string | null
+    has_ocr: boolean
+    has_ai: boolean
+    has_metadata: boolean
+    has_date: boolean
+    has_institution: boolean
+    is_synced: boolean
+    is_standard_name: boolean
+    fully_complete: boolean
+    date: string | null
+    institution: string | null
+    gdrive_id: string | null
   }>
   total: number
   filter: string
@@ -41,20 +43,12 @@ function setFilter(f: string) {
   activeFilter.value = f
 }
 
-function statusColor(status: string | null | undefined): string {
-  if (!status || status === 'not_attempted') return 'neutral'
-  if (status === 'complete' || status === 'synced') return 'success'
-  if (status === 'partial' || status === 'in_progress') return 'warning'
-  if (status === 'missing' || status === 'incomplete' || status === 'error') return 'error'
-  return 'neutral'
+function boolColor(val: boolean | undefined): string {
+  return val ? 'success' : 'error'
 }
 
-function statusLabel(status: string | null | undefined): string {
-  if (!status) return t('documents.statusNotAttempted')
-  const key = `documents.status_${status}`
-  const val = t(key)
-  // fallback if key not found
-  return val === key ? status : val
+function boolLabel(val: boolean | undefined): string {
+  return val ? '✓' : '✗'
 }
 </script>
 
@@ -118,8 +112,8 @@ function statusLabel(status: string | null | undefined): string {
             <th class="text-center px-4 py-2.5 font-medium">{{ $t('documents.colOcr') }}</th>
             <th class="text-center px-4 py-2.5 font-medium">{{ $t('documents.colMetadata') }}</th>
             <th class="text-center px-4 py-2.5 font-medium">{{ $t('documents.colAiSummary') }}</th>
-            <th class="text-left px-4 py-2.5 font-medium">{{ $t('documents.colTags') }}</th>
-            <th class="text-right px-4 py-2.5 font-medium">{{ $t('documents.colUpdated') }}</th>
+            <th class="text-left px-4 py-2.5 font-medium">{{ $t('documents.colInstitution') || 'Institution' }}</th>
+            <th class="text-right px-4 py-2.5 font-medium">{{ $t('documents.colDate') || 'Date' }}</th>
           </tr>
         </thead>
         <tbody>
@@ -147,38 +141,25 @@ function statusLabel(status: string | null | undefined): string {
               <span v-else class="text-gray-500">-</span>
             </td>
             <td class="px-4 py-2.5 text-center">
-              <UBadge variant="subtle" size="xs" :color="statusColor(doc.ocr_status)">
-                {{ statusLabel(doc.ocr_status) }}
+              <UBadge variant="subtle" size="xs" :color="boolColor(doc.has_ocr)">
+                {{ boolLabel(doc.has_ocr) }}
               </UBadge>
             </td>
             <td class="px-4 py-2.5 text-center">
-              <UBadge variant="subtle" size="xs" :color="statusColor(doc.metadata_status)">
-                {{ statusLabel(doc.metadata_status) }}
+              <UBadge variant="subtle" size="xs" :color="boolColor(doc.has_metadata)">
+                {{ boolLabel(doc.has_metadata) }}
               </UBadge>
             </td>
             <td class="px-4 py-2.5 text-center">
-              <UBadge variant="subtle" size="xs" :color="statusColor(doc.ai_summary_status)">
-                {{ statusLabel(doc.ai_summary_status) }}
+              <UBadge variant="subtle" size="xs" :color="boolColor(doc.has_ai)">
+                {{ boolLabel(doc.has_ai) }}
               </UBadge>
             </td>
-            <td class="px-4 py-2.5">
-              <div class="flex flex-wrap gap-1 max-w-xs">
-                <UBadge
-                  v-for="tag in (doc.tags || []).slice(0, 3)"
-                  :key="tag"
-                  variant="subtle"
-                  size="xs"
-                  color="neutral"
-                >
-                  {{ tag }}
-                </UBadge>
-                <span v-if="(doc.tags || []).length > 3" class="text-xs text-gray-500">
-                  +{{ doc.tags.length - 3 }}
-                </span>
-              </div>
+            <td class="px-4 py-2.5 text-xs text-gray-500">
+              {{ doc.institution || '-' }}
             </td>
             <td class="px-4 py-2.5 text-right text-gray-500 text-xs whitespace-nowrap">
-              {{ doc.updated_at ? formatDate(doc.updated_at) : '-' }}
+              {{ doc.date ? formatDate(doc.date) : '-' }}
             </td>
           </tr>
         </tbody>
