@@ -621,7 +621,7 @@ async def search_documents(text: str, category: str | None = None) -> str:
         JSON with matching documents.
     """
     try:
-        result = await oncofiles_client.search_documents(text, category)
+        result = await oncofiles_client.search_documents(text, category, limit=200)
         docs = result.get("documents", []) if isinstance(result, dict) else result
         results = {"documents": docs, "total": len(docs)}
         return json.dumps({"query": text, "category": category, "results": results})

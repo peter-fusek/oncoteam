@@ -296,7 +296,7 @@ class TestSearchDocumentsTool:
         assert result["query"] == "lab report"
         assert result["category"] == "labs"
         assert "results" in result
-        mock_search.assert_called_once_with("lab report", "labs")
+        mock_search.assert_called_once_with("lab report", "labs", limit=200)
 
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.search_documents", new_callable=AsyncMock)
@@ -307,7 +307,7 @@ class TestSearchDocumentsTool:
 
         assert result["query"] == "blood work"
         assert result["category"] is None
-        mock_search.assert_called_once_with("blood work", None)
+        mock_search.assert_called_once_with("blood work", None, limit=200)
 
     @pytest.mark.asyncio
     @patch(
