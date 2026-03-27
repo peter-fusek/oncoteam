@@ -1905,10 +1905,11 @@ async def api_labs(request: Request) -> JSONResponse:
         )
         events = _filter_test(_extract_list(result, "events"), request)
 
-        # Fallback: try lab_values table if no events exist OR all events
-        # have empty metadata (metadata stored separately in oncofiles).
-        all_empty = events and all(not e.get("metadata") for e in events)
-        if not events or all_empty:
+        # Fallback: try lab_values table if no events exist OR any events
+        # have empty metadata (lab_sync agent writes to lab_values table but
+        # often omits metadata in treatment events — merge from lab_values).
+        has_empty = events and any(not e.get("metadata") for e in events)
+        if not events or has_empty:
             try:
                 trends = await oncofiles_client.get_lab_trends_data(limit=200, token=token)
                 values_list = _extract_list(trends, "values")
