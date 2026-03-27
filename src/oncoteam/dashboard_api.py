@@ -95,15 +95,49 @@ _TEST_TAGS = ("e2e-test",)
 _CONTAMINATED_EVENT_IDS = {19, 20, 21, 22, 23, 24, 32}
 
 
+_KNOWN_LAB_PARAMS = frozenset(
+    {
+        "WBC",
+        "ANC",
+        "ABS_NEUT",
+        "ABS_LYMPH",
+        "PLT",
+        "hemoglobin",
+        "HGB",
+        "creatinine",
+        "ALT",
+        "AST",
+        "bilirubin",
+        "CEA",
+        "CA_19_9",
+        "neutrophils_pct",
+        "lymphocytes_pct",
+        "monocytes_pct",
+        "NEUT_pct",
+        "GMT_ukat_l",
+        "ALP_ukat_l",
+        "SII",
+        "post_op_day",
+        "document_id",
+    }
+)
+
+
 def _normalize_lab_values(meta: dict) -> dict:
     """Normalize lab parameter names and units.
 
+    - Strips non-lab keys (e.g. 'dates_processed' from workflow artifacts)
     - Maps ABS_NEUT → ANC (canonical name)
     - Detects ANC in G/L (< 30) and converts to /µL (* 1000)
     - Detects PLT in G/L (< 1000) and converts to /µL (* 1000)
     - Detects WBC in G/L (< 100) and converts to ×10³/µL (keep as-is, already correct)
     - Detects hemoglobin aliases (HGB → hemoglobin)
     """
+    # Strip non-lab keys (workflow artifacts like dates_processed)
+    unknown_keys = [k for k in meta if k not in _KNOWN_LAB_PARAMS]
+    for k in unknown_keys:
+        del meta[k]
+
     # Parameter name aliases
     if "ABS_NEUT" in meta and "ANC" not in meta:
         meta["ANC"] = meta.pop("ABS_NEUT")
@@ -2432,13 +2466,26 @@ async def api_documents(request: Request) -> JSONResponse:
         )
         docs = result if isinstance(result, list) else result.get("documents", [])
         # Compute summary counts
+        # Oncofiles uses ai_summary/structured_metadata/ai_processed_at fields,
+        # NOT ocr_status/metadata_status. Check both for compatibility.
         total = len(docs)
-        ocr_complete = sum(1 for d in docs if d.get("ocr_status") == "complete")
+        ocr_complete = sum(
+            1
+            for d in docs
+            if d.get("ocr_status") == "complete" or d.get("ai_summary") or d.get("ai_processed_at")
+        )
         missing_ocr = sum(
-            1 for d in docs if d.get("ocr_status") in ("missing", "not_attempted", None)
+            1
+            for d in docs
+            if not d.get("ai_summary")
+            and not d.get("ai_processed_at")
+            and d.get("ocr_status") != "complete"
         )
         missing_metadata = sum(
-            1 for d in docs if d.get("metadata_status") in ("missing", "incomplete", None)
+            1
+            for d in docs
+            if not d.get("structured_metadata")
+            and d.get("metadata_status") in ("missing", "incomplete", None)
         )
         response = _cors_json(
             {

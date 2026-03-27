@@ -563,12 +563,17 @@ Instructions:
 3. Extract numeric lab values: WBC, ANC, PLT, hemoglobin, creatinine,
    ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH
 4. Use get_treatment_timeline to check if data already exists for that date
-5. For NEW data only, use store_lab_values with the document_id, lab_date, and extracted values
-6. Also create a lab_result treatment event via add_treatment_event with the values in metadata
-7. Store a briefing summarizing what was extracted and stored
+5. For EACH NEW date, you MUST call BOTH tools in the SAME turn:
+   a) store_lab_values(document_id=..., lab_date="YYYY-MM-DD", values={...})
+   b) add_treatment_event(event_date="YYYY-MM-DD", event_type="lab_result",
+      title="Lab results YYYY-MM-DD", notes="...",
+      metadata={"WBC": 3.51, "ANC": 1150, "PLT": 269000, "hemoglobin": 118,
+                "CEA": 732.9, "CA_19_9": 22294})
+6. Store a briefing summarizing what was extracted and stored
 
-IMPORTANT: Use store_lab_values for structured persistence (enables trends/charts).
-Use add_treatment_event for timeline visibility.
+CRITICAL: The metadata dict in add_treatment_event MUST contain the SAME numeric
+values you pass to store_lab_values. Do NOT omit metadata or pass it as empty —
+the dashboard charts read from metadata, not from notes text.
 Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
 creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """
