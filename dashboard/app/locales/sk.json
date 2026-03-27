@@ -434,6 +434,8 @@
     "colAiSummary": "AI súhrn",
     "colTags": "Štítky",
     "colUpdated": "Aktualizované",
+    "colInstitution": "Inštitúcia",
+    "colDate": "Dátum",
     "statusNotAttempted": "N/A",
     "status_complete": "Hotové",
     "status_partial": "Čiastočné",

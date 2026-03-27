@@ -434,6 +434,8 @@
     "colAiSummary": "AI Summary",
     "colTags": "Tags",
     "colUpdated": "Updated",
+    "colInstitution": "Institution",
+    "colDate": "Date",
     "statusNotAttempted": "N/A",
     "status_complete": "Complete",
     "status_partial": "Partial",

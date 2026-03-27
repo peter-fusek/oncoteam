@@ -112,8 +112,8 @@ function boolLabel(val: boolean | undefined): string {
             <th class="text-center px-4 py-2.5 font-medium">{{ $t('documents.colOcr') }}</th>
             <th class="text-center px-4 py-2.5 font-medium">{{ $t('documents.colMetadata') }}</th>
             <th class="text-center px-4 py-2.5 font-medium">{{ $t('documents.colAiSummary') }}</th>
-            <th class="text-left px-4 py-2.5 font-medium">{{ $t('documents.colInstitution') || 'Institution' }}</th>
-            <th class="text-right px-4 py-2.5 font-medium">{{ $t('documents.colDate') || 'Date' }}</th>
+            <th class="text-left px-4 py-2.5 font-medium">{{ $t('documents.colInstitution') }}</th>
+            <th class="text-right px-4 py-2.5 font-medium">{{ $t('documents.colDate') }}</th>
           </tr>
         </thead>
         <tbody>
