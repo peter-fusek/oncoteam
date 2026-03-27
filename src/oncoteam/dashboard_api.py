@@ -2466,27 +2466,12 @@ async def api_documents(request: Request) -> JSONResponse:
         )
         docs = result if isinstance(result, list) else result.get("documents", [])
         # Compute summary counts
-        # Oncofiles uses ai_summary/structured_metadata/ai_processed_at fields,
-        # NOT ocr_status/metadata_status. Check both for compatibility.
+        # Oncofiles get_document_status_matrix returns boolean flags:
+        # has_ocr, has_ai, has_metadata, fully_complete, is_synced, etc.
         total = len(docs)
-        ocr_complete = sum(
-            1
-            for d in docs
-            if d.get("ocr_status") == "complete" or d.get("ai_summary") or d.get("ai_processed_at")
-        )
-        missing_ocr = sum(
-            1
-            for d in docs
-            if not d.get("ai_summary")
-            and not d.get("ai_processed_at")
-            and d.get("ocr_status") != "complete"
-        )
-        missing_metadata = sum(
-            1
-            for d in docs
-            if not d.get("structured_metadata")
-            and d.get("metadata_status") in ("missing", "incomplete", None)
-        )
+        ocr_complete = sum(1 for d in docs if d.get("has_ocr") or d.get("has_ai"))
+        missing_ocr = sum(1 for d in docs if not d.get("has_ocr") and not d.get("has_ai"))
+        missing_metadata = sum(1 for d in docs if not d.get("has_metadata"))
         response = _cors_json(
             {
                 "documents": docs,
