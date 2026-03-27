@@ -146,7 +146,7 @@ jobs:
 
       - name: Check backend health
         env:
-          PROD_BACKEND_URL: https://oncoteam-production.up.railway.app
+          PROD_BACKEND_URL: https://oncoteam.cloud
         run: |
           for i in 1 2 3 4 5; do
             RESPONSE=$(curl -s "$PROD_BACKEND_URL/health" || true)
@@ -164,7 +164,7 @@ jobs:
 
       - name: Validate production API responses
         env:
-          PROD_BACKEND_URL: https://oncoteam-production.up.railway.app
+          PROD_BACKEND_URL: https://oncoteam.cloud
         run: |
           API_KEY="${{ secrets.PROD_DASHBOARD_API_KEY }}"
           if [ -z "$API_KEY" ]; then

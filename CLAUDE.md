@@ -141,7 +141,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Deployment
 
-- **Railway**: `oncoteam-production.up.railway.app` (health: /health, MCP: /mcp)
+- **Railway**: `oncoteam.cloud` (health: /health, MCP: /mcp)
 - Push to `main` auto-deploys via Railway
 - `railway.toml` has `overlapSeconds=15` + `healthcheckPath=/health` — zero-downtime deploys
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
