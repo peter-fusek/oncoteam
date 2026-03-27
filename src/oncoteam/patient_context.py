@@ -132,7 +132,7 @@ PATIENT = PatientProfile(
     admitting_physician="MUDr. [Admitting Physician] — NOU Bratislava",
     baseline_weight_kg=72.0,
     current_cycle=3,
-    ecog="unknown — verify",
+    ecog="unknown — ask at next onco session",
     excluded_therapies={
         "anti-EGFR (cetuximab, panitumumab)": "KRAS G12S mutation",
         "checkpoint monotherapy (pembrolizumab, nivolumab)": "pMMR/MSS",
@@ -141,8 +141,9 @@ PATIENT = PatientProfile(
         "KRAS G12C-specific (sotorasib, adagrasib)": "patient has G12S, not G12C",
     },
     patient_ids={
-        "rodne_cislo": "XXXXXX/XXXX",
-        "nou_id": "overiť",
+        "rodne_cislo": "7654026127",
+        "nou_id": "X98 10496",
+        "poistovna": "25",
     },
     active_therapies=[
         {
@@ -216,7 +217,7 @@ _PATIENT_L10N: dict = {
         "IV (metastázy pečene, peritoneálna karcinomatóza, LU, Krukenbergov tumor l.dx.)",
         "IV (liver mets, peritoneal carcinomatosis, LN, Krukenberg tumor l.dx.)",
     ),
-    "ecog": L("neznámy — overiť", "unknown — verify"),
+    "ecog": L("neznámy — spýtať sa na ďalšej onko vizite", "unknown — ask at next onco session"),
     "notes": L(
         "Ľavostranný mCRC. 1L mFOLFOX6 90% dávka. Aktívna VJI trombóza na Clexane.",
         "Left-sided mCRC. 1L mFOLFOX6 90% dose. Active VJI thrombosis on Clexane.",
