@@ -239,6 +239,8 @@ async def log_to_diary(
     content: str,
     entry_type: str = "note",
     tags: list[str] | None = None,
+    *,
+    token: str | None = None,
 ) -> None:
     """Write to conversation_entries via existing log_conversation tool."""
     session_tag = f"sid:{get_session_id()}"
@@ -249,4 +251,5 @@ async def log_to_diary(
         entry_type=entry_type,
         participant="oncoteam",
         tags=",".join(all_tags),
+        token=token,
     )

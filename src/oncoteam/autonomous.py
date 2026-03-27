@@ -344,7 +344,14 @@ TOOLS = [
 
 
 async def execute_tool(name: str, inputs: dict, *, patient_id: str = "erika") -> str:
-    """Dispatch tool call to the appropriate async handler."""
+    """Dispatch tool call to the appropriate async handler.
+
+    All oncofiles calls pass token for patient-scoped data isolation (#201).
+    """
+    from .dashboard_api import _get_token_for_patient
+
+    token = _get_token_for_patient(patient_id)
+
     try:
         if name == "search_pubmed":
             articles = await pubmed_client.search_pubmed(
@@ -377,13 +384,15 @@ async def execute_tool(name: str, inputs: dict, *, patient_id: str = "erika") ->
 
         if name == "search_documents":
             result = await oncofiles_client.search_documents(
-                text=inputs["text"], category=inputs.get("category")
+                text=inputs["text"], category=inputs.get("category"), token=token
             )
             docs = result.get("documents", []) if isinstance(result, dict) else result
             return json.dumps(docs)
 
         if name == "get_treatment_timeline":
-            result = await oncofiles_client.list_treatment_events(limit=inputs.get("limit", 20))
+            result = await oncofiles_client.list_treatment_events(
+                limit=inputs.get("limit", 20), token=token
+            )
             events = result.get("events", []) if isinstance(result, dict) else result
             return json.dumps(events)
 
@@ -393,19 +402,22 @@ async def execute_tool(name: str, inputs: dict, *, patient_id: str = "erika") ->
                 content=inputs["content"],
                 entry_type="autonomous_briefing",
                 tags=inputs.get("tags", ["sys:autonomous"]),
+                token=token,
             )
             return json.dumps({"stored": True})
 
         if name == "get_agent_state":
-            result = await oncofiles_client.get_agent_state(inputs["key"])
+            result = await oncofiles_client.get_agent_state(inputs["key"], token=token)
             return json.dumps(result)
 
         if name == "set_agent_state":
-            result = await oncofiles_client.set_agent_state(inputs["key"], inputs["value"])
+            result = await oncofiles_client.set_agent_state(
+                inputs["key"], inputs["value"], token=token
+            )
             return json.dumps(result)
 
         if name == "view_document":
-            result = await oncofiles_client.view_document(str(inputs["document_id"]))
+            result = await oncofiles_client.view_document(str(inputs["document_id"]), token=token)
             return json.dumps(result)
 
         if name == "store_lab_values":
@@ -413,6 +425,7 @@ async def execute_tool(name: str, inputs: dict, *, patient_id: str = "erika") ->
                 document_id=inputs["document_id"],
                 lab_date=inputs["lab_date"],
                 values_json=json.dumps(inputs["values"]),
+                token=token,
             )
             return json.dumps(result)
 
@@ -423,6 +436,7 @@ async def execute_tool(name: str, inputs: dict, *, patient_id: str = "erika") ->
                 title=inputs["title"],
                 notes=inputs.get("notes", ""),
                 metadata=inputs.get("metadata"),
+                token=token,
             )
             return json.dumps(result)
 

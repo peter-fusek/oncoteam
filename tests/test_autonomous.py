@@ -99,7 +99,7 @@ class TestExecuteTool:
             result = await execute_tool("view_document", {"document_id": 42})
             data = json.loads(result)
             assert data["content"] == "Lab results..."
-            mock.view_document.assert_called_once_with("42")
+            mock.view_document.assert_called_once_with("42", token=None)
 
     @pytest.mark.asyncio
     async def test_store_lab_values(self):
@@ -113,7 +113,7 @@ class TestExecuteTool:
             data = json.loads(result)
             assert data["stored"] == 3
             mock.store_lab_values.assert_called_once_with(
-                document_id=1, lab_date="2026-03-10", values_json='{"ANC": 3200}'
+                document_id=1, lab_date="2026-03-10", values_json='{"ANC": 3200}', token=None
             )
 
     @pytest.mark.asyncio

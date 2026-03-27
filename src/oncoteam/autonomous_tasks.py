@@ -70,22 +70,22 @@ def _extract_timestamp(state: dict | None) -> str:
 # ── State helpers ──────────────────────────────
 
 
-async def _get_state(key: str) -> dict:
+async def _get_state(key: str, *, token: str | None = None) -> dict:
     try:
-        return await oncofiles_client.get_agent_state(key)
+        return await oncofiles_client.get_agent_state(key, token=token)
     except Exception as e:
         record_suppressed_error("autonomous_tasks", f"get_state:{key}", e)
         return {}
 
 
-async def _set_state(key: str, value: dict) -> None:
+async def _set_state(key: str, value: dict, *, token: str | None = None) -> None:
     try:
-        await oncofiles_client.set_agent_state(key, value)
+        await oncofiles_client.set_agent_state(key, value, token=token)
     except Exception as e:
         record_suppressed_error("autonomous_tasks", f"set_state:{key}", e)
 
 
-async def _log_task(task_name: str, result: dict) -> None:
+async def _log_task(task_name: str, result: dict, *, token: str | None = None) -> None:
     """Log task completion to activity log, diary, and store full run trace."""
     try:
         await oncofiles_client.add_activity_log(
@@ -100,6 +100,7 @@ async def _log_task(task_name: str, result: dict) -> None:
             status="error" if result.get("error") else "ok",
             error_message=result.get("error"),
             tags=["sys:autonomous"],
+            token=token,
         )
     except Exception as e:
         record_suppressed_error(task_name, "log_activity", e)
@@ -142,6 +143,7 @@ async def _log_task(task_name: str, result: dict) -> None:
             ),
             entry_type="agent_run",
             tags=tags,
+            token=token,
         )
     except Exception as e:
         record_suppressed_error(task_name, "store_trace", e)
