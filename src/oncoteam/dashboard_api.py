@@ -1228,12 +1228,14 @@ async def api_autonomous_status(request: Request) -> JSONResponse:
     from .agent_registry import get_enabled_agents
     from .autonomous_tasks import _extract_timestamp, _get_state
 
+    patient_id = _get_patient_id(request)
     task_names = [a.id for a in get_enabled_agents(exclude_system=True)]
 
     # Parallel state fetches (was sequential N+1, #harden)
+    # State keys include patient_id (e.g. "last_daily_research:erika")
     async def _safe_ts(name: str):
         try:
-            state = await asyncio.wait_for(_get_state(f"last_{name}"), timeout=2.0)
+            state = await asyncio.wait_for(_get_state(f"last_{name}:{patient_id}"), timeout=2.0)
             return _extract_timestamp(state)
         except Exception:
             return None
@@ -1394,10 +1396,10 @@ async def api_protocol(request: Request) -> JSONResponse:
                 oncofiles_client.get_lab_trends_data(limit=200, token=token),
                 return_exceptions=True,
             ),
-            timeout=5.0,
+            timeout=8.0,
         )
     except TimeoutError:
-        record_suppressed_error("api_protocol", "oncofiles_timeout", TimeoutError("5s"))
+        record_suppressed_error("api_protocol", "oncofiles_timeout", TimeoutError("8s"))
         lab_result = TimeoutError("oncofiles timeout")
         events_result = TimeoutError("oncofiles timeout")
         trends_result = TimeoutError("oncofiles timeout")
@@ -1875,8 +1877,10 @@ async def api_labs(request: Request) -> JSONResponse:
                 metadata=values,
                 token=token,
             )
-            # Invalidate labs cache on new data
-            _labs_cache.clear()
+            # Invalidate labs cache for this patient only
+            stale_keys = [k for k in _labs_cache if k.startswith(f"labs:{patient_id}:")]
+            for k in stale_keys:
+                del _labs_cache[k]
             return _cors_json({"created": True, "result": result})
         except Exception as e:
             record_suppressed_error("api_labs", "create", e)

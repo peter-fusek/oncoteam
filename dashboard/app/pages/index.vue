@@ -38,11 +38,12 @@ const { data: briefings, status: briefingsStatus } = fetchApi<{
     id: number
     title: string
     content: string
-    entry_type: string
-    created_at: string
+    date: string
+    type: string
     tags: string[]
+    summary?: string
+    action_count?: number
     questions_for_oncologist?: string[]
-    action_items?: string[]
   }>
   total: number
 }>('/briefings?limit=1', { lazy: true, server: false })
@@ -84,9 +85,9 @@ const mergedLabSnapshot = computed(() => {
 })
 
 const labAlerts = computed(() => {
-  // Collect alerts from ALL entries, not just the latest
-  if (!labs.value?.entries) return []
-  return labs.value.entries.flatMap(e => e.alerts || [])
+  // Only show alerts from the latest lab entry to avoid showing resolved past alerts
+  if (!labs.value?.entries?.length) return []
+  return labs.value.entries[0].alerts || []
 })
 
 const latestBriefing = computed(() => briefings.value?.briefings?.[0] ?? null)
@@ -224,7 +225,7 @@ const EVENT_ICONS: Record<string, string> = {
           <UIcon name="i-lucide-message-circle-question" class="h-4 w-4" />
           {{ latestBriefing.questions_for_oncologist.length }} {{ $t('home.questionsForOncologist') }}
         </div>
-        <div class="mt-1 text-xs text-gray-400">{{ formatDate(latestBriefing.created_at) }}</div>
+        <div class="mt-1 text-xs text-gray-400">{{ formatDate(latestBriefing.date) }}</div>
       </template>
       <SkeletonLoader v-else-if="briefingsStatus === 'pending'" variant="lines" />
       <div v-else class="text-sm text-gray-500 py-3 text-center">{{ $t('common.dataUnavailable') }}</div>
