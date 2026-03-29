@@ -153,7 +153,7 @@ async def _log_task(task_name: str, result: dict, *, token: str | None = None) -
 
 
 async def run_pre_cycle_check(patient_id: str = "erika") -> dict:
-    """Pre-cycle safety check before each FOLFOX infusion."""
+    """Pre-cycle safety check before each chemo infusion."""
     if await _should_skip("pre_cycle_check", patient_id):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: pre_cycle_check (patient=%s)", patient_id)
@@ -167,7 +167,7 @@ async def run_pre_cycle_check(patient_id: str = "erika") -> dict:
     checklist = format_pre_cycle_checklist(cycle, milestones=milestone_text)
 
     prompt = f"""\
-Run a pre-cycle safety check for FOLFOX cycle {cycle}.
+Run a pre-cycle safety check for {patient.treatment_regimen} cycle {cycle}.
 
 {checklist}
 
@@ -232,11 +232,11 @@ Instructions:
 1. Search oncofiles for tumor marker data (search "CEA", "CA 19-9", "tumor marker")
 2. Search oncofiles for lab results that may contain marker values
 3. Analyze trend: rising/falling/stable
-4. Compare to expected response on mFOLFOX6
+4. Compare to expected response on current regimen
 5. If markers rising: flag possible progression, recommend imaging
 6. Store findings as a briefing
 
-Reference ESMO guidelines for marker interpretation in mCRC monitoring.
+Reference ESMO/NCCN guidelines for marker interpretation.
 """
     try:
         result = await run_autonomous_task(
@@ -317,12 +317,12 @@ Search terms:
 Instructions:
 1. Search PubMed for each term (use max_results=5 per query)
 2. For high-relevance articles, note: PMID, title, key findings
-3. Assess relevance to this specific patient case (KRAS G12S, mFOLFOX6, mCRC)
+3. Assess relevance to this specific patient (use get_patient_context for biomarkers and regimen)
 4. Identify any practice-changing findings
 5. Store a summary briefing with the most relevant findings
 
-Focus on: treatment advances for KRAS G12S mCRC, FOLFOX optimization,
-novel targets, clinical trial results.
+Focus on: treatment advances relevant to this patient's cancer type,
+regimen optimization, novel targets, clinical trial results.
 """
     try:
         result = await run_autonomous_task(
@@ -382,11 +382,9 @@ Masaryk Brno, NOÚ Bratislava
 
 Instructions:
 1. Use search_trials_eu (covers SK, CZ, AT, HU, DE, PL, IT, NL, BE, FR, DK, SE, ES, CH):
-   - Search "KRAS mutant colorectal cancer"
-   - Search "pan-KRAS inhibitor"
-   - Search "MSS colorectal immunotherapy"
+   - Search terms based on patient's cancer type and biomarkers (use get_patient_context)
 2. Use search_trials for targeted center searches if relevant
-3. For each NEW trial not in previously seen list, check eligibility (KRAS G12S, active VTE, ECOG)
+3. For each NEW trial not in previously seen list, check eligibility via check_trial_eligibility
 4. Look specifically for watched trials and report any status changes
 5. Flag newly eligible or newly opened trials — note the country and center
 6. Store findings as a briefing, clearly marking NEW vs KNOWN trials
@@ -496,7 +494,7 @@ async def run_weekly_briefing(patient_id: str = "erika") -> dict:
     prompt = f"""\
 Compile the weekly briefing for physician review.
 
-Current status: mFOLFOX6 cycle {cycle}, current milestones: {milestone_text}
+Current status: {patient.treatment_regimen} cycle {cycle}, current milestones: {milestone_text}
 
 Instructions:
 1. Get treatment timeline to understand current progress
@@ -1036,7 +1034,7 @@ Napíš týždennú správu pre rodinu pacientky v slovenčine.
 Pokyny:
 1. Získaj najnovšie laboratórne výsledky (search "lab", "krvny obraz")
 2. Získaj najnovšie údaje o toxicite
-3. Zhrň aktuálny stav liečby (cyklus {cycle}, mFOLFOX6)
+3. Zhrň aktuálny stav liečby (cyklus {cycle}, {patient.treatment_regimen})
 4. Preložíš do jednoduchej, zrozumiteľnej slovenčiny:
    - ANC v norme → "Krvné hodnoty sú v bezpečnom rozsahu"
    - Neuropatia → "Mierne brnenie v prstoch"
@@ -1083,7 +1081,7 @@ Vyhni sa zbytočným odborným detailom.
 
 
 async def run_medication_adherence_check(patient_id: str = "erika") -> dict:
-    """Check if today's medication adherence was logged. Flag missing Clexane."""
+    """Check if today's medication adherence was logged. Flag missing critical meds."""
     if await _should_skip("medication_adherence_check", patient_id):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: medication_adherence_check (patient=%s)", patient_id)
@@ -1094,10 +1092,10 @@ Check medication adherence for today ({today}).
 Instructions:
 1. Use get_treatment_timeline to find today's medication_adherence events
 2. If no adherence logged for today, create a reminder briefing
-3. Specifically flag if Clexane (anticoagulant) adherence is missing — critical for VTE
+3. Specifically flag any critical medication non-adherence (check patient's active therapies)
 4. Store a briefing noting adherence status
 
-This is a safety check: Clexane non-compliance with active VJI thrombosis is dangerous.
+This is a safety check: non-compliance with critical medications is dangerous.
 """
     try:
         result = await run_autonomous_task(
@@ -1272,7 +1270,7 @@ Instructions:
    - Neuropathy dose modification rules
    - 2nd line options ranking
 3. Flag any discrepancies between current protocol and latest evidence
-4. Note any new treatment options or trials relevant to KRAS G12S mCRC
+4. Note any new treatment options or trials relevant to this patient's cancer type and biomarkers
 5. Store findings as a briefing with recommendations
 
 Focus on actionable changes that would affect current patient management.
@@ -1408,16 +1406,12 @@ Instructions:
 1. Use search_clinical_trials to find recent trials matching patient profile
 2. For each trial, determine the funnel stage:
    - Excluded: biomarker contraindication or eligibility hard-stop
-   - Later Line: trial is for 2L/3L+ (patient is 1L mFOLFOX6)
+   - Later Line: trial is for 2L/3L+ and patient is on earlier line
    - Watching: relevant but not actionable yet
-   - Eligible Now: patient meets criteria, trial recruiting in EU/Slovakia
+   - Eligible Now: patient meets criteria, trial recruiting nearby
    - Action Needed: eligible AND enrollment closing soon
-3. Patient rules:
-   - KRAS G12S (NOT G12C) — anti-EGFR EXCLUDED
-   - pMMR/MSS — checkpoint monotherapy NOT indicated
-   - HER2 negative — HER2-targeted NOT indicated
-   - Prior palliative resection — "unresectable only" trials EXCLUDED
-   - Active VTE on Clexane — bevacizumab HIGH RISK
+3. Use get_patient_context to check patient's biomarkers and excluded therapies.
+   Apply exclusion rules from the patient's profile (excluded_therapies dict).
 4. Log a briefing with the classification results and any new findings
 5. Flag any trials that moved from Watching to Eligible Now
 

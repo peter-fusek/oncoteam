@@ -2867,7 +2867,7 @@ def _translate_for_family(
     cycle = pt.current_cycle or 2
 
     if lang == "sk":
-        parts.append(f"Liečba prebieha — cyklus {cycle} z chemoterapie mFOLFOX6.\n")
+        parts.append(f"Liečba prebieha — cyklus {cycle} z chemoterapie {pt.treatment_regimen}.\n")
 
         # Blood counts
         if labs and isinstance(labs, dict):
@@ -2958,7 +2958,9 @@ def _translate_for_family(
 
     else:
         # English
-        parts.append(f"Treatment is ongoing — cycle {cycle} of mFOLFOX6 chemotherapy.\n")
+        parts.append(
+            f"Treatment is ongoing — cycle {cycle} of {pt.treatment_regimen} chemotherapy.\n"
+        )
 
         # Blood counts
         if labs and isinstance(labs, dict):
@@ -3604,7 +3606,7 @@ async def api_trigger_agent(request: Request) -> JSONResponse:
 
 _FUNNEL_STAGES = ("Excluded", "Later Line", "Watching", "Eligible Now", "Action Needed")
 
-_FUNNEL_SYSTEM_PROMPT = """\
+_FUNNEL_SYSTEM_PROMPT_TEMPLATE = """\
 You are a clinical trial funnel classifier for cancer treatment management.
 Classify this trial into exactly one funnel stage for the patient.
 
@@ -3624,15 +3626,11 @@ reachable geography (Slovakia/EU)
 closing soon, limited slots)
 
 ## Patient Profile
-- KRAS mutant G12S (c.34G>A) — anti-EGFR EXCLUDED (cetuximab, panitumumab)
-- KRAS G12S is NOT G12C — sotorasib/adagrasib do NOT apply
-- pMMR/MSS — checkpoint inhibitor monotherapy NOT indicated
-- HER2 negative — HER2-targeted therapy NOT indicated
-- BRAF V600E wild-type — BRAF inhibitors NOT indicated
-- Active VJI thrombosis on Clexane — bevacizumab HIGH RISK
-- Current regimen: mFOLFOX6 90% (1st line, cycle 3)
-- Prior surgery: palliative resection (2026-01-18, sigmoid colon, AdenoCa G3)
-- Trials requiring "treatment-naive" or "no prior surgery" are EXCLUDED
+{patient_rules}
+
+## Patient-Specific Exclusions
+Apply the patient's excluded_therapies as hard exclusion rules.
+Trials requiring "treatment-naive" or "no prior surgery" are EXCLUDED if patient had prior surgery.
 
 ## Classification Rules
 1. If trial mentions 2L/3L/refractory/post-progression → "Later Line"
@@ -3678,6 +3676,12 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
 
     from anthropic import AsyncAnthropic
 
+    from .patient_context import build_biomarker_rules
+
+    patient = _get_patient_for_request(request)
+    patient_rules = build_biomarker_rules(patient)
+    funnel_prompt = _FUNNEL_SYSTEM_PROMPT_TEMPLATE.format(patient_rules=patient_rules)
+
     client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
     total_cost = 0.0
     sem = asyncio.Semaphore(5)  # 5 concurrent Haiku calls
@@ -3695,7 +3699,7 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
                 resp = await client.messages.create(
                     model=AUTONOMOUS_MODEL_LIGHT,
                     max_tokens=256,
-                    system=_FUNNEL_SYSTEM_PROMPT,
+                    system=funnel_prompt,
                     messages=[{"role": "user", "content": user_msg}],
                 )
                 text = resp.content[0].text if resp.content else "{}"
