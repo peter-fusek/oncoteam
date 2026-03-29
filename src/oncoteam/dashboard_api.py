@@ -3258,9 +3258,10 @@ async def api_agent_config(request: Request) -> JSONResponse:
         return _cors_json({"error": f"Agent {agent_id} not found"}, status_code=404)
     data = config.model_dump()
     # Include system prompt for full observability
-    from .autonomous import AUTONOMOUS_SYSTEM_PROMPT
+    from .autonomous import build_system_prompt
 
-    data["system_prompt"] = AUTONOMOUS_SYSTEM_PROMPT
+    patient_id = _get_patient_id(request)
+    data["system_prompt"] = build_system_prompt(patient_id)
     return _cors_json(data)
 
 

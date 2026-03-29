@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from oncoteam.autonomous import (
-    AUTONOMOUS_SYSTEM_PROMPT,
     TOOLS,
     _track_cost,
+    build_system_prompt,
     execute_tool,
     get_daily_cost,
     run_autonomous_task,
@@ -19,20 +19,23 @@ from oncoteam.autonomous import (
 
 class TestSystemPrompt:
     def test_contains_patient_profile(self):
-        assert "KRAS G12S" in AUTONOMOUS_SYSTEM_PROMPT
+        prompt = build_system_prompt("erika")
+        assert "KRAS G12S" in prompt
 
     def test_contains_biomarker_rules(self):
-        assert "anti-EGFR" in AUTONOMOUS_SYSTEM_PROMPT
-        assert "CONTRAINDICATED" in AUTONOMOUS_SYSTEM_PROMPT
+        prompt = build_system_prompt("erika")
+        assert "anti-EGFR" in prompt
 
     def test_contains_clinical_protocol(self):
-        assert "Lab Safety Thresholds" in AUTONOMOUS_SYSTEM_PROMPT
-        assert "Dose Modification" in AUTONOMOUS_SYSTEM_PROMPT
-        assert "Treatment Milestones" in AUTONOMOUS_SYSTEM_PROMPT
+        prompt = build_system_prompt("erika")
+        assert "Lab Safety Thresholds" in prompt
+        assert "Dose Modification" in prompt
+        assert "Treatment Milestones" in prompt
 
     def test_contains_safety_instructions(self):
-        assert "physician review" in AUTONOMOUS_SYSTEM_PROMPT
-        assert "NEEDS_PHYSICIAN_REVIEW" in AUTONOMOUS_SYSTEM_PROMPT
+        prompt = build_system_prompt("erika")
+        assert "physician review" in prompt
+        assert "NEEDS_PHYSICIAN_REVIEW" in prompt
 
 
 class TestTools:

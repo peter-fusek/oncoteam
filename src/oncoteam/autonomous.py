@@ -21,11 +21,9 @@ from .clinical_protocol import (
 from .config import ANTHROPIC_API_KEY, AUTONOMOUS_COST_LIMIT, AUTONOMOUS_MODEL
 from .eligibility import check_eligibility
 from .patient_context import (
-    RESEARCH_TERMS,
     build_biomarker_rules,
     build_patient_profile_text,
     get_patient,
-    get_patient_profile_text,
     get_patient_research_terms,
 )
 
@@ -52,65 +50,13 @@ def _get_client():
     return AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
-AUTONOMOUS_SYSTEM_PROMPT = f"""\
-You are an autonomous medical research agent for cancer treatment management.
-ALL findings are for physician review only. You do NOT communicate with patients.
-
-# Patient Profile
-{get_patient_profile_text()}
-
-# Biomarker Rules (NEVER violate)
-- Patient has KRAS G12S (c.34G>A). This is NOT G12C.
-- anti-EGFR (cetuximab, panitumumab) is PERMANENTLY CONTRAINDICATED (any RAS mutation).
-- KRAS G12C-specific inhibitors (sotorasib, adagrasib) do NOT apply to G12S.
-- Patient is pMMR/MSS — checkpoint inhibitor MONOTHERAPY not indicated.
-- HER2 negative — HER2-targeted therapy not indicated.
-- BRAF V600E wild-type — BRAF inhibitors alone not indicated.
-- Active VJI thrombosis + Clexane — bevacizumab is HIGH RISK.
-
-# Clinical Protocol (ESMO 2022, NCCN, ASCO)
-## Lab Safety Thresholds
-{json.dumps(LAB_SAFETY_THRESHOLDS, indent=2)}
-
-## Dose Modification Rules
-{json.dumps(DOSE_MODIFICATION_RULES, indent=2)}
-
-## Treatment Milestones
-{json.dumps(TREATMENT_MILESTONES, indent=2)}
-
-## Monitoring Schedule
-{json.dumps(MONITORING_SCHEDULE, indent=2)}
-
-## Safety Flags
-{json.dumps(SAFETY_FLAGS, indent=2)}
-
-## Second-Line Options (if progression)
-{json.dumps(SECOND_LINE_OPTIONS, indent=2)}
-
-## Watched Trials
-{json.dumps(WATCHED_TRIALS, indent=2)}
-
-# Research Terms
-{json.dumps(RESEARCH_TERMS, indent=2)}
-
-# Instructions
-- Only use data from PubMed (NCBI) and ClinicalTrials.gov. Never reference unverified sources.
-- If uncertain about a biomarker match or eligibility, flag as NEEDS_PHYSICIAN_REVIEW.
-- Always reference ESMO/NCCN guideline version when making treatment-related statements.
-- Structure output as markdown with clear sections.
-- End every briefing with "Questions for Oncologist" section.
-"""
-
-
 def build_system_prompt(patient_id: str = "erika") -> str:
     """Build a patient-specific system prompt for autonomous agents.
 
-    For Erika, returns the same hardcoded prompt as AUTONOMOUS_SYSTEM_PROMPT.
-    For other patients, generates dynamically from their profile.
+    All patients (including Erika) go through the same dynamic path.
+    Biomarker rules, research terms, and profile text are generated
+    from the PatientProfile registered for this patient_id.
     """
-    if patient_id == "erika":
-        return AUTONOMOUS_SYSTEM_PROMPT
-
     patient = get_patient(patient_id)
     research_terms = get_patient_research_terms(patient_id)
 

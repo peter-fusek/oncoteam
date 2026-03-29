@@ -72,10 +72,9 @@ from .dashboard_api import (
 from .eligibility import check_eligibility
 from .models import ResearchSource
 from .patient_context import (
-    PATIENT,
-    RESEARCH_TERMS,
     get_context_tags,
     get_genetic_profile,
+    get_patient,
     get_patient_profile_text,
     get_research_terms_text,
 )
@@ -103,6 +102,18 @@ elif MCP_TRANSPORT != "stdio":
         "or use MCP_TRANSPORT=stdio for local development."
     )
 
+
+def _get_current_patient_id() -> str:
+    """Get patient_id for the current MCP session.
+
+    In multi-patient deployments, this should resolve from the MCP session's
+    bearer token. For now, returns the default patient.
+    """
+    from .patient_context import DEFAULT_PATIENT_ID
+
+    return DEFAULT_PATIENT_ID
+
+
 mcp = FastMCP(
     "Oncoteam",
     instructions=(
@@ -111,27 +122,15 @@ mcp = FastMCP(
         "tracks treatment events, and provides lab trend analysis. "
         "All data is persisted through the Oncofiles MCP server.\n\n"
         #
-        # --- BIOMARKER RULES ENGINE ---
+        # --- BIOMARKER SAFETY ---
         #
-        "BIOMARKER RULES (NEVER violate):\n"
-        "- Patient has KRAS G12S (c.34G>A). This is NOT G12C.\n"
-        "- anti-EGFR (cetuximab, panitumumab) is PERMANENTLY CONTRAINDICATED (any RAS mutation).\n"
-        "- anti-EGFR eligible ONLY if KRAS WT AND NRAS WT AND BRAF WT — patient fails this.\n"
-        "- KRAS G12C-specific inhibitors (sotorasib, adagrasib) do NOT apply to G12S.\n"
-        "- Patient is pMMR/MSS — checkpoint inhibitor MONOTHERAPY not indicated.\n"
-        "- HER2 negative — HER2-targeted therapy not indicated.\n"
-        "- BRAF V600E wild-type — BRAF inhibitors alone not indicated.\n"
-        "- Active VJI thrombosis + Clexane — bevacizumab is HIGH RISK (discuss with oncologist).\n"
-        "- Checkpoint inhibitors ARE compatible with anticoagulation.\n\n"
-        #
-        # --- EXCLUDED THERAPIES ---
-        #
-        "NEVER SUGGEST these therapies:\n"
-        "- Anti-EGFR: cetuximab, panitumumab (KRAS G12S)\n"
-        "- Checkpoint monotherapy: pembrolizumab, nivolumab (pMMR/MSS)\n"
-        "- HER2-targeted: trastuzumab, pertuzumab, T-DXd (HER2 neg)\n"
-        "- BRAF inhibitors alone: encorafenib (BRAF wt)\n"
-        "- KRAS G12C-specific: sotorasib, adagrasib (patient has G12S)\n\n"
+        "BIOMARKER SAFETY:\n"
+        "- ALWAYS check patient biomarkers via get_patient_context before suggesting therapies.\n"
+        "- NEVER suggest therapies listed in the patient's excluded_therapies.\n"
+        "- anti-EGFR eligible ONLY if KRAS WT AND NRAS WT AND BRAF WT.\n"
+        "- KRAS G12C-specific inhibitors (sotorasib, adagrasib) ONLY for G12C mutations.\n"
+        "- Checkpoint monotherapy ONLY for MSI-H/dMMR, NOT for pMMR/MSS.\n"
+        "- Always verify biomarker status before making treatment recommendations.\n\n"
         #
         # --- DOCUMENT READING PROTOCOL ---
         #
@@ -163,12 +162,11 @@ mcp = FastMCP(
         #
         # --- CLINICAL TRIAL SEARCH ---
         #
-        "CLINICAL TRIAL SEARCH for SK patient:\n"
-        "- Search: SK, CZ, AT (Vienna=60km), HU (Budapest=2h)\n"
-        "- Eligibility check: KRAS status, VTE active, ECOG, prior lines\n"
-        "- Monitor: HARMONi-GI3, pan-KRAS (BI-1701963, RMC-6236, JAB-3312)\n"
-        "- MSS CRC combinations: botensilimab+balstilimab, anti-TIGIT\n"
-        "- CRC-only filter: exclude pediatric/HCC/biliary trials\n\n"
+        "CLINICAL TRIAL SEARCH:\n"
+        "- Search nearby countries based on patient location.\n"
+        "- Eligibility check: biomarker status, comorbidities, ECOG, prior lines.\n"
+        "- Use get_patient_context to get the patient's biomarkers and excluded therapies.\n"
+        "- Filter trials by cancer type — exclude unrelated tumor types.\n\n"
         #
         # --- MANDATORY LOGGING ---
         #
@@ -456,7 +454,7 @@ async def check_trial_eligibility(nct_id: str) -> str:
     """Check if a clinical trial is eligible for this patient based on biomarker rules.
 
     Fetches the trial from ClinicalTrials.gov and checks against the patient's
-    molecular profile (KRAS G12S, pMMR/MSS, HER2 neg, BRAF wt, active VTE).
+    molecular profile and excluded therapies.
 
     Args:
         nct_id: ClinicalTrials.gov ID (e.g. "NCT00001234")
@@ -468,7 +466,8 @@ async def check_trial_eligibility(nct_id: str) -> str:
     if trial is None:
         return json.dumps({"error": f"Trial {nct_id} not found"})
 
-    result = check_eligibility(trial, PATIENT)
+    patient = get_patient(_get_current_patient_id())
+    result = check_eligibility(trial, patient)
     return json.dumps({"eligibility": result.model_dump()})
 
 
@@ -486,7 +485,10 @@ async def daily_briefing() -> str:
     seen_pmids: set[str] = set()
 
     # PubMed searches — use top 3 terms to stay within rate limits
-    for term in RESEARCH_TERMS[:3]:
+    from .patient_context import get_patient_research_terms
+
+    research_terms = get_patient_research_terms(_get_current_patient_id())
+    for term in research_terms[:3]:
         try:
             articles = await pubmed_client.search_pubmed(term, max_results=5)
             for article in articles:
@@ -637,7 +639,8 @@ async def get_patient_context() -> str:
     Returns:
         JSON with patient diagnosis, treatment, biomarkers (enriched from oncofiles), and hospitals.
     """
-    data = PATIENT.model_dump()
+    patient = get_patient(_get_current_patient_id())
+    data = patient.model_dump()
     try:
         genetic = await get_genetic_profile()
         data["biomarkers"] = genetic
