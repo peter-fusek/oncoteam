@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -29,7 +30,7 @@ RECIPIENTS: dict[str, Recipient] = {
     "caregiver": Recipient(
         name="Peter",
         role="caregiver",
-        phone="+421905123456",
+        phone=os.environ.get("WHATSAPP_CAREGIVER_PHONE", ""),
         language="sk",
     ),
     "physician": Recipient(
@@ -141,7 +142,7 @@ PATIENT = PatientProfile(
         "KRAS G12C-specific (sotorasib, adagrasib)": "patient has G12S, not G12C",
     },
     patient_ids={
-        "rodne_cislo": "7654026127",
+        "rodne_cislo": "XXXXXX/XXXX",
         "nou_id": "X98 10496",
         "poistovna": "25",
     },

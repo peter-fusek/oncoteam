@@ -53,7 +53,6 @@ from .eligibility import assess_research_relevance
 from .locale import L, get_lang, resolve
 from .patient_context import (
     DEFAULT_PATIENT_ID,
-    PATIENT,
     THERAPY_CATEGORIES,
     get_patient,
     get_patient_localized,
@@ -193,12 +192,9 @@ def _get_patient_id(request: Request) -> str:
 
 
 def _get_patient_for_request(request: Request):
-    """Get PatientProfile for the request's patient_id. Returns Erika on error."""
+    """Get PatientProfile for the request's patient_id. Falls back to default."""
     pid = _get_patient_id(request)
-    try:
-        return get_patient(pid)
-    except KeyError:
-        return PATIENT  # fallback to Erika
+    return get_patient(pid)
 
 
 def _get_token_for_patient(patient_id: str) -> str | None:
@@ -2862,7 +2858,7 @@ def _translate_for_family(
     patient=None,
 ) -> str:
     """Translate clinical data to comprehensive plain language for family members."""
-    pt = patient or PATIENT
+    pt = patient or get_patient("erika")
     parts: list[str] = []
     cycle = pt.current_cycle or 2
 
