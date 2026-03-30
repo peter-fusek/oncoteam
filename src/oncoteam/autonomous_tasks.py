@@ -157,10 +157,10 @@ async def _log_task(task_name: str, result: dict, *, token: str | None = None) -
 
 async def run_pre_cycle_check(patient_id: str = "erika") -> dict:
     """Pre-cycle safety check before each chemo infusion."""
-    if await _should_skip("pre_cycle_check", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("pre_cycle_check", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: pre_cycle_check (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     patient = get_patient(patient_id)
     cycle = patient.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
@@ -227,10 +227,10 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
 
 async def run_tumor_marker_review(patient_id: str = "erika") -> dict:
     """Review CEA and CA 19-9 tumor marker trends."""
-    if await _should_skip("tumor_marker_review", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("tumor_marker_review", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: tumor_marker_review (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     prompt = """\
 Review tumor marker trends (CEA, CA 19-9).
 
@@ -267,10 +267,10 @@ Reference ESMO/NCCN guidelines for marker interpretation.
 
 async def run_response_assessment(patient_id: str = "erika") -> dict:
     """Check if response imaging is due and prepare assessment template."""
-    if await _should_skip("response_assessment", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("response_assessment", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: response_assessment (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     patient = get_patient(patient_id)
     cycle = patient.current_cycle or 2
     prompt = f"""\
@@ -312,10 +312,10 @@ RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressi
 
 async def run_daily_research(patient_id: str = "erika") -> dict:
     """Daily PubMed research scan with all curated search terms."""
-    if await _should_skip("daily_research", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("daily_research", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: daily_research (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     research_terms = get_patient_research_terms(patient_id)
     terms_text = "\n".join(f"- {t}" for t in research_terms)
     prompt = f"""\
@@ -361,10 +361,10 @@ regimen optimization, novel targets, clinical trial results.
 
 async def run_trial_monitor(patient_id: str = "erika") -> dict:
     """Monitor clinical trials across EU (14 countries incl. major CRC centers)."""
-    if await _should_skip("trial_monitor", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("trial_monitor", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: trial_monitor (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     watched = "\n".join(f"- {t}" for t in WATCHED_TRIALS)
 
     # Load previously seen NCT IDs to detect new trials
@@ -444,10 +444,10 @@ Prioritize trials at centers within practical travel distance from Bratislava:
 
 async def run_file_scan(patient_id: str = "erika") -> dict:
     """Scan oncofiles for new document uploads."""
-    if await _should_skip("file_scan", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("file_scan", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: file_scan (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     state = await _get_state(f"last_file_scan:{patient_id}", token=token)
     last_scan = _extract_timestamp(state)
 
@@ -495,10 +495,10 @@ Search categories: "pathology", "genetics", "labs", "imaging"
 
 async def run_weekly_briefing(patient_id: str = "erika") -> dict:
     """Compile weekly briefing: research, trials, labs, treatment progress."""
-    if await _should_skip("weekly_briefing", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("weekly_briefing", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: weekly_briefing (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     patient = get_patient(patient_id)
     cycle = patient.current_cycle or 2
     milestones = get_milestones_for_cycle(cycle)
@@ -568,10 +568,10 @@ Structure the briefing with clear sections:
 
 async def run_lab_sync(patient_id: str = "erika") -> dict:
     """Extract lab values from oncofiles documents and store as structured lab data."""
-    if await _should_skip("lab_sync", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("lab_sync", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: lab_sync (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     prompt = """\
 Extract structured lab data from uploaded documents and store as lab values.
 
@@ -661,10 +661,10 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 
 async def run_toxicity_extraction(patient_id: str = "erika") -> dict:
     """Extract toxicity grades from doctor visit notes/reports."""
-    if await _should_skip("toxicity_extraction", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("toxicity_extraction", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: toxicity_extraction (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     prompt = """\
 Search for doctor visit notes and extract NCI-CTCAE toxicity assessments.
 
@@ -705,10 +705,10 @@ This creates the baseline toxicity history from existing medical documents.
 
 async def run_weight_extraction(patient_id: str = "erika") -> dict:
     """Extract weight/BMI from doctor visit notes and store as weight_measurement events."""
-    if await _should_skip("weight_extraction", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("weight_extraction", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: weight_extraction (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     prompt = """\
 Search for doctor visit notes and extract weight/BMI data.
 
@@ -1067,10 +1067,10 @@ def _classify_doc_type(response_text: str, metadata: dict) -> str:
 
 async def run_family_update(patient_id: str = "erika") -> dict:
     """Generate weekly family update in Slovak from current clinical data."""
-    if await _should_skip("family_update", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("family_update", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: family_update (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     patient = get_patient(patient_id)
     cycle = patient.current_cycle or 2
     prompt = f"""\
@@ -1128,12 +1128,10 @@ Vyhni sa zbytočným odborným detailom.
 
 async def run_medication_adherence_check(patient_id: str = "erika") -> dict:
     """Check if today's medication adherence was logged. Flag missing critical meds."""
-    if await _should_skip(
-        "medication_adherence_check", patient_id, token=get_patient_token(patient_id)
-    ):
+    token = get_patient_token(patient_id)
+    if await _should_skip("medication_adherence_check", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: medication_adherence_check (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     prompt = f"""\
 Check medication adherence for today ({today}).
@@ -1184,10 +1182,10 @@ This is a safety check: non-compliance with critical medications is dangerous.
 
 async def run_mtb_preparation(patient_id: str = "erika") -> dict:
     """Prepare tumor board (MTB) presentation summary."""
-    if await _should_skip("mtb_preparation", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("mtb_preparation", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: mtb_preparation (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     prompt = """\
 Prepare a multidisciplinary tumor board (MTB) summary.
 
@@ -1257,10 +1255,10 @@ async def _send_whatsapp(msg: str, recipient: str | None = None) -> dict:
 
 async def run_self_improvement(patient_id: str = "erika") -> dict:
     """Analyze recent conversations and activity to suggest improvements."""
-    if await _should_skip("self_improvement", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("self_improvement", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: self_improvement (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     prompt = """\
 Analyze recent oncoteam activity and conversations to identify improvement opportunities.
 
@@ -1308,10 +1306,10 @@ Focus on patterns, not individual events. Be specific and actionable.
 
 async def run_protocol_review(patient_id: str = "erika") -> dict:
     """Review clinical protocol against latest evidence from oncofiles research."""
-    if await _should_skip("protocol_review", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("protocol_review", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: protocol_review (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     prompt = """\
 Review the current clinical protocol against latest evidence stored in oncofiles.
 
@@ -1453,10 +1451,10 @@ async def run_daily_cost_report(patient_id: str = "erika") -> dict:
 
 async def run_funnel_assess(patient_id: str = "erika") -> dict:
     """Auto-classify new clinical trials into funnel stages."""
-    if await _should_skip("funnel_assess", patient_id, token=get_patient_token(patient_id)):
+    token = get_patient_token(patient_id)
+    if await _should_skip("funnel_assess", patient_id, token=token):
         return {"skipped": True, "reason": "cooldown"}
     logger.info(">>> Starting task: funnel_assess (patient=%s)", patient_id)
-    token = get_patient_token(patient_id)
     prompt = """\
 Classify recently discovered clinical trials into funnel stages for the patient.
 

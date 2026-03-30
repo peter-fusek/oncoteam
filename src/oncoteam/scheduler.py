@@ -93,7 +93,6 @@ def _create_scheduler():
     task_functions = _get_task_functions()
 
     patient_ids = list_patient_ids()
-    stagger_seconds = 0
 
     for agent_id, config in AGENT_REGISTRY.items():
         if not config.enabled:
@@ -145,7 +144,6 @@ def _create_scheduler():
                 misfire_grace_time=config.misfire_grace_time,
                 coalesce=True,
             )
-            stagger_seconds += 2
 
     logger.info(
         "Scheduler configured for %d patients × %d agents",
