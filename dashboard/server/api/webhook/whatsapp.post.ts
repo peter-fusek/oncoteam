@@ -2,7 +2,7 @@ import twilio from 'twilio'
 import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
 import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionCount } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
-import { isApproved, checkApprovedWithBackend } from '../../utils/approved-phones'
+import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient } from '../../utils/approved-phones'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
@@ -84,12 +84,18 @@ function isValidPhoneFormat(phone: string): boolean {
   return /^\+[1-9]\d{6,14}$/.test(phone)
 }
 
-function extractPhoneAllowlist(roleMapRaw: string | Record<string, { phone?: string }>): Set<string> {
+function extractPhoneAllowlist(roleMapRaw: string | Record<string, { phone?: string; patient_id?: string }>): Set<string> {
   try {
     const roleMap = typeof roleMapRaw === 'string' ? JSON.parse(roleMapRaw || '{}') : roleMapRaw || {}
     const phones = new Set<string>()
-    for (const config of Object.values(roleMap) as Array<{ phone?: string }>) {
-      if (config.phone) phones.add(normalizePhone(config.phone))
+    for (const config of Object.values(roleMap) as Array<{ phone?: string; patient_id?: string }>) {
+      if (config.phone) {
+        const normalized = normalizePhone(config.phone)
+        phones.add(normalized)
+        if (config.patient_id) {
+          setPhonePatient(normalized, config.patient_id)
+        }
+      }
     }
     return phones
   }
@@ -308,7 +314,7 @@ export default defineEventHandler(async (event) => {
                 content_type: media.contentType,
                 filename,
                 phone: from,
-                patient_id: 'erika', // TODO: resolve from phone→patient mapping
+                patient_id: resolvePatientIdFromPhone(from),
               },
               headers,
             },
@@ -350,7 +356,8 @@ export default defineEventHandler(async (event) => {
 
   // Process command and respond
   const oncoteamApiUrl = config.oncoteamApiUrl as string
-  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from)
+  const whatsappPatientId = resolvePatientIdFromPhone(from)
+  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId })
 
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.

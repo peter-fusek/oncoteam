@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 
 from fastmcp import FastMCP
 from starlette.requests import Request
@@ -72,6 +73,7 @@ from .dashboard_api import (
 from .eligibility import check_eligibility
 from .models import ResearchSource
 from .patient_context import (
+    DEFAULT_PATIENT_ID,
     get_context_tags,
     get_genetic_profile,
     get_patient,
@@ -94,7 +96,16 @@ if MCP_BASE_URL:
 elif MCP_BEARER_TOKEN:
     from fastmcp.server.auth import StaticTokenVerifier
 
-    auth = StaticTokenVerifier(tokens={MCP_BEARER_TOKEN: {"client_id": "claude-ai", "scopes": []}})
+    # Build token map: primary token maps to default patient,
+    # additional MCP_BEARER_TOKEN_<ID> env vars map to specific patients.
+    _mcp_tokens: dict[str, dict] = {
+        MCP_BEARER_TOKEN: {"client_id": DEFAULT_PATIENT_ID, "scopes": []},
+    }
+    for key, val in os.environ.items():
+        if key.startswith("MCP_BEARER_TOKEN_") and val:
+            pid = key[len("MCP_BEARER_TOKEN_"):].lower()
+            _mcp_tokens[val] = {"client_id": pid, "scopes": []}
+    auth = StaticTokenVerifier(tokens=_mcp_tokens)
 elif MCP_TRANSPORT != "stdio":
     raise RuntimeError(
         "MCP_BASE_URL or MCP_BEARER_TOKEN must be set for HTTP transport. "
@@ -106,11 +117,17 @@ elif MCP_TRANSPORT != "stdio":
 def _get_current_patient_id() -> str:
     """Get patient_id for the current MCP session.
 
-    In multi-patient deployments, this should resolve from the MCP session's
-    bearer token. For now, returns the default patient.
+    Resolves from the MCP session's bearer token via client_id claim.
+    Falls back to DEFAULT_PATIENT_ID for stdio transport or unauthenticated sessions.
     """
-    from .patient_context import DEFAULT_PATIENT_ID
+    try:
+        from fastmcp.server.dependencies import get_access_token
 
+        token = get_access_token()
+        if token and token.client_id:
+            return token.client_id
+    except (ImportError, RuntimeError):
+        pass
     return DEFAULT_PATIENT_ID
 
 

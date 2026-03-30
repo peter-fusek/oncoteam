@@ -6,6 +6,7 @@
  * before routing to onboarding.
  */
 const approvedPhones = new Set<string>()
+const phoneToPatient = new Map<string, string>()
 
 export function addApprovedPhone(phone: string): void {
   approvedPhones.add(phone)
@@ -50,4 +51,12 @@ export async function checkApprovedWithBackend(
 
 export function getApprovedPhones(): string[] {
   return [...approvedPhones]
+}
+
+export function setPhonePatient(phone: string, patientId: string): void {
+  phoneToPatient.set(phone, patientId)
+}
+
+export function resolvePatientIdFromPhone(phone: string): string {
+  return phoneToPatient.get(phone) || 'erika'
 }
