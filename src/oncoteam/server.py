@@ -78,6 +78,7 @@ from .patient_context import (
     get_genetic_profile,
     get_patient,
     get_patient_profile_text,
+    get_patient_token,
     get_research_terms_text,
 )
 from .scheduler import start_scheduler
@@ -112,6 +113,12 @@ elif MCP_TRANSPORT != "stdio":
         "Set MCP_BASE_URL for OAuth or MCP_BEARER_TOKEN for static token auth, "
         "or use MCP_TRANSPORT=stdio for local development."
     )
+
+
+def _get_mcp_patient_token() -> tuple[str, str | None]:
+    """Get (patient_id, token) for the current MCP session."""
+    pid = _get_current_patient_id()
+    return pid, get_patient_token(pid)
 
 
 def _get_current_patient_id() -> str:
@@ -258,6 +265,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
     Returns:
         JSON with list of matching articles.
     """
+    _pid, _tok = _get_mcp_patient_token()
     articles = await pubmed_client.search_pubmed(query, max_results)
 
     # Store each article in oncofiles (don't fail search if storage fails)
@@ -270,6 +278,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
                 summary=article.abstract[:500] if article.abstract else "",
                 tags=get_context_tags(),
                 raw_data=article.model_dump_json(),
+                token=_tok,
             )
         except Exception as e:
             record_suppressed_error("search_pubmed", "store_research", e)
@@ -302,6 +311,7 @@ async def search_clinical_trials(
     Returns:
         JSON with list of matching clinical trials.
     """
+    _pid, _tok = _get_mcp_patient_token()
     trials = await clinicaltrials_client.search_trials(
         condition,
         intervention,
@@ -318,6 +328,7 @@ async def search_clinical_trials(
                 summary=trial.summary[:500] if trial.summary else "",
                 tags=trial.conditions[:5],
                 raw_data=trial.model_dump_json(),
+                token=_tok,
             )
         except Exception as e:
             record_suppressed_error("search_clinical_trials", "store_research", e)
@@ -351,6 +362,7 @@ async def search_clinical_trials_adjacent(
     Returns:
         JSON with deduplicated trials from all countries.
     """
+    _pid, _tok = _get_mcp_patient_token()
     trials = await clinicaltrials_client.search_trials_adjacent(
         condition,
         intervention,
@@ -366,6 +378,7 @@ async def search_clinical_trials_adjacent(
                 summary=trial.summary[:500] if trial.summary else "",
                 tags=["res:adjacent-countries", *trial.conditions[:3]],
                 raw_data=trial.model_dump_json(),
+                token=_tok,
             )
         except Exception as e:
             record_suppressed_error("search_clinical_trials_adjacent", "store_research", e)
@@ -401,6 +414,7 @@ async def search_clinical_trials_eu(
     Returns:
         JSON with deduplicated trials from EU countries.
     """
+    _pid, _tok = _get_mcp_patient_token()
     trials = await clinicaltrials_client.search_trials_eu(
         condition,
         intervention,
@@ -416,6 +430,7 @@ async def search_clinical_trials_eu(
                 summary=trial.summary[:500] if trial.summary else "",
                 tags=["res:eu-trials", *trial.conditions[:3]],
                 raw_data=trial.model_dump_json(),
+                token=_tok,
             )
         except Exception as e:
             record_suppressed_error("search_clinical_trials_eu", "store_research", e)
@@ -442,6 +457,7 @@ async def fetch_pubmed_article(pmid: str) -> str:
     Returns:
         JSON with article details, or error if not found.
     """
+    _pid, _tok = _get_mcp_patient_token()
     article = await pubmed_client.fetch_article(pmid)
     if article is None:
         return json.dumps({"error": f"Article {pmid} not found"})
@@ -459,6 +475,7 @@ async def fetch_trial_details(nct_id: str) -> str:
     Returns:
         JSON with trial details including eligibility criteria.
     """
+    _pid, _tok = _get_mcp_patient_token()
     trial = await clinicaltrials_client.fetch_trial(nct_id)
     if trial is None:
         return json.dumps({"error": f"Trial {nct_id} not found"})
@@ -479,6 +496,7 @@ async def check_trial_eligibility(nct_id: str) -> str:
     Returns:
         JSON with eligibility result: {eligible, flags, warnings, summary}
     """
+    _pid, _tok = _get_mcp_patient_token()
     trial = await clinicaltrials_client.fetch_trial(nct_id)
     if trial is None:
         return json.dumps({"error": f"Trial {nct_id} not found"})
@@ -498,6 +516,7 @@ async def daily_briefing() -> str:
     Returns:
         JSON summary of all research findings from today's briefing.
     """
+    _pid, _tok = _get_mcp_patient_token()
     results = {"pubmed": [], "clinical_trials": []}
     seen_pmids: set[str] = set()
 
@@ -523,6 +542,7 @@ async def daily_briefing() -> str:
                         summary=article.abstract[:500] if article.abstract else "",
                         tags=["task:daily-briefing"],
                         raw_data=article.model_dump_json(),
+                        token=_tok,
                     )
                 except Exception as e:
                     record_suppressed_error("daily_briefing", "store_pubmed", e)
@@ -549,6 +569,7 @@ async def daily_briefing() -> str:
                     summary=trial.summary[:500] if trial.summary else "",
                     tags=["task:daily-briefing", "res:adjacent-countries"],
                     raw_data=trial.model_dump_json(),
+                    token=_tok,
                 )
             except Exception as e:
                 record_suppressed_error("daily_briefing", "store_trial", e)
@@ -576,8 +597,11 @@ async def get_lab_trends(limit: int = 10) -> str:
     Returns:
         JSON with lab documents for trend analysis.
     """
+    _pid, _tok = _get_mcp_patient_token()
     try:
-        result = await oncofiles_client.search_documents(text="lab", category="labs", limit=limit)
+        result = await oncofiles_client.search_documents(
+            text="lab", category="labs", limit=limit, token=_tok
+        )
         docs = result.get("documents", []) if isinstance(result, dict) else result
         lab_data = {"documents": docs, "total": len(docs)}
         return json.dumps({"source": "oncofiles", "lab_documents": lab_data})
@@ -602,8 +626,11 @@ async def store_lab_values(document_id: int, lab_date: str, values_json: str) ->
     Returns:
         JSON confirmation of stored values.
     """
+    _pid, _tok = _get_mcp_patient_token()
     try:
-        result = await oncofiles_client.store_lab_values(document_id, lab_date, values_json)
+        result = await oncofiles_client.store_lab_values(
+            document_id, lab_date, values_json, token=_tok
+        )
         return json.dumps(result)
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -622,8 +649,9 @@ async def get_lab_trends_by_parameter(parameter: str, limit: int = 20) -> str:
     Returns:
         JSON with historical values sorted by date.
     """
+    _pid, _tok = _get_mcp_patient_token()
     try:
-        result = await oncofiles_client.get_lab_trends_data(parameter, limit)
+        result = await oncofiles_client.get_lab_trends_data(parameter, limit, token=_tok)
         return json.dumps(result)
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -641,8 +669,9 @@ async def search_documents(text: str, category: str | None = None) -> str:
     Returns:
         JSON with matching documents.
     """
+    _pid, _tok = _get_mcp_patient_token()
     try:
-        result = await oncofiles_client.search_documents(text, category, limit=200)
+        result = await oncofiles_client.search_documents(text, category, limit=200, token=_tok)
         docs = result.get("documents", []) if isinstance(result, dict) else result
         results = {"documents": docs, "total": len(docs)}
         return json.dumps({"query": text, "category": category, "results": results})
@@ -658,10 +687,11 @@ async def get_patient_context() -> str:
     Returns:
         JSON with patient diagnosis, treatment, biomarkers (enriched from oncofiles), and hospitals.
     """
+    _pid, _tok = _get_mcp_patient_token()
     patient = get_patient(_get_current_patient_id())
     data = patient.model_dump()
     try:
-        genetic = await get_genetic_profile()
+        genetic = await get_genetic_profile(_pid, token=_tok)
         data["biomarkers"] = genetic
     except Exception as e:
         record_suppressed_error("get_patient_context", "genetic_profile", e)
@@ -679,8 +709,9 @@ async def view_document(file_id: str) -> str:
     Returns:
         JSON with document content.
     """
+    _pid, _tok = _get_mcp_patient_token()
     try:
-        result = await oncofiles_client.view_document(file_id)
+        result = await oncofiles_client.view_document(file_id, token=_tok)
         return json.dumps({"file_id": file_id, "content": result})
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -698,8 +729,9 @@ async def analyze_labs(file_id: str | None = None, limit: int = 10) -> str:
     Returns:
         JSON with lab analysis.
     """
+    _pid, _tok = _get_mcp_patient_token()
     try:
-        result = await oncofiles_client.analyze_labs(file_id, limit)
+        result = await oncofiles_client.analyze_labs(file_id, limit, token=_tok)
         return json.dumps({"analysis": result})
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -717,8 +749,9 @@ async def compare_labs(file_id_a: str, file_id_b: str) -> str:
     Returns:
         JSON with lab comparison.
     """
+    _pid, _tok = _get_mcp_patient_token()
     try:
-        result = await oncofiles_client.compare_labs(file_id_a, file_id_b)
+        result = await oncofiles_client.compare_labs(file_id_a, file_id_b, token=_tok)
         return json.dumps({"comparison": result})
     except Exception as e:
         return json.dumps({"error": str(e)})
@@ -738,11 +771,13 @@ async def log_research_decision(
         reasoning: Detailed reasoning behind the decision
         tags: Optional tags for categorization
     """
+    _pid, _tok = _get_mcp_patient_token()
     await log_to_diary(
         title=decision,
         content=reasoning,
         entry_type="decision",
         tags=tags,
+        token=_tok,
     )
     return "Decision logged."
 
@@ -758,11 +793,13 @@ async def log_session_note(note: str, tags: list[str] | None = None) -> str:
         note: The note content
         tags: Optional tags for categorization
     """
+    _pid, _tok = _get_mcp_patient_token()
     await log_to_diary(
         title=note[:100],
         content=note,
         entry_type="note",
         tags=tags,
+        token=_tok,
     )
     return "Note logged."
 
@@ -781,6 +818,7 @@ async def summarize_session(
     Returns:
         Confirmation that the session was logged.
     """
+    _pid, _tok = _get_mcp_patient_token()
     parts = [summary]
     if decisions:
         parts.append("\n\nDecisions:\n" + "\n".join(f"- {d}" for d in decisions))
@@ -793,6 +831,7 @@ async def summarize_session(
         content=content,
         entry_type="session_summary",
         tags=["sys:session"],
+        token=_tok,
     )
     return "Session summary logged."
 
@@ -811,19 +850,20 @@ async def review_session(session_id: str | None = None) -> str:
     Returns:
         JSON with timeline, stats, errors, suppressed_errors, and session_summary.
     """
+    _pid, _tok = _get_mcp_patient_token()
     sid = session_id or get_session_id()
 
     # Fetch activity log for this session
     activity = {}
     try:
-        activity = await oncofiles_client.search_activity_log(session_id=sid)
+        activity = await oncofiles_client.search_activity_log(session_id=sid, token=_tok)
     except Exception as e:
         record_suppressed_error("review_session", "fetch_activity", e)
 
     # Fetch session conversations
     conversations = {}
     try:
-        conversations = await oncofiles_client.search_conversations(tags=f"sid:{sid}")
+        conversations = await oncofiles_client.search_conversations(tags=f"sid:{sid}", token=_tok)
     except Exception as e:
         record_suppressed_error("review_session", "fetch_conversations", e)
 
@@ -900,6 +940,7 @@ async def create_improvement_issue(
     Returns:
         JSON with issue number and URL.
     """
+    _pid, _tok = _get_mcp_patient_token()
     result = await github_client.create_issue(
         repo=repo,
         title=title,
@@ -917,7 +958,8 @@ async def get_lab_safety_check() -> str:
     Returns green/yellow/red/missing status per parameter (ANC, PLT, HGB, WBC,
     bilirubin, creatinine, ALT, AST, eGFR) with NCCN/SmPC source attribution.
     """
-    result = await oncofiles_client.get_lab_safety_check()
+    _pid, _tok = _get_mcp_patient_token()
+    result = await oncofiles_client.get_lab_safety_check(token=_tok)
     return json.dumps(result) if isinstance(result, dict) else str(result)
 
 
@@ -933,7 +975,8 @@ async def get_precycle_checklist(cycle_number: int = 3) -> str:
         Checklist with guideline source URLs per item. Lab items auto-populate
         with latest patient values.
     """
-    result = await oncofiles_client.get_precycle_checklist(cycle_number)
+    _pid, _tok = _get_mcp_patient_token()
+    result = await oncofiles_client.get_precycle_checklist(cycle_number, token=_tok)
     return json.dumps(result) if isinstance(result, dict) else str(result)
 
 
@@ -953,6 +996,7 @@ async def get_clinical_protocol(section: str | None = None, lang: str = "en") ->
             nutrition_escalation, safety_flags. Returns all sections if not specified.
         lang: Language for bilingual content ('sk' or 'en', default 'en').
     """
+    _pid, _tok = _get_mcp_patient_token()
     from .clinical_protocol import PROTOCOL_SECTIONS, resolve_protocol
 
     protocol = resolve_protocol(lang)

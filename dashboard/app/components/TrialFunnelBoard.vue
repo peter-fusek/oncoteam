@@ -98,7 +98,7 @@ async function assessBatch(trials: ResearchEntry[]) {
           deadline_note: string | null
         }>
         cost_usd: number
-      }>('/api/oncoteam/research/assess-funnel', {
+      }>(`/api/oncoteam/research/assess-funnel?patient_id=${useActivePatient().activePatientId.value || 'erika'}`, {
         method: 'POST',
         body: {
           trials: chunk.map(t => ({

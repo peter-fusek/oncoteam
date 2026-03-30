@@ -35,6 +35,13 @@ from oncoteam.server import (
 
 # ── Mock data ──────────────────────────────────────
 
+@pytest.fixture(autouse=True)
+def _mock_mcp_patient_token():
+    """MCP tools resolve patient from bearer token — mock to return erika/None."""
+    with patch("oncoteam.server._get_mcp_patient_token", return_value=("erika", None)):
+        yield
+
+
 MOCK_ARTICLES = [
     PubMedArticle(
         pmid="12345678",
@@ -266,7 +273,7 @@ class TestGetLabTrendsTool:
 
         assert result["source"] == "oncofiles"
         assert len(result["lab_documents"]["documents"]) == 2
-        mock_search.assert_called_once_with(text="lab", category="labs", limit=5)
+        mock_search.assert_called_once_with(text="lab", category="labs", limit=5, token=None)
 
     @pytest.mark.asyncio
     @patch(
@@ -296,7 +303,7 @@ class TestSearchDocumentsTool:
         assert result["query"] == "lab report"
         assert result["category"] == "labs"
         assert "results" in result
-        mock_search.assert_called_once_with("lab report", "labs", limit=200)
+        mock_search.assert_called_once_with("lab report", "labs", limit=200, token=None)
 
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.search_documents", new_callable=AsyncMock)
@@ -307,7 +314,7 @@ class TestSearchDocumentsTool:
 
         assert result["query"] == "blood work"
         assert result["category"] is None
-        mock_search.assert_called_once_with("blood work", None, limit=200)
+        mock_search.assert_called_once_with("blood work", None, limit=200, token=None)
 
     @pytest.mark.asyncio
     @patch(
@@ -361,6 +368,7 @@ class TestLogResearchDecisionTool:
             content="Lower neurotoxicity risk",
             entry_type="decision",
             tags=["treatment"],
+            token=None,
         )
 
 
@@ -379,6 +387,7 @@ class TestLogSessionNoteTool:
             content="Patient tolerating treatment well",
             entry_type="note",
             tags=["observation"],
+            token=None,
         )
 
     @pytest.mark.asyncio
@@ -456,7 +465,7 @@ class TestViewDocumentTool:
 
         assert result["file_id"] == "abc123"
         assert result["content"]["text"] == "OCR content here"
-        mock_view.assert_called_once_with("abc123")
+        mock_view.assert_called_once_with("abc123", token=None)
 
     @pytest.mark.asyncio
     @patch(
@@ -482,7 +491,7 @@ class TestAnalyzeLabsTool:
         result = json.loads(await analyze_labs(file_id="abc123", limit=5))
 
         assert result["analysis"]["summary"] == "Normal ranges"
-        mock_analyze.assert_called_once_with("abc123", 5)
+        mock_analyze.assert_called_once_with("abc123", 5, token=None)
 
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.analyze_labs", new_callable=AsyncMock)
@@ -492,7 +501,7 @@ class TestAnalyzeLabsTool:
         result = json.loads(await analyze_labs())
 
         assert "analysis" in result
-        mock_analyze.assert_called_once_with(None, 10)
+        mock_analyze.assert_called_once_with(None, 10, token=None)
 
     @pytest.mark.asyncio
     @patch(
@@ -518,7 +527,7 @@ class TestCompareLabsTool:
         result = json.loads(await compare_labs("id_a", "id_b"))
 
         assert result["comparison"]["diff"] == ["WBC increased"]
-        mock_compare.assert_called_once_with("id_a", "id_b")
+        mock_compare.assert_called_once_with("id_a", "id_b", token=None)
 
     @pytest.mark.asyncio
     @patch(

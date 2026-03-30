@@ -118,7 +118,7 @@ class TestGeneticProfile:
             mock.view_document = AsyncMock(return_value=mock_content)
             await get_genetic_profile()
         # Doc 42 appears in every search result but should be viewed only once
-        mock.view_document.assert_called_once_with("42")
+        mock.view_document.assert_called_once_with("42", token=None)
 
 
 class TestContextTags:

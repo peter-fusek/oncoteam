@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { fetchApi } = useOncoteamApi()
+const { fetchApi, postApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 
 const lang = ref<'sk' | 'en'>('sk')
@@ -42,12 +42,9 @@ async function generateUpdate() {
   generating.value = true
   latestGenerated.value = ''
   try {
-    const result = await $fetch<{ created: boolean; content: string; lang: string }>(
-      '/api/oncoteam/family-update',
-      {
-        method: 'POST',
-        body: { lang: lang.value },
-      },
+    const result = await postApi<{ created: boolean; content: string; lang: string }>(
+      '/family-update',
+      { lang: lang.value },
     )
     latestGenerated.value = result.content
     await refresh()

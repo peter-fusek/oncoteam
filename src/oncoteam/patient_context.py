@@ -657,18 +657,21 @@ _GENETIC_SEARCH_TERMS = ["genetik", "HER2", "FISH", "NGS", "KRAS", "BRAF", "MSI"
 _ONCOFILES_CONCURRENCY = asyncio.Semaphore(3)
 
 
-async def get_genetic_profile() -> dict[str, str]:
+async def get_genetic_profile(
+    patient_id: str = "erika", *, token: str | None = None
+) -> dict[str, str]:
     """Fetch genetic/biomarker data from oncofiles documents.
 
     Uses semaphore-bounded concurrency to avoid overwhelming oncofiles.
     """
-    profile = dict(PATIENT.biomarkers)
+    patient = _patient_registry.get(patient_id, PATIENT)
+    profile = dict(patient.biomarkers)
 
     # Search with bounded concurrency (3 at a time)
     async def _search(term: str) -> list[dict]:
         async with _ONCOFILES_CONCURRENCY:
             try:
-                result = await oncofiles_client.search_documents(text=term)
+                result = await oncofiles_client.search_documents(text=term, token=token)
                 return result.get("documents", []) if isinstance(result, dict) else []
             except Exception as e:
                 record_suppressed_error("patient_context", f"search_{term}", e)
@@ -711,7 +714,7 @@ async def get_genetic_profile() -> dict[str, str]:
         async def _view(doc_id: str) -> str:
             async with _ONCOFILES_CONCURRENCY:
                 try:
-                    content = await oncofiles_client.view_document(doc_id)
+                    content = await oncofiles_client.view_document(doc_id, token=token)
                     return _extract_text(content)
                 except Exception as e:
                     record_suppressed_error("patient_context", f"view_{doc_id}", e)

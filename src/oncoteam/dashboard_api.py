@@ -1256,6 +1256,7 @@ async def api_autonomous(request: Request) -> JSONResponse:
     daily_cost = get_daily_cost()
     cost_last_updated: str | None = None
     try:
+        # Cost tracking is intentionally global (not per-patient) — tracks total API spend
         state = await oncofiles_client.get_agent_state("autonomous_daily_cost")
         if isinstance(state, dict):
             val = state.get("value", state)
@@ -1297,13 +1298,16 @@ async def api_autonomous_status(request: Request) -> JSONResponse:
     from .autonomous_tasks import _extract_timestamp, _get_state
 
     patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     task_names = [a.id for a in get_enabled_agents(exclude_system=True)]
 
     # Parallel state fetches (was sequential N+1, #harden)
     # State keys include patient_id (e.g. "last_daily_research:erika")
     async def _safe_ts(name: str):
         try:
-            state = await asyncio.wait_for(_get_state(f"last_{name}:{patient_id}"), timeout=2.0)
+            state = await asyncio.wait_for(
+                _get_state(f"last_{name}:{patient_id}", token=token), timeout=2.0
+            )
             return _extract_timestamp(state)
         except Exception:
             return None
