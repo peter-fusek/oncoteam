@@ -1001,16 +1001,52 @@ async def api_timeline(request: Request) -> JSONResponse:
         return _cors_json({"error": str(e), "events": [], "total": 0}, status_code=502)
 
 
+_patient_ids_cache: dict[str, tuple[float, dict]] = {}
+_PATIENT_IDS_CACHE_TTL = 600  # 10 minutes — patient IDs change very rarely
+
+
 async def api_patient(request: Request) -> JSONResponse:
-    """GET /api/patient — patient profile (static, no oncofiles call)."""
+    """GET /api/patient — patient profile with live patient_ids from oncofiles."""
     lang = get_lang(request)
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     data = get_patient_localized(lang)
+
+    # Fetch live patient_ids from oncofiles patient_context (with TTL cache)
+    cache_key = _cache_key("patient_ids", patient_id)
+    cached = _patient_ids_cache.get(cache_key)
+    if cached and time.time() - cached[0] < _PATIENT_IDS_CACHE_TTL:
+        live_ids = cached[1]
+    else:
+        live_ids = await _fetch_patient_ids(patient_id, token)
+        if live_ids:
+            _patient_ids_cache[cache_key] = (time.time(), live_ids)
+
+    if live_ids:
+        data["patient_ids"] = live_ids
+
     # Include therapy categories for frontend badge rendering
     data["therapy_categories"] = {
         k: {"label": v["label_en"] if lang == "en" else v["label"], "color": v["color"]}
         for k, v in THERAPY_CATEGORIES.items()
     }
     return _cors_json(data)
+
+
+async def _fetch_patient_ids(patient_id: str, token: str | None = None) -> dict[str, str]:
+    """Fetch patient_ids from oncofiles patient_context. Falls back to static profile."""
+    try:
+        ctx = await oncofiles_client.get_patient_context(token=token)
+        # patient_context returns a dict with various fields; extract patient_ids
+        if isinstance(ctx, dict):
+            ids = ctx.get("patient_ids")
+            if isinstance(ids, dict) and ids:
+                return {k: str(v) for k, v in ids.items() if v}
+    except Exception as e:
+        record_suppressed_error("api_patient", "fetch_patient_ids", e)
+    # Fallback: return whatever is in the in-memory profile
+    profile = get_patient(patient_id)
+    return {k: v for k, v in profile.patient_ids.items() if v}
 
 
 _RELEVANCE_SORT_ORDER = {"high": 0, "medium": 1, "low": 2, "not_applicable": 3}

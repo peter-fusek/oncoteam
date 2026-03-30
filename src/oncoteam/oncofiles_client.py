@@ -457,6 +457,16 @@ async def get_agent_state(
     return await call_oncofiles("get_agent_state", {"key": key, "agent_id": agent_id}, token=token)
 
 
+async def get_patient_context(*, token: str | None = None) -> dict:
+    return await call_oncofiles("get_patient_context", {}, token=token)
+
+
+async def update_patient_context(updates_json: str, *, token: str | None = None) -> dict:
+    return await call_oncofiles(
+        "update_patient_context", {"updates_json": updates_json}, token=token
+    )
+
+
 async def add_research_entry(
     source: str,
     external_id: str,
