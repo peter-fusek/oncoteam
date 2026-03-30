@@ -42,6 +42,12 @@ if (loggedIn.value) {
       </div>
 
       <p class="text-xs text-gray-400">Authorized accounts only</p>
+
+      <div class="pt-4 border-t border-gray-200">
+        <NuxtLink to="/demo" class="text-sm text-teal-600 hover:text-teal-700 hover:underline">
+          Or try the live demo &rarr;
+        </NuxtLink>
+      </div>
     </div>
   </div>
 </template>

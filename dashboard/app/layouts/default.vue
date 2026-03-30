@@ -230,7 +230,7 @@ async function logout() {
             />
             <span class="text-xs text-gray-600 truncate">{{ user?.name }}</span>
           </div>
-          <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
+          <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" :label="$t('nav.signOut')" @click="logout" />
         </div>
         <div v-if="versionInfo" class="text-[10px] text-gray-400 text-center">
           v{{ versionInfo.version }} · {{ versionInfo.commit }}
@@ -328,7 +328,7 @@ async function logout() {
                 />
                 <span class="text-xs text-gray-600 truncate">{{ user?.name }}</span>
               </div>
-              <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" @click="logout" />
+              <UButton icon="i-lucide-log-out" variant="ghost" size="xs" color="neutral" :label="$t('nav.signOut')" @click="logout" />
             </div>
             <div v-if="versionInfo" class="text-[10px] text-gray-400 text-center">
               v{{ versionInfo.version }} · {{ versionInfo.commit }}

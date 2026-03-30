@@ -1,6 +1,7 @@
 const translations = {
   en: {
     "nav.dashboard": "Dashboard",
+    "nav.demo": "Try Demo",
     "hero.title": "When someone you love has cancer, you become their advocate.",
     "hero.subtitle": "Oncoteam helps you understand the treatment, ask the right questions, find clinical trials, and make sure nothing gets overlooked \u2014 all from your phone.",
     "hero.badge": "Open Source \u00b7 Used in Active Treatment",
@@ -137,6 +138,7 @@ const translations = {
   },
   sk: {
     "nav.dashboard": "Dashboard",
+    "nav.demo": "Vysk\u00fa\u0161a\u0165 Demo",
     "hero.title": "Ke\u010f m\u00e1 v\u00e1\u0161 bl\u00edzky rakovinu, st\u00e1vate sa jeho hlavn\u00fdm spojencom.",
     "hero.subtitle": "Oncoteam v\u00e1m pom\u00f4\u017ee porozumie\u0165 lie\u010dbe, kl\u00e1s\u0165 spr\u00e1vne ot\u00e1zky, n\u00e1js\u0165 klinick\u00e9 \u0161t\u00fadie a ma\u0165 istotu, \u017ee sa ni\u010d neprehliadlo \u2014 v\u0161etko z v\u00e1\u0161ho telef\u00f3nu.",
     "hero.badge": "Open Source \u00b7 Pou\u017e\u00edvan\u00e9 v akt\u00edvnej lie\u010dbe",
