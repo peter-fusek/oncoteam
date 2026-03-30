@@ -1016,14 +1016,17 @@ async def api_patient(request: Request) -> JSONResponse:
     cache_key = _cache_key("patient_ids", patient_id)
     cached = _patient_ids_cache.get(cache_key)
     if cached and time.time() - cached[0] < _PATIENT_IDS_CACHE_TTL:
-        live_ids = cached[1]
+        data["patient_ids"] = cached[1]
     else:
         live_ids = await _fetch_patient_ids(patient_id, token)
-        if live_ids:
+        if live_ids is not None:
+            # Only cache successful oncofiles responses, not fallbacks
             _patient_ids_cache[cache_key] = (time.time(), live_ids)
-
-    if live_ids:
-        data["patient_ids"] = live_ids
+            data["patient_ids"] = live_ids
+        else:
+            # Fallback: use static profile (not cached — retry next request)
+            profile = get_patient(patient_id)
+            data["patient_ids"] = {k: v for k, v in profile.patient_ids.items() if v}
 
     # Include therapy categories for frontend badge rendering
     data["therapy_categories"] = {
@@ -1033,20 +1036,17 @@ async def api_patient(request: Request) -> JSONResponse:
     return _cors_json(data)
 
 
-async def _fetch_patient_ids(patient_id: str, token: str | None = None) -> dict[str, str]:
-    """Fetch patient_ids from oncofiles patient_context. Falls back to static profile."""
+async def _fetch_patient_ids(patient_id: str, token: str | None = None) -> dict[str, str] | None:
+    """Fetch patient_ids from oncofiles patient_context. Returns None on failure."""
     try:
         ctx = await oncofiles_client.get_patient_context(token=token)
-        # patient_context returns a dict with various fields; extract patient_ids
         if isinstance(ctx, dict):
             ids = ctx.get("patient_ids")
             if isinstance(ids, dict) and ids:
                 return {k: str(v) for k, v in ids.items() if v}
     except Exception as e:
         record_suppressed_error("api_patient", "fetch_patient_ids", e)
-    # Fallback: return whatever is in the in-memory profile
-    profile = get_patient(patient_id)
-    return {k: v for k, v in profile.patient_ids.items() if v}
+    return None
 
 
 _RELEVANCE_SORT_ORDER = {"high": 0, "medium": 1, "low": 2, "not_applicable": 3}
