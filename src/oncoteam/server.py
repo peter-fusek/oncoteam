@@ -103,7 +103,7 @@ elif MCP_BEARER_TOKEN:
     }
     for key, val in os.environ.items():
         if key.startswith("MCP_BEARER_TOKEN_") and val:
-            pid = key[len("MCP_BEARER_TOKEN_"):].lower()
+            pid = key[len("MCP_BEARER_TOKEN_") :].lower()
             _mcp_tokens[val] = {"client_id": pid, "scopes": []}
     auth = StaticTokenVerifier(tokens=_mcp_tokens)
 elif MCP_TRANSPORT != "stdio":
