@@ -40,7 +40,9 @@ export function useDrilldown() {
     loading.value = true
     error.value = null
     try {
-      const result = await $fetch<DetailResponse>(`/api/oncoteam/detail/${item.type}/${item.id}`)
+      const { activePatientId } = useActivePatient()
+      const pid = activePatientId.value || 'erika'
+      const result = await $fetch<DetailResponse>(`/api/oncoteam/detail/${item.type}/${item.id}?patient_id=${pid}`)
       detail.value = result
     } catch (e: any) {
       error.value = e.message || String(e)

@@ -414,9 +414,9 @@ RESEARCH_TERMS: list[str] = [
 ]
 
 
-def get_patient_profile_text() -> str:
+def get_patient_profile_text(patient_id: str = "erika") -> str:
     """Return formatted patient profile for MCP resource."""
-    p = PATIENT
+    p = _patient_registry.get(patient_id, PATIENT)
     biomarkers = "\n".join(f"  - {k}: {v}" for k, v in p.biomarkers.items())
     hospitals = ", ".join(p.hospitals)
     metastases = ", ".join(p.metastases) if p.metastases else "none listed"
@@ -453,9 +453,10 @@ def get_patient_profile_text() -> str:
     return "\n".join(line for line in parts if line) + "\n"
 
 
-def get_research_terms_text() -> str:
+def get_research_terms_text(patient_id: str = "erika") -> str:
     """Return formatted research terms for MCP resource."""
-    terms = "\n".join(f"- {t}" for t in RESEARCH_TERMS)
+    patient_terms = _patient_research_terms.get(patient_id, RESEARCH_TERMS)
+    terms = "\n".join(f"- {t}" for t in patient_terms)
     return f"# Research Search Terms\n\nCurated PubMed queries for this case:\n\n{terms}\n"
 
 
@@ -494,6 +495,11 @@ _patient_research_terms: dict[str, list[str]] = {"erika": RESEARCH_TERMS}
 _patient_recipients: dict[str, dict[str, Recipient]] = {"erika": RECIPIENTS}
 
 DEFAULT_PATIENT_ID = "erika"
+
+
+def list_patient_ids() -> list[str]:
+    """Return all registered patient IDs."""
+    return list(_patient_registry.keys())
 
 
 def get_patient(patient_id: str = DEFAULT_PATIENT_ID) -> PatientProfile:

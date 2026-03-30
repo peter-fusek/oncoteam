@@ -218,12 +218,12 @@ mcp = FastMCP(
 
 @mcp.resource("oncoteam://patient-profile", description="Patient treatment profile")
 def patient_profile() -> str:
-    return get_patient_profile_text()
+    return get_patient_profile_text(_get_current_patient_id())
 
 
 @mcp.resource("oncoteam://research-terms", description="Curated PubMed search terms")
 def research_terms() -> str:
-    return get_research_terms_text()
+    return get_research_terms_text(_get_current_patient_id())
 
 
 # ── Tools ───────────────────────────────────────
@@ -512,10 +512,12 @@ async def daily_briefing() -> str:
         except Exception:
             results["pubmed"].append({"query": term, "error": "search failed"})
 
-    # ClinicalTrials.gov — search adjacent countries for KRAS-mutant mCRC
+    # ClinicalTrials.gov — search adjacent countries using patient's diagnosis
+    patient = get_patient(_get_current_patient_id())
+    trial_condition = patient.diagnosis_description or "metastatic colorectal cancer"
     try:
         trials = await clinicaltrials_client.search_trials_adjacent(
-            condition="KRAS mutant metastatic colorectal cancer",
+            condition=trial_condition,
             max_per_country=5,
         )
         for trial in trials:

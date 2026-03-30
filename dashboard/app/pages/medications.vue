@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { fetchApi } = useOncoteamApi()
+const { fetchApi, postApi } = useOncoteamApi()
 const { t } = useI18n()
 const { formatDate, formatDateShort } = useFormatDate()
 
@@ -60,12 +60,9 @@ async function submitCheckin() {
   checkinSubmitting.value = true
   checkinMsg.value = ''
   try {
-    await $fetch('/api/oncoteam/medications', {
-      method: 'POST',
-      body: {
-        date: new Date().toISOString().slice(0, 10),
-        medications: { ...checkin },
-      },
+    await postApi('/medications', {
+      date: new Date().toISOString().slice(0, 10),
+      medications: { ...checkin },
     })
     checkinMsg.value = 'saved'
     await refresh()
@@ -83,10 +80,7 @@ async function submitMed() {
   submitting.value = true
   submitMsg.value = ''
   try {
-    await $fetch('/api/oncoteam/medications', {
-      method: 'POST',
-      body: form,
-    })
+    await postApi('/medications', form)
     submitMsg.value = 'saved'
     form.name = ''
     form.dose = ''

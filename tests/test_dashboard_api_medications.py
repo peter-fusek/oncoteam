@@ -68,10 +68,7 @@ async def test_api_medications_get_includes_defaults(mock_list):
     data = json.loads(response.body)
 
     assert response.status_code == 200
-    assert len(data["default_medications"]) == 4
-    names = [m["name"] for m in data["default_medications"]]
-    assert "Clexane" in names
-    assert "Ondansetron" in names
+    assert len(data["default_medications"]) == 0  # no hardcoded defaults
 
 
 @pytest.mark.anyio
@@ -86,7 +83,7 @@ async def test_api_medications_get_handles_error(mock_list):
     # return_exceptions=True means gather catches the error, returns empty lists
     assert response.status_code == 200
     data = json.loads(response.body)
-    assert len(data["default_medications"]) == 4
+    assert len(data["default_medications"]) == 0
     assert data["medications"] == []
 
 

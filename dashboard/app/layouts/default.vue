@@ -272,6 +272,19 @@ async function logout() {
             </button>
           </div>
 
+          <!-- Patient switcher (mobile) -->
+          <div v-if="canSwitchPatient && hasMultiplePatients" class="px-3 pb-2">
+            <select
+              class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700"
+              :value="activePatientId"
+              @change="switchPatient(($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="p in patients" :key="p.id" :value="p.id">
+                {{ p.name }} — {{ p.diagnosis }}
+              </option>
+            </select>
+          </div>
+
           <!-- Role switcher (mobile) -->
           <div v-if="hasMultipleRoles" class="px-3 pb-2">
             <div class="flex gap-1">

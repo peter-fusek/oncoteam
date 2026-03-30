@@ -12,6 +12,7 @@ from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MI
 
 from .agent_registry import AGENT_REGISTRY, ScheduleType
 from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
+from .patient_context import list_patient_ids
 
 logger = logging.getLogger("oncoteam.scheduler")
 
@@ -91,6 +92,9 @@ def _create_scheduler():
 
     task_functions = _get_task_functions()
 
+    patient_ids = list_patient_ids()
+    stagger_seconds = 0
+
     for agent_id, config in AGENT_REGISTRY.items():
         if not config.enabled:
             continue
@@ -102,15 +106,52 @@ def _create_scheduler():
         trigger_cls = (
             IntervalTrigger if config.schedule_type == ScheduleType.INTERVAL else CronTrigger
         )
-        trigger = trigger_cls(**config.schedule_params)
 
-        scheduler.add_job(
-            func,
-            trigger,
-            id=agent_id,
-            misfire_grace_time=config.misfire_grace_time,
-            coalesce=True,
-        )
+        # System agents (keepalive) run once, not per-patient
+        if agent_id == "keepalive_ping":
+            trigger = trigger_cls(**config.schedule_params)
+            scheduler.add_job(
+                func,
+                trigger,
+                id=agent_id,
+                misfire_grace_time=config.misfire_grace_time,
+                coalesce=True,
+            )
+            continue
+
+        # Create a job per patient to ensure all patients get agent coverage
+        for i, pid in enumerate(patient_ids):
+
+            def _make_runner(_fn=func, _pid=pid):
+                async def _run():
+                    return await _fn(patient_id=_pid)
+
+                return _run
+
+            trigger_params = dict(config.schedule_params)
+            # Stagger multi-patient jobs by 2 minutes to avoid pile-on
+            if i > 0 and config.schedule_type == ScheduleType.CRON:
+                minute = trigger_params.get("minute", 0)
+                if isinstance(minute, int):
+                    trigger_params["minute"] = (minute + i * 2) % 60
+
+            trigger = trigger_cls(**trigger_params)
+            job_id = f"{agent_id}:{pid}" if len(patient_ids) > 1 else agent_id
+
+            scheduler.add_job(
+                _make_runner(),
+                trigger,
+                id=job_id,
+                misfire_grace_time=config.misfire_grace_time,
+                coalesce=True,
+            )
+            stagger_seconds += 2
+
+    logger.info(
+        "Scheduler configured for %d patients × %d agents",
+        len(patient_ids),
+        len([a for a in AGENT_REGISTRY.values() if a.enabled]),
+    )
 
     return scheduler
 

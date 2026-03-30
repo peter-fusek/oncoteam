@@ -10,11 +10,11 @@ export default defineEventHandler(async (event) => {
 
   const session = await getUserSession(event)
   if (!session.user?.email) return
-  // Skip if session already has roles AND phone (fully patched)
-  if (session.user.roles && Array.isArray(session.user.roles) && session.user.phone) return
+  // Skip if session already has roles AND phone AND patientId (fully patched)
+  if (session.user.roles && Array.isArray(session.user.roles) && session.user.phone && session.user.patientId) return
 
   const config = useRuntimeConfig()
-  let roleMap: Record<string, { roles?: string[]; phone?: string }> = {}
+  let roleMap: Record<string, { roles?: string[]; phone?: string; patient_id?: string; patient_ids?: string[] }> = {}
   try {
     // Nuxt may auto-parse JSON env vars into objects
     const raw = config.roleMap
@@ -28,6 +28,9 @@ export default defineEventHandler(async (event) => {
   const userConfig = roleMap[email] || { roles: ['advocate'] }
   const roles = userConfig.roles || ['advocate']
 
+  const patientId = userConfig.patient_id || 'erika'
+  const patientIds = userConfig.patient_ids || [patientId]
+
   // replaceUserSession to avoid deep-merge accumulating roles array
   await replaceUserSession(event, {
     user: {
@@ -37,6 +40,8 @@ export default defineEventHandler(async (event) => {
       roles,
       activeRole: roles[0],
       phone: userConfig.phone || null,
+      patientId,
+      patientIds,
     },
   })
 })

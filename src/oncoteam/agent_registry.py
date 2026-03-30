@@ -322,11 +322,11 @@ Instructions:
 1. Search oncofiles for tumor marker data (search "CEA", "CA 19-9", "tumor marker")
 2. Search oncofiles for lab results that may contain marker values
 3. Analyze trend: rising/falling/stable
-4. Compare to expected response on mFOLFOX6
+4. Compare to expected response on current regimen (use get_patient_context)
 5. If markers rising: flag possible progression, recommend imaging
 6. Store findings as a briefing
 
-Reference ESMO guidelines for marker interpretation in mCRC monitoring.\
+Reference ESMO guidelines for marker interpretation.\
 """,
     ),
     AgentConfig(
@@ -374,7 +374,7 @@ Instructions:
    - Neuropathy dose modification rules
    - 2nd line options ranking
 3. Flag any discrepancies between current protocol and latest evidence
-4. Note any new treatment options or trials relevant to KRAS G12S mCRC
+4. Note any new treatment options or trials relevant to the patient's cancer type and biomarkers
 5. Store findings as a briefing with recommendations
 
 Focus on actionable changes that would affect current patient management.\
@@ -453,7 +453,7 @@ Structure for MDT presentation:
         id="medication_adherence_check",
         name=L("Kontrola adherencie liekov", "Medication adherence check"),
         description=L(
-            "Kontrola adherencie liekov (Clexane)", "Medication adherence check (Clexane)"
+            "Kontrola adherencie liekov", "Medication adherence check"
         ),
         schedule_display=L("denne 20:00", "daily 20:00"),
         category=AgentCategory.REPORTING,
@@ -470,10 +470,11 @@ Check medication adherence for today ({today}).
 Instructions:
 1. Use get_treatment_timeline to find today's medication_adherence events
 2. If no adherence logged for today, create a reminder briefing
-3. Specifically flag if Clexane (anticoagulant) adherence is missing -- critical for VTE
+3. Specifically flag any critical medication non-adherence
+   (check patient's active therapies via get_patient_context)
 4. Store a briefing noting adherence status
 
-This is a safety check: Clexane non-compliance with active VJI thrombosis is dangerous.\
+This is a safety check: non-compliance with critical medications is dangerous.\
 """,
     ),
     # === Research Funnel Auto-Assess (Haiku) ===
@@ -500,16 +501,12 @@ Instructions:
 1. Use search_clinical_trials to find recent trials matching patient profile
 2. For each trial, determine the funnel stage:
    - **Excluded**: biomarker contraindication or eligibility hard-stop
-   - **Later Line**: trial is for 2L/3L+ (patient is 1L mFOLFOX6)
+   - **Later Line**: trial is for later treatment line than patient's current line
    - **Watching**: relevant but not actionable yet
-   - **Eligible Now**: patient meets criteria, trial recruiting in EU/Slovakia
+   - **Eligible Now**: patient meets criteria, trial recruiting nearby
    - **Action Needed**: eligible AND enrollment closing soon
-3. Patient rules:
-   - KRAS G12S (NOT G12C) — anti-EGFR EXCLUDED
-   - pMMR/MSS — checkpoint monotherapy NOT indicated
-   - HER2 negative — HER2-targeted NOT indicated
-   - Prior palliative resection — "unresectable only" trials EXCLUDED
-   - Active VTE on Clexane — bevacizumab HIGH RISK
+3. Use get_patient_context to check patient's biomarkers and excluded_therapies.
+   Apply exclusion rules from the patient's profile dynamically.
 4. Log a briefing with the classification results and any new findings
 5. Flag any trials that moved from Watching to Eligible Now\
 """,

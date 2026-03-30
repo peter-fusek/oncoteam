@@ -50,7 +50,7 @@ from .config import (
     ONCOFILES_MCP_URL,
 )
 from .eligibility import assess_research_relevance
-from .locale import L, get_lang, resolve
+from .locale import get_lang, resolve
 from .patient_context import (
     DEFAULT_PATIENT_ID,
     THERAPY_CATEGORIES,
@@ -1185,11 +1185,13 @@ async def api_autonomous(request: Request) -> JSONResponse:
         if not ANTHROPIC_API_KEY:
             return _cors_json({"error": "ANTHROPIC_API_KEY not configured"}, status_code=500)
 
+        trigger_patient_id = _get_patient_id(request)
+
         # Run in background with error capture
         async def _run_with_capture():
             global _last_trigger_result
             try:
-                result = await task_fn()
+                result = await task_fn(patient_id=trigger_patient_id)
                 _last_trigger_result = {
                     "task": trigger,
                     "status": "completed",
@@ -1345,7 +1347,7 @@ _CACHE_MAX_SIZE = 200
 
 def _cache_key(prefix: str, patient_id: str, *extra: str) -> str:
     """Build cache key scoped to patient."""
-    parts = [prefix, patient_id or "erika"] + list(extra)
+    parts = [prefix, patient_id or DEFAULT_PATIENT_ID] + list(extra)
     return ":".join(parts)
 
 
@@ -2380,8 +2382,10 @@ async def api_diagnostics(request: Request) -> JSONResponse:
     te_check = next((c for c in checks if c["name"] == "treatment_events"), None)
     if te_check and te_check.get("ok"):
         try:
+            diag_patient_id = _get_patient_id(request)
+            diag_token = _get_token_for_patient(diag_patient_id)
             lab_events = await oncofiles_client.list_treatment_events(
-                event_type="lab_result", limit=1
+                event_type="lab_result", limit=1, token=diag_token
             )
             events = _extract_list(lab_events, "events")
             if events:
@@ -2501,43 +2505,9 @@ async def api_documents(request: Request) -> JSONResponse:
         )
 
 
-# ── Default medications (FOLFOX regimen) ──────
+# ── Default medications (empty — real data from oncofiles) ──────
 
-_DEFAULT_MEDICATIONS = [
-    {
-        "name": "Clexane",
-        "dose": "0,6ml SC",
-        "frequency": L("2x/deň", "2x/day"),
-        "active": True,
-        "notes": L(
-            "Antikoagulant — kritický, aktívna VJI trombóza",
-            "Anticoagulant — critical, active VJI thrombosis",
-        ),
-    },
-    {
-        "name": "Ondansetron",
-        "dose": "8mg",
-        "frequency": L("podľa potreby", "as needed"),
-        "active": True,
-        "notes": L("Antiemetikum", "Anti-emetic"),
-    },
-    {
-        "name": "Dexamethasone",
-        "dose": L("podľa protokolu", "per protocol"),
-        "frequency": L("s chemoterapiou", "with chemo"),
-        "active": True,
-        "notes": L(
-            "Antiemetikum, podávané s chemoterapiou", "Anti-emetic, given with chemotherapy"
-        ),
-    },
-    {
-        "name": "Aprepitant",
-        "dose": "125/80mg",
-        "frequency": L("D1-3 cyklu", "D1-3 of cycle"),
-        "active": True,
-        "notes": L("Antiemetikum, dni 1-3 každého cyklu", "Anti-emetic, days 1-3 of each cycle"),
-    },
-]
+_DEFAULT_MEDICATIONS: list[dict] = []
 
 
 async def api_medications(request: Request) -> JSONResponse:
@@ -2858,7 +2828,7 @@ def _translate_for_family(
     patient=None,
 ) -> str:
     """Translate clinical data to comprehensive plain language for family members."""
-    pt = patient or get_patient("erika")
+    pt = patient or get_patient(DEFAULT_PATIENT_ID)
     parts: list[str] = []
     cycle = pt.current_cycle or 2
 
@@ -3201,6 +3171,8 @@ async def api_agents(request: Request) -> JSONResponse:
     from .agent_registry import AGENT_REGISTRY, AgentCategory
     from .autonomous_tasks import _extract_timestamp, _get_state
 
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     lang = get_lang(request)
 
     # Build agent list (excluding system agents)
@@ -3211,7 +3183,9 @@ async def api_agents(request: Request) -> JSONResponse:
     # Fetch all last-run states concurrently (#105 perf fix)
     async def _safe_get_state(agent_id: str):
         try:
-            state = await asyncio.wait_for(_get_state(f"last_{agent_id}"), timeout=2.0)
+            state = await asyncio.wait_for(
+                _get_state(f"last_{agent_id}:{patient_id}", token=token), timeout=2.0
+            )
             return _extract_timestamp(state)
         except Exception:
             return None
@@ -3398,7 +3372,7 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             max_turns=3,
             task_name="whatsapp_chat",
             model=AUTONOMOUS_MODEL_LIGHT,
-            patient_id=patient_id or "erika",
+            patient_id=patient_id or DEFAULT_PATIENT_ID,
         )
 
         response_text = result.get("response", "")
@@ -3588,14 +3562,18 @@ async def api_trigger_agent(request: Request) -> JSONResponse:
         )
 
     # Clear cooldown state so the agent runs unconditionally
+    effective_patient_id = trigger_patient_id or DEFAULT_PATIENT_ID
+    token = _get_token_for_patient(effective_patient_id)
     try:
-        await oncofiles_client.set_agent_state(f"last_{agent_id}", {})
-        _logger.info("Cleared cooldown for %s", agent_id)
+        await oncofiles_client.set_agent_state(
+            f"last_{agent_id}:{effective_patient_id}", {}, token=token
+        )
+        _logger.info("Cleared cooldown for %s:%s", agent_id, effective_patient_id)
     except Exception as e:
         _logger.warning("Could not clear cooldown for %s: %s", agent_id, e)
 
-    asyncio.create_task(func())
-    _logger.info("Manually triggered agent: %s", agent_id)
+    asyncio.create_task(func(patient_id=effective_patient_id))
+    _logger.info("Manually triggered agent: %s (patient=%s)", agent_id, effective_patient_id)
 
     return _cors_json({"status": "triggered", "agent_id": agent_id}, request=request)
 

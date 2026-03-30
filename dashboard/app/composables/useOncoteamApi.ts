@@ -24,5 +24,13 @@ export function useOncoteamApi() {
     })
   }
 
-  return { fetchApi }
+  async function postApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    const q: Record<string, string> = { lang: locale.value }
+    if (showTestData.value) q.show_test = 'true'
+    if (activePatientId.value) q.patient_id = activePatientId.value
+    const qs = new URLSearchParams(q).toString()
+    return $fetch<T>(`/api/oncoteam${path}?${qs}`, { method: 'POST', body })
+  }
+
+  return { fetchApi, postApi }
 }

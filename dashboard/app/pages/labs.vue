@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { fetchApi } = useOncoteamApi()
+const { fetchApi, postApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
 
@@ -241,10 +241,7 @@ async function submitLab() {
     if (v != null && v !== '') cleanValues[k] = Number(v)
   }
   try {
-    await $fetch('/api/oncoteam/labs', {
-      method: 'POST',
-      body: { date: form.date, values: cleanValues, notes: form.notes },
-    })
+    await postApi('/labs', { date: form.date, values: cleanValues, notes: form.notes })
     submitMsg.value = 'saved'
     showForm.value = false
     form.values = {}

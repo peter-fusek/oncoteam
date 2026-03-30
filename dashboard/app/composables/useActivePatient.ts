@@ -7,7 +7,13 @@
  */
 
 export function useActivePatient() {
-  const activePatientId = useState('activePatientId', () => 'erika')
+  const { user } = useUserSession()
+
+  // Initialize from session patientId, fall back to 'erika'
+  const activePatientId = useState('activePatientId', () => {
+    const sessionPid = user.value?.patientId as string | undefined
+    return sessionPid || 'erika'
+  })
 
   // Known patients with display info. Seeded with Erika.
   // When new patients onboard, they're added to the user's session patientIds
@@ -15,7 +21,6 @@ export function useActivePatient() {
   const patientDisplayInfo = useState<Record<string, { name: string; diagnosis: string }>>('patientDisplayInfo', () => ({
     erika: { name: 'Erika F.', diagnosis: 'mCRC (C18.7)' },
   }))
-  const { user } = useUserSession()
   const { activeRole } = useUserRole()
 
   const canSwitchPatient = computed(() => activeRole.value === 'advocate')
@@ -45,11 +50,6 @@ export function useActivePatient() {
     if (allowedPatientIds.value.includes(patientId)) {
       activePatientId.value = patientId
     }
-  }
-
-  // Initialize from session on first use
-  if (user.value?.patientId && !activePatientId.value) {
-    activePatientId.value = user.value.patientId as string
   }
 
   return {

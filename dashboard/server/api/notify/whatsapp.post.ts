@@ -25,7 +25,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const config = useRuntimeConfig()
-  const { message } = await readBody(event)
+  const body = await readBody(event)
+  const message = body.message
+  const patientName = (body.patient_name as string | undefined)?.trim() || 'Patient'
 
   if (!message || typeof message !== 'string') {
     throw createError({ statusCode: 400, message: 'Message is required' })
@@ -53,7 +55,7 @@ export default defineEventHandler(async (event) => {
 
   const roleName = session.user.activeRole || 'advocate'
   const userName = session.user.name || session.user.email
-  const fullMessage = `Oncoteam Update\nPatient: Erika | For: ${userName} (${roleName})\n---\n${sanitized}`
+  const fullMessage = `Oncoteam Update\nPatient: ${patientName} | For: ${userName} (${roleName})\n---\n${sanitized}`
 
   const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
 

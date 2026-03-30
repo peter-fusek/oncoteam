@@ -20,21 +20,21 @@ const patient = {
 
 const labEntries = [
   {
-    date: '2026-03-19', values: { ANC: 2800, PLT: 185000, hemoglobin: 11.2, CEA: 732.9, CA_19_9: 22294, WBC: 6.1, creatinine: 0.82 },
+    date: '2026-03-19', values: { ANC: 2800, PLT: 185000, hemoglobin: 11.2, CEA: 95.4, CA_19_9: 4820, WBC: 6.1, creatinine: 0.82 },
     value_statuses: { ANC: 'normal', PLT: 'normal', hemoglobin: 'normal', CEA: 'high', CA_19_9: 'high', WBC: 'normal', creatinine: 'normal' },
     directions: { CEA: 'down', CA_19_9: 'down', ANC: 'up', hemoglobin: 'stable' },
     health_directions: { CEA: 'improving', CA_19_9: 'improving', ANC: 'improving', hemoglobin: 'stable' },
     alerts: [],
   },
   {
-    date: '2026-02-27', values: { ANC: 2200, PLT: 165000, hemoglobin: 10.8, CEA: 1559.5, CA_19_9: 69536.8, WBC: 5.4 },
+    date: '2026-02-27', values: { ANC: 2200, PLT: 165000, hemoglobin: 10.8, CEA: 280.1, CA_19_9: 15230, WBC: 5.4 },
     value_statuses: { ANC: 'normal', PLT: 'normal', hemoglobin: 'normal', CEA: 'high', CA_19_9: 'high', WBC: 'normal' },
     directions: { CEA: 'down', CA_19_9: 'down' },
     health_directions: { CEA: 'improving', CA_19_9: 'improving' },
     alerts: [],
   },
   {
-    date: '2026-02-13', values: { ANC: 3100, PLT: 195000, hemoglobin: 11.5, CEA: 1911.5, CA_19_9: 134735 },
+    date: '2026-02-13', values: { ANC: 3100, PLT: 195000, hemoglobin: 11.5, CEA: 450.2, CA_19_9: 28500 },
     value_statuses: { ANC: 'normal', PLT: 'normal', hemoglobin: 'normal', CEA: 'high', CA_19_9: 'high' },
     directions: {},
     health_directions: {},

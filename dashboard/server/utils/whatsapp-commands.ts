@@ -359,6 +359,7 @@ export async function handleWhatsAppCommand(
   body: string,
   oncoteamApiUrl: string,
   fromPhone?: string,
+  options?: { patientId?: string },
 ): Promise<CommandResult> {
   const input = body.trim().toLowerCase().split(/\s+/)[0] || ''
   const lang = detectLang(input)
@@ -399,7 +400,9 @@ export async function handleWhatsAppCommand(
     const config = useRuntimeConfig()
     const apiKey = config.oncoteamApiKey || ''
     const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
-    const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}${sep}lang=${lang}`, { headers })
+    // Include patient_id in API calls for multi-patient support
+    const patientId = options?.patientId || 'erika'
+    const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}${sep}lang=${lang}&patient_id=${patientId}`, { headers })
 
     let text: string
     switch (command) {

@@ -308,7 +308,7 @@ export default defineEventHandler(async (event) => {
                 content_type: media.contentType,
                 filename,
                 phone: from,
-                patient_id: '',
+                patient_id: 'erika', // TODO: resolve from phone→patient mapping
               },
               headers,
             },
