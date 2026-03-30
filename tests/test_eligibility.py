@@ -22,7 +22,7 @@ class TestAntiEGFR:
     def test_cetuximab_excluded(self):
         result = check_eligibility(_trial(["Cetuximab", "FOLFIRI"]), PATIENT)
         assert not result.eligible
-        assert any(f.rule == "KRAS_G12S_anti_EGFR" for f in result.flags)
+        assert any(f.rule == "KRAS_anti_EGFR" for f in result.flags)
 
     def test_panitumumab_excluded(self):
         result = check_eligibility(_trial(["Panitumumab"]), PATIENT)
@@ -33,14 +33,14 @@ class TestAntiEGFR:
             _trial(["Drug X"], eligibility_criteria="Must be cetuximab-naive"),
             PATIENT,
         )
-        assert any(f.rule == "KRAS_G12S_anti_EGFR" for f in result.flags)
+        assert any(f.rule == "KRAS_anti_EGFR" for f in result.flags)
 
 
 class TestKRASG12C:
     def test_sotorasib_excluded(self):
         result = check_eligibility(_trial(["Sotorasib"]), PATIENT)
         assert not result.eligible
-        assert any(f.rule == "KRAS_G12S_not_G12C" for f in result.flags)
+        assert any(f.rule == "KRAS_not_G12C" for f in result.flags)
 
     def test_adagrasib_excluded(self):
         result = check_eligibility(_trial(["Adagrasib"]), PATIENT)

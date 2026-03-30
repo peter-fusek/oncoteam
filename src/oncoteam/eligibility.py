@@ -41,8 +41,7 @@ _CONTRAINDICATED_KEYWORDS = (
 _HIGH_RELEVANCE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(p, re.IGNORECASE)
     for p in [
-        r"kras\s*g12s",
-        r"kras\s*mutat",
+        r"kras\s*(?:g12\w|mutat)",
         r"(?:mcrc|metastatic\s+colorectal)",
         r"folfox",
         r"(?:first|1st|1l|first.line)\s*line",
@@ -82,6 +81,8 @@ class ResearchRelevance:
 def assess_research_relevance(
     title: str,
     summary: str | None = None,
+    *,
+    patient: PatientProfile | None = None,
 ) -> ResearchRelevance:
     """Assess how relevant a research entry is to the patient's profile.
 
@@ -91,6 +92,9 @@ def assess_research_relevance(
     text = (title + " " + (summary or "")).lower()
     words = set(re.findall(r"[a-z][a-z0-9-]+", text))
 
+    kras_val = (patient.biomarkers.get("KRAS", "") if patient else "G12S") or "mutant"
+    her2_val = (patient.biomarkers.get("HER2", "") if patient else "negative") or "negative"
+
     # Rule 1: Contraindicated — false hope detection
     matched_contra = _CONTRAINDICATED_KEYWORDS & words
     if matched_contra:
@@ -98,17 +102,17 @@ def assess_research_relevance(
         if matched_contra & _KRAS_G12C:
             return ResearchRelevance(
                 score="not_applicable",
-                reason="KRAS G12C inhibitor — patient has G12S, not G12C",
+                reason=f"KRAS G12C inhibitor — patient has {kras_val}, not G12C",
             )
         if matched_contra & (_ANTI_EGFR | {"anti-egfr", "anti egfr", "egfr inhibit"}):
             return ResearchRelevance(
                 score="not_applicable",
-                reason="Anti-EGFR therapy — contraindicated (KRAS G12S)",
+                reason=f"Anti-EGFR therapy — contraindicated (KRAS {kras_val})",
             )
         if matched_contra & _HER2_TARGETED:
             return ResearchRelevance(
                 score="not_applicable",
-                reason="HER2-targeted therapy — patient is HER2 negative",
+                reason=f"HER2-targeted therapy — patient is HER2 {her2_val}",
             )
 
     # Rule 1b: Later-line trials — patient is on 1L, these are 2L/3L+
@@ -180,26 +184,32 @@ def check_eligibility(
     warnings: list[str] = []
     drugs = _drugs_in_trial(trial)
 
+    kras_val = patient.biomarkers.get("KRAS", "mutant") or "mutant"
+    her2_val = patient.biomarkers.get("HER2", "negative") or "negative"
+    braf_val = patient.biomarkers.get("BRAF_V600E", "wild-type") or "wild-type"
+    msi_val = patient.biomarkers.get("MSI", "pMMR/MSS") or "pMMR/MSS"
+
     # Rule 1: KRAS mutant -> no anti-EGFR
     matched = _ANTI_EGFR & drugs
     if matched:
         flags.append(
             EligibilityFlag(
-                rule="KRAS_G12S_anti_EGFR",
+                rule="KRAS_anti_EGFR",
                 status="excluded",
-                reason=(f"Anti-EGFR ({_fmt(matched)}) contraindicated — KRAS G12S mutant"),
+                reason=f"Anti-EGFR ({_fmt(matched)}) contraindicated — KRAS {kras_val}",
             )
         )
 
-    # Rule 2: G12S != G12C -> no G12C-specific drugs
+    # Rule 2: KRAS G12C-specific drugs only for G12C
     matched = _KRAS_G12C & drugs
     if matched:
         flags.append(
             EligibilityFlag(
-                rule="KRAS_G12S_not_G12C",
+                rule="KRAS_not_G12C",
                 status="excluded",
                 reason=(
-                    f"KRAS G12C inhibitors ({_fmt(matched)}) not applicable — patient has G12S"
+                    f"KRAS G12C inhibitors ({_fmt(matched)}) not applicable"
+                    f" — patient has {kras_val}"
                 ),
             )
         )
@@ -215,14 +225,14 @@ def check_eligibility(
                     status="excluded",
                     reason=(
                         f"Checkpoint monotherapy ({_fmt(checkpoint_found)})"
-                        " not indicated — pMMR/MSS"
+                        f" not indicated — {msi_val}"
                     ),
                 )
             )
         else:
             warnings.append(
                 f"Checkpoint inhibitor ({_fmt(checkpoint_found)})"
-                " in combination — acceptable for pMMR/MSS,"
+                f" in combination — acceptable for {msi_val},"
                 " monitor response"
             )
 
@@ -233,7 +243,7 @@ def check_eligibility(
             EligibilityFlag(
                 rule="HER2_negative",
                 status="excluded",
-                reason=(f"HER2-targeted therapy ({_fmt(matched)}) not indicated — HER2 negative"),
+                reason=f"HER2-targeted therapy ({_fmt(matched)}) not indicated — HER2 {her2_val}",
             )
         )
 
@@ -244,7 +254,7 @@ def check_eligibility(
             EligibilityFlag(
                 rule="BRAF_wildtype",
                 status="excluded",
-                reason=(f"BRAF inhibitors ({_fmt(matched)}) not indicated — BRAF V600E wild-type"),
+                reason=f"BRAF inhibitors ({_fmt(matched)}) not indicated — BRAF V600E {braf_val}",
             )
         )
 
@@ -254,11 +264,19 @@ def check_eligibility(
             "thrombosis" in c.lower() or "vte" in c.lower() for c in patient.comorbidities
         )
         if has_vte:
+            vte_detail = next(
+                (
+                    c
+                    for c in patient.comorbidities
+                    if "thrombosis" in c.lower() or "vte" in c.lower()
+                ),
+                "active VTE",
+            )
             flags.append(
                 EligibilityFlag(
                     rule="VTE_bevacizumab",
                     status="warning",
-                    reason="Bevacizumab HIGH RISK — active VJI thrombosis on Clexane",
+                    reason=f"Bevacizumab HIGH RISK — {vte_detail}",
                 )
             )
             warnings.append("Active VTE + bevacizumab requires oncologist discussion")
