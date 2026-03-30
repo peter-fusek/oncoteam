@@ -457,3 +457,24 @@ def test_normalize_does_not_overwrite_existing_anc():
     result = _normalize_lab_values(meta)
     assert result["ANC"] == 2400
     assert "ABS_NEUT" in result  # not removed since ANC already existed
+
+
+# ── Patient token threading ──────────────────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+@patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
+async def test_api_labs_passes_patient_token(mock_get_token, mock_list):
+    """Non-erika patient_id causes a different token to be passed to oncofiles."""
+    mock_list.return_value = {"events": []}
+    request = FakeRequest("GET", query="patient_id=jan")
+    response = await api_labs(request)
+
+    assert response.status_code == 200
+    mock_get_token.assert_called_with("jan")
+    mock_list.assert_called_once()
+    assert mock_list.call_args.kwargs.get("token") == "tok_jan_123"

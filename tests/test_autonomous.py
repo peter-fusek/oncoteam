@@ -15,6 +15,7 @@ from oncoteam.autonomous import (
     get_daily_cost,
     run_autonomous_task,
 )
+from oncoteam.models import PatientProfile
 
 
 class TestSystemPrompt:
@@ -343,6 +344,73 @@ class TestUnwrapAgentState:
         from oncoteam.autonomous import _unwrap_agent_state
 
         assert _unwrap_agent_state({"value": "not json"}) == {}
+
+
+class TestBiomarkerRulesCrossPatient:
+    """Ensure build_system_prompt produces patient-specific biomarker rules."""
+
+    def test_no_cross_contamination(self):
+        from oncoteam.patient_context import (
+            _patient_registry,
+            _patient_research_terms,
+            _patient_tokens,
+            build_biomarker_rules,
+            build_patient_profile_text,
+            register_patient,
+        )
+
+        jan_profile = PatientProfile(
+            patient_id="jan",
+            name="Ján Testovič",
+            diagnosis_code="C50.9",
+            diagnosis_description="Breast cancer, HER2-positive",
+            tumor_site="Breast",
+            biomarkers={
+                "KRAS": "Wild-type",
+                "HER2": "Positive (3+)",
+                "MSI": "MSI-H/dMMR",
+            },
+            treatment_regimen="Trastuzumab + Pertuzumab + Docetaxel",
+            hospitals=["Test Hospital"],
+            excluded_therapies={},
+        )
+
+        # Save original registry state for cleanup
+        had_jan = "jan" in _patient_registry
+        orig_token = _patient_tokens.get("jan")
+        orig_terms = _patient_research_terms.get("jan")
+
+        try:
+            register_patient("jan", "tok_jan", jan_profile, research_terms=["breast cancer HER2"])
+
+            # Check patient-specific sections (biomarker rules + profile text)
+            jan_rules = build_biomarker_rules(jan_profile)
+            jan_profile_text = build_patient_profile_text(jan_profile)
+            jan_prompt = build_system_prompt("jan")
+
+            # Jan's biomarker rules must NOT contain Erika's KRAS G12S
+            assert "G12S" not in jan_rules
+            assert "anti-EGFR" not in jan_rules.lower() or "excluded" not in jan_rules.lower()
+            # Jan's profile must NOT mention Erika's mutation
+            assert "G12S" not in jan_profile_text
+            # Jan's prompt MUST reflect his own biomarkers
+            assert "HER2" in jan_prompt
+            assert "Ján Testovič" in jan_prompt
+
+            # Erika's prompt MUST still have her KRAS G12S
+            erika_prompt = build_system_prompt("erika")
+            assert "G12S" in erika_prompt
+        finally:
+            # Clean up registry
+            if not had_jan:
+                _patient_registry.pop("jan", None)
+                _patient_tokens.pop("jan", None)
+                _patient_research_terms.pop("jan", None)
+            else:
+                if orig_token is not None:
+                    _patient_tokens["jan"] = orig_token
+                if orig_terms is not None:
+                    _patient_research_terms["jan"] = orig_terms
 
 
 class TestRunAutonomousTask:

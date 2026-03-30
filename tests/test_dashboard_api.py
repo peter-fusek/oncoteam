@@ -15,6 +15,7 @@ from oncoteam.dashboard_api import (
     _extract_output_data,
     _is_test_entry,
     api_activity,
+    api_briefings,
     api_cors_preflight,
     api_patient,
     api_research,
@@ -1124,3 +1125,23 @@ async def test_cache_scoped_per_patient(mock_list):
     jan_keys = [k for k in mod._timeline_cache if ":jan:" in k]
     assert len(erika_keys) >= 1
     assert len(jan_keys) >= 1
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+    new_callable=AsyncMock,
+)
+@patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
+async def test_api_briefings_passes_patient_token(mock_get_token, mock_search):
+    """Non-erika patient_id causes a different token to be passed to oncofiles."""
+    mock_search.return_value = {"entries": []}
+    request = _make_request("/api/briefings", "patient_id=jan")
+    response = await api_briefings(request)
+
+    assert response.status_code == 200
+    mock_get_token.assert_called_with("jan")
+    # Briefings endpoint calls search_conversations twice (briefings + cost_alerts)
+    assert mock_search.call_count == 2
+    for call in mock_search.call_args_list:
+        assert call.kwargs.get("token") == "tok_jan_123"

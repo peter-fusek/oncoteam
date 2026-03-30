@@ -196,3 +196,26 @@ async def test_api_medications_adherence_post_requires_date():
     request = FakeRequest("POST", body=body)
     response = await api_medications(request)
     assert response.status_code == 400
+
+
+# ── Patient token threading ──────────────────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+@patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
+async def test_api_medications_passes_patient_token(mock_get_token, mock_list):
+    """Non-erika patient_id causes a different token to be passed to oncofiles."""
+    mock_list.return_value = []
+    request = FakeRequest("GET", query="patient_id=jan")
+    response = await api_medications(request)
+
+    assert response.status_code == 200
+    mock_get_token.assert_called_with("jan")
+    # Medications endpoint calls list_treatment_events twice (medication_log + adherence)
+    assert mock_list.call_count >= 1
+    token_calls = [c for c in mock_list.call_args_list if c.kwargs.get("token") == "tok_jan_123"]
+    assert len(token_calls) >= 1

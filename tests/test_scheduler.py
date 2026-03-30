@@ -80,3 +80,26 @@ class TestSchedulerStandalone:
             assert scheduler._standalone_scheduler is not None
             stop_scheduler()
             assert scheduler._standalone_scheduler is None
+
+    @pytest.mark.asyncio
+    async def test_multi_patient_job_creation(self):
+        """Multi-patient scheduling creates one job per (agent, patient) + keepalive."""
+        from oncoteam.scheduler import _create_scheduler
+
+        with patch("oncoteam.scheduler.list_patient_ids", return_value=["erika", "jan"]):
+            scheduler = _create_scheduler()
+            jobs = scheduler.get_jobs()
+            job_ids = {j.id for j in jobs}
+
+            # 17 agents × 2 patients + 1 keepalive = 35
+            assert len(jobs) > 18, f"Expected >18 jobs for 2 patients, got {len(jobs)}"
+
+            # Per-patient job IDs use "agent:patient" format
+            assert "pre_cycle_check:erika" in job_ids
+            assert "pre_cycle_check:jan" in job_ids
+
+            # Keepalive is system-level, not per-patient
+            assert "keepalive_ping" in job_ids
+
+            if scheduler.running:
+                scheduler.shutdown(wait=False)
