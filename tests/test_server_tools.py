@@ -35,6 +35,7 @@ from oncoteam.server import (
 
 # ── Mock data ──────────────────────────────────────
 
+
 @pytest.fixture(autouse=True)
 def _mock_mcp_patient_token():
     """MCP tools resolve patient from bearer token — mock to return erika/None."""
