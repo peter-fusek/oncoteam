@@ -452,9 +452,7 @@ Structure for MDT presentation:
     AgentConfig(
         id="medication_adherence_check",
         name=L("Kontrola adherencie liekov", "Medication adherence check"),
-        description=L(
-            "Kontrola adherencie liekov", "Medication adherence check"
-        ),
+        description=L("Kontrola adherencie liekov", "Medication adherence check"),
         schedule_display=L("denne 20:00", "daily 20:00"),
         category=AgentCategory.REPORTING,
         model="light",
