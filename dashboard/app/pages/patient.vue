@@ -152,7 +152,7 @@ const abbreviations: Record<string, string> = {
           </p>
           <!-- Patient IDs -->
           <div v-if="patient.patient_ids" class="flex items-center gap-4 mt-1.5 text-xs text-gray-500">
-            <span v-for="(val, key) in patient.patient_ids" :key="key">
+            <span v-for="(val, key) in patient.patient_ids" v-show="val" :key="key">
               <span class="text-gray-500">{{ $t(`patient.${key}`, key) }}:</span> {{ val }}
             </span>
           </div>

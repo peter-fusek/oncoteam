@@ -28,7 +28,7 @@ export function useActivePatient() {
   // Patient IDs this user can access (from session, set during OAuth login)
   const allowedPatientIds = computed(() => {
     const ids = user.value?.patientIds as string[] | undefined
-    return ids?.length ? ids : ['erika']
+    return ids?.length ? [...new Set(ids)] : ['erika']
   })
 
   const patients = computed(() =>

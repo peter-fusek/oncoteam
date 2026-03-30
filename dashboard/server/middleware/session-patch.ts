@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session.user?.email) return
   // Skip if session already has roles AND phone AND patientId (fully patched)
-  if (session.user.roles && Array.isArray(session.user.roles) && session.user.phone && session.user.patientId) return
+  if (session.user.roles && Array.isArray(session.user.roles) && session.user.patientId && session.user.patientIds) return
 
   const config = useRuntimeConfig()
   let roleMap: Record<string, { roles?: string[]; phone?: string; patient_id?: string; patient_ids?: string[] }> = {}
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const roles = userConfig.roles || ['advocate']
 
   const patientId = userConfig.patient_id || 'erika'
-  const patientIds = userConfig.patient_ids || [patientId]
+  const patientIds = [...new Set(userConfig.patient_ids || [patientId])]
 
   // replaceUserSession to avoid deep-merge accumulating roles array
   await replaceUserSession(event, {

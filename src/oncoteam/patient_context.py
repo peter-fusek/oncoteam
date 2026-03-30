@@ -142,7 +142,7 @@ PATIENT = PatientProfile(
         "KRAS G12C-specific (sotorasib, adagrasib)": "patient has G12S, not G12C",
     },
     patient_ids={
-        "rodne_cislo": "XXXXXX/XXXX",
+        "rodne_cislo": os.environ.get("ERIKA_RODNE_CISLO", ""),
         "nou_id": "X98 10496",
         "poistovna": "25",
     },
