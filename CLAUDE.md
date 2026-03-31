@@ -126,6 +126,8 @@ uv run oncoteam-mcp    # stdio mode
 - `session-patch.ts` preserves `patientId`/`patientIds` when patching stale sessions. Skip guard compares session patientIds against roleMap patient_ids — re-patches when new patients are added to roleMap.
 - `approved-phones.ts` has `resolvePatientIdFromPhone()` — maps WhatsApp phone numbers to patient IDs via `NUXT_ROLE_MAP` phone+patient_id fields.
 - `eligibility.py` `assess_research_relevance()` accepts optional `patient` param. `check_eligibility()` reason strings are built from `patient.biomarkers` dict, not hardcoded.
+- `PatientProfile.agent_whitelist` — empty list = all agents (backward compat). Scheduler at `scheduler.py:123` skips agents not in whitelist. Non-oncology patients (e.g., e5g) should whitelist only relevant agents.
+- Patient e5g (Peter F.) is a general health patient (Z00.0), NOT oncology. Never apply oncology protocols/agents to non-oncology patients. Check `agent_whitelist` before adding new agents.
 - `_DEFAULT_MEDICATIONS` in `dashboard_api.py` is empty — real medication data comes from oncofiles.
 - Load tests in `tests/load/` — always run after concurrency changes.
 - **Always run `uv run ruff format --check` after agent edits** — agents frequently miss formatting.
