@@ -123,7 +123,7 @@ uv run oncoteam-mcp    # stdio mode
 - `_get_current_patient_id()` in `server.py` resolves patient from MCP bearer token via `get_access_token().client_id`. `MCP_BEARER_TOKEN_<ID>` env vars map additional tokens to patient IDs.
 - `useOncoteamApi.ts` has `postApi` helper that includes `patient_id` in query string for POST mutations. All dashboard POST calls must use `postApi`, not raw `$fetch`.
 - `useDrilldown.ts` includes `patient_id` in detail fetch URL.
-- `session-patch.ts` preserves `patientId`/`patientIds` when patching stale sessions.
+- `session-patch.ts` preserves `patientId`/`patientIds` when patching stale sessions. Skip guard compares session patientIds against roleMap patient_ids — re-patches when new patients are added to roleMap.
 - `approved-phones.ts` has `resolvePatientIdFromPhone()` — maps WhatsApp phone numbers to patient IDs via `NUXT_ROLE_MAP` phone+patient_id fields.
 - `eligibility.py` `assess_research_relevance()` accepts optional `patient` param. `check_eligibility()` reason strings are built from `patient.biomarkers` dict, not hardcoded.
 - `_DEFAULT_MEDICATIONS` in `dashboard_api.py` is empty — real medication data comes from oncofiles.
