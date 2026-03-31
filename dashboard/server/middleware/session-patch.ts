@@ -10,10 +10,22 @@ export default defineEventHandler(async (event) => {
 
   const session = await getUserSession(event)
   if (!session.user?.email) return
-  // Skip if session is fully patched AND patientIds has no duplicates
+  // Skip if session is fully patched AND patientIds matches roleMap
   const existingIds = session.user.patientIds as string[] | undefined
   const hasDuplicates = existingIds && existingIds.length !== new Set(existingIds).size
-  if (session.user.roles && Array.isArray(session.user.roles) && session.user.patientId && existingIds && !hasDuplicates) return
+  // Re-patch when roleMap patient_ids changed (e.g. new patient added)
+  let roleMapChanged = false
+  try {
+    const raw = useRuntimeConfig().roleMap
+    const rm = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {})
+    const email = session.user.email as string
+    const uc = rm[email]
+    if (uc?.patient_ids) {
+      const expected = [...new Set(uc.patient_ids)]
+      roleMapChanged = !existingIds || existingIds.length !== expected.length || !expected.every((id: string) => existingIds.includes(id))
+    }
+  } catch { /* re-patch on parse error */ }
+  if (!roleMapChanged && session.user.roles && Array.isArray(session.user.roles) && session.user.patientId && existingIds && !hasDuplicates) return
 
   const config = useRuntimeConfig()
   let roleMap: Record<string, { roles?: string[]; phone?: string; patient_id?: string; patient_ids?: string[] }> = {}
