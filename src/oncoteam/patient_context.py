@@ -206,6 +206,22 @@ PATIENT = PatientProfile(
     ],
 )
 
+# ── Second patient: general health management ──────────────────────────────
+PATIENT_E5G = PatientProfile(
+    patient_id="e5g",
+    name="Peter F.",
+    diagnosis_code="Z00.0",  # ICD-10: General adult health check
+    diagnosis_description="General health management — preventive care",
+    tumor_site="",
+    treatment_regimen="",
+    hospitals=[],
+    notes="Non-oncology patient. Preventive care, periodic screenings, health agenda.",
+    biomarkers={},
+    excluded_therapies={},
+    agent_whitelist=["document_pipeline", "lab_sync", "keepalive_ping", "weekly_briefing"],
+)
+
+
 # ── Bilingual overlay for dashboard display ──────────────────────────────
 # Keys match PATIENT fields. Values are L(sk, en) bilingual dicts.
 # Fields not listed here are displayed as-is (e.g. name, diagnosis_code).
@@ -482,17 +498,17 @@ def get_context_tags() -> list[str]:
 # In-memory registry of loaded patient profiles. Erika is pre-seeded.
 # Future patients load from oncofiles on first access.
 
-_patient_registry: dict[str, PatientProfile] = {"erika": PATIENT}
+_patient_registry: dict[str, PatientProfile] = {"erika": PATIENT, "e5g": PATIENT_E5G}
 
 # Per-patient bearer tokens for oncofiles. Token scopes all data automatically.
 # Erika uses the default ONCOFILES_MCP_TOKEN from config.
 _patient_tokens: dict[str, str] = {}  # patient_id → bearer token
 
 # Per-patient research terms. Erika's are hardcoded; others derived from profile.
-_patient_research_terms: dict[str, list[str]] = {"erika": RESEARCH_TERMS}
+_patient_research_terms: dict[str, list[str]] = {"erika": RESEARCH_TERMS, "e5g": []}
 
 # Per-patient recipients. Erika's are hardcoded; others loaded from oncofiles.
-_patient_recipients: dict[str, dict[str, Recipient]] = {"erika": RECIPIENTS}
+_patient_recipients: dict[str, dict[str, Recipient]] = {"erika": RECIPIENTS, "e5g": {}}
 
 DEFAULT_PATIENT_ID = "erika"
 

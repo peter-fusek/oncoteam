@@ -20,6 +20,7 @@ export function useActivePatient() {
   // and their display info is fetched from the backend.
   const patientDisplayInfo = useState<Record<string, { name: string; diagnosis: string }>>('patientDisplayInfo', () => ({
     erika: { name: 'Erika F.', diagnosis: 'mCRC (C18.7)' },
+    e5g: { name: 'Peter F.', diagnosis: 'Preventive care' },
   }))
   const { activeRole } = useUserRole()
 

@@ -74,6 +74,7 @@ class PatientProfile(BaseModel):
     excluded_therapies: dict[str, str] = Field(default_factory=dict)
     patient_ids: dict[str, str] = Field(default_factory=dict)
     active_therapies: list[dict] = Field(default_factory=list)
+    agent_whitelist: list[str] = Field(default_factory=list)  # empty = all agents
 
 
 class ResearchEntry(BaseModel):

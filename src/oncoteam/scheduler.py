@@ -12,7 +12,7 @@ from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_EXECUTED, EVENT_JOB_MI
 
 from .agent_registry import AGENT_REGISTRY, ScheduleType
 from .config import AUTONOMOUS_ENABLED, ONCOFILES_MCP_URL
-from .patient_context import list_patient_ids
+from .patient_context import get_patient, list_patient_ids
 
 logger = logging.getLogger("oncoteam.scheduler")
 
@@ -120,6 +120,10 @@ def _create_scheduler():
 
         # Create a job per patient to ensure all patients get agent coverage
         for i, pid in enumerate(patient_ids):
+            # Skip agents not in patient's whitelist (empty = all agents)
+            patient = get_patient(pid)
+            if patient.agent_whitelist and agent_id not in patient.agent_whitelist:
+                continue
 
             def _make_runner(_fn=func, _pid=pid):
                 async def _run():

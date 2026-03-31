@@ -65,6 +65,54 @@ class TestPatientContext:
         assert "kras" in text.lower()
 
 
+class TestSecondPatient:
+    """Tests for the e5g (Peter F.) non-oncology patient."""
+
+    def test_e5g_in_registry(self):
+        from oncoteam.patient_context import list_patient_ids
+
+        ids = list_patient_ids()
+        assert "e5g" in ids
+        assert "erika" in ids
+
+    def test_e5g_profile(self):
+        from oncoteam.patient_context import get_patient
+
+        p = get_patient("e5g")
+        assert p.name == "Peter F."
+        assert p.diagnosis_code == "Z00.0"
+        assert p.biomarkers == {}
+        assert p.excluded_therapies == {}
+
+    def test_e5g_agent_whitelist(self):
+        from oncoteam.patient_context import get_patient
+
+        p = get_patient("e5g")
+        assert "lab_sync" in p.agent_whitelist
+        assert "weekly_briefing" in p.agent_whitelist
+        assert "pre_cycle_check" not in p.agent_whitelist
+
+    def test_e5g_biomarker_rules_are_safe(self):
+        from oncoteam.patient_context import build_biomarker_rules, get_patient
+
+        p = get_patient("e5g")
+        rules = build_biomarker_rules(p)
+        # Non-oncology patient: no anti-EGFR exclusion, no KRAS rules
+        assert "anti-EGFR" not in rules
+        assert "G12S" not in rules
+
+    def test_e5g_no_cross_contamination(self):
+        """Erika's biomarker rules must not apply to e5g."""
+        from oncoteam.patient_context import build_biomarker_rules, get_patient
+
+        erika = get_patient("erika")
+        e5g = get_patient("e5g")
+        erika_rules = build_biomarker_rules(erika)
+        e5g_rules = build_biomarker_rules(e5g)
+        assert "KRAS" in erika_rules
+        assert "KRAS" not in e5g_rules
+
+
 class TestGeneticProfile:
     @pytest.mark.asyncio
     async def test_genetic_profile_returns_static_when_oncofiles_unavailable(self):
