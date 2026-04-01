@@ -70,6 +70,7 @@ uv run oncoteam-mcp    # stdio mode
 - `oncofiles_client.py` has circuit breaker (5 fails → 30s cooldown), 20s per-call timeout, 0.5s retry backoff. `get_circuit_breaker_status()` exposes state for health endpoints.
 - `oncofiles_client.py` concurrency: max 3 parallel calls (semaphore), heavy queries (`search_conversations`, `search_documents`) max 1 concurrent. `SEMAPHORE_WAIT_TIMEOUT=8s` rejects requests that can't acquire a slot (prevents zombie queue buildup from proxy-cancelled requests).
 - `oncofiles_client.py` RSS backoff: checks oncofiles `/health` every 60s (throttled). RSS >= 400MB → 30s backoff, >= 450MB → 2min. Don't reduce `RSS_CHECK_INTERVAL` below 30s — per-call health checks cause dashboard proxy timeouts.
+- Oncofiles `/health` includes `folder_404_suspended` when a patient's GDrive sync is paused (3 consecutive 404s). If WhatsApp reports "System Resource Constraint", check oncofiles RSS and `folder_404_suspended` first — a bad folder ID can cascade to full system degradation.
 - `api_whatsapp_chat` checks circuit breaker before calling Claude API — returns clear Slovak/English message if oncofiles is down, saving API cost.
 - Agent schedules are staggered to avoid morning pile-on: weekly_briefing 05:00, daily_cost 06:00, trial_monitor 07:45, daily_research 09:00, protocol_review Wed 11:30. Don't cluster agents within 30min of each other.
 - WhatsApp chat tests must mock `oncofiles_client.get_circuit_breaker_status` (return `{"state": "closed"}`).
