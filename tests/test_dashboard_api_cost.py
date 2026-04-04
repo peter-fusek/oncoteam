@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-_CURRENT_MONTH = datetime.now(UTC).strftime("%Y-%m")
-
 from oncoteam.dashboard_api import api_autonomous_cost
+
+_CURRENT_MONTH = datetime.now(UTC).strftime("%Y-%m")
 
 
 def _make_request(query_string: str = "") -> object:
