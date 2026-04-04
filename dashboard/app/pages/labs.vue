@@ -298,7 +298,12 @@ async function submitLab() {
 
     <ApiErrorBanner :error="labs?.error || labsError?.message" />
     <SkeletonLoader v-if="!labs && labsStatus === 'pending'" variant="table" />
+    <div v-else-if="labsError || labs?.error || labsStatus === 'error'" class="text-center py-16 space-y-2">
+      <UIcon name="i-lucide-wifi-off" class="h-6 w-6 mx-auto text-gray-300" />
+      <p class="text-sm text-gray-500">{{ $t('common.dataUnavailable') }}</p>
+    </div>
 
+    <template v-else>
     <!-- Suspect Values Warning -->
     <div v-if="allSuspects.length" class="rounded-xl border border-amber-300 bg-amber-50 p-4">
       <div class="flex items-center gap-2 mb-2">
@@ -511,5 +516,6 @@ async function submitLab() {
         </table>
       </div>
     </div>
+    </template>
   </div>
 </template>

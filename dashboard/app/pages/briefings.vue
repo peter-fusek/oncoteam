@@ -70,6 +70,10 @@ const allQuestions = computed(() => {
 
     <ApiErrorBanner :error="briefings?.error || briefingsError?.message" />
     <SkeletonLoader v-if="!briefings && briefingsStatus === 'pending'" variant="cards" />
+    <div v-else-if="briefingsError || briefings?.error || briefingsStatus === 'error'" class="text-center py-16 space-y-2">
+      <UIcon name="i-lucide-wifi-off" class="h-6 w-6 mx-auto text-gray-300" />
+      <p class="text-sm text-gray-500">{{ $t('common.dataUnavailable') }}</p>
+    </div>
 
     <!-- Questions for Oncologist (aggregated) -->
     <div v-if="allQuestions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
@@ -103,7 +107,7 @@ const allQuestions = computed(() => {
       />
     </div>
 
-    <div v-else-if="!briefings?.error && !briefingsError && briefingsStatus !== 'pending'" class="text-center py-16 space-y-4">
+    <div v-else-if="!briefings?.error && !briefingsError && briefingsStatus !== 'pending' && briefingsStatus !== 'error'" class="text-center py-16 space-y-4">
       <div class="text-gray-500 text-sm">
         {{ $t('briefings.noBriefings') }}
       </div>
