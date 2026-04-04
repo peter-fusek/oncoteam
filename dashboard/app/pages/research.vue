@@ -95,7 +95,7 @@ const drilldown = useDrilldown()
       <div>
         <h1 class="text-2xl font-bold text-gray-900">{{ $t('research.title') }}</h1>
         <p class="text-sm text-gray-500">
-          {{ research?.total ?? 0 }} entries
+          {{ researchStatus === 'pending' ? '\u2014' : (research?.total ?? 0) }} entries
           <span v-if="highRelevanceCount" class="text-amber-600 font-medium ml-1">
             ({{ highRelevanceCount }} high relevance)
           </span>

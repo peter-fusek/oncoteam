@@ -219,7 +219,8 @@ const EVENT_ICONS: Record<string, string> = {
         <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.latestBriefing') }}</h2>
         <NuxtLink to="/briefings" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
       </div>
-      <template v-if="latestBriefing">
+      <SkeletonLoader v-if="briefingsStatus === 'pending'" variant="lines" />
+      <template v-else-if="latestBriefing">
         <div class="text-sm text-gray-700 line-clamp-3">{{ latestBriefing.content?.slice(0, 300) }}</div>
         <div v-if="latestBriefing.questions_for_oncologist?.length" class="mt-3 flex items-center gap-2 text-xs text-amber-700">
           <UIcon name="i-lucide-message-circle-question" class="h-4 w-4" />
@@ -227,7 +228,6 @@ const EVENT_ICONS: Record<string, string> = {
         </div>
         <div class="mt-1 text-xs text-gray-400">{{ formatDate(latestBriefing.date) }}</div>
       </template>
-      <SkeletonLoader v-else-if="briefingsStatus === 'pending'" variant="lines" />
       <div v-else class="text-sm text-gray-500 py-3 text-center">{{ $t('common.dataUnavailable') }}</div>
     </div>
 

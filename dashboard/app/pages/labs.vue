@@ -410,7 +410,7 @@ async function submitLab() {
           />
         </div>
       </div>
-      <div v-if="!labParams.some(p => hasData(p.key)) && !labs?.entries?.length" class="text-gray-400 text-center py-16 text-sm">
+      <div v-if="!labParams.some(p => hasData(p.key)) && !labs?.entries?.length && labsStatus !== 'pending'" class="text-gray-400 text-center py-16 text-sm">
         {{ $t('labs.noData') }}
       </div>
     </ClientOnly>
