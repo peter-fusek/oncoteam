@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
+_CURRENT_MONTH = datetime.now(UTC).strftime("%Y-%m")
 
 from oncoteam.dashboard_api import api_autonomous_cost
 
@@ -24,7 +27,7 @@ def _make_request(query_string: str = "") -> object:
 @pytest.mark.anyio
 @patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_returns_all_fields(mock_state):
-    mock_state.return_value = {"month": "2026-03", "cost_usd": 12.50}
+    mock_state.return_value = {"month": _CURRENT_MONTH, "cost_usd": 12.50}
     request = _make_request()
     response = await api_autonomous_cost(request)
     data = json.loads(response.body)
@@ -80,7 +83,7 @@ async def test_cost_endpoint_handles_error(mock_state):
 @patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_budget_alert_when_low(mock_state):
     # Set MTD spend to be close to credit balance
-    mock_state.return_value = {"month": "2026-03", "cost_usd": 25.0}
+    mock_state.return_value = {"month": _CURRENT_MONTH, "cost_usd": 25.0}
     request = _make_request()
     response = await api_autonomous_cost(request)
     data = json.loads(response.body)
@@ -93,7 +96,7 @@ async def test_cost_budget_alert_when_low(mock_state):
 @patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_nested_value_format(mock_state):
     """Regression: oncofiles returns {"value": {...}} wrapper around actual data."""
-    mock_state.return_value = {"value": {"month": "2026-03", "cost_usd": 5.0}}
+    mock_state.return_value = {"value": {"month": _CURRENT_MONTH, "cost_usd": 5.0}}
     request = _make_request()
     response = await api_autonomous_cost(request)
     data = json.loads(response.body)
@@ -106,7 +109,7 @@ async def test_cost_endpoint_nested_value_format(mock_state):
 @patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_nested_json_string_format(mock_state):
     """Regression: oncofiles may return value as JSON string."""
-    mock_state.return_value = {"value": '{"month": "2026-03", "cost_usd": 3.0}'}
+    mock_state.return_value = {"value": json.dumps({"month": _CURRENT_MONTH, "cost_usd": 3.0})}
     request = _make_request()
     response = await api_autonomous_cost(request)
     data = json.loads(response.body)
