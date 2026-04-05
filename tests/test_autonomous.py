@@ -39,6 +39,47 @@ class TestSystemPrompt:
         assert "NEEDS_PHYSICIAN_REVIEW" in prompt
 
 
+class TestGeneralHealthPrompt:
+    """System prompt for general health (non-oncology) patients."""
+
+    def test_e5g_gets_general_health_header(self):
+        prompt = build_system_prompt("e5g")
+        assert "general preventive care" in prompt
+        assert "cancer treatment management" not in prompt
+
+    def test_e5g_no_oncology_protocol(self):
+        prompt = build_system_prompt("e5g")
+        assert "mFOLFOX6" not in prompt
+        assert "Dose Modification" not in prompt
+        assert "Treatment Milestones" not in prompt
+        assert "NCCN" not in prompt
+        assert "SII" not in prompt
+
+    def test_e5g_has_general_health_content(self):
+        prompt = build_system_prompt("e5g")
+        assert "EU/WHO" in prompt or "ESC" in prompt
+        assert "Preventive care" in prompt
+        assert "glucose" in prompt.lower()
+
+    def test_e5g_has_patient_profile(self):
+        prompt = build_system_prompt("e5g")
+        assert "Peter F." in prompt
+        assert "Z00.0" in prompt
+
+    def test_e5g_ends_with_preventive_reminders_instruction(self):
+        prompt = build_system_prompt("e5g")
+        assert "Preventive care reminders" in prompt
+        assert "Questions for Oncologist" not in prompt
+
+    def test_erika_still_gets_oncology(self):
+        """Regression: oncology patients must NOT be affected."""
+        prompt = build_system_prompt("erika")
+        assert "cancer treatment" in prompt
+        assert "Lab Safety Thresholds" in prompt
+        assert "KRAS G12S" in prompt
+        assert "general preventive care" not in prompt
+
+
 class TestTools:
     def test_tools_defined(self):
         assert len(TOOLS) >= 11

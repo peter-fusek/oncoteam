@@ -1,4 +1,11 @@
 <script setup lang="ts">
+const { isGeneralHealth } = usePatientType()
+
+// Redirect general health patients — protocol page is oncology-only
+if (isGeneralHealth.value) {
+  navigateTo('/')
+}
+
 const { fetchApi } = useOncoteamApi()
 const drilldown = useDrilldown()
 

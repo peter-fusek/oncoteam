@@ -23,6 +23,7 @@
     "sections": {
       "overview": "Prehľad",
       "treatment": "Liečba",
+      "health": "Zdravie",
       "intelligence": "Analýzy",
       "operations": "Prevádzka"
     }
@@ -33,6 +34,7 @@
     "alerts": "Upozornenia",
     "noAlerts": "Žiadne aktívne upozornenia",
     "treatmentStatus": "Stav liečby",
+    "healthOverview": "Prehľad zdravia",
     "recentLabs": "Posledné laboratóriá",
     "latestBriefing": "Posledný briefing",
     "upcoming": "Nadchádzajúce",

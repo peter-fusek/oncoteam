@@ -2,6 +2,7 @@
 const { fetchApi, postApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
+const { isOncology } = usePatientType()
 
 const { data: labs, status: labsStatus, error: labsError, refresh } = fetchApi<{
   entries: Array<{
@@ -46,7 +47,7 @@ interface LabCategory {
   params: LabParam[]
 }
 
-const categories: LabCategory[] = [
+const oncologyCategories: LabCategory[] = [
   {
     id: 'tumor_markers',
     label: 'Tumor Markers',
@@ -94,16 +95,80 @@ const categories: LabCategory[] = [
   },
 ]
 
-const allLabParams = categories.flatMap(c => c.params)
-const rookieKeys = new Set(['CEA', 'CA_19_9', 'ANC', 'PLT', 'WBC', 'hemoglobin'])
+const generalHealthCategories: LabCategory[] = [
+  {
+    id: 'metabolic',
+    label: 'Metabolic',
+    icon: 'i-lucide-heart-pulse',
+    color: 'text-blue-600',
+    params: [
+      { key: 'glucose_fasting', label: 'Glucose', color: '#2563eb', unit: 'mmol/L', healthDirection: 'in_range' },
+      { key: 'HbA1c', label: 'HbA1c', color: '#7c3aed', unit: 'mmol/mol', healthDirection: 'in_range' },
+      { key: 'cholesterol_total', label: 'Total Chol', color: '#d97706', unit: 'mmol/L', healthDirection: 'lower_is_better' },
+      { key: 'HDL', label: 'HDL', color: '#059669', unit: 'mmol/L', healthDirection: 'higher_is_better' },
+      { key: 'LDL', label: 'LDL', color: '#dc2626', unit: 'mmol/L', healthDirection: 'lower_is_better' },
+      { key: 'triglycerides', label: 'Triglycerides', color: '#ea580c', unit: 'mmol/L', healthDirection: 'lower_is_better' },
+    ],
+  },
+  {
+    id: 'thyroid',
+    label: 'Thyroid',
+    icon: 'i-lucide-shield-check',
+    color: 'text-violet-600',
+    params: [
+      { key: 'TSH', label: 'TSH', color: '#7c3aed', unit: 'mIU/L', healthDirection: 'in_range' },
+    ],
+  },
+  {
+    id: 'hematology',
+    label: 'Hematology',
+    icon: 'i-lucide-droplets',
+    color: 'text-rose-600',
+    params: [
+      { key: 'WBC', label: 'WBC', color: '#0891b2', unit: 'G/L', healthDirection: 'in_range' },
+      { key: 'hemoglobin', label: 'Hemoglobin', color: '#be123c', unit: 'g/L', healthDirection: 'in_range' },
+      { key: 'PLT', label: 'Platelets', color: '#2563eb', unit: 'G/L', healthDirection: 'in_range' },
+    ],
+  },
+  {
+    id: 'organ_function',
+    label: 'Organ Function',
+    icon: 'i-lucide-activity',
+    color: 'text-orange-600',
+    params: [
+      { key: 'creatinine', label: 'Creatinine', color: '#dc2626', unit: 'µmol/L', healthDirection: 'in_range' },
+      { key: 'eGFR', label: 'eGFR', color: '#0d9488', unit: 'mL/min', healthDirection: 'higher_is_better' },
+      { key: 'ALT', label: 'ALT', color: '#ea580c', unit: 'U/L', healthDirection: 'in_range' },
+      { key: 'AST', label: 'AST', color: '#db2777', unit: 'U/L', healthDirection: 'in_range' },
+      { key: 'bilirubin', label: 'Bilirubin', color: '#ca8a04', unit: 'µmol/L', healthDirection: 'in_range' },
+    ],
+  },
+  {
+    id: 'vitamins',
+    label: 'Vitamins & Minerals',
+    icon: 'i-lucide-sun',
+    color: 'text-amber-600',
+    params: [
+      { key: 'vitamin_D', label: 'Vitamin D', color: '#d97706', unit: 'nmol/L', healthDirection: 'higher_is_better' },
+      { key: 'ferritin', label: 'Ferritin', color: '#b45309', unit: 'µg/L', healthDirection: 'in_range' },
+    ],
+  },
+]
+
+const categories = computed(() => isOncology.value ? oncologyCategories : generalHealthCategories)
+const allLabParams = computed(() => categories.value.flatMap(c => c.params))
+const rookieKeys = computed(() => isOncology.value
+  ? new Set(['CEA', 'CA_19_9', 'ANC', 'PLT', 'WBC', 'hemoglobin'])
+  : new Set(['glucose_fasting', 'cholesterol_total', 'TSH', 'hemoglobin', 'creatinine']),
+)
 
 const labParams = computed(() => {
-  if (proMode.value) return allLabParams
-  return allLabParams.filter(p => rookieKeys.has(p.key))
+  if (proMode.value) return allLabParams.value
+  return allLabParams.value.filter(p => rookieKeys.value.has(p.key))
 })
 
 const visibleCategories = computed(() => {
-  return categories
+  return categories.value
     .map(cat => ({
       ...cat,
       params: cat.params.filter(p => labParams.value.includes(p)),

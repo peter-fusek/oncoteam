@@ -20,11 +20,14 @@ from .clinical_protocol import (
 )
 from .config import ANTHROPIC_API_KEY, AUTONOMOUS_COST_LIMIT, AUTONOMOUS_MODEL
 from .eligibility import check_eligibility
+from .general_health_protocol import GENERAL_HEALTH_SYSTEM_PROMPT
+from .models import PatientProfile
 from .patient_context import (
     build_biomarker_rules,
     build_patient_profile_text,
     get_patient,
     get_patient_research_terms,
+    is_general_health_patient,
 )
 
 logger = logging.getLogger("oncoteam.autonomous")
@@ -53,12 +56,15 @@ def _get_client():
 def build_system_prompt(patient_id: str = "erika") -> str:
     """Build a patient-specific system prompt for autonomous agents.
 
-    All patients (including Erika) go through the same dynamic path.
-    Biomarker rules, research terms, and profile text are generated
-    from the PatientProfile registered for this patient_id.
+    Oncology patients get the full mFOLFOX6 clinical protocol (ESMO/NCCN).
+    General health patients (ICD-10 Z-codes, no treatment regimen) get
+    EU/WHO/ESC preventive care protocol instead.
     """
     patient = get_patient(patient_id)
     research_terms = get_patient_research_terms(patient_id)
+
+    if is_general_health_patient(patient):
+        return _build_general_health_prompt(patient, patient_id, research_terms)
 
     return f"""\
 You are an autonomous medical research agent for cancer treatment management.
@@ -99,6 +105,32 @@ ALL findings are for physician review only. You do NOT communicate with patients
 - Always reference ESMO/NCCN guideline version when making treatment-related statements.
 - Structure output as markdown with clear sections.
 - End every briefing with "Questions for Oncologist" section.
+- Patient ID: {patient_id} — all data queries must scope to this patient.
+"""
+
+
+def _build_general_health_prompt(
+    patient: PatientProfile,
+    patient_id: str,
+    research_terms: list[str],
+) -> str:
+    """Build system prompt for general health / preventive care patients."""
+    return f"""\
+You are an autonomous health management agent for general preventive care.
+ALL findings are for physician review only. You do NOT communicate with patients.
+
+{build_patient_profile_text(patient)}
+
+{GENERAL_HEALTH_SYSTEM_PROMPT}
+
+# Research Terms
+{json.dumps(research_terms, indent=2)}
+
+# Instructions
+- Only use data from PubMed (NCBI) and ClinicalTrials.gov.
+- If uncertain about a finding, flag as NEEDS_PHYSICIAN_REVIEW.
+- Structure output as markdown with clear sections.
+- End every analysis with "Preventive care reminders" section.
 - Patient ID: {patient_id} — all data queries must scope to this patient.
 """
 

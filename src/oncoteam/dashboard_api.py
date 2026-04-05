@@ -1010,7 +1010,7 @@ async def api_patient(request: Request) -> JSONResponse:
     lang = get_lang(request)
     patient_id = _get_patient_id(request)
     token = _get_token_for_patient(patient_id)
-    data = get_patient_localized(lang)
+    data = get_patient_localized(lang, patient_id=patient_id)
 
     # Fetch live patient_ids from oncofiles patient_context (with TTL cache)
     cache_key = _cache_key("patient_ids", patient_id)
@@ -1440,6 +1440,8 @@ async def _deduplicated_fetch(cache_key: str, fetcher) -> any:
 async def api_protocol(request: Request) -> JSONResponse:
     """GET /api/protocol — clinical protocol data (thresholds, milestones, dose mods)."""
     from .clinical_protocol import resolve_protocol
+    from .general_health_protocol import resolve_general_health_protocol
+    from .patient_context import is_general_health_patient
 
     lang = get_lang(request)
     patient_id = _get_patient_id(request)
@@ -1452,7 +1454,11 @@ async def api_protocol(request: Request) -> JSONResponse:
         if time.time() - cached_time < _PROTOCOL_CACHE_TTL:
             return cached_response
 
-    data = resolve_protocol(lang)
+    patient = _get_patient_for_request(request)
+    if is_general_health_patient(patient):
+        data = resolve_general_health_protocol(lang)
+    else:
+        data = resolve_protocol(lang)
 
     # Fetch lab values + treatment events + lab trends concurrently (#106 perf fix)
     # All 3 calls in parallel to avoid sequential fallback penalty

@@ -3,6 +3,8 @@ const { fetchApi } = useOncoteamApi()
 const { activeRole } = useUserRole()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
+const { isOncology, setDiagnosisCode } = usePatientType()
+const { activePatientId } = useActivePatient()
 
 // Client-only fetches — server:false prevents SSR from attempting these calls,
 // which caused 503 timeouts when oncofiles was slow (16s+ TTFB → Railway edge 503).
@@ -12,6 +14,7 @@ const { data: patient, status: patientStatus } = fetchApi<{
   treatment_regimen: string
   current_cycle: number
   ecog: string
+  diagnosis_code: string
   diagnosis_description: string
   staging: string
   biomarkers: Record<string, string | boolean>
@@ -71,7 +74,7 @@ const mergedLabSnapshot = computed(() => {
   for (const e of labs.value.entries) {
     if (!e.values || Object.keys(e.values).length === 0) continue
     if (!latestDate) latestDate = e.date
-    for (const p of KEY_PARAMS) {
+    for (const p of KEY_PARAMS.value) {
       if (!(p.key in values) && e.values[p.key] != null) {
         values[p.key] = e.values[p.key]
         if (e.value_statuses?.[p.key]) statuses[p.key] = e.value_statuses[p.key]
@@ -101,13 +104,30 @@ const upcomingEvents = computed(() => {
     .slice(0, 5)
 })
 
-const KEY_PARAMS = [
+const ONCOLOGY_KEY_PARAMS = [
   { key: 'ANC', label: 'ANC', unit: '/\u00b5L' },
   { key: 'PLT', label: 'PLT', unit: '/\u00b5L' },
   { key: 'hemoglobin', label: 'HGB', unit: 'g/dL' },
   { key: 'CEA', label: 'CEA', unit: 'ng/mL' },
   { key: 'CA_19_9', label: 'CA 19-9', unit: 'U/mL' },
 ]
+
+const GENERAL_KEY_PARAMS = [
+  { key: 'glucose_fasting', label: 'Glucose', unit: 'mmol/L' },
+  { key: 'cholesterol_total', label: 'Chol', unit: 'mmol/L' },
+  { key: 'TSH', label: 'TSH', unit: 'mIU/L' },
+  { key: 'hemoglobin', label: 'HGB', unit: 'g/L' },
+  { key: 'creatinine', label: 'Creat', unit: '\u00b5mol/L' },
+]
+
+const KEY_PARAMS = computed(() => isOncology.value ? ONCOLOGY_KEY_PARAMS : GENERAL_KEY_PARAMS)
+
+// Update patient type cache when patient data arrives
+watch(patient, (p) => {
+  if (p?.diagnosis_code) {
+    setDiagnosisCode(activePatientId.value, p.diagnosis_code)
+  }
+})
 
 function directionIcon(dir: string | undefined) {
   if (dir === 'up') return '\u2191'
@@ -160,19 +180,27 @@ const EVENT_ICONS: Record<string, string> = {
 
     <!-- Treatment Status + Recent Labs — 2 column grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- Treatment Status -->
+      <!-- Treatment Status (oncology) / Health Overview (general) -->
       <div class="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ $t('home.treatmentStatus') }}</h2>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+          {{ isOncology ? $t('home.treatmentStatus') : $t('home.healthOverview', 'Health Overview') }}
+        </h2>
         <div v-if="patient" class="space-y-3">
-          <div class="flex items-baseline justify-between">
-            <span class="text-2xl font-bold text-gray-900">{{ patient.treatment_regimen }}</span>
-            <UBadge variant="subtle" color="info" size="sm">{{ $t('home.cycle') }} {{ patient.current_cycle }}</UBadge>
-          </div>
-          <div class="text-sm text-gray-600">{{ patient.diagnosis_description }}</div>
-          <div class="flex gap-4 text-xs text-gray-500">
-            <span>{{ $t('home.staging') }}: <strong class="text-gray-700">{{ patient.staging }}</strong></span>
-            <span>ECOG: <strong class="text-gray-700">{{ patient.ecog }}</strong></span>
-          </div>
+          <template v-if="isOncology">
+            <div class="flex items-baseline justify-between">
+              <span class="text-2xl font-bold text-gray-900">{{ patient.treatment_regimen }}</span>
+              <UBadge variant="subtle" color="info" size="sm">{{ $t('home.cycle') }} {{ patient.current_cycle }}</UBadge>
+            </div>
+            <div class="text-sm text-gray-600">{{ patient.diagnosis_description }}</div>
+            <div class="flex gap-4 text-xs text-gray-500">
+              <span>{{ $t('home.staging') }}: <strong class="text-gray-700">{{ patient.staging }}</strong></span>
+              <span>ECOG: <strong class="text-gray-700">{{ patient.ecog }}</strong></span>
+            </div>
+          </template>
+          <template v-else>
+            <div class="text-lg font-bold text-gray-900">{{ patient.name }}</div>
+            <div class="text-sm text-gray-600">{{ patient.diagnosis_description }}</div>
+          </template>
         </div>
         <SkeletonLoader v-else variant="lines" />
       </div>

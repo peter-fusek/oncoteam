@@ -397,15 +397,17 @@ _PATIENT_L10N: dict = {
 }
 
 
-def get_patient_localized(lang: str = "sk") -> dict:
+def get_patient_localized(lang: str = "sk", patient_id: str = "erika") -> dict:
     """Return patient profile dict with bilingual fields resolved to requested language."""
-    data = PATIENT.model_dump()
+    patient = get_patient(patient_id)
+    data = patient.model_dump()
     # Convert date to ISO string
     if data.get("diagnosis_date"):
         data["diagnosis_date"] = str(data["diagnosis_date"])
 
-    # Overlay bilingual fields
-    for key, bilingual_value in _PATIENT_L10N.items():
+    # Overlay bilingual fields (erika has full l10n, others get raw data)
+    l10n = _PATIENT_L10N if patient_id == "erika" else {}
+    for key, bilingual_value in l10n.items():
         if key == "biomarker_annotations":
             # Special: this is extra data not in PATIENT model
             data["biomarker_annotations"] = resolve(bilingual_value, lang)
@@ -649,6 +651,11 @@ def build_biomarker_rules(patient: PatientProfile) -> str:
         for c in patient.comorbidities:
             rules.append(f"- {c}")
     return "\n".join(rules)
+
+
+def is_general_health_patient(patient: PatientProfile) -> bool:
+    """True if patient is non-oncology (general health / preventive care)."""
+    return patient.diagnosis_code.startswith("Z") or patient.treatment_regimen == ""
 
 
 # ── Dynamic genetic profile ────────────────────

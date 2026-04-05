@@ -23,6 +23,7 @@
     "sections": {
       "overview": "Overview",
       "treatment": "Treatment",
+      "health": "Health",
       "intelligence": "Intelligence",
       "operations": "Operations"
     }
@@ -33,6 +34,7 @@
     "alerts": "Alerts",
     "noAlerts": "No active alerts",
     "treatmentStatus": "Treatment Status",
+    "healthOverview": "Health Overview",
     "recentLabs": "Recent Labs",
     "latestBriefing": "Latest Briefing",
     "upcoming": "Upcoming",

@@ -5,6 +5,10 @@ const { t, locale } = useI18n()
 const { setLocale } = useI18n()
 const { activeRole, roles, hasMultipleRoles, canAccess, landingPage } = useUserRole()
 const { activePatientId, activePatient, patients, hasMultiplePatients, canSwitchPatient, switchPatient } = useActivePatient()
+const { isOncology } = usePatientType()
+
+// Pages only shown for oncology patients
+const ONCOLOGY_ONLY_PAGES = new Set(['/protocol', '/toxicity', '/prep'])
 
 const mobileMenuOpen = ref(false)
 const patientSwitcherOpen = ref(false)
@@ -78,7 +82,14 @@ const navigationSections = computed<NavSection[]>(() => {
   ]
 
   return sections
-    .map(s => ({ ...s, items: s.items.filter(item => canAccess(item.to)) }))
+    .map(s => ({
+      ...s,
+      // Rename "Treatment" to "Health" for general health patients
+      label: s.label === t('nav.sections.treatment') && !isOncology.value ? t('nav.sections.health') : s.label,
+      items: s.items
+        .filter(item => canAccess(item.to))
+        .filter(item => isOncology.value || !ONCOLOGY_ONLY_PAGES.has(item.to)),
+    }))
     .filter(s => s.items.length > 0)
 })
 

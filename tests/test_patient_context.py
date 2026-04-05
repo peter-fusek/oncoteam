@@ -112,6 +112,29 @@ class TestSecondPatient:
         assert "KRAS" in erika_rules
         assert "KRAS" not in e5g_rules
 
+    def test_is_general_health_patient_z_code(self):
+        from oncoteam.patient_context import get_patient, is_general_health_patient
+
+        assert is_general_health_patient(get_patient("e5g")) is True
+
+    def test_is_general_health_patient_oncology(self):
+        from oncoteam.patient_context import get_patient, is_general_health_patient
+
+        assert is_general_health_patient(get_patient("erika")) is False
+
+    def test_is_general_health_patient_empty_regimen(self):
+        from oncoteam.patient_context import is_general_health_patient
+
+        p = PatientProfile(
+            name="Test",
+            diagnosis_code="C50",
+            diagnosis_description="Breast cancer",
+            tumor_site="breast",
+            treatment_regimen="",
+        )
+        # Empty regimen triggers general health path (per CLAUDE.md spec)
+        assert is_general_health_patient(p) is True
+
 
 class TestGeneticProfile:
     @pytest.mark.asyncio

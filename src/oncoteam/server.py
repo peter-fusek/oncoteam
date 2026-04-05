@@ -998,8 +998,14 @@ async def get_clinical_protocol(section: str | None = None, lang: str = "en") ->
     """
     _pid, _tok = _get_mcp_patient_token()
     from .clinical_protocol import PROTOCOL_SECTIONS, resolve_protocol
+    from .general_health_protocol import resolve_general_health_protocol
+    from .patient_context import get_patient, is_general_health_patient
 
-    protocol = resolve_protocol(lang)
+    patient = get_patient(_pid)
+    if is_general_health_patient(patient):
+        protocol = resolve_general_health_protocol(lang)
+    else:
+        protocol = resolve_protocol(lang)
     if section:
         if section not in PROTOCOL_SECTIONS:
             return json.dumps(
