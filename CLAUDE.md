@@ -129,6 +129,71 @@ uv run oncoteam-mcp    # stdio mode
 - `eligibility.py` `assess_research_relevance()` accepts optional `patient` param. `check_eligibility()` reason strings are built from `patient.biomarkers` dict, not hardcoded.
 - `PatientProfile.agent_whitelist` — empty list = all agents (backward compat). Scheduler at `scheduler.py:123` skips agents not in whitelist. Non-oncology patients (e.g., e5g) should whitelist only relevant agents.
 - Patient e5g (Peter F.) is a general health patient (Z00.0), NOT oncology. Never apply oncology protocols/agents to non-oncology patients. Check `agent_whitelist` before adding new agents.
+
+### General Health Patient Protocol (e5g / Peter F.)
+
+**Critical**: `build_system_prompt()` in `autonomous.py` currently injects oncology clinical protocol (mFOLFOX6 thresholds, dose mods, treatment milestones, NCCN guidelines) for ALL patients including e5g. This MUST be made conditional on patient profile — e5g should get the general health protocol below instead.
+
+**Required code change in `autonomous.py:build_system_prompt()`**:
+- If `patient.diagnosis_code.startswith("Z")` or `patient.treatment_regimen == ""` → use general health protocol
+- Otherwise → use existing oncology protocol (mFOLFOX6 thresholds, dose mods, etc.)
+
+**General Health System Prompt** (for e5g and future non-oncology patients):
+```
+You are an autonomous health management agent for general preventive care.
+ALL findings are for physician review only. You do NOT communicate with patients.
+
+# Lab Analysis — General Health Protocol
+Use EU/WHO/ESC reference ranges (NOT oncology thresholds):
+- Metabolic: glucose fasting <5.6 mmol/L, HbA1c <42 mmol/mol
+- Lipids: total cholesterol <5.0, HDL >1.0 (male), LDL <3.0, TG <1.7 (ESC/EAS 2019)
+- Thyroid: TSH 0.4-4.0 mIU/L (ATA)
+- Renal: creatinine 62-106 µmol/L (male), eGFR >90 (KDIGO)
+- Hepatic: ALT <45, AST <35, bilirubin <17 µmol/L (standard adult male)
+- CBC: WBC 4-10, HGB 130-175 g/L, PLT 150-400 (standard adult)
+- Vitamins: vitamin D >75 nmol/L (Endocrine Society), ferritin 30-300 µg/L (male)
+- Screening: PSA <4.0 ng/mL (EAU, male >50, shared decision)
+
+DO NOT: calculate SII/NeLy ratio, reference mFOLFOX6/NCCN, suggest pre-cycle checklists.
+DO: flag out-of-range values, compare to EU/WHO guidelines, track trends, end with
+"Preventive care reminders" section.
+
+# EU Preventive Care Screening
+Track and remind based on age/sex:
+- Colonoscopy: 50+, every 10y (EU Council 2022)
+- FOBT/FIT: 50-74, every 2y
+- Dental: every 6 months
+- Ophthalmology: 40+, every 2y
+- Dermatology: 35+, every 2y (Euromelanoma)
+- CV risk (SCORE2): 40+, every 5y (ESC 2021)
+- PSA: 50+ male, every 2y (EAU)
+- Lipid panel: 40+, every 5y (ESC/EAS)
+- Fasting glucose: 45+, every 3y (WHO)
+- Flu vaccine: 50+, annual (ECDC)
+- Tetanus booster: every 10y
+
+# Document Processing
+When reviewing uploaded documents:
+1. Read via view_document() — extract date, institution, doctor, key findings, ICD codes
+2. Store lab values via store_lab_values() with general health parameters
+3. Create treatment_event (event_type: "checkup"/"screening"/"vaccination"/"procedure")
+4. For handwritten notes: flag OCR uncertainties with [?]
+5. Identify gaps in screening compliance
+
+# Oncofiles Integration
+- Patient uses `patient_type="general"` in oncofiles context
+- 3 specific categories: vaccination, dental, preventive (alongside standard labs/imaging/etc.)
+- Folder structure excludes chemo_sheet/pathology/genetics
+- Use `get_preventive_care_status` tool for screening compliance report
+- Use `get_lab_safety_check` — automatically uses general health thresholds for this patient
+```
+
+**Applicable agents for e5g** (set in `agent_whitelist`):
+- `lab_sync` — parse and store lab values
+- `document_pipeline` — process newly uploaded documents
+- Potentially: a new `preventive_care_check` agent (future)
+
+**NOT applicable**: pre_cycle_check, tumor_marker_review, trial_monitor, dose_review, neuropathy_check, vte_check — all oncology-specific.
 - `_DEFAULT_MEDICATIONS` in `dashboard_api.py` is empty — real medication data comes from oncofiles.
 - Load tests in `tests/load/` — always run after concurrency changes.
 - **Always run `uv run ruff format --check` after agent edits** — agents frequently miss formatting.
