@@ -2,9 +2,9 @@
 const { isGeneralHealth } = usePatientType()
 
 // Redirect general health patients — protocol page is oncology-only
-if (isGeneralHealth.value) {
-  navigateTo('/')
-}
+watchEffect(() => {
+  if (isGeneralHealth.value) navigateTo('/')
+})
 
 const { fetchApi } = useOncoteamApi()
 const drilldown = useDrilldown()

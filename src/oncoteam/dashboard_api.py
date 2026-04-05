@@ -1597,11 +1597,10 @@ async def api_protocol(request: Request) -> JSONResponse:
                 "date": dose_events[0].get("event_date", ""),
             }
 
-        # Current dose level from patient context
-        pt = _get_patient_for_request(request)
+        # Current dose level from patient context (reuse `patient` from line 1457)
         real_values["current_regimen"] = {
-            "regimen": pt.treatment_regimen,
-            "cycle": pt.current_cycle,
+            "regimen": patient.treatment_regimen,
+            "cycle": patient.current_cycle,
         }
 
         # Nutrition: latest weight from weight events
@@ -1622,7 +1621,7 @@ async def api_protocol(request: Request) -> JSONResponse:
                 real_values["nutrition"] = {
                     "weight_kg": weight,
                     "date": weight_events[0].get("event_date", ""),
-                    "baseline_kg": pt.baseline_weight_kg,
+                    "baseline_kg": patient.baseline_weight_kg,
                 }
     elif isinstance(events_result, Exception):
         record_suppressed_error("api_protocol", "fetch_real_values", events_result)

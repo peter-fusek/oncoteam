@@ -99,14 +99,19 @@ ALL findings are for physician review only. You do NOT communicate with patients
 # Research Terms
 {json.dumps(research_terms, indent=2)}
 
+{_common_instructions(patient_id, closing="Questions for Oncologist")}
+"""
+
+
+def _common_instructions(patient_id: str, *, closing: str) -> str:
+    """Shared instruction block for all patient types."""
+    return f"""\
 # Instructions
 - Only use data from PubMed (NCBI) and ClinicalTrials.gov.
-- If uncertain about a biomarker match or eligibility, flag as NEEDS_PHYSICIAN_REVIEW.
-- Always reference ESMO/NCCN guideline version when making treatment-related statements.
+- If uncertain about a finding, flag as NEEDS_PHYSICIAN_REVIEW.
 - Structure output as markdown with clear sections.
-- End every briefing with "Questions for Oncologist" section.
-- Patient ID: {patient_id} — all data queries must scope to this patient.
-"""
+- End every analysis with "{closing}" section.
+- Patient ID: {patient_id} — all data queries must scope to this patient."""
 
 
 def _build_general_health_prompt(
@@ -126,12 +131,7 @@ ALL findings are for physician review only. You do NOT communicate with patients
 # Research Terms
 {json.dumps(research_terms, indent=2)}
 
-# Instructions
-- Only use data from PubMed (NCBI) and ClinicalTrials.gov.
-- If uncertain about a finding, flag as NEEDS_PHYSICIAN_REVIEW.
-- Structure output as markdown with clear sections.
-- End every analysis with "Preventive care reminders" section.
-- Patient ID: {patient_id} — all data queries must scope to this patient.
+{_common_instructions(patient_id, closing="Preventive care reminders")}
 """
 
 
