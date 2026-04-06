@@ -66,8 +66,12 @@ const totalAll = computed(() => {
 
     <ApiErrorBanner :error="sessions?.error || sessionsError?.message" />
     <SkeletonLoader v-if="!sessions && sessionsStatus === 'pending'" variant="cards" />
+    <div v-else-if="sessionsError || sessions?.error || sessionsStatus === 'error'" class="text-center py-16 space-y-2">
+      <UIcon name="i-lucide-wifi-off" class="h-6 w-6 mx-auto text-gray-300" />
+      <p class="text-sm text-gray-500">{{ $t('common.dataUnavailable') }}</p>
+    </div>
 
-    <div v-else-if="sessions?.sessions?.length" class="space-y-3">
+    <div v-if="sessions?.sessions?.length" class="space-y-3">
       <div
         v-for="session in sessions.sessions"
         :key="session.id"
@@ -100,7 +104,7 @@ const totalAll = computed(() => {
       </div>
     </div>
 
-    <div v-else-if="!sessions?.error && !sessionsError" class="text-gray-500 text-center py-16 text-sm">
+    <div v-else-if="!sessions?.error && !sessionsError && sessionsStatus !== 'pending'" class="text-gray-500 text-center py-16 text-sm">
       {{ $t('sessions.noSessions') }}
     </div>
   </div>
