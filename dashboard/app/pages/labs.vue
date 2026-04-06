@@ -26,6 +26,19 @@ const { data: protocol } = fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; action: string }>
 }>('/protocol', { lazy: true, server: false })
 
+// Cycle dates for vertical chart markers (#235)
+const { data: timeline } = fetchApi<{
+  events: Array<{ event_date: string; event_type: string; title: string }>
+}>('/timeline?limit=20', { lazy: true, server: false })
+
+const cycleDates = computed(() => {
+  if (!timeline.value?.events) return []
+  return timeline.value.events
+    .filter(e => e.event_type === 'chemo_cycle' || e.title?.toLowerCase().includes('folfox'))
+    .map(e => ({ date: e.event_date, label: e.title?.replace(/^.*?(C\d+|Cycle\s*\d+|cyklus\s*\d+).*/i, '$1') || 'Tx' }))
+    .slice(0, 10)
+})
+
 // Rookie/Pro mode
 const proMode = ref(false)
 
@@ -494,6 +507,7 @@ async function submitLab() {
             :color="param.color"
             :unit="param.unit"
             :health-direction="param.healthDirection"
+            :cycle-dates="isOncology ? cycleDates : null"
           />
         </div>
       </div>

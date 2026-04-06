@@ -12,7 +12,40 @@ const props = defineProps<{
   color?: string
   unit?: string
   healthDirection?: string // 'lower_is_better' | 'higher_is_better' | 'in_range'
+  cycleDates?: Array<{ date: string; label: string }> | null
 }>()
+
+// Custom plugin: draw vertical dashed lines for cycle dates
+const cycleLinePlugin = {
+  id: 'cycleLines',
+  afterDraw(chart: any) {
+    if (!props.cycleDates?.length) return
+    const ctx = chart.ctx
+    const xScale = chart.scales.x
+    const yScale = chart.scales.y
+    const labels = chart.data.labels || []
+
+    for (const cycle of props.cycleDates) {
+      const idx = labels.indexOf(cycle.date)
+      if (idx < 0) continue
+      const x = xScale.getPixelForValue(idx)
+      ctx.save()
+      ctx.beginPath()
+      ctx.setLineDash([3, 3])
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.35)'
+      ctx.lineWidth = 1
+      ctx.moveTo(x, yScale.top)
+      ctx.lineTo(x, yScale.bottom)
+      ctx.stroke()
+      // Label at top
+      ctx.fillStyle = 'rgba(99, 102, 241, 0.7)'
+      ctx.font = '8px DM Sans'
+      ctx.textAlign = 'center'
+      ctx.fillText(cycle.label, x, yScale.top - 3)
+      ctx.restore()
+    }
+  },
+}
 
 const chartData = computed(() => {
   const datasets: any[] = []
@@ -211,7 +244,7 @@ const trendSummary = computed(() => {
       <span v-if="unit" class="text-[10px] text-gray-400 font-medium uppercase tracking-wide">{{ unit }}</span>
     </div>
     <div class="h-48">
-      <Line v-if="values.some(v => v != null)" :data="chartData" :options="chartOptions" />
+      <Line v-if="values.some(v => v != null)" :data="chartData" :options="chartOptions" :plugins="[cycleLinePlugin]" />
       <div v-else class="flex items-center justify-center h-full text-xs text-gray-400">
         No data available
       </div>
