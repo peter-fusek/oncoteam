@@ -138,13 +138,17 @@ function handleMove(nctId: string, newStage: FunnelStage) {
 }
 
 function handleClick(trial: ResearchEntry) {
-  drilldown.open({ type: 'research', id: trial.id, label: trial.title })
+  drilldown.open({ type: 'research', id: trial.id, label: trial.title, data: { ...trial } })
 }
 
 function assessAll() {
-  clearAll()
+  // Only re-assess trials that weren't manually moved — preserve user decisions
+  const toAssess = props.trials.filter(t => {
+    const existing = getStage(t.external_id)
+    return !existing?.manually_moved
+  })
   stageVersion.value++
-  assessBatch(props.trials)
+  assessBatch(toAssess)
 }
 
 // Auto-assess unassessed trials on mount

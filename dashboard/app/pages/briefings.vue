@@ -1,7 +1,8 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 
-const { data: briefings, status: briefingsStatus, error: briefingsError, refresh } = fetchApi<{
+const refreshKey = ref(0)
+const { data: briefings, status: briefingsStatus, error: briefingsError } = fetchApi<{
   briefings: Array<{
     id: number
     title: string
@@ -13,7 +14,11 @@ const { data: briefings, status: briefingsStatus, error: briefingsError, refresh
   }>
   total: number
   error?: string
-}>('/briefings', { lazy: true, server: false })
+}>(() => refreshKey.value ? `/briefings?nocache=${refreshKey.value}` : '/briefings', { lazy: true, server: false })
+
+function refresh() {
+  refreshKey.value = Date.now()
+}
 
 const { data: autonomous } = fetchApi<{
   enabled: boolean

@@ -1,5 +1,9 @@
 <script setup lang="ts">
-const { isOpen, stack, current, detail, loading, error, push, pop, popTo, close } = useDrilldown()
+const { isOpen, stack, current, detail, loading, error, open, push, pop, popTo, close } = useDrilldown()
+
+function retry() {
+  if (current.value) open(current.value)
+}
 
 const { t } = useI18n()
 
@@ -89,9 +93,23 @@ function isActivityType(): boolean {
     </div>
 
     <!-- Error -->
-    <div v-else-if="error" class="px-4 pb-4">
+    <div v-else-if="error" class="px-4 pb-4 space-y-3">
       <div class="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
-        {{ error }}
+        {{ t('common.dataUnavailable') }}
+      </div>
+      <div class="flex items-center gap-2">
+        <UButton icon="i-lucide-refresh-cw" variant="soft" size="xs" color="neutral" @click="retry">
+          {{ t('common.retry') }}
+        </UButton>
+        <a
+          v-if="current?.data?.external_url"
+          :href="String(current.data.external_url)"
+          target="_blank"
+          class="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800"
+        >
+          <UIcon name="i-lucide-external-link" class="w-3 h-3" />
+          {{ t('common.viewSource') }}
+        </a>
       </div>
     </div>
 

@@ -194,7 +194,7 @@ const drilldown = useDrilldown()
         :key="entry.id"
         class="group rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition-all cursor-pointer"
         :class="entry.relevance === 'high' ? 'ring-1 ring-amber-200/50' : ''"
-        @click="drilldown.open({ type: 'research', id: entry.id, label: entry.title })"
+        @click="drilldown.open({ type: 'research', id: entry.id, label: entry.title, data: { ...entry } })"
       >
         <div class="flex items-start gap-3">
           <!-- Relevance indicator -->

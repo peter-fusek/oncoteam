@@ -1158,7 +1158,12 @@ async def api_sessions(request: Request) -> JSONResponse:
             entry_type="session_summary", limit=limit, token=token
         )
         entries = _filter_test(_extract_list(result, "entries"), request)
-        entries = [e for e in entries if _is_oncology_session(e)]
+        # Only filter non-oncology sessions for oncology patients
+        from .patient_context import is_general_health_patient
+
+        patient = _get_patient_for_request(request)
+        if not is_general_health_patient(patient):
+            entries = [e for e in entries if _is_oncology_session(e)]
 
         # Classify each session
         classified = []
@@ -1772,8 +1777,15 @@ async def api_briefings(request: Request) -> JSONResponse:
     patient_id = _get_patient_id(request)
     token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=20)
+    nocache = request.query_params.get("nocache")
     cache_key = _cache_key("briefings", patient_id, str(limit), str(request.query_params))
-    if cache_key in _briefings_cache:
+    if nocache:
+        # Explicit refresh — clear all briefings cache entries for this patient
+        prefix = f"briefings:{patient_id or DEFAULT_PATIENT_ID}"
+        stale = [k for k in _briefings_cache if k.startswith(prefix)]
+        for k in stale:
+            _briefings_cache.pop(k, None)
+    elif cache_key in _briefings_cache:
         cached_time, cached_response = _briefings_cache[cache_key]
         if time.time() - cached_time < _BRIEFINGS_CACHE_TTL:
             return cached_response
@@ -2864,6 +2876,51 @@ async def api_cumulative_dose(request: Request) -> JSONResponse:
 # ── Family update translation helpers ─────────
 
 
+def _translate_general_health_for_family(
+    labs: dict | None,
+    weight_data: dict | None,
+    lang: str,
+    patient,
+) -> str:
+    """Plain-language health summary for general health (non-oncology) patients."""
+    parts: list[str] = []
+    if lang == "sk":
+        parts.append("Zdravotný prehľad — preventívna starostlivosť.\n")
+        if labs and isinstance(labs, dict):
+            parts.append("Laboratórne výsledky:")
+            for key, val in labs.items():
+                if isinstance(val, (int, float)):
+                    parts.append(f"  {key}: {val}")
+            if not any(isinstance(v, (int, float)) for v in labs.values()):
+                parts.append("  Žiadne číselné hodnoty.")
+        if weight_data:
+            alerts = weight_data.get("alerts", [])
+            if alerts:
+                parts.append("\nZmena hmotnosti zaznamenaná — konzultácia s lekárom.")
+            else:
+                parts.append("\nHmotnosť je stabilná.")
+        parts.append("")
+        parts.append("Všetky údaje sú pre informáciu — konzultujte s ošetrujúcim lekárom.")
+    else:
+        parts.append("Health summary — preventive care.\n")
+        if labs and isinstance(labs, dict):
+            parts.append("Lab results:")
+            for key, val in labs.items():
+                if isinstance(val, (int, float)):
+                    parts.append(f"  {key}: {val}")
+            if not any(isinstance(v, (int, float)) for v in labs.values()):
+                parts.append("  No numeric values available.")
+        if weight_data:
+            alerts = weight_data.get("alerts", [])
+            if alerts:
+                parts.append("\nWeight change detected — consult with physician.")
+            else:
+                parts.append("\nWeight is stable.")
+        parts.append("")
+        parts.append("All information is for reference — discuss details with your physician.")
+    return "\n".join(parts)
+
+
 def _translate_for_family(
     labs: dict | None,
     toxicity: dict | None,
@@ -2873,8 +2930,15 @@ def _translate_for_family(
     patient=None,
 ) -> str:
     """Translate clinical data to comprehensive plain language for family members."""
+    from .patient_context import is_general_health_patient
+
     pt = patient or get_patient(DEFAULT_PATIENT_ID)
     parts: list[str] = []
+
+    # General health patients get a simpler, non-oncology summary
+    if is_general_health_patient(pt):
+        return _translate_general_health_for_family(labs, weight_data, lang, pt)
+
     cycle = pt.current_cycle or 2
 
     if lang == "sk":
@@ -3168,6 +3232,7 @@ async def api_family_update(request: Request) -> JSONResponse:
                 milestones=milestones,
                 weight_data=weight_data,
                 lang=post_lang,
+                patient=fpt,
             )
 
             # Store as conversation
