@@ -26,9 +26,9 @@ def _make_request(query_string: str = "", path_params: dict | None = None) -> ob
 async def test_agents_returns_non_system_agents():
     """Should return all agents except SYSTEM category."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+        "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
-        return_value={},
+        return_value=[],
     ):
         request = _make_request()
         response = await api_agents(request)
@@ -51,9 +51,9 @@ async def test_agents_returns_non_system_agents():
 async def test_agents_includes_expected_fields():
     """Each agent should have all required fields."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+        "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
-        return_value={},
+        return_value=[],
     ):
         request = _make_request()
         response = await api_agents(request)
@@ -83,9 +83,11 @@ async def test_agents_last_run_from_state():
     """Should populate last_run from agent state timestamp."""
     ts = "2026-03-17T10:00:00+00:00"
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+        "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
-        return_value={"timestamp": ts},
+        return_value=[
+            {"key": "last_daily_research:erika", "value": json.dumps({"timestamp": ts})},
+        ],
     ):
         request = _make_request()
         response = await api_agents(request)
@@ -99,9 +101,9 @@ async def test_agents_last_run_from_state():
 async def test_agents_lang_en():
     """Should return English descriptions when ?lang=en."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+        "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
-        return_value={},
+        return_value=[],
     ):
         request = _make_request("lang=en")
         response = await api_agents(request)

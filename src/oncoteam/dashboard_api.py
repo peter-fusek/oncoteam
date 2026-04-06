@@ -3277,9 +3277,9 @@ async def api_family_update(request: Request) -> JSONResponse:
 
 
 async def api_agents(request: Request) -> JSONResponse:
-    """Return agent registry with last-run status for each agent (#92, #105)."""
+    """Return agent registry with last-run status for each agent (#92, #105, #236)."""
     from .agent_registry import AGENT_REGISTRY, AgentCategory
-    from .autonomous_tasks import _extract_timestamp, _get_state
+    from .autonomous_tasks import _extract_timestamp
 
     patient_id = _get_patient_id(request)
     token = _get_token_for_patient(patient_id)
@@ -3290,25 +3290,25 @@ async def api_agents(request: Request) -> JSONResponse:
         (aid, cfg) for aid, cfg in AGENT_REGISTRY.items() if cfg.category != AgentCategory.SYSTEM
     ]
 
-    # Fetch all last-run states concurrently (#105 perf fix)
-    async def _safe_get_state(agent_id: str):
-        try:
-            state = await asyncio.wait_for(
-                _get_state(f"last_{agent_id}:{patient_id}", token=token), timeout=2.0
-            )
-            return _extract_timestamp(state)
-        except Exception:
-            return None
-
-    timestamps = await asyncio.gather(
-        *[_safe_get_state(aid) for aid, _ in non_system],
-        return_exceptions=True,
-    )
+    # Batch-fetch all agent states in ONE call (#236 — individual calls timeout)
+    state_map: dict[str, str] = {}
+    try:
+        all_states = await asyncio.wait_for(
+            oncofiles_client.list_agent_states(limit=200, token=token),
+            timeout=5.0,
+        )
+        entries = _extract_list(all_states, "states") or (
+            all_states if isinstance(all_states, list) else []
+        )
+        for entry in entries:
+            key = entry.get("key", "")
+            state_map[key] = _extract_timestamp(entry)
+    except Exception as e:
+        record_suppressed_error("api_agents", "batch_state_fetch", e)
 
     agents = []
-    for (_agent_id, config), ts in zip(non_system, timestamps, strict=True):
-        if isinstance(ts, BaseException):
-            ts = None
+    for _agent_id, config in non_system:
+        ts = state_map.get(f"last_{_agent_id}:{patient_id}", "")
         agents.append(
             resolve(
                 {
