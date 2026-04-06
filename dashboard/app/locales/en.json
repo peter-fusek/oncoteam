@@ -327,7 +327,8 @@
     "sampleDate": "Sample Date",
     "syncDate": "Imported",
     "lastSample": "Last sample",
-    "staleWarning": "Lab data may be outdated — last sample from {date}. Consider uploading newer results."
+    "staleWarning": "Lab data may be outdated — last sample from {date}. Consider uploading newer results.",
+    "viewSource": "View source document"
   },
   "briefings": {
     "title": "Agent Briefings",

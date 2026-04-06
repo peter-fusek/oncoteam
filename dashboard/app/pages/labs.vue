@@ -16,6 +16,7 @@ const { data: labs, status: labsStatus, error: labsError, refresh } = fetchApi<{
     directions: Record<string, 'up' | 'down' | 'stable'>
     health_directions: Record<string, 'improving' | 'worsening' | 'stable'>
     suspects: Array<{ param: string; value: number; prev_value: number; pct_change: number; prev_date: string }>
+    source?: { type: string; id: number | null; label: string; url: string | null }
   }>
   reference_ranges: Record<string, { min: number; max: number; unit: string; note?: string }>
   total: number
@@ -562,7 +563,20 @@ async function submitLab() {
               @click="drilldown.open({ type: 'treatment_event', id: entry.id, label: `Labs ${entry.date}` })"
             >
               <td class="px-4 py-2.5 font-mono text-gray-900 sticky left-0 bg-white z-10">
-                <div class="text-sm tabular-nums">{{ formatDate(entry.date) }}</div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm tabular-nums">{{ formatDate(entry.date) }}</span>
+                  <a
+                    v-if="entry.source?.url"
+                    :href="entry.source.url"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-gray-300 hover:text-teal-600 transition-colors"
+                    :title="$t('labs.viewSource')"
+                    @click.stop
+                  >
+                    <UIcon name="i-lucide-file-check" class="w-3.5 h-3.5" />
+                  </a>
+                </div>
                 <div v-if="entry.sync_date" class="text-[10px] text-gray-400" :title="$t('labs.syncDate')">
                   {{ $t('labs.syncDate') }}: {{ formatDate(entry.sync_date) }}
                 </div>

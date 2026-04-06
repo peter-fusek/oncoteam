@@ -327,7 +327,8 @@
     "sampleDate": "Dátum odberu",
     "syncDate": "Importované",
     "lastSample": "Posledný odber",
-    "staleWarning": "Laboratórne dáta môžu byť neaktuálne — posledný odber z {date}. Zvážte nahratie novších výsledkov."
+    "staleWarning": "Laboratórne dáta môžu byť neaktuálne — posledný odber z {date}. Zvážte nahratie novších výsledkov.",
+    "viewSource": "Zobraziť zdrojový dokument"
   },
   "briefings": {
     "title": "Briefingy agentov",
