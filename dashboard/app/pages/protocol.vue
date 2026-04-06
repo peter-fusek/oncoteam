@@ -51,6 +51,19 @@ const { data: cycleHistory } = fetchApi<{
 }>('/protocol/cycles', { lazy: true, server: false })
 
 const { t } = useI18n()
+const { formatDate } = useFormatDate()
+
+// Most recent lab sample date from protocol lab values
+const lastLabDate = computed(() => {
+  const labs = protocol.value?.last_lab_values
+  if (!labs) return null
+  let latest = ''
+  for (const info of Object.values(labs)) {
+    const d = info.sample_date || info.date || ''
+    if (d > latest) latest = d
+  }
+  return latest || null
+})
 
 const activeTab = ref('checklist')
 const expandedCycle = ref<number | null>(null)
@@ -242,12 +255,17 @@ const tabs = computed(() => [
       <!-- Milestones -->
       <div v-if="activeTab === 'milestones'" class="rounded-xl border border-gray-200 bg-white p-5">
         <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('protocol.milestonesTitle') }}</h2>
-        <MilestoneTracker :milestones="protocol.milestones" :current-cycle="protocol.current_cycle" />
+        <MilestoneTracker :milestones="protocol.milestones" :current-cycle="protocol.current_cycle" :cycle-history="cycleHistory?.cycles" />
       </div>
 
       <!-- Monitoring Schedule -->
       <div v-if="activeTab === 'monitoring'" class="rounded-xl border border-gray-200 bg-white p-5">
         <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('protocol.monitoringTitle') }}</h2>
+        <!-- Last labs summary -->
+        <div v-if="lastLabDate" class="flex items-center gap-2 mb-4 text-xs text-gray-500">
+          <UIcon name="i-lucide-test-tube-diagonal" class="w-3.5 h-3.5" />
+          <span>{{ $t('protocol.lastLabCheck') }}: <strong class="text-gray-700">{{ formatDate(lastLabDate) }}</strong></span>
+        </div>
         <div class="space-y-2">
           <div
             v-for="(schedule, item) in protocol.monitoring_schedule"

@@ -227,7 +227,8 @@
     "passed": "OK",
     "issues": "Problémy",
     "allResearch": "Všetok výskum",
-    "researchFunnel": "Lievik štúdií"
+    "researchFunnel": "Lievik štúdií",
+    "lastLabCheck": "Posledná kontrola labiek"
   },
   "toxicity": {
     "title": "Záznam toxicity",

@@ -227,7 +227,8 @@
     "passed": "Passed",
     "issues": "Issues",
     "allResearch": "All research",
-    "researchFunnel": "Trial funnel"
+    "researchFunnel": "Trial funnel",
+    "lastLabCheck": "Last lab check"
   },
   "toxicity": {
     "title": "Toxicity Log",

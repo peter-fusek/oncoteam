@@ -1,10 +1,22 @@
 <script setup lang="ts">
+const { formatDate } = useFormatDate()
+
 const props = defineProps<{
   milestones: Array<{ cycle: number; action: string; description: string }>
   currentCycle: number
+  cycleHistory?: Array<{ cycle_number: number; date: string }> | null
 }>()
 
 const { t } = useI18n()
+
+// Map cycle number → actual date from history
+const cycleDates = computed(() => {
+  const map: Record<number, string> = {}
+  for (const c of props.cycleHistory ?? []) {
+    if (c.date) map[c.cycle_number] = c.date
+  }
+  return map
+})
 
 function milestoneStatus(cycle: number) {
   if (cycle < props.currentCycle) return 'done'
@@ -42,6 +54,9 @@ function statusColor(status: string) {
           >
             {{ t(`components.milestone.${milestoneStatus(m.cycle)}`) }}
           </UBadge>
+          <span v-if="cycleDates[m.cycle]" class="text-xs text-gray-400 ml-1">
+            {{ formatDate(cycleDates[m.cycle]) }}
+          </span>
         </div>
         <div class="text-xs text-gray-500 mt-0.5">{{ m.description }}</div>
         <div class="text-xs text-gray-500 font-mono">{{ m.action }}</div>
