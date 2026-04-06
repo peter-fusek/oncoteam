@@ -3295,7 +3295,7 @@ async def api_agents(request: Request) -> JSONResponse:
     try:
         all_states = await asyncio.wait_for(
             oncofiles_client.list_agent_states(limit=200, token=token),
-            timeout=5.0,
+            timeout=10.0,
         )
         entries = _extract_list(all_states, "states") or (
             all_states if isinstance(all_states, list) else []
