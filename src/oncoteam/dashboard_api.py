@@ -1632,6 +1632,42 @@ async def api_protocol(request: Request) -> JSONResponse:
         record_suppressed_error("api_protocol", "fetch_real_values", events_result)
 
     data["real_values"] = real_values
+
+    # Enrich safety flags with activation status from patient data (#230)
+    if not is_general_health_patient(patient) and isinstance(data.get("safety_flags"), dict):
+        biomarkers = patient.biomarkers or {}
+        kras = str(biomarkers.get("KRAS", "")).lower()
+        msi = str(biomarkers.get("MSI", "")).lower()
+        plt_val = last_lab_values.get("PLT", {}).get("value")
+        flag_active: dict[str, dict] = {}
+        flag_active["anti_egfr_kras_mutant"] = {
+            "active": "mutant" in kras or "mut" in kras,
+            "severity": "permanent",
+        }
+        flag_active["bevacizumab_active_vte"] = {
+            "active": bool(patient.excluded_therapies.get("bevacizumab")),
+            "severity": "high",
+        }
+        flag_active["oxaliplatin_grade3_neuropathy"] = {
+            "active": False,
+            "severity": "conditional",
+        }
+        flag_active["checkpoint_mono_pmmr_mss"] = {
+            "active": "pmmr" in msi or "mss" in msi,
+            "severity": "permanent",
+        }
+        flag_active["lmwh_thrombocytopenia_50k"] = {
+            "active": isinstance(plt_val, (int, float)) and plt_val < 50000,
+            "severity": "conditional",
+        }
+        flag_active["5fu_dpd_deficiency"] = {
+            "active": False,
+            "severity": "conditional",
+        }
+        for key, flag in data["safety_flags"].items():
+            if key in flag_active:
+                flag.update(flag_active[key])
+
     response = _cors_json(data)
     _protocol_cache[cache_key] = (time.time(), response)
     _cache_evict(_protocol_cache)

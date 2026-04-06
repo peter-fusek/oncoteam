@@ -212,6 +212,7 @@
       "delays": "Odklady cyklu",
       "milestones": "Míľniky",
       "monitoring": "Monitorovanie",
+      "safety": "Bezpečnostné pravidlá",
       "secondLine": "2. línia",
       "trials": "Sledované štúdie"
     },
@@ -228,7 +229,10 @@
     "issues": "Problémy",
     "allResearch": "Všetok výskum",
     "researchFunnel": "Lievik štúdií",
-    "lastLabCheck": "Posledná kontrola labiek"
+    "lastLabCheck": "Posledná kontrola labiek",
+    "flagActive": "AKTÍVNE",
+    "flagInactive": "OK",
+    "flagPermanent": "TRVALÉ"
   },
   "toxicity": {
     "title": "Záznam toxicity",

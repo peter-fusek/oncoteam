@@ -212,6 +212,7 @@
       "delays": "Cycle Delays",
       "milestones": "Milestones",
       "monitoring": "Monitoring",
+      "safety": "Safety Flags",
       "secondLine": "2L Options",
       "trials": "Watched Trials"
     },
@@ -228,7 +229,10 @@
     "issues": "Issues",
     "allResearch": "All research",
     "researchFunnel": "Trial funnel",
-    "lastLabCheck": "Last lab check"
+    "lastLabCheck": "Last lab check",
+    "flagActive": "ACTIVE",
+    "flagInactive": "Clear",
+    "flagPermanent": "PERMANENT"
   },
   "toxicity": {
     "title": "Toxicity Log",

@@ -14,7 +14,7 @@ const { data: protocol, status: protocolStatus, error: protocolError, refresh } 
   dose_modifications: Record<string, string>
   milestones: Array<{ cycle: number; action: string; description: string }>
   monitoring_schedule: Record<string, string>
-  safety_flags: Record<string, { rule: string; source: string }>
+  safety_flags: Record<string, { rule: string; source: string; label?: string; active?: boolean; severity?: string }>
   second_line_options: Array<{ regimen: string; evidence: string; note: string }>
   watched_trials: string[]
   cycle_delay_rules: Array<{ condition: string; action: string }>
@@ -73,6 +73,7 @@ const tabs = computed(() => [
   { key: 'dosemods', label: t('protocol.tabs.dosemods'), icon: 'i-lucide-pill' },
   { key: 'cumdose', label: t('protocol.tabs.cumdose'), icon: 'i-lucide-activity' },
   { key: 'delays', label: t('protocol.tabs.delays'), icon: 'i-lucide-timer' },
+  { key: 'safety', label: t('protocol.tabs.safety'), icon: 'i-lucide-shield-alert' },
   { key: 'milestones', label: t('protocol.tabs.milestones'), icon: 'i-lucide-milestone' },
   { key: 'monitoring', label: t('protocol.tabs.monitoring'), icon: 'i-lucide-calendar' },
   { key: '2l', label: t('protocol.tabs.secondLine'), icon: 'i-lucide-arrow-right-circle' },
@@ -249,6 +250,38 @@ const tabs = computed(() => [
             </div>
             <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 mt-1 shrink-0" />
           </div>
+        </div>
+      </div>
+
+      <!-- Safety Flags (#230) -->
+      <div v-if="activeTab === 'safety'" class="space-y-2">
+        <div
+          v-for="(flag, key) in protocol.safety_flags"
+          :key="key"
+          class="rounded-lg border p-4 transition-all"
+          :class="flag.active
+            ? 'border-red-300 bg-red-50/50 ring-1 ring-red-200'
+            : 'border-gray-200 bg-white opacity-60'"
+        >
+          <div class="flex items-center gap-2 mb-1">
+            <UIcon
+              :name="flag.active ? 'i-lucide-shield-alert' : 'i-lucide-shield-check'"
+              :class="flag.active ? 'text-red-600' : 'text-green-600'"
+              class="w-4 h-4 shrink-0"
+            />
+            <span class="text-sm font-medium" :class="flag.active ? 'text-red-900' : 'text-gray-600'">
+              {{ flag.label || String(key).replace(/_/g, ' ') }}
+            </span>
+            <UBadge
+              :color="flag.active ? 'error' : 'success'"
+              variant="subtle"
+              size="xs"
+            >
+              {{ flag.active ? (flag.severity === 'permanent' ? $t('protocol.flagPermanent') : $t('protocol.flagActive')) : $t('protocol.flagInactive') }}
+            </UBadge>
+          </div>
+          <div class="text-xs text-gray-500 ml-6">{{ flag.rule }}</div>
+          <div class="text-[10px] text-gray-400 ml-6 mt-0.5">{{ flag.source }}</div>
         </div>
       </div>
 
