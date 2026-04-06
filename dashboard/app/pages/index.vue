@@ -61,6 +61,18 @@ const { data: timeline, status: timelineStatus } = fetchApi<{
   }>
 }>('/timeline?limit=10', { lazy: true, server: false })
 
+// System health for degradation banner (#238)
+const { data: sysHealth } = fetchApi<{
+  circuit_breaker?: { state: string }
+  oncofiles_rss_mb?: number
+}>('/diagnostics', { lazy: true, server: false })
+
+const systemDegraded = computed(() => {
+  if (!sysHealth.value) return false
+  return sysHealth.value.circuit_breaker?.state === 'open'
+    || (sysHealth.value.oncofiles_rss_mb ?? 0) >= 400
+})
+
 // Computed helpers
 // Merge most recent value for each key parameter across all entries
 const mergedLabSnapshot = computed(() => {
@@ -152,6 +164,12 @@ const EVENT_ICONS: Record<string, string> = {
 
 <template>
   <div class="space-y-5">
+    <!-- System degradation banner (#238) -->
+    <div v-if="systemDegraded" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 flex items-center gap-2">
+      <UIcon name="i-lucide-server-crash" class="shrink-0" />
+      <span>{{ $t('home.systemDegraded') }}</span>
+    </div>
+
     <!-- Header -->
     <div>
       <h1 class="text-2xl font-bold text-gray-900">{{ $t('home.title') }}</h1>
@@ -219,7 +237,7 @@ const EVENT_ICONS: Record<string, string> = {
               :key="p.key"
               class="rounded-lg bg-gray-50 px-3 py-2 text-center"
             >
-              <div class="text-[10px] font-medium text-gray-400 uppercase">{{ p.label }}</div>
+              <NuxtLink :to="`/dictionary?q=${p.label}`" class="text-[10px] font-medium text-gray-400 uppercase hover:text-teal-600 underline decoration-dotted transition-colors">{{ p.label }}</NuxtLink>
               <div class="text-lg font-bold" :class="mergedLabSnapshot.value_statuses?.[p.key] === 'low' || mergedLabSnapshot.value_statuses?.[p.key] === 'high' ? 'text-red-600' : 'text-gray-900'">
                 {{ mergedLabSnapshot.values?.[p.key] != null ? (mergedLabSnapshot.values[p.key] > 1000 ? (mergedLabSnapshot.values[p.key] / 1000).toFixed(1) + 'k' : mergedLabSnapshot.values[p.key].toFixed(1)) : '\u2014' }}
               </div>

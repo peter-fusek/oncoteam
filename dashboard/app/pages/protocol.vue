@@ -182,7 +182,11 @@ const tabs = computed(() => [
 
       <!-- Cumulative Dose -->
       <div v-if="activeTab === 'cumdose' && cumDose" class="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('protocol.doseTitle') }}</h2>
+        <h2 class="text-sm font-semibold text-gray-900 mb-2">{{ $t('protocol.doseTitle') }}</h2>
+        <div class="flex items-center gap-2 mb-3 text-[10px] text-amber-600 bg-amber-50 rounded-md px-2.5 py-1.5 border border-amber-200">
+          <UIcon name="i-lucide-calculator" class="w-3.5 h-3.5 shrink-0" />
+          <span>{{ $t('protocol.doseCalculated') }}</span>
+        </div>
         <div class="mb-4">
           <div class="flex items-center justify-between mb-1">
             <span class="text-sm text-gray-700">

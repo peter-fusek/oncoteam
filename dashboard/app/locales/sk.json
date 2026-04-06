@@ -49,7 +49,8 @@
     "cycle": "Cyklus",
     "staging": "Štádium",
     "threshold": "prah",
-    "questionsForOncologist": "otázky pre onkológa"
+    "questionsForOncologist": "otázky pre onkológa",
+    "systemDegraded": "Databáza je pod záťažou — niektoré dáta môžu byť pomalšie alebo dočasne nedostupné."
   },
   "common": {
     "save": "Uložiť",
@@ -232,7 +233,8 @@
     "lastLabCheck": "Posledná kontrola labiek",
     "flagActive": "AKTÍVNE",
     "flagInactive": "OK",
-    "flagPermanent": "TRVALÉ"
+    "flagPermanent": "TRVALÉ",
+    "doseCalculated": "Vypočítané zo štandardnej protokolovej dávky — ešte neoverené z individuálnych chemo správ"
   },
   "toxicity": {
     "title": "Záznam toxicity",

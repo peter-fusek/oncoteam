@@ -49,7 +49,8 @@
     "cycle": "Cycle",
     "staging": "Staging",
     "threshold": "threshold",
-    "questionsForOncologist": "questions for oncologist"
+    "questionsForOncologist": "questions for oncologist",
+    "systemDegraded": "Database under load — some data may be slow or temporarily unavailable."
   },
   "common": {
     "save": "Save",
@@ -232,7 +233,8 @@
     "lastLabCheck": "Last lab check",
     "flagActive": "ACTIVE",
     "flagInactive": "Clear",
-    "flagPermanent": "PERMANENT"
+    "flagPermanent": "PERMANENT",
+    "doseCalculated": "Calculated from protocol standard dose — not yet verified from individual chemo reports"
   },
   "toxicity": {
     "title": "Toxicity Log",
