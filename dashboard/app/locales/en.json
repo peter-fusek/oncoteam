@@ -322,7 +322,9 @@
     "rookie": "Essential",
     "pro": "All Parameters",
     "sampleDate": "Sample Date",
-    "syncDate": "Imported"
+    "syncDate": "Imported",
+    "lastSample": "Last sample",
+    "staleWarning": "Lab data may be outdated — last sample from {date}. Consider uploading newer results."
   },
   "briefings": {
     "title": "Agent Briefings",

@@ -181,6 +181,16 @@ const sortedEntries = computed(() => {
   return [...labs.value.entries].sort((a, b) => b.date.localeCompare(a.date))
 })
 
+const lastSampleDate = computed(() => sortedEntries.value[0]?.date ?? null)
+
+const labsStale = computed(() => {
+  if (!lastSampleDate.value) return false
+  const last = new Date(lastSampleDate.value)
+  const now = new Date()
+  const daysSince = Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24))
+  return daysSince > 14
+})
+
 // Suspect values across all entries
 const allSuspects = computed(() => {
   if (!labs.value?.entries) return []
@@ -327,7 +337,12 @@ async function submitLab() {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">{{ $t('labs.title') }}</h1>
-        <p class="text-sm text-gray-500">{{ $t('labs.subtitle', { count: labs?.total ?? 0 }) }}</p>
+        <p class="text-sm text-gray-500">
+          {{ $t('labs.subtitle', { count: labs?.total ?? 0 }) }}
+          <span v-if="lastSampleDate" class="ml-2 text-gray-400">
+            {{ $t('labs.lastSample') }}: {{ formatDate(lastSampleDate) }}
+          </span>
+        </p>
         <LastUpdated :timestamp="labs?.last_updated" />
       </div>
       <div class="flex items-center gap-2">
@@ -362,6 +377,13 @@ async function submitLab() {
     </div>
 
     <ApiErrorBanner :error="labs?.error || labsError?.message" />
+
+    <!-- Stale data warning -->
+    <div v-if="labsStale && lastSampleDate" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 flex items-center gap-2">
+      <UIcon name="i-lucide-clock" class="shrink-0" />
+      <span>{{ $t('labs.staleWarning', { date: formatDate(lastSampleDate) }) }}</span>
+    </div>
+
     <SkeletonLoader v-if="!labs && labsStatus === 'pending'" variant="table" />
     <div v-else-if="labsError || labs?.error || labsStatus === 'error'" class="text-center py-16 space-y-2">
       <UIcon name="i-lucide-wifi-off" class="h-6 w-6 mx-auto text-gray-300" />

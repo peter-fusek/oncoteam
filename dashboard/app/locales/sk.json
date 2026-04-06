@@ -322,7 +322,9 @@
     "rookie": "Základné",
     "pro": "Všetky parametre",
     "sampleDate": "Dátum odberu",
-    "syncDate": "Importované"
+    "syncDate": "Importované",
+    "lastSample": "Posledný odber",
+    "staleWarning": "Laboratórne dáta môžu byť neaktuálne — posledný odber z {date}. Zvážte nahratie novších výsledkov."
   },
   "briefings": {
     "title": "Briefingy agentov",

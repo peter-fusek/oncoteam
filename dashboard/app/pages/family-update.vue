@@ -25,12 +25,14 @@ async function sendWhatsApp(text: string) {
   whatsappSending.value = true
   whatsappMsg.value = ''
   try {
-    await $fetch('/api/notify/whatsapp', {
+    const result = await $fetch<{ ok: boolean; recipient?: string; phone?: string }>('/api/notify/whatsapp', {
       method: 'POST',
       body: { message: text },
     })
-    whatsappMsg.value = 'sent'
-    setTimeout(() => { whatsappMsg.value = '' }, 3000)
+    whatsappMsg.value = result.recipient
+      ? `sent → ${result.recipient} (${result.phone})`
+      : 'sent'
+    setTimeout(() => { whatsappMsg.value = '' }, 5000)
   } catch (e: any) {
     whatsappMsg.value = `error: ${e.message || e}`
   } finally {
@@ -141,8 +143,8 @@ const drilldown = useDrilldown()
           >
             {{ $t('whatsapp.send') }}
           </UButton>
-          <span v-if="whatsappMsg" class="text-xs" :class="whatsappMsg === 'sent' ? 'text-green-500' : 'text-red-600'">
-            {{ whatsappMsg === 'sent' ? $t('whatsapp.sent') : $t('whatsapp.error') }}
+          <span v-if="whatsappMsg" class="text-xs" :class="whatsappMsg.startsWith('error') ? 'text-red-600' : 'text-green-600'">
+            {{ whatsappMsg.startsWith('error') ? $t('whatsapp.error') : whatsappMsg }}
           </span>
         </div>
       </div>

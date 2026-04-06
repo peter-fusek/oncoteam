@@ -65,5 +65,8 @@ export default defineEventHandler(async (event) => {
     body: fullMessage,
   })
 
-  return { ok: true, sid: result.sid }
+  // Mask phone for privacy: +421900*** → show last 3 digits
+  const maskedPhone = phone.length > 3 ? `***${phone.slice(-3)}` : phone
+
+  return { ok: true, sid: result.sid, recipient: userName, phone: maskedPhone }
 })
