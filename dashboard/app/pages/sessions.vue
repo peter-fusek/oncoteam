@@ -4,7 +4,7 @@ const { formatDate } = useFormatDate()
 
 const typeFilter = ref<'all' | 'clinical' | 'technical'>('all')
 
-const { data: sessions, status: sessionsStatus, error: sessionsError, refresh } = fetchApi<{
+const { data: sessionsData, status: sessionsStatus, error: sessionsError, refresh } = fetchApi<{
   sessions: Array<{
     id: number
     title: string
@@ -20,8 +20,10 @@ const { data: sessions, status: sessionsStatus, error: sessionsError, refresh } 
 
 const drilldown = useDrilldown()
 
+const sessionList = computed(() => sessionsData.value?.sessions ?? [])
+
 const totalAll = computed(() => {
-  const c = sessions.value?.type_counts
+  const c = sessionsData.value?.type_counts
   return c ? c.clinical + c.technical : 0
 })
 </script>
@@ -31,7 +33,7 @@ const totalAll = computed(() => {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">{{ $t('sessions.title') }}</h1>
-        <p class="text-sm text-gray-500">{{ $t('sessions.count', { count: sessions?.total ?? 0 }) }}</p>
+        <p class="text-sm text-gray-500">{{ $t('sessions.count', { count: sessionsData?.total ?? 0 }) }}</p>
       </div>
       <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
     </div>
@@ -52,7 +54,7 @@ const totalAll = computed(() => {
         :color="typeFilter === 'clinical' ? 'primary' : 'neutral'"
         @click="typeFilter = 'clinical'"
       >
-        {{ $t('sessions.filterClinical') }} ({{ sessions?.type_counts?.clinical ?? 0 }})
+        {{ $t('sessions.filterClinical') }} ({{ sessionsData?.type_counts?.clinical ?? 0 }})
       </UButton>
       <UButton
         size="xs"
@@ -60,20 +62,20 @@ const totalAll = computed(() => {
         :color="typeFilter === 'technical' ? 'primary' : 'neutral'"
         @click="typeFilter = 'technical'"
       >
-        {{ $t('sessions.filterTechnical') }} ({{ sessions?.type_counts?.technical ?? 0 }})
+        {{ $t('sessions.filterTechnical') }} ({{ sessionsData?.type_counts?.technical ?? 0 }})
       </UButton>
     </div>
 
-    <ApiErrorBanner :error="sessions?.error || sessionsError?.message" />
-    <SkeletonLoader v-if="!sessions && sessionsStatus === 'pending'" variant="cards" />
-    <div v-else-if="sessionsError || sessions?.error || sessionsStatus === 'error'" class="text-center py-16 space-y-2">
+    <ApiErrorBanner :error="sessionsData?.error || sessionsError?.message" />
+    <SkeletonLoader v-if="!sessionsData && sessionsStatus === 'pending'" variant="cards" />
+    <div v-else-if="sessionsError || sessionsData?.error || sessionsStatus === 'error'" class="text-center py-16 space-y-2">
       <UIcon name="i-lucide-wifi-off" class="h-6 w-6 mx-auto text-gray-300" />
       <p class="text-sm text-gray-500">{{ $t('common.dataUnavailable') }}</p>
     </div>
 
-    <div v-if="sessions?.sessions?.length" class="space-y-3">
+    <div v-if="sessionList.length" class="space-y-3">
       <div
-        v-for="session in sessions.sessions"
+        v-for="session in sessionList"
         :key="session.id"
         class="rounded-lg border border-gray-200 bg-white overflow-hidden cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
         @click="drilldown.open({ type: 'conversation', id: session.id, label: session.title })"
@@ -104,7 +106,7 @@ const totalAll = computed(() => {
       </div>
     </div>
 
-    <div v-else-if="!sessions?.error && !sessionsError && sessionsStatus !== 'pending'" class="text-gray-500 text-center py-16 text-sm">
+    <div v-else-if="!sessionsData?.error && !sessionsError && sessionsStatus !== 'pending'" class="text-gray-500 text-center py-16 text-sm">
       {{ $t('sessions.noSessions') }}
     </div>
   </div>
