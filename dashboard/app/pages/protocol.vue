@@ -295,6 +295,18 @@ const tabs = computed(() => [
           <span class="text-sm text-gray-700 flex-1">{{ trial }}</span>
           <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
         </div>
+        <!-- Link to full research page + funnel -->
+        <div class="flex items-center gap-3 pt-2">
+          <NuxtLink to="/research" class="inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 hover:text-teal-900 transition-colors">
+            <UIcon name="i-lucide-flask-conical" class="w-4 h-4" />
+            {{ $t('protocol.allResearch') }}
+          </NuxtLink>
+          <span class="text-gray-300">|</span>
+          <NuxtLink to="/research?tab=funnel" class="inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 hover:text-teal-900 transition-colors">
+            <UIcon name="i-lucide-kanban" class="w-4 h-4" />
+            {{ $t('protocol.researchFunnel') }}
+          </NuxtLink>
+        </div>
       </div>
     </div>
   </div>

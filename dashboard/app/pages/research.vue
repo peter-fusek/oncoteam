@@ -1,7 +1,9 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 
-const activeTab = ref<'trials' | 'literature' | 'funnel'>('trials')
+const route = useRoute()
+const initialTab = route.query.tab === 'funnel' ? 'funnel' : 'trials'
+const activeTab = ref<'trials' | 'literature' | 'funnel'>(initialTab)
 const sortBy = ref<'relevance' | 'date' | 'source'>('relevance')
 
 // Watched trials from clinical protocol

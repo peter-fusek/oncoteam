@@ -225,7 +225,9 @@
     "previousCycles": "Predchádzajúce cykly",
     "currentRegimen": "Aktuálny režim",
     "passed": "OK",
-    "issues": "Problémy"
+    "issues": "Problémy",
+    "allResearch": "Všetok výskum",
+    "researchFunnel": "Lievik štúdií"
   },
   "toxicity": {
     "title": "Záznam toxicity",

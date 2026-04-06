@@ -96,7 +96,9 @@ function healthColor(hd: string | undefined) {
     <!-- Demo banner -->
     <div class="bg-gradient-to-r from-teal-600 to-cyan-700 text-white px-4 py-2.5 text-center text-sm">
       <span class="font-semibold">Demo Mode</span> — This is a demo with sample data. No real patient information.
-      <NuxtLink to="/login" class="ml-3 underline font-medium hover:text-teal-100">Sign in for real dashboard</NuxtLink>
+      <a href="https://oncoteam.cloud" class="ml-3 underline font-medium hover:text-teal-100">Back to oncoteam.cloud</a>
+      <span class="mx-1 opacity-50">|</span>
+      <NuxtLink to="/login" class="underline font-medium hover:text-teal-100">Sign in</NuxtLink>
     </div>
 
     <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">

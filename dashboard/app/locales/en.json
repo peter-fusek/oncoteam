@@ -225,7 +225,9 @@
     "previousCycles": "Previous cycles",
     "currentRegimen": "Current regimen",
     "passed": "Passed",
-    "issues": "Issues"
+    "issues": "Issues",
+    "allResearch": "All research",
+    "researchFunnel": "Trial funnel"
   },
   "toxicity": {
     "title": "Toxicity Log",
