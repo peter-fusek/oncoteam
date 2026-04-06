@@ -13,8 +13,10 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/dictionary': ['advocate', 'patient', 'doctor'],
   '/agents': ['advocate'],
   '/prompts': ['advocate'],
+  '/communications': ['advocate'],
   '/sessions': ['advocate'],
   '/documents': ['advocate'],
+  '/oncofiles': ['advocate'],
 }
 
 const LANDING_PAGES: Record<string, string> = {

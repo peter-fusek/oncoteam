@@ -89,6 +89,21 @@ function healthColor(hd: string | undefined) {
   if (hd === 'worsening') return 'text-red-600'
   return 'text-gray-500'
 }
+
+const demoView = ref<'overview' | 'labs' | 'research' | 'protocol'>('overview')
+
+const safetyFlags = [
+  { label: 'Anti-EGFR with KRAS mutation', rule: 'NEVER — permanently contraindicated', active: true, severity: 'permanent' },
+  { label: 'Bevacizumab with active VTE', rule: 'HIGH RISK — requires oncologist discussion', active: true, severity: 'high' },
+  { label: 'Oxaliplatin with grade 3 neuropathy', rule: 'HOLD oxaliplatin, continue 5-FU/LV', active: false, severity: 'conditional' },
+]
+
+const funnelTrials = [
+  { id: 'NCT07221357', title: 'Pumitamig + Chemo vs Bev + Chemo (1L mCRC)', stage: 'Watching' },
+  { id: 'NCT06973564', title: 'JAB-23E73 pan-KRAS inhibitor', stage: 'Watching' },
+  { id: 'NCT07284849', title: 'INCA33890 + FOLFOX + Bev (1L MSS mCRC)', stage: 'Eligible Now' },
+  { id: 'NCT05253651', title: 'Tucatinib + Tras + FOLFOX (HER2+ mCRC)', stage: 'Excluded' },
+]
 </script>
 
 <template>
@@ -113,6 +128,58 @@ function healthColor(hd: string | undefined) {
         </div>
       </div>
 
+      <!-- View tabs -->
+      <div class="flex gap-1 rounded-lg border border-gray-200 p-1 bg-gray-50 w-fit">
+        <button v-for="v in ['overview', 'labs', 'research', 'protocol']" :key="v"
+          class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          :class="demoView === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+          @click="demoView = v as any"
+        >{{ v.charAt(0).toUpperCase() + v.slice(1) }}</button>
+      </div>
+
+      <!-- Protocol view -->
+      <div v-if="demoView === 'protocol'" class="space-y-3">
+        <h2 class="text-sm font-semibold text-gray-700">Safety Flags</h2>
+        <div v-for="(flag, i) in safetyFlags" :key="i"
+          class="rounded-lg border p-4"
+          :class="flag.active ? 'border-red-300 bg-red-50/50 ring-1 ring-red-200' : 'border-gray-200 bg-white opacity-60'"
+        >
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-sm font-medium" :class="flag.active ? 'text-red-900' : 'text-gray-600'">{{ flag.label }}</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" :class="flag.active ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'">
+              {{ flag.active ? (flag.severity === 'permanent' ? 'PERMANENT' : 'ACTIVE') : 'Clear' }}
+            </span>
+          </div>
+          <div class="text-xs text-gray-500">{{ flag.rule }}</div>
+        </div>
+      </div>
+
+      <!-- Research/Funnel view -->
+      <div v-if="demoView === 'research'" class="space-y-3">
+        <h2 class="text-sm font-semibold text-gray-700">Trial Funnel</h2>
+        <div class="flex gap-3 overflow-x-auto pb-2">
+          <div v-for="stage in ['Excluded', 'Watching', 'Eligible Now']" :key="stage"
+            class="w-56 flex-shrink-0 rounded-xl border border-gray-200 bg-gray-50/50 p-3"
+          >
+            <div class="text-xs font-semibold text-gray-600 mb-2">{{ stage }}</div>
+            <div v-for="t in funnelTrials.filter(t => t.stage === stage)" :key="t.id"
+              class="rounded-lg border border-gray-200 bg-white p-2.5 mb-2 text-xs"
+            >
+              <div class="font-mono text-teal-700 text-[10px]">{{ t.id }}</div>
+              <div class="text-gray-800 mt-0.5">{{ t.title }}</div>
+            </div>
+            <div v-if="!funnelTrials.filter(t => t.stage === stage).length" class="text-[10px] text-gray-400 text-center py-4">No trials</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Labs view (same as overview but full-width) -->
+      <template v-if="demoView === 'labs'">
+
+      </template>
+
+      <!-- Overview (default) -->
+      <template v-if="demoView === 'overview'">
       <!-- No alerts (good) -->
       <div class="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
         <span>All lab values within safe ranges. No alerts.</span>
@@ -247,6 +314,8 @@ function healthColor(hd: string | undefined) {
           </a>
         </div>
       </div>
+
+      </template>
 
       <!-- Footer -->
       <div class="text-center text-xs text-gray-400 py-4">

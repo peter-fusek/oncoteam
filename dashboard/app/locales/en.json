@@ -15,9 +15,11 @@
     "research": "Research",
     "timeline": "Timeline",
     "prompts": "Prompts",
+    "communications": "Communications",
     "sessions": "Sessions",
     "familyUpdate": "Family Update",
     "documents": "Documents",
+    "oncofiles": "Oncofiles",
     "dictionary": "Dictionary",
     "signOut": "Sign out",
     "sections": {
@@ -427,6 +429,11 @@
     "previousUpdates": "Previous Updates",
     "printTitle": "Oncoteam — Family Update",
     "noUpdates": "No updates yet — click Generate"
+  },
+  "communications": {
+    "title": "Communications",
+    "subtitle": "{count} messages",
+    "noData": "No communications yet"
   },
   "documents": {
     "title": "Documents",

@@ -15,9 +15,11 @@
     "research": "Výskum",
     "timeline": "Časová os",
     "prompts": "Prompty",
+    "communications": "Komunikácia",
     "sessions": "Sedenia",
     "familyUpdate": "Správa pre rodinu",
     "documents": "Dokumenty",
+    "oncofiles": "Oncofiles",
     "dictionary": "Slovník",
     "signOut": "Odhlásiť sa",
     "sections": {
@@ -427,6 +429,11 @@
     "previousUpdates": "Predchádzajúce správy",
     "printTitle": "Oncoteam — Správa pre rodinu",
     "noUpdates": "Zatiaľ žiadne správy — kliknite na Generovať"
+  },
+  "communications": {
+    "title": "Komunikácia",
+    "subtitle": "{count} správ",
+    "noData": "Zatiaľ žiadna komunikácia"
   },
   "documents": {
     "title": "Dokumenty",
