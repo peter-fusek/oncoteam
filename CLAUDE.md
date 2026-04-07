@@ -61,6 +61,8 @@ uv run oncoteam-mcp    # stdio mode
 - Dashboard proxy timeout (`dashboard/server/api/oncoteam/[...path].ts`) is 25s. Oncofiles MCP `search_conversations` takes ~15s per query — don't reduce below 20s.
 - `document_pipeline` agent in registry has `schedule_params={"hours": 999}` — never fires on schedule. It's event-driven only, triggered by `POST /api/internal/document-webhook`.
 - `api_document_webhook` accepts `patient_id` in JSON body (defaults to "erika"). Must pass `patient_id` from oncofiles — without it, all documents are processed under Erika's context.
+- `view_document` MCP tool accepts both `file_id` (string) and `document_id` (int). Numeric IDs are auto-resolved to `file_id` via `get_document()`. Haiku agents consistently use `document_id` param name despite prompts — the dual-param support is required.
+- Single-doc pipeline agents (`file_scan_single`, `lab_sync_single`, `dose_extraction_single`, etc.) accept `file_id` kwarg. The pipeline resolves `file_id` once via `_resolve_file_id()` before dispatching downstream.
 - `api_document_webhook` imports `_get_state`, `_extract_timestamp`, `run_document_pipeline` lazily from `autonomous_tasks` — test patches must target `oncoteam.autonomous_tasks`, not `oncoteam.dashboard_api`.
 - `api_trigger_agent` clears cooldown state before triggering — imports `_get_task_functions` from `scheduler.py`. Same lazy-import pattern as webhook.
 - Agent registry `model` field is display-only — the actual model override is in each `run_*()` function's `run_autonomous_task()` call. If you change model in registry, also update the corresponding `run_*()` function.
