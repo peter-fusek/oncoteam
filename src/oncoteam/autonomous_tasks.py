@@ -798,16 +798,18 @@ async def run_file_scan_single(
     """Classify a single document by ID (no broad search)."""
     if not file_id:
         file_id = await _resolve_file_id(document_id, patient_id)
-    doc_ref = f'file_id "{file_id}"' if file_id else f"document {document_id}"
     view_arg = file_id or str(document_id)
     return await _run_single_doc_task(
         "file_scan_single",
         document_id,
         f"""\
-View {doc_ref} using view_document(file_id="{view_arg}"), then classify it.
+Read the document using view_document(file_id="{view_arg}"), then classify it.
+
+IMPORTANT: The view_document tool parameter is called "file_id" (a string).
+Call it exactly as: view_document(file_id="{view_arg}")
 
 Instructions:
-1. Use view_document with file_id="{view_arg}" to read the document
+1. Call view_document with file_id="{view_arg}" to read the document
 2. Classify the document type: lab_report, visit_note, discharge_summary,
    pathology, genetics, imaging, or other
 3. For pathology/genetics docs: check if biomarker data matches known profile
@@ -830,10 +832,13 @@ async def run_lab_sync_single(
         "lab_sync_single",
         document_id,
         f"""\
-Extract structured lab data from document {document_id}.
+Extract structured lab data from this document (oncofiles ID {document_id}).
+
+IMPORTANT: The view_document tool parameter is called "file_id" (a string).
+Call it exactly as: view_document(file_id="{view_arg}")
 
 Instructions:
-1. Use view_document(file_id="{view_arg}") to read the document
+1. Call view_document(file_id="{view_arg}") to read the document
 2. Extract numeric lab values: WBC, ANC, PLT, hemoglobin, creatinine,
    ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH
 3. Use get_treatment_timeline to check if data already exists for that date
@@ -858,10 +863,13 @@ async def run_toxicity_extraction_single(
         "toxicity_extraction_single",
         document_id,
         f"""\
-Extract NCI-CTCAE toxicity assessments from document {document_id}.
+Extract NCI-CTCAE toxicity assessments from this document (oncofiles ID {document_id}).
+
+IMPORTANT: The view_document tool parameter is called "file_id" (a string).
+Call it exactly as: view_document(file_id="{view_arg}")
 
 Instructions:
-1. Use view_document(file_id="{view_arg}") to read the document
+1. Call view_document(file_id="{view_arg}") to read the document
 2. Extract toxicity grades for:
    - Peripheral neuropathy, diarrhea, mucositis, fatigue, HFS, nausea/vomiting
 3. Note ECOG and weight if mentioned
@@ -882,10 +890,13 @@ async def run_weight_extraction_single(
         "weight_extraction_single",
         document_id,
         f"""\
-Extract weight/BMI data from document {document_id}.
+Extract weight/BMI data from this document (oncofiles ID {document_id}).
+
+IMPORTANT: The view_document tool parameter is called "file_id" (a string).
+Call it exactly as: view_document(file_id="{view_arg}")
 
 Instructions:
-1. Use view_document(file_id="{view_arg}") to read the document
+1. Call view_document(file_id="{view_arg}") to read the document
 2. Extract weight in kg and BMI if mentioned
 3. Extract date of measurement
 4. Check if a weight_measurement event already exists for that date
@@ -912,10 +923,13 @@ async def run_dose_extraction_single(
         "dose_extraction_single",
         document_id,
         f"""\
-Extract structured chemotherapy administration data from document {document_id}.
+Extract structured chemotherapy administration data from this document (oncofiles ID {document_id}).
+
+IMPORTANT: The view_document tool parameter is called "file_id" (a string).
+Call it exactly as: view_document(file_id="{view_arg}")
 
 Instructions:
-1. Use view_document(file_id="{view_arg}") to read the document
+1. Call view_document(file_id="{view_arg}") to read the document
 2. Identify this as a chemo sheet / chemotherapy administration record
 3. Extract the following fields:
    - Cycle number (číslo cyklu)
