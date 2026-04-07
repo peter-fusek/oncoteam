@@ -35,12 +35,12 @@ An [Instarea](https://www.instarea.com) project.
 
 ## Stats
 
-- 19 AI agents working autonomously per patient
+- 20 AI agents working autonomously per patient
 - 50+ tasks per patient per week (briefings, trial searches, lab checks, alerts)
 - 500+ clinical trials monitored across US and EU registries
 - 2 patients in active use (oncology + general health)
 - 24 MCP tools, 21 dashboard API routes
-- 684 passing tests
+- 687 passing tests
 - Multi-patient support with per-patient scheduling, OAuth, and data isolation
 
 ## Architecture
