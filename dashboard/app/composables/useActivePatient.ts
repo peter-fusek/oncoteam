@@ -9,19 +9,15 @@
 export function useActivePatient() {
   const { user } = useUserSession()
 
-  // Initialize from session, fall back to 'erika'
+  // Patient selection persisted via cookie (available during SSR + client)
+  const patientCookie = useCookie('oncoteam_patient', { default: () => '' })
+
+  // Initialize: cookie > session > default
   const activePatientId = useState('activePatientId', () => {
+    if (patientCookie.value) return patientCookie.value
     const sessionPid = user.value?.patientId as string | undefined
     return sessionPid || 'erika'
   })
-
-  // Restore patient selection from localStorage after client hydration
-  if (import.meta.client) {
-    const stored = localStorage.getItem('oncoteam:activePatientId')
-    if (stored && stored !== activePatientId.value) {
-      activePatientId.value = stored
-    }
-  }
 
   // Known patients with display info. Seeded with Erika.
   // When new patients onboard, they're added to the user's session patientIds
@@ -58,9 +54,9 @@ export function useActivePatient() {
     if (!canSwitchPatient.value) return
     if (allowedPatientIds.value.includes(patientId)) {
       activePatientId.value = patientId
-      // Persist selection + full reload to clear all stale API caches
+      patientCookie.value = patientId
+      // Full reload — cookie persists the patient selection for SSR
       if (import.meta.client) {
-        localStorage.setItem('oncoteam:activePatientId', patientId)
         reloadNuxtApp({ ttl: 1000 })
       }
     }
