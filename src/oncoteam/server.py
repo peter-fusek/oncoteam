@@ -706,15 +706,25 @@ async def view_document(file_id: str) -> str:
     """View full document content with OCR text and images from Oncofiles.
 
     Args:
-        file_id: The document file ID in Oncofiles
+        file_id: The document file ID (string like "file_011CZZ...") or
+                 numeric document ID (will be resolved to file_id automatically).
 
     Returns:
         JSON with document content.
     """
     _pid, _tok = _get_mcp_patient_token()
     try:
-        result = await oncofiles_client.view_document(file_id, token=_tok)
-        return json.dumps({"file_id": file_id, "content": result})
+        # If a numeric ID was passed, resolve to file_id
+        resolved_file_id = file_id
+        stripped = str(file_id).strip()
+        if stripped.isdigit():
+            doc = await oncofiles_client.get_document(int(stripped), token=_tok)
+            if isinstance(doc, dict) and doc.get("file_id"):
+                resolved_file_id = doc["file_id"]
+            else:
+                return json.dumps({"error": f"Could not resolve document ID {file_id} to file_id"})
+        result = await oncofiles_client.view_document(resolved_file_id, token=_tok)
+        return json.dumps({"file_id": resolved_file_id, "content": result})
     except Exception as e:
         return json.dumps({"error": str(e)})
 
