@@ -162,10 +162,47 @@ async def test_detail_patient():
 
 @pytest.mark.anyio
 @patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_doc_detail",
+    new_callable=AsyncMock,
+)
+async def test_detail_document_rest_api(mock_detail):
+    """Document detail uses oncofiles REST doc-detail endpoint."""
+    mock_detail.return_value = {
+        "id": "7",
+        "filename": "lab_report.pdf",
+        "gdrive_id": "abc123",
+        "gdrive_url": "https://drive.google.com/file/d/abc123/view",
+        "preview_url": "https://drive.google.com/file/d/abc123/preview",
+        "category": "labs",
+        "document_date": "2026-02-27",
+        "ai_summary": "Lab results summary",
+        "pages": [
+            {"page_number": 1, "text": "WBC 5.2", "char_count": 7},
+        ],
+    }
+    req = FakeRequest({"type": "document", "id": "7"})
+    resp = await api_detail(req)
+    import json
+
+    body = json.loads(resp.body)
+    assert body["source"]["gdrive_file_id"] == "abc123"
+    assert body["source"]["gdrive_url"] == "https://drive.google.com/file/d/abc123/view"
+    assert body["source"]["preview_url"] == "https://drive.google.com/file/d/abc123/preview"
+    assert body["data"]["pages"][0]["text"] == "WBC 5.2"
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_doc_detail",
+    new_callable=AsyncMock,
+    side_effect=Exception("REST unavailable"),
+)
+@patch(
     "oncoteam.dashboard_api.oncofiles_client.get_document",
     new_callable=AsyncMock,
 )
-async def test_detail_document_with_gdrive(mock_get):
+async def test_detail_document_fallback_to_mcp(mock_get, mock_detail):
+    """Falls back to MCP get_document when REST doc-detail fails."""
     mock_get.return_value = {
         "id": 7,
         "filename": "lab_report.pdf",

@@ -13,6 +13,7 @@ interface DetailResponse {
     oncofiles_id: number | null
     gdrive_file_id: string | null
     gdrive_url: string | null
+    preview_url?: string | null
   }
   related: Array<{ type: string; id: string | number; label: string }>
 }

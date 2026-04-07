@@ -12,7 +12,7 @@ from .activity_logger import get_session_id, record_suppressed_error
 from .agent_registry import get_cooldown
 from .autonomous import run_autonomous_task
 from .clinical_protocol import WATCHED_TRIALS, format_pre_cycle_checklist, get_milestones_for_cycle
-from .config import AUTONOMOUS_MODEL_LIGHT
+from .config import AUTONOMOUS_MODEL, AUTONOMOUS_MODEL_LIGHT
 from .patient_context import (
     format_whatsapp_header,
     get_patient,
@@ -768,6 +768,7 @@ async def _run_single_doc_task(
     patient_id: str = "erika",
     *,
     token: str | None = None,
+    model: str | None = None,
 ) -> dict:
     """Run a single-document autonomous task with standard logging."""
     logger.info(">>> Starting task: %s (doc %d, patient=%s)", task_name, document_id, patient_id)
@@ -776,7 +777,7 @@ async def _run_single_doc_task(
             prompt,
             max_turns=6,
             task_name=task_name,
-            model=AUTONOMOUS_MODEL_LIGHT,
+            model=model or AUTONOMOUS_MODEL_LIGHT,
             patient_id=patient_id,
         )
     except Exception as e:
@@ -962,8 +963,17 @@ Drug name mapping for Slovak documents:
 - If dose percentage reduction noted (e.g. "90% dávka"), dose_reduction_pct = 10
 - BSA (telesný povrch) typically 1.4–2.5 m²
 - If any field is illegible or missing, set to null rather than guessing
+
+Handwritten document handling:
+- Documents may be handwritten or partially handwritten (common in Slovak hospitals)
+- Common OCR ambiguities in handwritten text: 1↔7, 5↔6, 0↔O, 3↔8, comma↔period
+- If a dose value seems implausible (e.g. oxaliplatin >200 mg/m² or <20 mg/m²), flag as uncertain
+- Report confidence for each value: "high" (printed/clear),
+  "medium" (readable handwriting), "low" (partially illegible)
+- Include a "ocr_notes" field in metadata listing any values you're uncertain about
 """,
         patient_id=patient_id,
+        model=AUTONOMOUS_MODEL,
     )
 
 

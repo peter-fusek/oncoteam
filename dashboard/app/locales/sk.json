@@ -527,7 +527,10 @@
       "viewOnClinicalTrials": "Zobraziť na ClinicalTrials.gov",
       "related": "Súvisiace",
       "document": "Dokument",
-      "structuredOutput": "Štruktúrovaný výstup"
+      "structuredOutput": "Štruktúrovaný výstup",
+      "ocrText": "Text dokumentu (OCR)",
+      "page": "Strana",
+      "chars": "znakov"
     },
     "xp": {
       "level": "Úroveň {level}",

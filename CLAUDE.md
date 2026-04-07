@@ -6,7 +6,7 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 637 tests
+uv run pytest          # 688 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
@@ -224,7 +224,7 @@ When reviewing uploaded documents:
 
 ## Testing
 
-- `uv run pytest` — full suite (637 tests, ~4.5s)
+- `uv run pytest` — full suite (688 tests, ~4.5s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -237,7 +237,7 @@ When reviewing uploaded documents:
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 637 tests, ruff clean
+- 688 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables

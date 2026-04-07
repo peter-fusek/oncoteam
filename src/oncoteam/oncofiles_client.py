@@ -603,9 +603,17 @@ async def search_activity_log(
 async def list_agent_states(
     agent_id: str = "oncoteam", limit: int = 20, *, token: str | None = None
 ) -> dict:
-    return await call_oncofiles(
-        "list_agent_states", {"agent_id": agent_id, "limit": limit}, token=token
-    )
+    # Note: oncofiles list_agent_states does not accept 'limit' param.
+    # We fetch all and truncate client-side.
+    result = await call_oncofiles("list_agent_states", {"agent_id": agent_id}, token=token)
+    if limit:
+        if isinstance(result, dict):
+            states = result.get("states", [])
+            if len(states) > limit:
+                result["states"] = states[:limit]
+        elif isinstance(result, list) and len(result) > limit:
+            result = result[:limit]
+    return result
 
 
 async def get_treatment_event(event_id: int, *, token: str | None = None) -> dict:
@@ -819,5 +827,27 @@ async def create_patient_via_api(
 
     async with httpx.AsyncClient(timeout=15) as http:
         resp = await http.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def get_doc_detail(doc_id: int, *, token: str | None = None) -> dict:
+    """Fetch rich document detail via oncofiles REST API.
+
+    Returns metadata, preview_url, and per-page OCR text in a single call.
+    """
+    if not ONCOFILES_MCP_URL:
+        raise RuntimeError("ONCOFILES_MCP_URL not configured")
+
+    base = ONCOFILES_MCP_URL.removesuffix("/mcp")
+    url = f"{base}/api/doc-detail/{doc_id}"
+
+    bearer = token or ONCOFILES_MCP_TOKEN
+    headers: dict[str, str] = {}
+    if bearer:
+        headers["Authorization"] = f"Bearer {bearer}"
+
+    async with httpx.AsyncClient(timeout=15) as http:
+        resp = await http.get(url, headers=headers)
         resp.raise_for_status()
         return resp.json()

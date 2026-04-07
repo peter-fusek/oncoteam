@@ -59,7 +59,7 @@ from .patient_context import (
     get_patient_token,
 )
 
-VERSION = "0.44.0"
+VERSION = "0.64.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -2349,25 +2349,28 @@ async def api_detail(request: Request) -> JSONResponse:
             source["oncofiles_id"] = int(detail_id)
 
         elif detail_type == "document":
-            raw = await oncofiles_client.get_document(int(detail_id), token=token)
-            data = raw if isinstance(raw, dict) else {"raw": raw}
+            # Prefer REST doc-detail (single call: metadata + preview + pages)
+            try:
+                data = await oncofiles_client.get_doc_detail(int(detail_id), token=token)
+            except Exception:
+                # Fallback to MCP two-call approach
+                raw = await oncofiles_client.get_document(int(detail_id), token=token)
+                data = raw if isinstance(raw, dict) else {"raw": raw}
+                file_id = data.get("file_id")
+                if file_id:
+                    with contextlib.suppress(Exception):
+                        content = await oncofiles_client.view_document(file_id, token=token)
+                        data["content"] = content
             source["oncofiles_id"] = int(detail_id)
-            # Prefer gdrive_url from oncofiles v3.11+ response; fallback to computing from ID
             if data.get("gdrive_url"):
                 source["gdrive_url"] = data["gdrive_url"]
-            else:
-                gdrive_id = data.get("gdrive_file_id") or data.get("google_drive_id")
-                if gdrive_id:
-                    source["gdrive_file_id"] = gdrive_id
+            if data.get("preview_url"):
+                source["preview_url"] = data["preview_url"]
+            gdrive_id = data.get("gdrive_id") or data.get("gdrive_file_id")
+            if gdrive_id:
+                source["gdrive_file_id"] = gdrive_id
+                if not source.get("gdrive_url"):
                     source["gdrive_url"] = f"https://drive.google.com/file/d/{gdrive_id}/view"
-            # Fetch full content if file_id is available
-            file_id = data.get("file_id")
-            if file_id:
-                try:
-                    content = await oncofiles_client.view_document(file_id, token=token)
-                    data["content"] = content
-                except Exception:
-                    pass  # Content fetch failed — metadata still available
 
         elif detail_type == "biomarker":
             # Static from patient context

@@ -527,7 +527,10 @@
       "viewOnClinicalTrials": "View on ClinicalTrials.gov",
       "related": "Related",
       "document": "Document",
-      "structuredOutput": "Structured Output"
+      "structuredOutput": "Structured Output",
+      "ocrText": "Document Text (OCR)",
+      "page": "Page",
+      "chars": "chars"
     },
     "xp": {
       "level": "Level {level}",

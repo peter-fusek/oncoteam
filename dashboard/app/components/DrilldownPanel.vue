@@ -116,6 +116,25 @@ function isActivityType(): boolean {
     <!-- Detail content -->
     <div v-else-if="detail?.data" class="px-4 pb-4 space-y-4">
 
+      <!-- Document: embedded GDrive preview -->
+      <div v-if="detail.type === 'document' && detail.source?.preview_url" class="rounded-lg border border-gray-200 overflow-hidden">
+        <iframe
+          :src="detail.source.preview_url"
+          class="w-full h-80 border-0"
+          allow="autoplay"
+          loading="lazy"
+        />
+      </div>
+
+      <!-- Document: per-page OCR text -->
+      <div v-if="detail.type === 'document' && Array.isArray(detail.data.pages) && detail.data.pages.length" class="space-y-2">
+        <div class="text-xs text-gray-500 uppercase tracking-wider">{{ t('components.drilldown.ocrText') }}</div>
+        <div v-for="page in (detail.data.pages as Array<{page_number: number, text: string, char_count: number}>)" :key="page.page_number" class="rounded-lg border border-gray-200 p-3">
+          <div class="text-xs text-gray-500 mb-1">{{ t('components.drilldown.page') }} {{ page.page_number }} ({{ page.char_count }} {{ t('components.drilldown.chars') }})</div>
+          <div class="text-sm text-gray-700 whitespace-pre-wrap break-words max-h-48 overflow-auto">{{ page.text }}</div>
+        </div>
+      </div>
+
       <!-- Research: relevance badge + external link -->
       <div v-if="detail.data.relevance" class="flex items-center gap-3 flex-wrap">
         <UBadge
