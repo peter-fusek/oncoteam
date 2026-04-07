@@ -106,16 +106,30 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=48">
+  <link rel="stylesheet" href="style.css?v=49">
 </head>
 <body>
   <!-- Navigation -->
   <nav class="top-nav">
     <div class="container nav-container">
-      <a href="/" class="logo">oncoteam</a>
+      <div class="nav-left">
+        <a href="https://oncofiles.com" class="nav-product-link nav-product-back" title="Oncofiles — Data Layer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>onco<strong>files</strong></span>
+        </a>
+        <a href="/" class="logo">oncoteam</a>
+        <a href="https://dashboard.oncoteam.cloud" class="nav-product-link nav-product-fwd" title="Oncoteam Dashboard">
+          <span data-i18n="nav.dashboard">Dashboard</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+      </div>
       <div class="nav-right">
+        <nav class="nav-links">
+          <a href="#how-it-works" class="nav-link" data-i18n="nav.how">How it works</a>
+          <a href="#features" class="nav-link" data-i18n="nav.features">Features</a>
+          <a href="#get-started" class="nav-link" data-i18n="nav.getstarted">Get Started</a>
+        </nav>
         <a href="https://dashboard.oncoteam.cloud/demo" class="btn btn-primary btn-sm" data-i18n="nav.demo">Try Demo</a>
-        <a href="https://dashboard.oncoteam.cloud" class="btn btn-secondary btn-sm" data-i18n="nav.dashboard">Dashboard</a>
         <a href="https://github.com/peter-fusek/oncoteam" class="btn btn-sm btn-ghost">GitHub</a>
         <div class="lang-switcher">
           <button class="lang-btn active" data-lang="en">EN</button>
@@ -283,7 +297,7 @@
           </div>
           <div class="hiw-num">2</div>
           <h3 data-i18n="hiw.step2.title">AI Processes Everything</h3>
-          <p data-i18n="hiw.step2.text">Oncofiles structures the documents automatically. Oncoteam's 19 AI agents analyze them — tracking trends, checking safety, searching for trials.</p>
+          <p data-i18n="hiw.step2.text">Oncofiles structures the documents automatically. Oncoteam's 20 AI agents analyze them — tracking trends, checking safety, searching for trials.</p>
         </div>
         <div class="hiw-arrow">
           <svg width="40" height="24" viewBox="0 0 40 24"><path d="M0 12h32M26 6l8 6-8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -343,11 +357,11 @@
     <div class="container">
       <div class="stats-grid">
         <div class="stat">
-          <div class="stat-num">19</div>
+          <div class="stat-num">20</div>
           <div class="stat-label" data-i18n="stats.agents">AI Agents Working 24/7</div>
         </div>
         <div class="stat">
-          <div class="stat-num">684</div>
+          <div class="stat-num">681</div>
           <div class="stat-label" data-i18n="stats.tests">Automated Tests Passing</div>
         </div>
         <div class="stat">
@@ -689,7 +703,7 @@
       <p>&copy; 2026 Oncoteam. <span data-i18n="footer.rights">Built by a patient advocate, for patient advocates.</span></p>
       <p class="footer-note" data-i18n="footer.disclaimer">Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.</p>
       <p class="footer-note" style="margin-top:0.5rem"><span data-i18n="footer.instarea">An</span> <a href="https://www.instarea.com" class="story-link" target="_blank" rel="noopener">Instarea</a> <span data-i18n="footer.instarea2">project.</span></p>
-      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.59.0</p>
+      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.63.0</p>
     </div>
   </footer>
 
