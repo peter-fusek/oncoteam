@@ -506,6 +506,13 @@ _patient_registry: dict[str, PatientProfile] = {"erika": PATIENT, "e5g": PATIENT
 # Erika uses the default ONCOFILES_MCP_TOKEN from config.
 _patient_tokens: dict[str, str] = {}  # patient_id → bearer token
 
+# Auto-populate tokens from env vars: ONCOFILES_MCP_TOKEN_<ID> (e.g. ONCOFILES_MCP_TOKEN_E5G)
+for _pid in list(_patient_registry.keys()):
+    _env_key = f"ONCOFILES_MCP_TOKEN_{_pid.upper()}"
+    _tok = os.environ.get(_env_key, "")
+    if _tok:
+        _patient_tokens[_pid] = _tok
+
 # Per-patient research terms. Erika's are hardcoded; others derived from profile.
 _patient_research_terms: dict[str, list[str]] = {"erika": RESEARCH_TERMS, "e5g": []}
 
