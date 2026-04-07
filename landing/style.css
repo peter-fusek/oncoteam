@@ -247,6 +247,71 @@ body {
   border-color: var(--primary);
 }
 
+/* ── Testimonial ────────────────────────────── */
+.testimonial {
+  padding: 80px 0;
+  background: var(--bg-alt);
+}
+
+.testimonial-card {
+  max-width: 680px;
+  margin: 0 auto;
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 40px 44px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+  position: relative;
+}
+
+.testimonial-mark {
+  position: absolute;
+  top: 24px;
+  left: 32px;
+  color: var(--primary);
+}
+
+.testimonial-quote p {
+  font-size: 1.08rem;
+  line-height: 1.85;
+  color: var(--text);
+  font-style: italic;
+  margin-bottom: 24px;
+  padding-left: 4px;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.testimonial-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.testimonial-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.testimonial-role {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 /* ── Manifesto ───────────────────────────────── */
 .manifesto {
   padding: 64px 0;
@@ -277,6 +342,79 @@ body {
   left: 50%;
   transform: translateX(-50%);
   font-style: normal;
+}
+
+/* ── How it works ───────────────────────────── */
+.how-it-works {
+  padding: 100px 0;
+  background: var(--bg);
+}
+
+.hiw-steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin-top: 48px;
+}
+
+.hiw-step {
+  flex: 1;
+  max-width: 300px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.hiw-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  box-shadow: 0 0 0 6px rgba(13,115,84,0.06);
+}
+
+.hiw-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+
+.hiw-num::before {
+  content: 'Step ';
+}
+
+html[lang="sk"] .hiw-num::before {
+  content: 'Krok ';
+}
+
+.hiw-step h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.hiw-step p {
+  font-size: 0.92rem;
+  color: var(--text-light);
+  line-height: 1.7;
+}
+
+.hiw-arrow {
+  display: flex;
+  align-items: center;
+  padding-top: 32px;
+  color: var(--primary);
+  opacity: 0.35;
+  flex-shrink: 0;
 }
 
 /* ── Reality ─────────────────────────────────── */
@@ -1329,8 +1467,13 @@ body {
   .hero { padding: 120px 0 70px; }
   .section-title { font-size: 1.7rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  .features, .get-started, .reality, .contact, .privacy, .ecosystem { padding: 70px 0; }
+  .features, .get-started, .reality, .contact, .privacy, .ecosystem, .how-it-works { padding: 70px 0; }
   .manifesto { padding: 48px 0; }
+  .testimonial { padding: 60px 0; }
+  .testimonial-card { padding: 28px 24px; }
+  .hiw-steps { flex-direction: column; align-items: center; gap: 8px; }
+  .hiw-arrow { transform: rotate(90deg); padding-top: 0; }
+  .hiw-step { max-width: 100%; }
   .demo { padding: 60px 0 70px; }
   .mock-grid { grid-template-columns: 1fr; }
   .mock-funnel { flex-direction: column; }

@@ -106,7 +106,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
   <!-- Navigation -->
@@ -137,7 +137,7 @@
       <p class="hero-sub" data-i18n="hero.subtitle">Oncoteam helps you understand the treatment, ask the right questions, find clinical trials, and make sure nothing gets overlooked — all from your phone.</p>
       <div class="hero-cta">
         <a href="https://dashboard.oncoteam.cloud/demo" class="btn btn-primary" data-i18n="hero.demo">Try Live Demo</a>
-        <a href="https://dashboard.oncoteam.cloud" class="btn btn-secondary" data-i18n="hero.cta">Open Dashboard</a>
+        <a href="#how-it-works" class="btn btn-secondary" data-i18n="hero.how">See How It Works</a>
         <a href="https://github.com/peter-fusek/oncoteam" class="btn btn-ghost" data-i18n="hero.github">View on GitHub</a>
       </div>
     </div>
@@ -260,6 +260,46 @@
     </div>
   </section>
 
+  <!-- How it works -->
+  <section id="how-it-works" class="how-it-works">
+    <div class="container">
+      <h2 class="section-title" data-i18n="hiw.title">How It Works</h2>
+      <p class="section-subtitle" data-i18n="hiw.subtitle">From a pile of medical paperwork to a clear picture — in three steps.</p>
+      <div class="hiw-steps">
+        <div class="hiw-step">
+          <div class="hiw-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="hiw-num">1</div>
+          <h3 data-i18n="hiw.step1.title">Upload Documents</h3>
+          <p data-i18n="hiw.step1.text">Scan or photograph your lab results, CT scans, pathology reports — drop them into a Google Drive folder. That's it.</p>
+        </div>
+        <div class="hiw-arrow">
+          <svg width="40" height="24" viewBox="0 0 40 24"><path d="M0 12h32M26 6l8 6-8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="hiw-step">
+          <div class="hiw-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          </div>
+          <div class="hiw-num">2</div>
+          <h3 data-i18n="hiw.step2.title">AI Processes Everything</h3>
+          <p data-i18n="hiw.step2.text">Oncofiles structures the documents automatically. Oncoteam's 19 AI agents analyze them — tracking trends, checking safety, searching for trials.</p>
+        </div>
+        <div class="hiw-arrow">
+          <svg width="40" height="24" viewBox="0 0 40 24"><path d="M0 12h32M26 6l8 6-8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="hiw-step">
+          <div class="hiw-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+          </div>
+          <div class="hiw-num">3</div>
+          <h3 data-i18n="hiw.step3.title">Understand & Act</h3>
+          <p data-i18n="hiw.step3.text">Open the dashboard or chat on WhatsApp — get lab interpretations, safety alerts, trial matches, and questions to ask your oncologist.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Why — The Reality -->
   <section id="why" class="reality">
     <div class="container">
@@ -303,20 +343,20 @@
     <div class="container">
       <div class="stats-grid">
         <div class="stat">
-          <div class="stat-num">18</div>
-          <div class="stat-label" data-i18n="stats.agents">AI Agents Working for You</div>
+          <div class="stat-num">19</div>
+          <div class="stat-label" data-i18n="stats.agents">AI Agents Working 24/7</div>
         </div>
         <div class="stat">
-          <div class="stat-num">50+</div>
-          <div class="stat-label" data-i18n="stats.tasks">Tasks per Patient per Week</div>
+          <div class="stat-num">684</div>
+          <div class="stat-label" data-i18n="stats.tests">Automated Tests Passing</div>
         </div>
         <div class="stat">
           <div class="stat-num">500+</div>
           <div class="stat-label" data-i18n="stats.trials">Clinical Trials Monitored</div>
         </div>
         <div class="stat">
-          <div class="stat-num">6</div>
-          <div class="stat-label" data-i18n="stats.roles">Specialist Roles</div>
+          <div class="stat-num">2</div>
+          <div class="stat-label" data-i18n="stats.patients">Patients in Active Use</div>
         </div>
       </div>
     </div>
@@ -381,6 +421,25 @@
           <p data-i18n="story.p1">When Erika was diagnosed with metastatic colorectal cancer, her husband Peter — a software engineer, not a doctor — found himself buried in lab results, genetic reports, and treatment protocols he didn't understand. Every oncologist visit felt too short. Every new test raised questions he didn't know how to ask.</p>
           <p data-i18n="story.p2">So he built Oncoteam. Not as a replacement for their oncologist, but as a tool to help him keep up — to understand the numbers, prepare the right questions, track what's changing, and search for clinical trials that no single doctor has time to systematically monitor across Europe and the US.</p>
           <p data-i18n="story.p3">Alongside Oncoteam, he built <a href="https://oncofiles.com" class="story-link">Oncofiles</a> — the data layer that organizes all medical documents from Google Drive: lab results, pathology reports, CT scans, genetic tests. Oncofiles structures and connects them. Oncoteam makes them useful — it's the intelligence layer that turns raw medical data into understanding, questions, and action.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonial -->
+  <section class="testimonial">
+    <div class="container">
+      <div class="testimonial-card">
+        <div class="testimonial-quote">
+          <svg class="testimonial-mark" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" opacity="0.15"><path d="M11 7H7a4 4 0 0 0-4 4v1a3 3 0 0 0 3 3h1a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4H4a1 1 0 0 1 0-2h1a2 2 0 0 0 2-2v-1H6a5 5 0 0 1-5-5v-1a6 6 0 0 1 6-6h4a1 1 0 0 1 0 2zm13 0h-4a4 4 0 0 0-4 4v1a3 3 0 0 0 3 3h1a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1a1 1 0 0 1 0-2h1a2 2 0 0 0 2-2v-1h-1a5 5 0 0 1-5-5v-1a6 6 0 0 1 6-6h4a1 1 0 0 1 0 2z"/></svg>
+          <p data-i18n="testimonial.quote">Before Oncoteam, I'd walk into the oncologist's office with a folder of papers I barely understood. Now I walk in with specific questions, trend charts, and trial options I've already reviewed. The doctor noticed the difference by the second visit.</p>
+        </div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">PF</div>
+          <div>
+            <div class="testimonial-name">Peter Fusek</div>
+            <div class="testimonial-role" data-i18n="testimonial.role">Patient advocate & founder</div>
+          </div>
         </div>
       </div>
     </div>
@@ -575,7 +634,7 @@
       <p class="contact-sub" data-i18n="contact.subtitle">Oncoteam was built for a real patient by a family member who needed it. If you're in a similar situation and want to learn more, reach out — we've been there.</p>
       <p class="contact-author">
         <a href="https://www.linkedin.com/in/peterfusek/" class="story-link"><strong>Peter Fusek</strong></a>
-        <span data-i18n="contact.role"> — Engineering Manager & Founder</span>
+        <span data-i18n="contact.role"> — Entrepreneur & Founder</span>
       </p>
       <div class="contact-links">
         <a href="https://github.com/peter-fusek/oncoteam/issues/new" class="contact-link">
@@ -630,11 +689,11 @@
       <p>&copy; 2026 Oncoteam. <span data-i18n="footer.rights">Built by a patient advocate, for patient advocates.</span></p>
       <p class="footer-note" data-i18n="footer.disclaimer">Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.</p>
       <p class="footer-note" style="margin-top:0.5rem"><span data-i18n="footer.instarea">An</span> <a href="https://www.instarea.com" class="story-link" target="_blank" rel="noopener">Instarea</a> <span data-i18n="footer.instarea2">project.</span></p>
-      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.46.0</p>
+      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.59.0</p>
     </div>
   </footer>
 
-  <script src="i18n.js?v=48"></script>
+  <script src="i18n.js?v=49"></script>
   <script>
   // Demo tab switching with auto-rotate
   (function() {
