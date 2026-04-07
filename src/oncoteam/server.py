@@ -56,6 +56,7 @@ from .dashboard_api import (
     api_onboard_patient,
     api_onboarding_status,
     api_patient,
+    api_patients,
     api_preventive_care,
     api_protocol,
     api_protocol_cycles,
@@ -1032,6 +1033,48 @@ async def get_clinical_protocol(section: str | None = None, lang: str = "en") ->
     return json.dumps(protocol, default=str)
 
 
+# ── Multi-patient tools ────────────────────────────
+
+
+@mcp.tool()
+@log_activity
+async def list_patients() -> str:
+    """List all active patients with document counts and current selection.
+
+    Returns:
+        JSON array of patients with slug, name, doc_count, patient_type,
+        and is_current flag.
+    """
+    _pid, _tok = _get_mcp_patient_token()
+    try:
+        result = await oncofiles_client.list_patients(token=_tok)
+        return json.dumps(result, default=str)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+@log_activity
+async def select_patient(patient_slug: str) -> str:
+    """Switch the active patient for this session.
+
+    All subsequent tool calls will return data for the selected patient.
+    Pass slug (e.g. 'erika', 'e5g') or UUID.
+
+    Args:
+        patient_slug: Patient slug or UUID to switch to.
+
+    Returns:
+        JSON with switch confirmation, patient slug, and document count.
+    """
+    _pid, _tok = _get_mcp_patient_token()
+    try:
+        result = await oncofiles_client.select_patient(patient_slug, token=_tok)
+        return json.dumps(result, default=str)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 # ── Health check ────────────────────────────────
 
 
@@ -1080,6 +1123,7 @@ _API_ROUTES = [
     ("/api/family-update", api_family_update),
     ("/api/cumulative-dose", api_cumulative_dose),
     ("/api/agents", api_agents),
+    ("/api/patients", api_patients),
 ]
 
 _POST_ROUTES = {"/api/toxicity", "/api/labs", "/api/medications", "/api/family-update"}

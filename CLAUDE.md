@@ -13,7 +13,7 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Project structure
 
-- `src/oncoteam/server.py` — MCP server, 24 tools + 21 dashboard API routes (6 POST, 2 parameterized), system instructions with biomarker rules + QA protocol
+- `src/oncoteam/server.py` — MCP server, 26 tools + 22 dashboard API routes (6 POST, 2 parameterized), system instructions with biomarker rules + QA protocol
 - `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,agent-runs,detail/{type}/{id},internal/document-webhook,internal/trigger-agent}
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking

@@ -831,6 +831,16 @@ async def create_patient_via_api(
         return resp.json()
 
 
+async def list_patients(*, token: str | None = None) -> dict:
+    """List all active patients via oncofiles MCP."""
+    return await call_oncofiles("list_patients", {}, token=token)
+
+
+async def select_patient(patient_slug: str, *, token: str | None = None) -> dict:
+    """Switch active patient for the current oncofiles connection."""
+    return await call_oncofiles("select_patient", {"patient_slug": patient_slug}, token=token)
+
+
 async def get_doc_detail(doc_id: int, *, token: str | None = None) -> dict:
     """Fetch rich document detail via oncofiles REST API.
 

@@ -4281,6 +4281,36 @@ async def api_whatsapp_media(request: Request) -> JSONResponse:
     )
 
 
+async def api_patients(request: Request) -> JSONResponse:
+    """GET /api/patients — list all active patients with doc counts."""
+    token = _get_token_for_patient(_get_patient_id(request))
+    try:
+        result = await oncofiles_client.list_patients(token=token)
+        patients = result if isinstance(result, list) else result.get("patients", [])
+        return _cors_json({"patients": patients}, request=request)
+    except Exception as exc:
+        record_suppressed_error("api_patients", "list_patients", exc)
+        # Fallback to local registry
+        from .patient_context import get_patient, list_patient_ids
+
+        patients = []
+        for pid in list_patient_ids():
+            try:
+                p = get_patient(pid)
+                patients.append(
+                    {
+                        "slug": pid,
+                        "name": p.name,
+                        "patient_type": (
+                            "general" if p.diagnosis_code.startswith("Z") else "oncology"
+                        ),
+                    }
+                )
+            except Exception:
+                continue
+        return _cors_json({"patients": patients, "source": "local"}, request=request)
+
+
 async def api_onboard_patient(request: Request) -> JSONResponse:
     """POST /api/internal/onboard-patient — create a new patient in oncofiles and register locally.
 

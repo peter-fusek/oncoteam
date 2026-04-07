@@ -1,11 +1,11 @@
-import { addApprovedPhone } from './approved-phones'
+import { addApprovedPhone, setPhonePatient, resolvePatientIdFromPhone } from './approved-phones'
 
 const MAX_REPLY_LENGTH = 1500
 
 type Lang = 'sk' | 'en'
 
-const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval'])
-const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve'])
+const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval', 'prepni', 'pacienti'])
+const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve', 'switch', 'patients'])
 
 const COMMAND_MAP: Record<string, string> = {
   // Slovak
@@ -18,6 +18,8 @@ const COMMAND_MAP: Record<string, string> = {
   studie: 'trials',
   cyklus: 'cycle',
   schval: 'approve',
+  prepni: 'switch',
+  pacienti: 'patients',
   // English
   labs: 'labs',
   meds: 'meds',
@@ -30,6 +32,8 @@ const COMMAND_MAP: Record<string, string> = {
   trials: 'trials',
   cycle: 'cycle',
   approve: 'approve',
+  switch: 'switch',
+  patients: 'patients',
 }
 
 function detectLang(input: string): Lang {
@@ -305,10 +309,12 @@ Commands:
 • *timeline* / *casovka* — Treatment events
 • *briefing* — Latest briefing
 • *cost* / *naklady* — AI agent cost & budget
+• *patients* / *pacienti* — List patients
+• *switch <slug>* / *prepni <meno>* — Switch patient
 • *status* / *stav* — System status
 • *help* / *pomoc* — This help
 
-Send a command to get a response.`
+Send a command or a question.`
   }
 
   return `*Oncoteam WhatsApp*
@@ -320,11 +326,13 @@ Prikazy:
 • *studie* / *trials* — Klinicke studie
 • *casovka* / *timeline* — Udalosti liecby
 • *briefing* — Posledny briefing
-• *naklady* / *cost* — Náklady a rozpočet AI agenta
+• *naklady* / *cost* — Naklady a rozpocet AI agenta
+• *pacienti* / *patients* — Zoznam pacientov
+• *prepni <meno>* / *switch <slug>* — Prepni pacienta
 • *stav* / *status* — Stav systemu
 • *pomoc* / *help* — Tento help
 
-Posli prikaz a dostanes odpoved.`
+Posli prikaz alebo otazku.`
 }
 
 export type CommandResult =
@@ -355,6 +363,77 @@ function normalizeApprovalPhone(raw: string): string {
   return phone
 }
 
+function handleSwitchCommand(
+  body: string,
+  lang: Lang,
+  fromPhone?: string,
+): CommandResult {
+  const parts = body.trim().split(/\s+/)
+  const slug = parts[1]?.toLowerCase()
+
+  if (!slug) {
+    return {
+      type: 'reply',
+      text: t(L(
+        'Pouzitie: *prepni erika* alebo *prepni e5g*\n\nPouzi *pacienti* pre zoznam.',
+        'Usage: *switch erika* or *switch e5g*\n\nUse *patients* to list available.',
+      ), lang),
+    }
+  }
+
+  if (fromPhone) {
+    setPhonePatient(fromPhone.replace(/[\s\-()]/g, ''), slug)
+  }
+
+  return {
+    type: 'reply',
+    text: t(L(
+      `Prepnute na pacienta: *${slug}*\n\nVsetky prikazy teraz zobrazuju data pre ${slug}.`,
+      `Switched to patient: *${slug}*\n\nAll commands now show data for ${slug}.`,
+    ), lang),
+  }
+}
+
+async function handlePatientsCommand(
+  oncoteamApiUrl: string,
+  lang: Lang,
+  fromPhone?: string,
+  currentPatientId?: string,
+): Promise<CommandResult> {
+  try {
+    const config = useRuntimeConfig()
+    const apiKey = config.oncoteamApiKey || ''
+    const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+    const data = await $fetch<{ patients: Array<{ slug: string; name?: string; doc_count?: number; patient_type?: string; is_current?: boolean }> }>(
+      `${oncoteamApiUrl}/api/patients`,
+      { headers },
+    )
+
+    const patients = data.patients || []
+    if (!patients.length) {
+      return { type: 'reply', text: t(L('Ziadni pacienti.', 'No patients found.'), lang) }
+    }
+
+    const current = currentPatientId || resolvePatientIdFromPhone(fromPhone?.replace(/[\s\-()]/g, '') || '')
+    const header = t(L('*Pacienti*\n', '*Patients*\n'), lang)
+    let text = header
+    for (const p of patients) {
+      const active = p.slug === current || p.is_current ? ' ← ' + t(L('aktívny', 'active'), lang) : ''
+      const docs = p.doc_count != null ? ` (${p.doc_count} docs)` : ''
+      text += `\n👤 *${p.slug}*${p.name ? ` — ${p.name}` : ''}${docs}${active}`
+    }
+    text += `\n\n${t(L('Pouzi *prepni <meno>* na zmenu.', 'Use *switch <slug>* to change.'), lang)}`
+    return { type: 'reply', text: truncate(text) }
+  }
+  catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return {
+      type: 'reply',
+      text: t(L(`Chyba: ${message}`, `Error: ${message}`), lang),
+    }
+  }
+}
+
 export async function handleWhatsAppCommand(
   body: string,
   oncoteamApiUrl: string,
@@ -372,6 +451,16 @@ export async function handleWhatsAppCommand(
   // Admin-only: approve command
   if (command === 'approve') {
     return handleApproveCommand(body, oncoteamApiUrl, lang, fromPhone)
+  }
+
+  // Patient switching: "prepni erika" / "switch e5g"
+  if (command === 'switch') {
+    return handleSwitchCommand(body, lang, fromPhone)
+  }
+
+  // List patients: "pacienti" / "patients"
+  if (command === 'patients') {
+    return handlePatientsCommand(oncoteamApiUrl, lang, fromPhone, options?.patientId)
   }
 
   // Conversational fallback — handled async (Claude API takes 30-60s,

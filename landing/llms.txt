@@ -39,7 +39,7 @@ An [Instarea](https://www.instarea.com) project.
 - 50+ tasks per patient per week (briefings, trial searches, lab checks, alerts)
 - 500+ clinical trials monitored across US and EU registries
 - 2 patients in active use (oncology + general health)
-- 24 MCP tools, 21 dashboard API routes
+- 26 MCP tools, 22 dashboard API routes
 - 688 passing tests
 - Multi-patient support with per-patient scheduling, OAuth, and data isolation
 
