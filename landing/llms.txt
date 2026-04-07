@@ -30,18 +30,18 @@ An [Instarea](https://www.instarea.com) project.
 - Provides bilingual interface (Slovak/English) with medical and plain-language modes
 - Generates family-friendly treatment summaries shareable via WhatsApp or print
 - WhatsApp onboarding: 8-step state machine with media attachments and admin approval
-- 18 autonomous AI agents for monitoring, research, and reporting
+- 19 autonomous AI agents for monitoring, research, and reporting
 - Stores all patient data in your own Google Drive (GDPR compliant)
 
 ## Stats
 
-- 18 AI agents working autonomously per patient
+- 19 AI agents working autonomously per patient
 - 50+ tasks per patient per week (briefings, trial searches, lab checks, alerts)
 - 500+ clinical trials monitored across US and EU registries
-- 6 specialist roles (lab analyst, trial researcher, protocol checker, briefing writer, family communicator, appointment prep)
+- 2 patients in active use (oncology + general health)
 - 24 MCP tools, 21 dashboard API routes
-- 630 passing tests, ~10,700 lines of Python
-- Multi-patient support with per-patient scheduling and OAuth
+- 684 passing tests
+- Multi-patient support with per-patient scheduling, OAuth, and data isolation
 
 ## Architecture
 
