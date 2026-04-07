@@ -3916,7 +3916,8 @@ async def api_bug_report(request: Request) -> JSONResponse:
 async def api_document_webhook(request: Request) -> JSONResponse:
     """POST /api/internal/document-webhook — triggered by oncofiles on new upload.
 
-    Expects JSON body: {document_id: int, filename?: str, category?: str, uploaded_at?: str}
+    Expects JSON body: {document_id: int, patient_id?: str, filename?: str,
+    category?: str, uploaded_at?: str}
     Launches the document pipeline as a background task.
     """
     import asyncio
@@ -3941,8 +3942,11 @@ async def api_document_webhook(request: Request) -> JSONResponse:
             {"error": "document_id must be a positive integer"}, status_code=400, request=request
         )
 
+    patient_id = body.get("patient_id", DEFAULT_PATIENT_ID)
+    token = _get_token_for_patient(patient_id)
+
     # Quick dedup check before launching background task
-    existing = await _get_state(f"pipeline:{document_id}")
+    existing = await _get_state(f"pipeline:{document_id}", token=token)
     if _extract_timestamp(existing):
         return _cors_json(
             {"status": "already_processed", "document_id": document_id}, request=request
@@ -3954,10 +3958,13 @@ async def api_document_webhook(request: Request) -> JSONResponse:
         "uploaded_at": body.get("uploaded_at", ""),
     }
 
-    asyncio.create_task(run_document_pipeline(document_id, metadata))
-    _logger.info("Document pipeline started for doc %d", document_id)
+    asyncio.create_task(run_document_pipeline(document_id, metadata, patient_id=patient_id))
+    _logger.info("Document pipeline started for doc %d (patient=%s)", document_id, patient_id)
 
-    return _cors_json({"status": "pipeline_started", "document_id": document_id}, request=request)
+    return _cors_json(
+        {"status": "pipeline_started", "document_id": document_id, "patient_id": patient_id},
+        request=request,
+    )
 
 
 async def api_trigger_agent(request: Request) -> JSONResponse:

@@ -44,6 +44,11 @@ def test_pipeline_agent_in_registry():
         ("Some random document", {}, "other"),
         # Metadata category takes precedence
         ("This looks like a visit note", {"category": "pathology"}, "pathology"),
+        # Chemo sheet classification
+        ("", {"category": "chemo_sheet"}, "chemo_sheet"),
+        ("", {"category": "chemo"}, "chemo_sheet"),
+        ("Chemoterapia mFOLFOX6 cyklus 2", {}, "chemo_sheet"),
+        ("Oxaliplatina 85 mg/m2 infusion", {}, "chemo_sheet"),
     ],
 )
 def test_classify_doc_type(response, metadata, expected):
@@ -173,6 +178,48 @@ async def test_pipeline_error_handling():
     assert result["steps"][0]["step"] == "file_scan"
 
 
+@pytest.mark.anyio
+async def test_pipeline_dispatches_chemo_sheet():
+    """Chemo sheet classification triggers dose_extraction_single downstream."""
+    mock_scan = AsyncMock(
+        return_value={
+            "response": "Chemoterapia mFOLFOX6 oxaliplatina 130mg",
+            "cost": 0.01,
+            "tool_calls": [{"name": "view_document"}],
+            "error": None,
+            "model": "haiku",
+            "duration_ms": 500,
+        }
+    )
+    mock_dose = AsyncMock(
+        return_value={
+            "response": "Extracted oxaliplatin 85mg/m2",
+            "cost": 0.005,
+            "tool_calls": [],
+            "error": None,
+            "model": "haiku",
+            "duration_ms": 400,
+        }
+    )
+
+    with (
+        patch("oncoteam.autonomous_tasks._get_state", AsyncMock(return_value={})),
+        patch("oncoteam.autonomous_tasks._set_state", AsyncMock()),
+        patch("oncoteam.autonomous_tasks._log_task", AsyncMock()),
+        patch("oncoteam.autonomous_tasks.run_file_scan_single", mock_scan),
+        patch("oncoteam.autonomous_tasks.run_dose_extraction_single", mock_dose),
+        patch("oncoteam.autonomous_tasks._send_whatsapp", AsyncMock()),
+    ):
+        result = await run_document_pipeline(400, {"category": "chemo_sheet"})
+
+    assert result["doc_type"] == "chemo_sheet"
+    assert result["document_id"] == 400
+    assert len(result["steps"]) == 2
+    assert result["steps"][0]["step"] == "file_scan"
+    assert result["steps"][1]["step"] == "dose_extraction"
+    assert result["cost"] == pytest.approx(0.015)
+
+
 # ── Webhook endpoint ───────────────────────────
 
 
@@ -281,3 +328,34 @@ async def test_webhook_deduplication():
         resp = await api_document_webhook(request)
     data = json.loads(resp.body)
     assert data["status"] == "already_processed"
+
+
+@pytest.mark.anyio
+async def test_webhook_passes_patient_id():
+    """Webhook should pass patient_id to pipeline and use patient-specific token."""
+    from oncoteam.dashboard_api import api_document_webhook
+
+    request = _make_request({"document_id": 99, "patient_id": "e5g", "category": "lab"})
+    mock_pipeline = AsyncMock(return_value={"ok": True})
+    mock_get_state = AsyncMock(return_value={})
+
+    with (
+        patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
+        patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"),
+        patch("oncoteam.autonomous_tasks._get_state", mock_get_state),
+        patch(
+            "oncoteam.autonomous_tasks._extract_timestamp",
+            return_value="",
+        ),
+        patch("oncoteam.autonomous_tasks.run_document_pipeline", mock_pipeline),
+    ):
+        resp = await api_document_webhook(request)
+
+    data = json.loads(resp.body)
+    assert data["status"] == "pipeline_started"
+    assert data["patient_id"] == "e5g"
+
+    # Verify pipeline was called with patient_id
+    mock_pipeline.assert_called_once()
+    call_kwargs = mock_pipeline.call_args
+    assert call_kwargs[1]["patient_id"] == "e5g"
