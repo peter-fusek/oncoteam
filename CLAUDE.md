@@ -197,6 +197,10 @@ When reviewing uploaded documents:
 - `_DEFAULT_MEDICATIONS` in `dashboard_api.py` is empty — real medication data comes from oncofiles.
 - Load tests in `tests/load/` — always run after concurrency changes.
 - **Always run `uv run ruff format --check` after agent edits** — agents frequently miss formatting.
+- `/api/diagnostics` nests `oncofiles_rss_mb` inside `circuit_breaker` — dashboard must read `circuit_breaker.oncofiles_rss_mb`, NOT top-level `oncofiles_rss_mb`.
+- `_rss_history` ring buffer (60 entries, ~1hr) in `oncofiles_client.py` — exposed via `get_circuit_breaker_status()["rss_history"]`. Resets on deploy.
+- `api_cumulative_dose` reads actual dose from `patient.active_therapies` oxaliplatin entry (76.5 mg/m²), falls back to protocol standard (85). Don't use hardcoded `dose_per_cycle` for patient-specific calculations.
+- Dictionary links pattern: `<NuxtLink :to="\`/dictionary?q=${term}\`" class="underline decoration-dotted decoration-gray-400 hover:decoration-green-600 hover:text-green-700 transition-colors">`. Used in LabThresholdTable, PreCycleChecklist, toxicity ECOG, labs headers, home page labs, EmergencyAlert.
 
 ## Key commands
 
