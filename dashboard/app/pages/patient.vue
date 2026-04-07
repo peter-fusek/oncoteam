@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 const { activeRole } = useUserRole()
+const { isOncology } = usePatientType()
 
 const { data: patient, status: patientStatus, error: patientError } = fetchApi<{
   name: string
@@ -175,7 +176,7 @@ const abbreviations: Record<string, string> = {
     </div>
 
     <!-- Active Therapies -->
-    <div v-if="activeTherapies.length">
+    <div v-if="isOncology && activeTherapies.length">
       <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.activeTherapies') }}</h2>
       <div class="space-y-3">
         <div
@@ -212,7 +213,7 @@ const abbreviations: Record<string, string> = {
     </div>
 
     <!-- Planned Therapies (with warnings) -->
-    <div v-if="plannedTherapies.length">
+    <div v-if="isOncology && plannedTherapies.length">
       <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.plannedTherapies') }}</h2>
       <div class="space-y-3">
         <div
@@ -278,7 +279,7 @@ const abbreviations: Record<string, string> = {
     </div>
 
     <!-- Genomic Profile Cards (hidden for patient role) -->
-    <div v-if="activeRole !== 'patient'">
+    <div v-if="isOncology && activeRole !== 'patient'">
       <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.genomicProfile') }}</h2>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <BiomarkerCard
@@ -293,7 +294,7 @@ const abbreviations: Record<string, string> = {
     </div>
 
     <!-- Excluded Therapies (hidden for patient role) -->
-    <div v-if="excludedTherapies.length && activeRole !== 'patient'">
+    <div v-if="isOncology && excludedTherapies.length && activeRole !== 'patient'">
       <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.excludedTherapies') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div
@@ -313,7 +314,7 @@ const abbreviations: Record<string, string> = {
     </div>
 
     <!-- Safety Flags (hidden for patient role) -->
-    <div v-if="protocol?.safety_flags && activeRole !== 'patient'">
+    <div v-if="isOncology && protocol?.safety_flags && activeRole !== 'patient'">
       <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.safetyFlags') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div

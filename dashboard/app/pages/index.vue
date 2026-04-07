@@ -303,7 +303,7 @@ const EVENT_ICONS: Record<string, string> = {
         <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ $t('home.quickActions') }}</h2>
         <div class="grid grid-cols-2 gap-2">
           <template v-if="activeRole === 'advocate'">
-            <NuxtLink to="/toxicity" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+            <NuxtLink v-if="isOncology" to="/toxicity" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
               <UIcon name="i-lucide-thermometer" class="h-4 w-4 text-gray-400" />
               {{ $t('home.logToxicity') }}
             </NuxtLink>
@@ -311,7 +311,7 @@ const EVENT_ICONS: Record<string, string> = {
               <UIcon name="i-lucide-test-tube-diagonal" class="h-4 w-4 text-gray-400" />
               {{ $t('home.addLabs') }}
             </NuxtLink>
-            <NuxtLink to="/prep" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+            <NuxtLink v-if="isOncology" to="/prep" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
               <UIcon name="i-lucide-file-check" class="h-4 w-4 text-gray-400" />
               {{ $t('home.preCycleCheck') }}
             </NuxtLink>
@@ -321,7 +321,7 @@ const EVENT_ICONS: Record<string, string> = {
             </NuxtLink>
           </template>
           <template v-else-if="activeRole === 'patient'">
-            <NuxtLink to="/toxicity" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+            <NuxtLink v-if="isOncology" to="/toxicity" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
               <UIcon name="i-lucide-thermometer" class="h-4 w-4 text-gray-400" />
               {{ $t('home.logToxicity') }}
             </NuxtLink>
@@ -339,11 +339,11 @@ const EVENT_ICONS: Record<string, string> = {
             </NuxtLink>
           </template>
           <template v-else>
-            <NuxtLink to="/protocol" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+            <NuxtLink v-if="isOncology" to="/protocol" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
               <UIcon name="i-lucide-clipboard-check" class="h-4 w-4 text-gray-400" />
               {{ $t('home.viewProtocol') }}
             </NuxtLink>
-            <NuxtLink to="/prep" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+            <NuxtLink v-if="isOncology" to="/prep" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
               <UIcon name="i-lucide-file-check" class="h-4 w-4 text-gray-400" />
               {{ $t('home.preCycleCheck') }}
             </NuxtLink>

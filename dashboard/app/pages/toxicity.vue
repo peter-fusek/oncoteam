@@ -1,4 +1,10 @@
 <script setup lang="ts">
+const { isGeneralHealth } = usePatientType()
+
+watchEffect(() => {
+  if (isGeneralHealth.value) navigateTo('/')
+})
+
 const { fetchApi, postApi } = useOncoteamApi()
 const { activeRole } = useUserRole()
 const { t } = useI18n()
