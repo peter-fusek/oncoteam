@@ -9,8 +9,12 @@
 export function useActivePatient() {
   const { user } = useUserSession()
 
-  // Initialize from session patientId, fall back to 'erika'
+  // Initialize from localStorage (persists across reloads), then session, then default
   const activePatientId = useState('activePatientId', () => {
+    if (import.meta.client) {
+      const stored = localStorage.getItem('oncoteam:activePatientId')
+      if (stored) return stored
+    }
     const sessionPid = user.value?.patientId as string | undefined
     return sessionPid || 'erika'
   })
@@ -50,9 +54,9 @@ export function useActivePatient() {
     if (!canSwitchPatient.value) return
     if (allowedPatientIds.value.includes(patientId)) {
       activePatientId.value = patientId
-      // Full app reload to ensure all API data uses the new patient_id.
-      // reloadNuxtApp preserves the current route while clearing all caches.
+      // Persist selection + full reload to clear all stale API caches
       if (import.meta.client) {
+        localStorage.setItem('oncoteam:activePatientId', patientId)
         reloadNuxtApp({ ttl: 1000 })
       }
     }
