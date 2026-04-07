@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import collections
 import json
 import logging
 import time
@@ -96,6 +97,7 @@ RSS_CHECK_INTERVAL = 60  # seconds between health checks (avoid per-call overhea
 _rss_backoff_until: float = 0.0
 _rss_last_checked: float = 0.0
 _total_rss_backoffs: int = 0
+_rss_history: collections.deque[dict] = collections.deque(maxlen=60)  # ~1h at 60s interval
 
 
 def _get_semaphore(priority: str = "express") -> asyncio.Semaphore:
@@ -156,6 +158,7 @@ async def _check_rss_backoff() -> None:
                 rss = data.get("memory_rss_mb")
                 if rss is not None:
                     _last_rss_mb = rss
+                    _rss_history.append({"ts": time.time(), "mb": round(rss, 1)})
                     if rss >= RSS_CRITICAL_MB:
                         _rss_backoff_until = now + 120
                         _total_rss_backoffs += 1
@@ -209,6 +212,7 @@ def get_circuit_breaker_status() -> dict:
         "max_concurrent": MAX_CONCURRENT_CALLS,
         "available_slots": sem._value if hasattr(sem, "_value") else None,
         "oncofiles_rss_mb": _last_rss_mb,
+        "rss_history": list(_rss_history),
         "rss_backoff_active": rss_backing_off,
         "rss_backoff_remaining_s": (
             round(max(0, _rss_backoff_until - now), 1) if rss_backing_off else 0

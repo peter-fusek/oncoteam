@@ -2885,7 +2885,14 @@ async def api_cumulative_dose(request: Request) -> JSONResponse:
     pt = _get_patient_for_request(request)
     cycle = pt.current_cycle or 2
     oxa = resolve(CUMULATIVE_DOSE_THRESHOLDS["oxaliplatin"], lang)
+    # Use patient's actual dose if available (e.g. 76.5 mg/m² at 90%),
+    # fall back to standard protocol dose (85 mg/m²)
     dose_per_cycle = oxa["dose_per_cycle"]
+    for therapy in pt.active_therapies:
+        for drug in therapy.get("drugs", []):
+            if drug.get("name", "").lower() == "oxaliplatin":
+                with contextlib.suppress(ValueError, IndexError, KeyError):
+                    dose_per_cycle = float(drug["dose"].split()[0])
     cumulative = cycle * dose_per_cycle
 
     thresholds_reached = [t for t in oxa["thresholds"] if cumulative >= t["at"]]

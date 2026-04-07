@@ -178,7 +178,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           />
         </div>
         <div>
-          <label class="text-xs text-gray-500 block mb-1">{{ $t('toxicity.ecog') }}</label>
+          <label class="text-xs text-gray-500 block mb-1"><NuxtLink to="/dictionary?q=ECOG" class="underline decoration-dotted decoration-gray-400 hover:decoration-green-600 hover:text-green-700 transition-colors">{{ $t('toxicity.ecog') }}</NuxtLink></label>
           <select
             v-model.number="form.ecog"
             class="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-teal-500"

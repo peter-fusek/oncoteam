@@ -18,20 +18,20 @@ class FakeRequest:
 
 @pytest.mark.anyio
 async def test_cumulative_dose_returns_correct_dose():
-    """Cumulative dose = cycles × 85 mg/m²."""
+    """Cumulative dose uses patient's actual dose (76.5 mg/m² at 90%)."""
     request = FakeRequest()
     response = await api_cumulative_dose(request)
     data = json.loads(response.body)
 
     assert response.status_code == 200
     assert data["drug"] == "oxaliplatin"
-    assert data["dose_per_cycle"] == 85
-    assert data["cumulative_mg_m2"] == data["cycles_counted"] * 85
+    assert data["dose_per_cycle"] == 76.5
+    assert data["cumulative_mg_m2"] == data["cycles_counted"] * 76.5
 
 
 @pytest.mark.anyio
 async def test_cumulative_dose_flags_thresholds():
-    """With cycle 6 (510 mg/m²), should reach the 400 threshold."""
+    """With cycle 6 (459 mg/m² at 76.5/cycle), should reach the 400 threshold."""
     from oncoteam.patient_context import PATIENT
 
     original_cycle = PATIENT.current_cycle
@@ -43,7 +43,7 @@ async def test_cumulative_dose_flags_thresholds():
     finally:
         PATIENT.current_cycle = original_cycle
 
-    assert data["cumulative_mg_m2"] == 510
+    assert data["cumulative_mg_m2"] == 459.0
     assert len(data["thresholds_reached"]) == 1
     assert data["thresholds_reached"][0]["at"] == 400
     assert data["next_threshold"]["at"] == 550

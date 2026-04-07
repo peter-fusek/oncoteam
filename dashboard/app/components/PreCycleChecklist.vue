@@ -86,7 +86,7 @@ const statusIcon: Record<string, string> = {
 
 <template>
   <div class="space-y-4">
-    <h3 class="text-sm font-semibold text-gray-900">{{ $t('components.checklist.title', { cycle: currentCycle }) }} - mFOLFOX6</h3>
+    <h3 class="text-sm font-semibold text-gray-900">{{ $t('components.checklist.title', { cycle: currentCycle }) }} - <NuxtLink to="/dictionary?q=mFOLFOX6" class="underline decoration-dotted decoration-gray-400 hover:decoration-green-600 hover:text-green-700 transition-colors">mFOLFOX6</NuxtLink></h3>
     <div v-for="(section, si) in sections" :key="section.title" class="space-y-2">
       <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ section.title }}</div>
       <div v-for="(item, ii) in section.items" :key="item" class="flex items-center gap-2">

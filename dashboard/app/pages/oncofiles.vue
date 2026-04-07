@@ -2,8 +2,7 @@
 const { fetchApi } = useOncoteamApi()
 
 const { data: diag, status: diagStatus } = fetchApi<{
-  circuit_breaker?: { state: string; failures?: number }
-  oncofiles_rss_mb?: number
+  circuit_breaker?: { state: string; failures?: number; oncofiles_rss_mb?: number; rss_backoff_active?: boolean; total_rss_backoffs?: number; rss_history?: Array<{ ts: number; mb: number }> }
   oncofiles_reachable?: boolean
   suppressed_errors?: Array<{ context: string; timestamp: string }>
   document_counts?: { total: number; with_ocr: number; with_ai: number }
@@ -16,7 +15,23 @@ const { data: health } = fetchApi<{
 }>('/status', { lazy: true, server: false })
 
 const cbState = computed(() => diag.value?.circuit_breaker?.state ?? 'unknown')
-const rssMb = computed(() => diag.value?.oncofiles_rss_mb ?? 0)
+const rssMb = computed(() => diag.value?.circuit_breaker?.oncofiles_rss_mb ?? 0)
+const rssHistory = computed(() => diag.value?.circuit_breaker?.rss_history ?? [])
+const totalBackoffs = computed(() => diag.value?.circuit_breaker?.total_rss_backoffs ?? 0)
+
+// SVG sparkline path from RSS history
+const sparklinePath = computed(() => {
+  const points = rssHistory.value
+  if (points.length < 2) return ''
+  const maxMb = Math.max(...points.map((p: { mb: number }) => p.mb), 200)
+  const w = 200
+  const h = 40
+  return points.map((p: { mb: number }, i: number) => {
+    const x = (i / (points.length - 1)) * w
+    const y = h - (p.mb / maxMb) * h
+    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+})
 const reachable = computed(() => diag.value?.oncofiles_reachable ?? null)
 const recentErrors = computed(() => (diag.value?.suppressed_errors ?? []).slice(0, 10))
 </script>
@@ -53,6 +68,11 @@ const recentErrors = computed(() => (diag.value?.suppressed_errors ?? []).slice(
         <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Memory (RSS)</div>
         <div class="text-lg font-bold" :class="rssMb >= 400 ? 'text-amber-700' : 'text-gray-900'">{{ rssMb.toFixed(0) }} MB</div>
         <div class="text-xs text-gray-400">{{ rssMb >= 450 ? 'Backoff active (2min)' : rssMb >= 400 ? 'Backoff active (30s)' : 'Normal' }}</div>
+        <svg v-if="sparklinePath" class="mt-2 w-full h-10" viewBox="0 0 200 40" preserveAspectRatio="none">
+          <line x1="0" y1="32" x2="200" y2="32" stroke="#fbbf24" stroke-width="0.5" stroke-dasharray="2,2" />
+          <path :d="sparklinePath" fill="none" :stroke="rssMb >= 400 ? '#d97706' : '#10b981'" stroke-width="1.5" />
+        </svg>
+        <div v-if="totalBackoffs > 0" class="text-xs text-amber-600 mt-1">{{ totalBackoffs }} backoff{{ totalBackoffs > 1 ? 's' : '' }} since restart</div>
       </div>
 
       <!-- Reachability -->

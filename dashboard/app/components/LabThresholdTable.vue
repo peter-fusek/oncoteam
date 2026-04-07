@@ -36,7 +36,9 @@ const statusColors: Record<string, string> = {
           :class="lastValues ? 'cursor-pointer hover:bg-gray-50' : ''"
           @click="lastValues ? $emit('rowClick', String(name)) : undefined"
         >
-          <td class="py-2 pr-4 font-mono text-gray-900">{{ name }}</td>
+          <td class="py-2 pr-4 font-mono text-gray-900">
+            <NuxtLink :to="`/dictionary?q=${name}`" class="underline decoration-dotted decoration-gray-400 hover:decoration-green-600 hover:text-green-700 transition-colors" :title="`Look up ${name} in dictionary`">{{ name }}</NuxtLink>
+          </td>
           <td class="py-2 pr-4">
             <template v-if="t.min">
               >= {{ t.min.toLocaleString() }} {{ t.unit || '' }}

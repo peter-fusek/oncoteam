@@ -63,14 +63,13 @@ const { data: timeline, status: timelineStatus } = fetchApi<{
 
 // System health for degradation banner (#238)
 const { data: sysHealth } = fetchApi<{
-  circuit_breaker?: { state: string }
-  oncofiles_rss_mb?: number
+  circuit_breaker?: { state: string; oncofiles_rss_mb?: number }
 }>('/diagnostics', { lazy: true, server: false })
 
 const systemDegraded = computed(() => {
   if (!sysHealth.value) return false
   return sysHealth.value.circuit_breaker?.state === 'open'
-    || (sysHealth.value.oncofiles_rss_mb ?? 0) >= 400
+    || (sysHealth.value.circuit_breaker?.oncofiles_rss_mb ?? 0) >= 400
 })
 
 // Computed helpers
