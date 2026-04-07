@@ -250,6 +250,23 @@ Instructions:
 Focus on creating structured weight history from existing medical documents.\
 """,
     ),
+    AgentConfig(
+        id="dose_extraction",
+        name=L("Extrakcia dávok chemoterapie", "Chemo dose extraction"),
+        description=L(
+            "Extrakcia dávok z chemo_sheet dokumentov (oxaliplatina, 5-FU, leucovorín)",
+            "Extract per-cycle doses from chemo sheet documents (oxaliplatin, 5-FU, leucovorin)",
+        ),
+        schedule_display=L("pri nahratí chemo_sheet", "on chemo_sheet upload"),
+        category=AgentCategory.DATA_PIPELINE,
+        model="light",
+        schedule_type=ScheduleType.INTERVAL,
+        schedule_params={"hours": 999},  # Never fires — event-driven only via document_pipeline
+        cooldown_hours=0,
+        max_turns=6,
+        assigned_tool="view_document",
+        prompt_template="[Event-driven — triggered when document_pipeline classifies chemo_sheet]",
+    ),
     # === Research (Sonnet) ===
     AgentConfig(
         id="daily_research",

@@ -2883,17 +2883,65 @@ async def api_cumulative_dose(request: Request) -> JSONResponse:
         return cb_resp
     lang = get_lang(request)
     pt = _get_patient_for_request(request)
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
     cycle = pt.current_cycle or 2
     oxa = resolve(CUMULATIVE_DOSE_THRESHOLDS["oxaliplatin"], lang)
-    # Use patient's actual dose if available (e.g. 76.5 mg/m² at 90%),
-    # fall back to standard protocol dose (85 mg/m²)
-    dose_per_cycle = oxa["dose_per_cycle"]
+
+    # Resolve per-cycle dose from patient profile (fallback)
+    dose_per_cycle_fallback = oxa["dose_per_cycle"]
     for therapy in pt.active_therapies:
         for drug in therapy.get("drugs", []):
             if drug.get("name", "").lower() == "oxaliplatin":
                 with contextlib.suppress(ValueError, IndexError, KeyError):
-                    dose_per_cycle = float(drug["dose"].split()[0])
-    cumulative = cycle * dose_per_cycle
+                    dose_per_cycle_fallback = float(drug["dose"].split()[0])
+
+    # Try to read actual extracted doses from chemotherapy events
+    cumulative: float | None = None
+    dose_per_cycle = dose_per_cycle_fallback
+    cycles_detail: list[dict] = []
+    try:
+        chemo_result = await asyncio.wait_for(
+            oncofiles_client.list_treatment_events(
+                event_type="chemotherapy", limit=50, token=token
+            ),
+            timeout=8.0,
+        )
+        for entry in _extract_list(chemo_result, "entries"):
+            raw_meta = entry.get("metadata") or entry.get("data") or {}
+            if isinstance(raw_meta, str):
+                with contextlib.suppress(json.JSONDecodeError):
+                    raw_meta = json.loads(raw_meta)
+            if not isinstance(raw_meta, dict):
+                continue
+            for drug in raw_meta.get("drugs", []):
+                if str(drug.get("name", "")).lower() == "oxaliplatin":
+                    oxa_dose = drug.get("dose_mg_m2")
+                    if oxa_dose is not None:
+                        with contextlib.suppress(ValueError, TypeError):
+                            cycles_detail.append(
+                                {
+                                    "cycle": raw_meta.get("cycle"),
+                                    "dose_mg_m2": float(oxa_dose),
+                                    "date": entry.get("event_date", ""),
+                                    "reduction_pct": drug.get("dose_reduction_pct", 0),
+                                }
+                            )
+                    break
+        if cycles_detail:
+            cumulative = sum(c["dose_mg_m2"] for c in cycles_detail)
+            sorted_c = sorted(cycles_detail, key=lambda c: c.get("cycle") or 0, reverse=True)
+            dose_per_cycle = sorted_c[0]["dose_mg_m2"]
+    except Exception as e:
+        record_suppressed_error("api_cumulative_dose", "fetch_chemo_events", e)
+
+    # Fall back to calculated if no extracted data
+    if cumulative is None:
+        cumulative = cycle * dose_per_cycle_fallback
+        dose_per_cycle = dose_per_cycle_fallback
+
+    cycles_counted = len(cycles_detail) if cycles_detail else cycle
+    data_source = "extracted" if cycles_detail else "calculated"
 
     thresholds_reached = [t for t in oxa["thresholds"] if cumulative >= t["at"]]
     thresholds_upcoming = [t for t in oxa["thresholds"] if cumulative < t["at"]]
@@ -2905,8 +2953,10 @@ async def api_cumulative_dose(request: Request) -> JSONResponse:
             "drug": "oxaliplatin",
             "unit": oxa["unit"],
             "dose_per_cycle": dose_per_cycle,
-            "cycles_counted": cycle,
+            "cycles_counted": cycles_counted,
             "cumulative_mg_m2": cumulative,
+            "data_source": data_source,
+            "cycles_detail": cycles_detail,
             "thresholds_reached": thresholds_reached,
             "next_threshold": next_threshold,
             "pct_to_next": pct_to_next,

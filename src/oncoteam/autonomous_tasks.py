@@ -868,6 +868,59 @@ This is a single-document extraction triggered by a new upload webhook.
     )
 
 
+async def run_dose_extraction_single(document_id: int, *, patient_id: str = "erika") -> dict:
+    """Extract chemotherapy administration data from a single chemo sheet."""
+    from .patient_context import get_patient, is_general_health_patient
+
+    pt = get_patient(patient_id)
+    if is_general_health_patient(pt):
+        return {"skipped": True, "reason": "non_oncology_patient"}
+
+    return await _run_single_doc_task(
+        "dose_extraction_single",
+        document_id,
+        f"""\
+Extract structured chemotherapy administration data from document {document_id}.
+
+Instructions:
+1. Use view_document to read document {document_id}
+2. Identify this as a chemo sheet / chemotherapy administration record
+3. Extract the following fields:
+   - Cycle number (číslo cyklu)
+   - Treatment regimen name (e.g. mFOLFOX6, FOLFOX, CAPOX)
+   - Infusion/administration date
+   - Body surface area (BSA in m²)
+   - For EACH drug listed on the sheet:
+     * Drug name (oxaliplatin, leucovorin, fluorouracil_bolus, fluorouracil_infusion)
+     * Prescribed dose in mg/m² (if shown)
+     * Absolute dose in mg (dose actually administered)
+     * Any dose reduction percentage (if noted)
+     * Reason for dose reduction (neuropathy, neutropenia, etc.)
+   - Administration institution/site name
+4. Use get_treatment_timeline to check if a "chemotherapy" event already exists
+   for this cycle number and date — skip if duplicate found
+5. If NEW data, call add_treatment_event with:
+   - event_type: "chemotherapy"
+   - event_date: the infusion date (YYYY-MM-DD format)
+   - title: "Chemotherapy Cycle {{cycle}} — {{regimen}}"
+   - notes: brief human-readable summary of doses administered
+   - metadata: JSON with cycle, regimen, drugs (list of name/dose_mg_m2/dose_mg_absolute/
+     dose_reduction_pct/reduction_reason), bsa_m2, infusion_date, document_id
+6. Report what was extracted and whether it was stored or skipped as duplicate
+
+Drug name mapping for Slovak documents:
+- "Oxaliplatina"/"Oxaliplatin" → "oxaliplatin"
+- "Leukovorín"/"Kyselina listová" → "leucovorin"
+- "5-FU bolus"/"5-Fluorouracil bolus" → "fluorouracil_bolus"
+- "5-FU kontinuálna infúzia"/"5-FU pump" → "fluorouracil_infusion"
+- If dose percentage reduction noted (e.g. "90% dávka"), dose_reduction_pct = 10
+- BSA (telesný povrch) typically 1.4–2.5 m²
+- If any field is illegible or missing, set to null rather than guessing
+""",
+        patient_id=patient_id,
+    )
+
+
 async def run_document_pipeline(
     document_id: int, metadata: dict | None = None, *, patient_id: str = "erika"
 ) -> dict:
@@ -940,6 +993,13 @@ async def run_document_pipeline(
                     lambda did: run_weight_extraction_single(did, patient_id=patient_id),
                 )
             )
+        elif doc_type == "chemo_sheet":
+            downstream_tasks.append(
+                (
+                    "dose_extraction",
+                    lambda did: run_dose_extraction_single(did, patient_id=patient_id),
+                )
+            )
         # pathology/genetics: file_scan already handles biomarker check
         # imaging/other: no downstream processing needed
 
@@ -1002,10 +1062,11 @@ async def run_document_pipeline(
     )
 
     # WhatsApp notification for safety-critical findings
-    if not pipeline_error and doc_type in ("lab_report", "pathology", "genetics"):
+    if not pipeline_error and doc_type in ("lab_report", "pathology", "genetics", "chemo_sheet"):
         try:
             scan_response = scan_result.get("response", "")
-            if any(kw in scan_response.lower() for kw in ("safety", "alert", "hold", "critical")):
+            _alert_kw = ("safety", "alert", "hold", "critical", "dose reduction", "dávka")
+            if any(kw in scan_response.lower() for kw in _alert_kw):
                 today = datetime.now(UTC).strftime("%Y-%m-%d")
                 header = format_whatsapp_header(
                     "Nový dokument — bezpečnostné upozornenie",
@@ -1034,7 +1095,7 @@ def _classify_doc_type(response_text: str, metadata: dict) -> str:
     """Classify document type from file_scan response and webhook metadata.
 
     Returns one of: lab_report, visit_note, discharge_summary, pathology,
-    genetics, imaging, or other.
+    genetics, imaging, chemo_sheet, or other.
     """
     # Check webhook metadata first (oncofiles may provide category)
     category = (metadata.get("category") or "").lower()
@@ -1044,6 +1105,8 @@ def _classify_doc_type(response_text: str, metadata: dict) -> str:
         "pathology": "pathology",
         "genetics": "genetics",
         "imaging": "imaging",
+        "chemo_sheet": "chemo_sheet",
+        "chemo": "chemo_sheet",
     }
     if category in category_map:
         return category_map[category]
@@ -1062,6 +1125,9 @@ def _classify_doc_type(response_text: str, metadata: dict) -> str:
         return "genetics"
     if "imaging" in text or "ct scan" in text or "mri" in text:
         return "imaging"
+    _chemo_kw = ("chemo_sheet", "chemo sheet", "chemoterapia", "oxaliplatina", "mfolfox", "folfox")
+    if any(kw in text for kw in _chemo_kw):
+        return "chemo_sheet"
     return "other"
 
 
