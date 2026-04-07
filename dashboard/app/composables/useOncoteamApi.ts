@@ -4,30 +4,26 @@ export function useOncoteamApi() {
   const { activePatientId } = useActivePatient()
 
   function fetchApi<T>(path: string | Ref<string> | (() => string), opts?: Record<string, unknown>) {
-    const resolvedPath = computed(() => typeof path === 'function' ? path() : unref(path))
+    const resolvedPath = typeof path === 'function' ? path() : unref(path)
+    const pid = activePatientId.value || 'erika'
 
-    const queryParams = computed(() => {
+    // Key must be a plain string — evaluated once at setup with current patient
+    const key = `oncoteam:${pid}:${resolvedPath}`
+
+    const query = computed(() => {
       const q: Record<string, string> = { lang: locale.value }
       if (showTestData.value) q.show_test = 'true'
       if (activePatientId.value) q.patient_id = activePatientId.value
       return q
     })
 
-    // Explicit cache key includes patient_id so switching patients fetches fresh data
-    const cacheKey = computed(() => `oncoteam:${activePatientId.value}:${resolvedPath.value}`)
-
-    return useAsyncData<T>(
-      cacheKey,
-      () => $fetch<T>(`/api/oncoteam${resolvedPath.value}`, {
-        params: queryParams.value,
-        timeout: 28000,
-      }),
-      {
-        server: false,
-        watch: [activePatientId as Ref<string>, locale],
-        ...opts,
-      },
-    )
+    return useFetch<T>(`/api/oncoteam${resolvedPath}`, {
+      key,
+      query,
+      timeout: 28000,
+      server: false,
+      ...opts,
+    })
   }
 
   async function postApi<T>(path: string, body: Record<string, unknown>): Promise<T> {

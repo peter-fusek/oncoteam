@@ -55,6 +55,8 @@ export function useActivePatient() {
     if (allowedPatientIds.value.includes(patientId)) {
       activePatientId.value = patientId
       patientCookie.value = patientId
+      // Reload to re-create useFetch keys with new patient_id
+      if (import.meta.client) reloadNuxtApp({ ttl: 1000 })
     }
   }
 
