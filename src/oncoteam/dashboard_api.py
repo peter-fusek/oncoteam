@@ -4345,6 +4345,10 @@ async def api_onboard_patient(request: Request) -> JSONResponse:
         record_suppressed_error("api_onboard_patient", "register_patient", exc)
         # Non-fatal — patient was created in oncofiles, just not registered locally
 
+    # Persist token for reload after restart (#265)
+    if bearer_token:
+        asyncio.ensure_future(_persist_patient_token(patient_id, bearer_token))
+
     _logger.info("Onboarded patient %s", patient_id)
 
     return _cors_json(
@@ -4375,7 +4379,12 @@ async def api_onboarding_status(request: Request) -> JSONResponse:
     # Check if the phone is in the approved set (includes oncofiles-persisted phones)
     approved = is_phone_approved(phone)
     return _cors_json(
-        {"phone": phone, "status": "approved" if approved else "unknown", "approved": approved},
+        {
+            "phone": phone,
+            "status": "approved" if approved else "unknown",
+            "approved": approved,
+            "patient_id": _phone_patient_map.get(phone, ""),
+        },
         request=request,
     )
 
@@ -4383,6 +4392,7 @@ async def api_onboarding_status(request: Request) -> JSONResponse:
 # In-memory set of admin-approved WhatsApp phone numbers (#141)
 _approved_phones: set[str] = set()
 _approved_phones_loaded = False
+_phone_patient_map: dict[str, str] = {}  # phone → patient_id
 
 
 def is_phone_approved(phone: str) -> bool:
@@ -4418,6 +4428,26 @@ async def load_approved_phones() -> None:
         _logger.warning("Failed to load approved phones from oncofiles: %s", exc)
 
 
+async def load_patient_tokens() -> None:
+    """Restore patient tokens from oncofiles agent_state on startup."""
+    from .patient_context import _patient_tokens
+
+    try:
+        raw = await oncofiles_client.get_agent_state(
+            key="tokens", agent_id="patient_token_registry"
+        )
+        if isinstance(raw, dict):
+            data = raw.get("value") or raw.get("state") or raw
+            if isinstance(data, dict):
+                tokens = data.get("tokens", {})
+                for pid, tok in tokens.items():
+                    if tok and pid not in _patient_tokens:
+                        _patient_tokens[pid] = tok
+                        _logger.info("Restored token for patient %s from agent_state", pid)
+    except Exception as exc:
+        _logger.warning("Failed to load patient tokens from agent_state: %s", exc)
+
+
 async def _persist_approved_phones() -> None:
     """Persist the current approved phones set to oncofiles."""
     try:
@@ -4429,6 +4459,33 @@ async def _persist_approved_phones() -> None:
     except Exception as exc:
         record_suppressed_error("_persist_approved_phones", "set_agent_state", exc)
         _logger.warning("Failed to persist approved phones to oncofiles: %s", exc)
+
+
+async def _persist_patient_token(patient_id: str, token: str) -> None:
+    """Persist a patient's oncofiles bearer token to agent_state for reload."""
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    try:
+        raw = await oncofiles_client.get_agent_state(
+            key="tokens", agent_id="patient_token_registry"
+        )
+        registry: dict[str, str] = {}
+        if isinstance(raw, dict):
+            data = raw.get("value") or raw.get("state") or raw
+            if isinstance(data, dict):
+                registry = data.get("tokens", {})
+        registry[patient_id] = token
+        await oncofiles_client.set_agent_state(
+            key="tokens",
+            value={
+                "tokens": registry,
+                "updated_at": _dt.now(UTC).isoformat(),
+            },
+            agent_id="patient_token_registry",
+        )
+    except Exception as exc:
+        _logger.warning("Failed to persist patient token for %s: %s", patient_id, exc)
 
 
 async def api_approve_user(request: Request) -> JSONResponse:
@@ -4448,6 +4505,12 @@ async def api_approve_user(request: Request) -> JSONResponse:
         return _cors_json({"error": "phone is required"}, status_code=400, request=request)
 
     _approved_phones.add(phone)
+
+    # Optionally link phone to a patient_id (#265)
+    patient_id_for_phone = (body.get("patient_id") or "").strip()
+    if patient_id_for_phone:
+        _phone_patient_map[phone] = patient_id_for_phone
+
     _logger.info("Admin approved WhatsApp user: %s", phone)
 
     # Persist to oncofiles (fire-and-forget, don't block response)

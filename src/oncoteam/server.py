@@ -70,6 +70,7 @@ from .dashboard_api import (
     api_whatsapp_chat,
     api_whatsapp_media,
     load_approved_phones,
+    load_patient_tokens,
 )
 from .eligibility import check_eligibility
 from .models import ResearchSource
@@ -1181,6 +1182,10 @@ def main() -> None:
                 await load_approved_phones()
             except Exception as e:
                 logging.warning("Failed to load approved phones at startup: %s", e)
+            try:
+                await load_patient_tokens()
+            except Exception as e:
+                logging.warning("Failed to load patient tokens at startup: %s", e)
             await mcp.run_async(
                 transport=MCP_TRANSPORT,
                 host=MCP_HOST,

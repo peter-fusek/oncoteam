@@ -27,14 +27,16 @@ function removeDiacritics(text: string): string {
   return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
-function generatePatientId(name: string): string {
-  return removeDiacritics(name)
+function generatePatientId(name: string, phone: string): string {
+  const base = removeDiacritics(name)
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
+  const suffix = phone.replace(/\D/g, '').slice(-4)
+  return suffix ? `${base}-${suffix}` : base
 }
 
 const L = (sk: string, en: string) => ({ sk, en })
@@ -124,7 +126,7 @@ function handleCollectName(phone: string, body: string, state: OnboardingState):
     }
   }
 
-  const patientId = generatePatientId(name)
+  const patientId = generatePatientId(name, phone)
 
   const updatedState: OnboardingState = {
     ...state,
