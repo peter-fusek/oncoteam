@@ -9,15 +9,19 @@
 export function useActivePatient() {
   const { user } = useUserSession()
 
-  // Initialize from localStorage (persists across reloads), then session, then default
+  // Initialize from session, fall back to 'erika'
   const activePatientId = useState('activePatientId', () => {
-    if (import.meta.client) {
-      const stored = localStorage.getItem('oncoteam:activePatientId')
-      if (stored) return stored
-    }
     const sessionPid = user.value?.patientId as string | undefined
     return sessionPid || 'erika'
   })
+
+  // Restore patient selection from localStorage after client hydration
+  if (import.meta.client) {
+    const stored = localStorage.getItem('oncoteam:activePatientId')
+    if (stored && stored !== activePatientId.value) {
+      activePatientId.value = stored
+    }
+  }
 
   // Known patients with display info. Seeded with Erika.
   // When new patients onboard, they're added to the user's session patientIds
