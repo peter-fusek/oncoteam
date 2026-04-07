@@ -702,27 +702,32 @@ async def get_patient_context() -> str:
 
 @mcp.tool()
 @log_activity
-async def view_document(file_id: str) -> str:
+async def view_document(file_id: str | None = None, document_id: int | str | None = None) -> str:
     """View full document content with OCR text and images from Oncofiles.
 
     Args:
-        file_id: The document file ID (string like "file_011CZZ...") or
-                 numeric document ID (will be resolved to file_id automatically).
+        file_id: The document file ID (string like "file_011CZZ...").
+        document_id: Alternative — numeric document ID (resolved to file_id automatically).
 
     Returns:
         JSON with document content.
     """
     _pid, _tok = _get_mcp_patient_token()
     try:
-        # If a numeric ID was passed, resolve to file_id
-        resolved_file_id = file_id
-        stripped = str(file_id).strip()
+        # Accept either file_id or document_id (agents may use either)
+        raw_id = file_id or str(document_id or "")
+        if not raw_id:
+            return json.dumps({"error": "Provide file_id or document_id"})
+
+        # If a numeric ID was passed, resolve to file_id via oncofiles
+        resolved_file_id = raw_id
+        stripped = raw_id.strip()
         if stripped.isdigit():
             doc = await oncofiles_client.get_document(int(stripped), token=_tok)
             if isinstance(doc, dict) and doc.get("file_id"):
                 resolved_file_id = doc["file_id"]
             else:
-                return json.dumps({"error": f"Could not resolve document ID {file_id} to file_id"})
+                return json.dumps({"error": f"Could not resolve document ID {stripped} to file_id"})
         result = await oncofiles_client.view_document(resolved_file_id, token=_tok)
         return json.dumps({"file_id": resolved_file_id, "content": result})
     except Exception as e:
