@@ -16,15 +16,9 @@ export function useOncoteamApi() {
       return `/api/oncoteam${p}`
     })
 
-    // Include patient_id in cache key so switching patients fetches fresh data
-    const key = computed(() => {
-      const p = typeof path === 'function' ? path() : unref(path)
-      return `oncoteam:${activePatientId.value}:${p}`
-    })
-
     return useFetch<T>(url, {
-      key,
       query,
+      watch: [activePatientId as Ref<string>],
       timeout: 28000, // Must exceed server proxy timeout (25s) to avoid premature client abort
       server: false, // Client-only — SSR data fetches caused 503s (Railway edge 17s timeout)
       ...opts,
