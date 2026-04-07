@@ -206,7 +206,10 @@ When reviewing uploaded documents:
 - Dictionary links pattern: `<NuxtLink :to="\`/dictionary?q=${term}\`" class="underline decoration-dotted decoration-gray-400 hover:decoration-green-600 hover:text-green-700 transition-colors">`. Used in LabThresholdTable, PreCycleChecklist, toxicity ECOG, labs headers, home page labs, EmergencyAlert, BiomarkerCard.
 - `medical-dictionary.ts` has 39 entries across 7 categories (lab, tumor_marker, treatment, diagnosis, inflammation, general, toxicity). Add new entries there, not inline.
 - `_classify_doc_type()` recognizes `chemo_sheet` via metadata category + text heuristics. Dispatcher routes to `run_dose_extraction_single()`.
-- `dose_extraction` agent is event-driven only (`schedule_params={"hours": 999}`). Has `is_general_health_patient()` guard — never runs for e5g.
+- `dose_extraction` agent is event-driven only (`schedule_params={"hours": 999}`). Has `is_general_health_patient()` guard — never runs for e5g. Uses Sonnet (not Haiku) for better handwritten OCR accuracy.
+- `_run_single_doc_task()` accepts optional `model` param — defaults to `AUTONOMOUS_MODEL_LIGHT` (Haiku). Dose extraction overrides to `AUTONOMOUS_MODEL` (Sonnet).
+- `get_doc_detail()` in `oncofiles_client.py` is a REST call (not MCP) to `GET /api/doc-detail/{doc_id}`. Returns `preview_url`, `pages[]` with per-page OCR text. `api_detail` uses this first, falls back to MCP.
+- `list_agent_states` wrapper does NOT send `limit` to oncofiles — truncates client-side. Oncofiles v5.2.5+ accepts `limit` but older versions reject it.
 - `api_cumulative_dose` prefers real extracted data (`data_source="extracted"`) from `list_treatment_events(event_type="chemotherapy")`, falls back to `calculated` using patient profile dose. New fields: `data_source`, `cycles_detail`.
 - Agent registry count: 20. Tests in `test_agent_registry.py` and `test_dashboard_api_autonomous.py` assert counts — update when adding agents.
 - `_patient_tokens` in `patient_context.py` auto-populates from `ONCOFILES_MCP_TOKEN_<ID>` env vars at module load. Set `ONCOFILES_MCP_TOKEN_E5G` in Railway. Without it, e5g calls fail or fall back to Erika's token (data isolation bug found in Sprint 69).
