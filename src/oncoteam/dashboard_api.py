@@ -59,7 +59,7 @@ from .patient_context import (
     get_patient_token,
 )
 
-VERSION = "0.64.0"
+VERSION = "0.65.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
