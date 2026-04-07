@@ -750,6 +750,17 @@ Focus on creating structured weight history from existing medical documents.
     return result
 
 
+async def _resolve_file_id(document_id: int, patient_id: str = "erika") -> str | None:
+    """Resolve a document_id to its file_id via oncofiles."""
+    try:
+        token = get_patient_token(patient_id)
+        doc = await oncofiles_client.get_document(document_id, token=token)
+        return doc.get("file_id") if isinstance(doc, dict) else None
+    except Exception as e:
+        logger.warning("Could not resolve file_id for doc %d: %s", document_id, e)
+        return None
+
+
 async def _run_single_doc_task(
     task_name: str,
     document_id: int,
@@ -781,16 +792,22 @@ async def _run_single_doc_task(
     return result
 
 
-async def run_file_scan_single(document_id: int, *, patient_id: str = "erika") -> dict:
+async def run_file_scan_single(
+    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+) -> dict:
     """Classify a single document by ID (no broad search)."""
+    if not file_id:
+        file_id = await _resolve_file_id(document_id, patient_id)
+    doc_ref = f'file_id "{file_id}"' if file_id else f"document {document_id}"
+    view_arg = file_id or str(document_id)
     return await _run_single_doc_task(
         "file_scan_single",
         document_id,
         f"""\
-View document {document_id} using view_document tool, then classify it.
+View {doc_ref} using view_document(file_id="{view_arg}"), then classify it.
 
 Instructions:
-1. Use view_document to read document {document_id}
+1. Use view_document with file_id="{view_arg}" to read the document
 2. Classify the document type: lab_report, visit_note, discharge_summary,
    pathology, genetics, imaging, or other
 3. For pathology/genetics docs: check if biomarker data matches known profile
@@ -800,11 +817,15 @@ Instructions:
 
 This is a single-document scan triggered by a new upload webhook.
 """,
+        patient_id=patient_id,
     )
 
 
-async def run_lab_sync_single(document_id: int, *, patient_id: str = "erika") -> dict:
+async def run_lab_sync_single(
+    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+) -> dict:
     """Extract lab values from a single document by ID."""
+    view_arg = file_id or str(document_id)
     return await _run_single_doc_task(
         "lab_sync_single",
         document_id,
@@ -812,7 +833,7 @@ async def run_lab_sync_single(document_id: int, *, patient_id: str = "erika") ->
 Extract structured lab data from document {document_id}.
 
 Instructions:
-1. Use view_document to read document {document_id}
+1. Use view_document(file_id="{view_arg}") to read the document
 2. Extract numeric lab values: WBC, ANC, PLT, hemoglobin, creatinine,
    ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH
 3. Use get_treatment_timeline to check if data already exists for that date
@@ -824,11 +845,15 @@ IMPORTANT: Use store_lab_values for structured persistence (enables trends/chart
 Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
 creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """,
+        patient_id=patient_id,
     )
 
 
-async def run_toxicity_extraction_single(document_id: int, *, patient_id: str = "erika") -> dict:
+async def run_toxicity_extraction_single(
+    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+) -> dict:
     """Extract toxicity grades from a single document by ID."""
+    view_arg = file_id or str(document_id)
     return await _run_single_doc_task(
         "toxicity_extraction_single",
         document_id,
@@ -836,7 +861,7 @@ async def run_toxicity_extraction_single(document_id: int, *, patient_id: str = 
 Extract NCI-CTCAE toxicity assessments from document {document_id}.
 
 Instructions:
-1. Use view_document to read document {document_id}
+1. Use view_document(file_id="{view_arg}") to read the document
 2. Extract toxicity grades for:
    - Peripheral neuropathy, diarrhea, mucositis, fatigue, HFS, nausea/vomiting
 3. Note ECOG and weight if mentioned
@@ -844,11 +869,15 @@ Instructions:
 
 This is a single-document extraction triggered by a new upload webhook.
 """,
+        patient_id=patient_id,
     )
 
 
-async def run_weight_extraction_single(document_id: int, *, patient_id: str = "erika") -> dict:
+async def run_weight_extraction_single(
+    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+) -> dict:
     """Extract weight/BMI from a single document by ID."""
+    view_arg = file_id or str(document_id)
     return await _run_single_doc_task(
         "weight_extraction_single",
         document_id,
@@ -856,7 +885,7 @@ async def run_weight_extraction_single(document_id: int, *, patient_id: str = "e
 Extract weight/BMI data from document {document_id}.
 
 Instructions:
-1. Use view_document to read document {document_id}
+1. Use view_document(file_id="{view_arg}") to read the document
 2. Extract weight in kg and BMI if mentioned
 3. Extract date of measurement
 4. Check if a weight_measurement event already exists for that date
@@ -868,7 +897,9 @@ This is a single-document extraction triggered by a new upload webhook.
     )
 
 
-async def run_dose_extraction_single(document_id: int, *, patient_id: str = "erika") -> dict:
+async def run_dose_extraction_single(
+    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+) -> dict:
     """Extract chemotherapy administration data from a single chemo sheet."""
     from .patient_context import get_patient, is_general_health_patient
 
@@ -876,6 +907,7 @@ async def run_dose_extraction_single(document_id: int, *, patient_id: str = "eri
     if is_general_health_patient(pt):
         return {"skipped": True, "reason": "non_oncology_patient"}
 
+    view_arg = file_id or str(document_id)
     return await _run_single_doc_task(
         "dose_extraction_single",
         document_id,
@@ -883,7 +915,7 @@ async def run_dose_extraction_single(document_id: int, *, patient_id: str = "eri
 Extract structured chemotherapy administration data from document {document_id}.
 
 Instructions:
-1. Use view_document to read document {document_id}
+1. Use view_document(file_id="{view_arg}") to read the document
 2. Identify this as a chemo sheet / chemotherapy administration record
 3. Extract the following fields:
    - Cycle number (číslo cyklu)
@@ -973,31 +1005,43 @@ async def run_document_pipeline(
     doc_type = _classify_doc_type(scan_result.get("response", ""), metadata)
     logger.info("document_pipeline doc %d classified as: %s", document_id, doc_type)
 
+    # Resolve file_id for downstream agents (view_document MCP tool needs file_id, not doc int)
+    file_id = await _resolve_file_id(document_id, patient_id)
+
     # Step 3: Dispatch downstream agents based on classification
     if not pipeline_error:
         downstream_tasks = []
         if doc_type == "lab_report":
             downstream_tasks.append(
-                ("lab_sync", lambda did: run_lab_sync_single(did, patient_id=patient_id))
+                (
+                    "lab_sync",
+                    lambda did: run_lab_sync_single(did, patient_id=patient_id, file_id=file_id),
+                )
             )
         elif doc_type in ("visit_note", "discharge_summary"):
             downstream_tasks.append(
                 (
                     "toxicity_extraction",
-                    lambda did: run_toxicity_extraction_single(did, patient_id=patient_id),
+                    lambda did: run_toxicity_extraction_single(
+                        did, patient_id=patient_id, file_id=file_id
+                    ),
                 )
             )
             downstream_tasks.append(
                 (
                     "weight_extraction",
-                    lambda did: run_weight_extraction_single(did, patient_id=patient_id),
+                    lambda did: run_weight_extraction_single(
+                        did, patient_id=patient_id, file_id=file_id
+                    ),
                 )
             )
         elif doc_type == "chemo_sheet":
             downstream_tasks.append(
                 (
                     "dose_extraction",
-                    lambda did: run_dose_extraction_single(did, patient_id=patient_id),
+                    lambda did: run_dose_extraction_single(
+                        did, patient_id=patient_id, file_id=file_id
+                    ),
                 )
             )
         # pathology/genetics: file_scan already handles biomarker check
