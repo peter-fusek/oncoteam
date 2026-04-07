@@ -2753,6 +2753,252 @@ async def api_medications(request: Request) -> JSONResponse:
         )
 
 
+# ---------------------------------------------------------------------------
+# Preventive care screenings (general health patients only)
+# ---------------------------------------------------------------------------
+
+_EU_SCREENINGS = [
+    {
+        "id": "colonoscopy",
+        "name": "Colonoscopy",
+        "interval_days": 3650,
+        "min_age": 50,
+        "event_types": ["screening"],
+        "keywords": ["colonoscopy", "koloskopia"],
+    },
+    {
+        "id": "fobt",
+        "name": "FOBT/FIT",
+        "interval_days": 730,
+        "min_age": 50,
+        "event_types": ["screening", "lab_result"],
+        "keywords": ["fobt", "fit", "occult blood", "okultné"],
+    },
+    {
+        "id": "dental",
+        "name": "Dental checkup",
+        "interval_days": 183,
+        "min_age": 0,
+        "event_types": ["dental", "checkup"],
+        "keywords": ["dental", "dentist", "zubár", "stomatológ"],
+    },
+    {
+        "id": "ophthalmology",
+        "name": "Ophthalmology",
+        "interval_days": 730,
+        "min_age": 40,
+        "event_types": ["checkup", "screening"],
+        "keywords": ["ophthalmology", "eye", "oči", "oftalmológ"],
+    },
+    {
+        "id": "dermatology",
+        "name": "Dermatology",
+        "interval_days": 730,
+        "min_age": 35,
+        "event_types": ["checkup", "screening"],
+        "keywords": ["dermatology", "skin", "dermatológ", "melanoma"],
+    },
+    {
+        "id": "cv_risk",
+        "name": "CV risk (SCORE2)",
+        "interval_days": 1825,
+        "min_age": 40,
+        "event_types": ["checkup", "screening"],
+        "keywords": ["cardiovascular", "score2", "cv risk", "kardio"],
+    },
+    {
+        "id": "psa",
+        "name": "PSA screening",
+        "interval_days": 730,
+        "min_age": 50,
+        "event_types": ["lab_result", "screening"],
+        "keywords": ["psa", "prostate"],
+    },
+    {
+        "id": "lipid_panel",
+        "name": "Lipid panel",
+        "interval_days": 1825,
+        "min_age": 40,
+        "event_types": ["lab_result"],
+        "keywords": ["lipid", "cholesterol", "hdl", "ldl", "triglycerid"],
+    },
+    {
+        "id": "glucose",
+        "name": "Fasting glucose",
+        "interval_days": 1095,
+        "min_age": 45,
+        "event_types": ["lab_result"],
+        "keywords": ["glucose", "glukóza", "glycemia", "hba1c"],
+    },
+    {
+        "id": "flu_vaccine",
+        "name": "Flu vaccine",
+        "interval_days": 365,
+        "min_age": 50,
+        "event_types": ["vaccination"],
+        "keywords": ["flu", "influenza", "chrípka"],
+    },
+    {
+        "id": "tetanus",
+        "name": "Tetanus booster",
+        "interval_days": 3650,
+        "min_age": 0,
+        "event_types": ["vaccination"],
+        "keywords": ["tetanus", "tetanový"],
+    },
+]
+
+_preventive_care_cache: dict[str, tuple[float, JSONResponse]] = {}
+_PREVENTIVE_CARE_CACHE_TTL = 120
+
+
+async def api_preventive_care(request: Request) -> JSONResponse:
+    """GET /api/preventive-care — EU preventive care screening status.
+
+    Returns screening compliance for general health patients based on
+    EU/WHO/ESC guidelines. Only available for non-oncology patients.
+    """
+    cb_resp = _circuit_breaker_503({"screenings": [], "summary": {}})
+    if cb_resp:
+        return cb_resp
+
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
+    patient = _get_patient_for_request(request)
+
+    from .patient_context import is_general_health_patient
+
+    if not is_general_health_patient(patient):
+        return _cors_json(
+            {"error": "Preventive care endpoint is only available for general health patients"},
+            status_code=400,
+        )
+
+    cache_key = _cache_key("preventive_care", patient_id)
+    if cache_key in _preventive_care_cache:
+        cached_time, cached_response = _preventive_care_cache[cache_key]
+        if time.time() - cached_time < _PREVENTIVE_CARE_CACHE_TTL:
+            return cached_response
+
+    from datetime import date, timedelta
+
+    try:
+        # Try oncofiles get_preventive_care_status for authoritative data
+        oncofiles_status: dict = {}
+        try:
+            oncofiles_result = await oncofiles_client.call_oncofiles(
+                "get_preventive_care_status", {}, token=token
+            )
+            if isinstance(oncofiles_result, dict):
+                oncofiles_status = oncofiles_result
+        except Exception as e:
+            record_suppressed_error("api_preventive_care", "oncofiles_preventive_care", e)
+
+        # Fetch treatment events for relevant types in parallel
+        event_types = ["checkup", "screening", "vaccination", "dental", "lab_result"]
+        fetch_tasks = [
+            oncofiles_client.list_treatment_events(event_type=et, limit=50, token=token)
+            for et in event_types
+        ]
+        results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
+
+        # Collect all events into a flat list
+        all_events: list[dict] = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                record_suppressed_error("api_preventive_care", f"fetch_{event_types[i]}", result)
+                continue
+            all_events.extend(_extract_list(result, "events"))
+
+        today = date.today()
+        screenings = []
+        summary = {"up_to_date": 0, "due": 0, "overdue": 0, "unknown": 0, "total": 0}
+
+        for scr in _EU_SCREENINGS:
+            screening_id = scr["id"]
+            last_date_str: str | None = None
+
+            # 1) Check oncofiles authoritative status
+            if isinstance(oncofiles_status.get("screenings"), list):
+                for os_entry in oncofiles_status["screenings"]:
+                    if os_entry.get("id") == screening_id and os_entry.get("last_date"):
+                        last_date_str = os_entry["last_date"]
+                        break
+
+            # 2) Scan events by type + keyword match
+            if not last_date_str:
+                for ev in all_events:
+                    ev_type = ev.get("event_type", "")
+                    if ev_type not in scr["event_types"]:
+                        continue
+                    ev_notes = (ev.get("notes", "") or "").lower()
+                    ev_title = (ev.get("title", "") or "").lower()
+                    ev_meta = str(ev.get("metadata", "")).lower()
+                    searchable = f"{ev_notes} {ev_title} {ev_meta}"
+                    if any(kw in searchable for kw in scr["keywords"]):
+                        ev_date = ev.get("event_date", "")
+                        if ev_date and (not last_date_str or ev_date > last_date_str):
+                            last_date_str = ev_date
+
+            # Compute status
+            status = "unknown"
+            next_due: str | None = None
+            days_until: int | None = None
+
+            if last_date_str:
+                try:
+                    last_dt = date.fromisoformat(last_date_str[:10])
+                    next_dt = last_dt + timedelta(days=scr["interval_days"])
+                    days_until = (next_dt - today).days
+                    next_due = next_dt.isoformat()
+                    if days_until > 30:
+                        status = "up_to_date"
+                    elif days_until >= 0:
+                        status = "due"
+                    else:
+                        status = "overdue"
+                except (ValueError, TypeError):
+                    status = "unknown"
+
+            summary[status] += 1
+            summary["total"] += 1
+
+            screenings.append(
+                {
+                    "id": screening_id,
+                    "name": scr["name"],
+                    "interval_days": scr["interval_days"],
+                    "min_age": scr["min_age"],
+                    "last_date": last_date_str,
+                    "next_due": next_due,
+                    "days_until": days_until,
+                    "status": status,
+                }
+            )
+
+        response = _cors_json(
+            {
+                "screenings": screenings,
+                "summary": summary,
+                "last_updated": today.isoformat(),
+            }
+        )
+        _preventive_care_cache[cache_key] = (time.time(), response)
+        _cache_evict(_preventive_care_cache)
+        return response
+
+    except Exception as e:
+        record_suppressed_error("api_preventive_care", "fetch", e)
+        return _cors_json(
+            {
+                "error": str(e),
+                "screenings": [],
+                "summary": {"up_to_date": 0, "due": 0, "overdue": 0, "unknown": 0, "total": 0},
+            },
+            status_code=502,
+        )
+
+
 async def api_weight(request: Request) -> JSONResponse:
     """GET /api/weight — weight/nutrition trend data.
 

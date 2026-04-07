@@ -118,6 +118,12 @@ const plannedTherapies = computed(() =>
 // Toggle between lay and medical explanations
 const showMedical = ref(false)
 
+// Preventive care screenings (general health patients only)
+const { data: preventiveCare, status: preventiveCareStatus } = fetchApi<{
+  screenings: Array<{ id: string; name: string; interval_label: string; min_age: number | null; last_date: string | null; next_due: string | null; status: string; source: string }>
+  summary: { up_to_date: number; due: number; overdue: number; unknown: number; total: number }
+}>('/preventive-care', { lazy: true, server: false })
+
 const drilldown = useDrilldown()
 
 // Medical abbreviation tooltips
@@ -374,6 +380,74 @@ const abbreviations: Record<string, string> = {
       </div>
       <p v-if="patient.notes" class="text-sm text-gray-500 mt-2">{{ patient.notes }}</p>
     </div>
+
+    <!-- Preventive Screenings (general health patients only) -->
+    <template v-if="!isOncology">
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-gray-900">{{ $t('preventive.screeningTitle') }}</h2>
+          <div v-if="preventiveCare?.summary" class="flex items-center gap-2">
+            <UBadge v-if="preventiveCare.summary.overdue" variant="subtle" color="error" size="sm">{{ preventiveCare.summary.overdue }} {{ $t('preventive.overdue') }}</UBadge>
+            <UBadge v-if="preventiveCare.summary.due" variant="subtle" color="warning" size="sm">{{ preventiveCare.summary.due }} {{ $t('preventive.due') }}</UBadge>
+            <UBadge v-if="preventiveCare.summary.up_to_date" variant="subtle" color="success" size="sm">{{ preventiveCare.summary.up_to_date }} {{ $t('preventive.upToDate') }}</UBadge>
+          </div>
+        </div>
+        <SkeletonLoader v-if="preventiveCareStatus === 'pending'" variant="lines" />
+        <div v-else-if="preventiveCare?.screenings?.length" class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-100 bg-gray-50/50">
+                <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Screening</th>
+                <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Interval</th>
+                <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('preventive.lastDone') }}</th>
+                <th class="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">{{ $t('preventive.nextDue') }}</th>
+                <th class="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="s in preventiveCare.screenings"
+                :key="s.id"
+                class="border-b border-gray-50 last:border-b-0"
+                :class="{
+                  'bg-red-50/50': s.status === 'overdue',
+                  'bg-amber-50/50': s.status === 'due',
+                  'bg-emerald-50/30': s.status === 'up_to_date',
+                  'bg-gray-50/30': s.status === 'unknown'
+                }"
+              >
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <UIcon
+                      :name="s.status === 'overdue' ? 'i-lucide-alert-triangle' : s.status === 'due' ? 'i-lucide-clock' : s.status === 'up_to_date' ? 'i-lucide-check-circle' : 'i-lucide-help-circle'"
+                      class="h-4 w-4 shrink-0"
+                      :class="{
+                        'text-red-500': s.status === 'overdue',
+                        'text-amber-500': s.status === 'due',
+                        'text-emerald-500': s.status === 'up_to_date',
+                        'text-gray-400': s.status === 'unknown'
+                      }"
+                    />
+                    <span class="text-gray-900 font-medium">{{ s.name }}</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5 text-gray-500 hidden sm:table-cell">{{ s.interval_label }}</td>
+                <td class="px-4 py-2.5 text-gray-500">{{ s.last_date || $t('preventive.noRecord') }}</td>
+                <td class="px-4 py-2.5 text-gray-500 hidden md:table-cell">{{ s.next_due || '-' }}</td>
+                <td class="px-4 py-2.5 text-right">
+                  <UBadge
+                    variant="subtle"
+                    :color="s.status === 'overdue' ? 'error' : s.status === 'due' ? 'warning' : s.status === 'up_to_date' ? 'success' : 'neutral'"
+                    size="xs"
+                  >{{ s.status === 'overdue' ? $t('preventive.overdue') : s.status === 'due' ? $t('preventive.due') : s.status === 'up_to_date' ? $t('preventive.upToDate') : $t('preventive.noRecord') }}</UBadge>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="px-4 py-2 text-xs text-gray-400 border-t border-gray-100">{{ $t('preventive.sourceNote') }}</div>
+        </div>
+      </div>
+    </template>
     </template>
   </div>
 </template>

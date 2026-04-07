@@ -52,7 +52,8 @@
     "staging": "Staging",
     "threshold": "threshold",
     "questionsForOncologist": "questions for oncologist",
-    "systemDegraded": "Database under load — some data may be slow or temporarily unavailable."
+    "systemDegraded": "Database under load — some data may be slow or temporarily unavailable.",
+    "preventiveScreenings": "Preventive Screenings"
   },
   "common": {
     "save": "Save",
@@ -482,6 +483,17 @@
     "range": "Range",
     "unit": "Unit",
     "noResults": "No matching terms found"
+  },
+  "preventive": {
+    "screeningTitle": "Preventive Screenings",
+    "overdue": "overdue",
+    "due": "due soon",
+    "upToDate": "up to date",
+    "allUpToDate": "All screenings up to date",
+    "lastDone": "Last",
+    "nextDue": "Next due",
+    "noRecord": "No record",
+    "sourceNote": "Based on EU/ECDC guidelines. Dates sourced from uploaded documents."
   },
   "roles": {
     "advocate": "Advocate",

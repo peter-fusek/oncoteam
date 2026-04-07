@@ -52,7 +52,8 @@
     "staging": "Štádium",
     "threshold": "prah",
     "questionsForOncologist": "otázky pre onkológa",
-    "systemDegraded": "Databáza je pod záťažou — niektoré dáta môžu byť pomalšie alebo dočasne nedostupné."
+    "systemDegraded": "Databáza je pod záťažou — niektoré dáta môžu byť pomalšie alebo dočasne nedostupné.",
+    "preventiveScreenings": "Preventívne prehliadky"
   },
   "common": {
     "save": "Uložiť",
@@ -482,6 +483,17 @@
     "range": "Rozsah",
     "unit": "Jednotka",
     "noResults": "Žiadne zodpovedajúce pojmy"
+  },
+  "preventive": {
+    "screeningTitle": "Preventívne prehliadky",
+    "overdue": "oneskorené",
+    "due": "čoskoro splatné",
+    "upToDate": "v poriadku",
+    "allUpToDate": "Všetky prehliadky sú aktuálne",
+    "lastDone": "Naposledy",
+    "nextDue": "Ďalšia",
+    "noRecord": "Žiadny záznam",
+    "sourceNote": "Podľa smerníc EÚ/ECDC. Dátumy z nahratých dokumentov."
   },
   "roles": {
     "advocate": "Zástupca",

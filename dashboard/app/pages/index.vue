@@ -61,6 +61,17 @@ const { data: timeline, status: timelineStatus } = fetchApi<{
   }>
 }>('/timeline?limit=10', { lazy: true, server: false })
 
+// Preventive care screenings (general health patients only)
+const { data: preventiveCare } = fetchApi<{
+  screenings: Array<{ id: string; name: string; interval_label: string; last_date: string | null; next_due: string | null; status: string }>
+  summary: { up_to_date: number; due: number; overdue: number; unknown: number }
+}>('/preventive-care', { lazy: true, server: false })
+
+const screeningAlerts = computed(() => {
+  if (!preventiveCare.value?.screenings) return []
+  return preventiveCare.value.screenings.filter(s => s.status === 'overdue' || s.status === 'due').slice(0, 5)
+})
+
 // System health for degradation banner (#238)
 const { data: sysHealth } = fetchApi<{
   circuit_breaker?: { state: string; oncofiles_rss_mb?: number }
@@ -274,6 +285,45 @@ const EVENT_ICONS: Record<string, string> = {
         <div class="mt-1 text-xs text-gray-400">{{ formatDate(latestBriefing.date) }}</div>
       </template>
       <div v-else class="text-sm text-gray-500 py-3 text-center">{{ $t('common.dataUnavailable') }}</div>
+    </div>
+
+    <!-- Preventive Screenings (general health patients only) -->
+    <div v-if="!isOncology && preventiveCare" class="rounded-xl border border-gray-200 bg-white p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.preventiveScreenings') }}</h2>
+        <NuxtLink to="/patient" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
+      </div>
+      <!-- Summary badges -->
+      <div v-if="preventiveCare.summary" class="flex items-center gap-2 mb-3">
+        <UBadge v-if="preventiveCare.summary.overdue" variant="subtle" color="error" size="sm">{{ preventiveCare.summary.overdue }} {{ $t('preventive.overdue') }}</UBadge>
+        <UBadge v-if="preventiveCare.summary.due" variant="subtle" color="warning" size="sm">{{ preventiveCare.summary.due }} {{ $t('preventive.due') }}</UBadge>
+        <UBadge v-if="preventiveCare.summary.up_to_date" variant="subtle" color="success" size="sm">{{ preventiveCare.summary.up_to_date }} {{ $t('preventive.upToDate') }}</UBadge>
+      </div>
+      <!-- Due/overdue items -->
+      <div v-if="screeningAlerts.length" class="space-y-2">
+        <div
+          v-for="s in screeningAlerts"
+          :key="s.id"
+          class="flex items-center gap-3 rounded-lg px-3 py-2"
+          :class="s.status === 'overdue' ? 'bg-red-50' : 'bg-amber-50'"
+        >
+          <UIcon
+            :name="s.status === 'overdue' ? 'i-lucide-alert-triangle' : 'i-lucide-clock'"
+            class="h-4 w-4 shrink-0"
+            :class="s.status === 'overdue' ? 'text-red-500' : 'text-amber-500'"
+          />
+          <span class="text-sm text-gray-700 flex-1">{{ s.name }}</span>
+          <UBadge
+            variant="subtle"
+            :color="s.status === 'overdue' ? 'error' : 'warning'"
+            size="xs"
+          >{{ s.status === 'overdue' ? $t('preventive.overdue') : $t('preventive.due') }}</UBadge>
+        </div>
+      </div>
+      <div v-else class="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <UIcon name="i-lucide-check-circle" class="h-4 w-4" />
+        {{ $t('preventive.allUpToDate') }}
+      </div>
     </div>
 
     <!-- Upcoming Events + Quick Links -->

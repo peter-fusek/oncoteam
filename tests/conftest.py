@@ -58,6 +58,7 @@ def _clear_api_caches():
     mod._labs_cache.clear()
     mod._documents_cache.clear()
     mod._patient_ids_cache.clear()
+    mod._preventive_care_cache.clear()
     mod._pending_requests.clear()
     yield
     mod._protocol_cache.clear()
@@ -66,6 +67,7 @@ def _clear_api_caches():
     mod._labs_cache.clear()
     mod._documents_cache.clear()
     mod._patient_ids_cache.clear()
+    mod._preventive_care_cache.clear()
     mod._pending_requests.clear()
 
 
