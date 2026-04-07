@@ -200,7 +200,12 @@ When reviewing uploaded documents:
 - `/api/diagnostics` nests `oncofiles_rss_mb` inside `circuit_breaker` — dashboard must read `circuit_breaker.oncofiles_rss_mb`, NOT top-level `oncofiles_rss_mb`.
 - `_rss_history` ring buffer (60 entries, ~1hr) in `oncofiles_client.py` — exposed via `get_circuit_breaker_status()["rss_history"]`. Resets on deploy.
 - `api_cumulative_dose` reads actual dose from `patient.active_therapies` oxaliplatin entry (76.5 mg/m²), falls back to protocol standard (85). Don't use hardcoded `dose_per_cycle` for patient-specific calculations.
-- Dictionary links pattern: `<NuxtLink :to="\`/dictionary?q=${term}\`" class="underline decoration-dotted decoration-gray-400 hover:decoration-green-600 hover:text-green-700 transition-colors">`. Used in LabThresholdTable, PreCycleChecklist, toxicity ECOG, labs headers, home page labs, EmergencyAlert.
+- Dictionary links pattern: `<NuxtLink :to="\`/dictionary?q=${term}\`" class="underline decoration-dotted decoration-gray-400 hover:decoration-green-600 hover:text-green-700 transition-colors">`. Used in LabThresholdTable, PreCycleChecklist, toxicity ECOG, labs headers, home page labs, EmergencyAlert, BiomarkerCard.
+- `medical-dictionary.ts` has 39 entries across 7 categories (lab, tumor_marker, treatment, diagnosis, inflammation, general, toxicity). Add new entries there, not inline.
+- `_classify_doc_type()` recognizes `chemo_sheet` via metadata category + text heuristics. Dispatcher routes to `run_dose_extraction_single()`.
+- `dose_extraction` agent is event-driven only (`schedule_params={"hours": 999}`). Has `is_general_health_patient()` guard — never runs for e5g.
+- `api_cumulative_dose` prefers real extracted data (`data_source="extracted"`) from `list_treatment_events(event_type="chemotherapy")`, falls back to `calculated` using patient profile dose. New fields: `data_source`, `cycles_detail`.
+- Agent registry count: 20. Tests in `test_agent_registry.py` and `test_dashboard_api_autonomous.py` assert counts — update when adding agents.
 
 ## Key commands
 
