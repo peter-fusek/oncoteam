@@ -157,7 +157,7 @@ const abbreviations: Record<string, string> = {
               <span class="text-gray-500">{{ $t(`patient.${key}`, key) }}:</span> {{ val }}
             </span>
           </div>
-          <div class="flex items-center gap-3 mt-2 text-xs">
+          <div v-if="isOncology" class="flex items-center gap-3 mt-2 text-xs">
             <UBadge variant="subtle" color="info">{{ $t('patient.stage', { stage: patient.staging?.split(' ')[0] || 'IV' }) }}</UBadge>
             <UBadge variant="subtle" color="neutral">{{ patient.histology }}</UBadge>
             <UBadge variant="subtle" color="neutral">{{ $t('patient.sided', { side: patient.tumor_laterality }) }}</UBadge>
