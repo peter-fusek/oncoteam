@@ -50,10 +50,13 @@ export function useActivePatient() {
     if (!canSwitchPatient.value) return
     if (allowedPatientIds.value.includes(patientId)) {
       activePatientId.value = patientId
-      // Clear all cached Nuxt async data so useFetch re-fetches with new patient_id
+      // Clear cached API data so useFetch re-fetches with new patient_id.
+      // Must restore activePatientId after clear (clearNuxtData wipes useState too).
       if (import.meta.client) {
         clearNuxtData()
-        await refreshNuxtData()
+        activePatientId.value = patientId
+        await nextTick()
+        refreshNuxtData()
       }
     }
   }
