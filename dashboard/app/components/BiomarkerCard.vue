@@ -31,7 +31,7 @@ const colors = computed(() => {
     @click="$emit('drilldown')"
   >
     <div class="flex items-center justify-between mb-1">
-      <span class="font-semibold text-sm text-gray-900">{{ name }}</span>
+      <NuxtLink :to="`/dictionary?q=${name}`" class="font-semibold text-sm text-gray-900 underline decoration-dotted decoration-gray-400 hover:decoration-green-600 hover:text-green-700 transition-colors" @click.stop :title="`Look up ${name} in dictionary`">{{ name }}</NuxtLink>
       <span class="w-2 h-2 rounded-full" :class="colors.dot" />
     </div>
     <div class="text-xs text-gray-700">{{ value }}</div>

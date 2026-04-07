@@ -3,7 +3,7 @@ export interface DictionaryEntry {
   fullName: { sk: string; en: string }
   proDesc: { sk: string; en: string }
   laikDesc: { sk: string; en: string }
-  category: 'lab' | 'tumor_marker' | 'treatment' | 'diagnosis' | 'inflammation' | 'general'
+  category: 'lab' | 'tumor_marker' | 'treatment' | 'diagnosis' | 'inflammation' | 'general' | 'toxicity'
   unit?: string
   referenceRange?: string
 }
@@ -330,6 +330,230 @@ export const MEDICAL_DICTIONARY: DictionaryEntry[] = [
     },
     category: 'diagnosis',
   },
+
+  // ── Additional Lab Values ──
+  {
+    abbr: 'ALP',
+    fullName: { sk: 'Alkalická fosfatáza', en: 'Alkaline Phosphatase' },
+    proDesc: {
+      sk: 'Cholestáza: ALP + GMT zvýšené = obštrukcia žlčových ciest. Pri hepatálnych metastázach často elevovaná.',
+      en: 'Cholestasis: ALP + GMT elevated = bile duct obstruction. Often elevated with liver metastases.',
+    },
+    laikDesc: {
+      sk: 'Enzým z pečene a kostí. Vysoké hodnoty môžu naznačovať problémy so žlčovými cestami.',
+      en: 'An enzyme from the liver and bones. High levels may indicate bile duct issues.',
+    },
+    category: 'lab',
+    unit: 'U/L',
+    referenceRange: '44–147',
+  },
+  {
+    abbr: 'GMT',
+    fullName: { sk: 'Gama-glutamyltransferáza', en: 'Gamma-Glutamyl Transferase' },
+    proDesc: {
+      sk: 'Citlivý marker cholestázy a hepatotoxicity. GMT + ALP zvýšené = cholestáza. GMT izolovaná = lieky, alkohol.',
+      en: 'Sensitive cholestasis and hepatotoxicity marker. GMT + ALP elevated = cholestasis. Isolated GMT = drugs, alcohol.',
+    },
+    laikDesc: {
+      sk: 'Pečeňový enzým. Pomáha lekárom rozlíšiť typ poškodenia pečene.',
+      en: 'A liver enzyme. Helps doctors distinguish the type of liver damage.',
+    },
+    category: 'lab',
+    unit: 'U/L',
+    referenceRange: '0–55',
+  },
+  {
+    abbr: 'eGFR',
+    fullName: { sk: 'Odhadovaná glomerulárna filtrácia', en: 'Estimated Glomerular Filtration Rate' },
+    proDesc: {
+      sk: 'KDIGO klasifikácia: >90 = normálna, 60-89 = mierne znížená, 30-59 = stredne, <30 = ťažko. Dôležité pred platinou.',
+      en: 'KDIGO classification: >90 = normal, 60-89 = mildly decreased, 30-59 = moderate, <30 = severe. Important before platinum.',
+    },
+    laikDesc: {
+      sk: 'Ukazuje, ako dobre obličky filtrujú krv. Dôležité pred podaním chemoterapie.',
+      en: 'Shows how well kidneys filter blood. Important before administering chemotherapy.',
+    },
+    category: 'lab',
+    unit: 'mL/min/1.73m²',
+    referenceRange: '>90',
+  },
+
+  // ── Toxicity Terms ──
+  {
+    abbr: 'Neuropathy',
+    fullName: { sk: 'Periférna neuropatia', en: 'Peripheral Neuropathy' },
+    proDesc: {
+      sk: 'Oxaliplatina: akútna (chlad, hrdlo) a kumulatívna (prsty, nohy). G2 = znížiť dávku, G3 = vysadiť oxaliplatinu.',
+      en: 'Oxaliplatin: acute (cold, throat) and cumulative (fingers, feet). G2 = reduce dose, G3 = discontinue oxaliplatin.',
+    },
+    laikDesc: {
+      sk: 'Tŕpnutie alebo bolesť v prstoch rúk a nôh spôsobená chemoterapiou. Môže sa zhoršovať s každým cyklom.',
+      en: 'Tingling or pain in fingers and toes caused by chemo. Can worsen with each cycle.',
+    },
+    category: 'toxicity',
+  },
+  {
+    abbr: 'Diarrhea',
+    fullName: { sk: 'Hnačka (chemoterapiou indukovaná)', en: 'Chemotherapy-Induced Diarrhea' },
+    proDesc: {
+      sk: '5-FU a irinotekan: G1-2 = loperamid, G3 = odložiť cyklus + i.v. hydratácia, G4 = hospitalizácia.',
+      en: '5-FU and irinotecan: G1-2 = loperamide, G3 = delay cycle + IV hydration, G4 = hospitalization.',
+    },
+    laikDesc: {
+      sk: 'Častý vedľajší účinok chemoterapie. Pri závažných prípadoch sa liečba pozastaví.',
+      en: 'Common chemo side effect. In severe cases, treatment is paused.',
+    },
+    category: 'toxicity',
+  },
+  {
+    abbr: 'Mucositis',
+    fullName: { sk: 'Mukozitída', en: 'Oral Mucositis' },
+    proDesc: {
+      sk: '5-FU: zápal slizníc úst. G1-2 = lokálna liečba, G3 = odložiť cyklus, znížiť 5-FU.',
+      en: '5-FU: oral mucosa inflammation. G1-2 = topical treatment, G3 = delay cycle, reduce 5-FU.',
+    },
+    laikDesc: {
+      sk: 'Bolestivé vredy v ústach spôsobené chemoterapiou. Pri ťažších prípadoch sa upraví dávka.',
+      en: 'Painful mouth sores caused by chemo. In severe cases, the dose is adjusted.',
+    },
+    category: 'toxicity',
+  },
+  {
+    abbr: 'HFS',
+    fullName: { sk: 'Hand-foot syndróm', en: 'Hand-Foot Syndrome' },
+    proDesc: {
+      sk: 'Palmoplantárna erytrodyzestézia. 5-FU, kapecitabín. G2 = znížiť dávku, G3 = prerušiť liečbu.',
+      en: 'Palmar-plantar erythrodysesthesia. 5-FU, capecitabine. G2 = reduce dose, G3 = interrupt treatment.',
+    },
+    laikDesc: {
+      sk: 'Začervenanie, opuch a bolesť dlaní a chodidiel. Spôsobené niektorými liekmi v chemoterapii.',
+      en: 'Redness, swelling and pain on palms and soles. Caused by certain chemo drugs.',
+    },
+    category: 'toxicity',
+  },
+  {
+    abbr: 'Fatigue',
+    fullName: { sk: 'Únava (onkologická)', en: 'Cancer-Related Fatigue' },
+    proDesc: {
+      sk: 'Multifaktoriálna: anémia, dehydratácia, nutričný deficit, psychický stres. NCCN odporúča stupňovitú intervenciu.',
+      en: 'Multifactorial: anemia, dehydration, nutritional deficit, psychological stress. NCCN recommends graded intervention.',
+    },
+    laikDesc: {
+      sk: 'Extrémna únava počas liečby, ktorá sa nezlepší odpočinkom. Jedna z najčastejších sťažností pacientov.',
+      en: 'Extreme tiredness during treatment that rest does not improve. One of the most common patient complaints.',
+    },
+    category: 'toxicity',
+  },
+  {
+    abbr: 'Nausea',
+    fullName: { sk: 'Nauzea a vracanie', en: 'Nausea and Vomiting' },
+    proDesc: {
+      sk: 'Oxaliplatina: stredne emetogénna. Profylaxia: ondansetron + dexametazon. Oneskorené: metoklopramid.',
+      en: 'Oxaliplatin: moderately emetogenic. Prophylaxis: ondansetron + dexamethasone. Delayed: metoclopramide.',
+    },
+    laikDesc: {
+      sk: 'Nevoľnosť a zvracanie po chemoterapii. Lieky proti nevoľnosti sa podávajú preventívne.',
+      en: 'Nausea and vomiting after chemo. Anti-nausea medications are given preventively.',
+    },
+    category: 'toxicity',
+  },
+
+  // ── 2nd-Line Treatment Options ──
+  {
+    abbr: 'FOLFIRI',
+    fullName: { sk: 'FOLFIRI protokol', en: 'FOLFIRI Protocol' },
+    proDesc: {
+      sk: '5-FU + leucovorín + irinotekan. Štandard 2. línie po progresii na FOLFOX. Cyklus 14 dní.',
+      en: '5-FU + leucovorin + irinotecan. Standard 2nd-line after FOLFOX progression. 14-day cycle.',
+    },
+    laikDesc: {
+      sk: 'Alternatívna kombinácia liekov, keď prvá liečba prestane účinkovať.',
+      en: 'Alternative drug combination when the first treatment stops working.',
+    },
+    category: 'treatment',
+  },
+  {
+    abbr: 'FOLFOXIRI',
+    fullName: { sk: 'FOLFOXIRI protokol', en: 'FOLFOXIRI Protocol' },
+    proDesc: {
+      sk: '5-FU + leucovorín + oxaliplatina + irinotekan. Intenzívnejšia trojkombinácia. ECOG 0-1. Vyššia toxicita ale lepšia RR.',
+      en: '5-FU + leucovorin + oxaliplatin + irinotecan. Intensive triplet. ECOG 0-1. Higher toxicity but better RR.',
+    },
+    laikDesc: {
+      sk: 'Najintenzívnejšia kombinácia 4 liekov. Používa sa u silnejších pacientov pre lepšiu šancu na odpoveď.',
+      en: 'Most intensive combination of 4 drugs. Used in fitter patients for better chance of response.',
+    },
+    category: 'treatment',
+  },
+  {
+    abbr: 'TAS-102',
+    fullName: { sk: 'Trifluridín/tipiracil', en: 'Trifluridine/Tipiracil' },
+    proDesc: {
+      sk: 'Lonsurf. 3. línia mCRC. Perorálny fluoropyrimidín. Kombinácia s bevacizumabom (SUNLIGHT štúdia).',
+      en: 'Lonsurf. 3rd-line mCRC. Oral fluoropyrimidine. Combination with bevacizumab (SUNLIGHT trial).',
+    },
+    laikDesc: {
+      sk: 'Tablety podávané v neskorších fázach liečby, keď iné lieky prestanú účinkovať.',
+      en: 'Pills given in later stages when other treatments stop working.',
+    },
+    category: 'treatment',
+  },
+  {
+    abbr: 'Regorafenib',
+    fullName: { sk: 'Regorafenib (Stivarga)', en: 'Regorafenib (Stivarga)' },
+    proDesc: {
+      sk: 'Multikinázový inhibítor. 3. línia mCRC. Perorálny, 21/28 dní. Hepatotoxicita a HFS monitorovať.',
+      en: 'Multikinase inhibitor. 3rd-line mCRC. Oral, 21/28 days. Monitor hepatotoxicity and HFS.',
+    },
+    laikDesc: {
+      sk: 'Cielený liek v tabletkovej forme pre neskoršie fázy liečby. Blokuje rast nádorových ciev.',
+      en: 'Targeted drug in pill form for later-stage treatment. Blocks tumor blood vessel growth.',
+    },
+    category: 'treatment',
+  },
+
+  // ── Additional Biomarkers ──
+  {
+    abbr: 'NRAS',
+    fullName: { sk: 'Neuroblastoma RAS vírusový onkogén', en: 'Neuroblastoma RAS Viral Oncogene' },
+    proDesc: {
+      sk: 'Mutácie NRAS vylučujú anti-EGFR (cetuximab, panitumumab). Wild-type = anti-EGFR možný (ak aj KRAS + BRAF WT).',
+      en: 'NRAS mutations exclude anti-EGFR (cetuximab, panitumumab). Wild-type = anti-EGFR possible (if KRAS + BRAF also WT).',
+    },
+    laikDesc: {
+      sk: 'Ďalší gén testovaný v nádore. Spolu s KRAS rozhoduje o vhodnosti cielenej liečby.',
+      en: 'Another gene tested in the tumor. Together with KRAS, determines suitability for targeted therapy.',
+    },
+    category: 'diagnosis',
+  },
+  {
+    abbr: 'BRAF V600E',
+    fullName: { sk: 'BRAF V600E mutácia', en: 'BRAF V600E Mutation' },
+    proDesc: {
+      sk: 'BRAF V600E+ mCRC: horšia prognóza. Encorafenib + cetuximab (BEACON). Bez mutácie: štandardná liečba.',
+      en: 'BRAF V600E+ mCRC: worse prognosis. Encorafenib + cetuximab (BEACON). No mutation: standard treatment.',
+    },
+    laikDesc: {
+      sk: 'Špecifická zmena v géne BRAF. Ak je prítomná, existuje špeciálna kombinácia liekov.',
+      en: 'A specific change in the BRAF gene. If present, a special drug combination is available.',
+    },
+    category: 'diagnosis',
+  },
+
+  // ── General / Other ──
+  {
+    abbr: 'BSA',
+    fullName: { sk: 'Plocha povrchu tela', en: 'Body Surface Area' },
+    proDesc: {
+      sk: 'BSA (m²) = √(výška cm × hmotnosť kg / 3600). Dávky chemo sa počítajú v mg/m². Priemerná BSA: 1.7-1.9 m².',
+      en: 'BSA (m²) = √(height cm × weight kg / 3600). Chemo doses calculated in mg/m². Average BSA: 1.7-1.9 m².',
+    },
+    laikDesc: {
+      sk: 'Meranie veľkosti tela používané na výpočet správnej dávky chemoterapie.',
+      en: 'A measurement of body size used to calculate the correct chemotherapy dose.',
+    },
+    category: 'general',
+  },
 ]
 
 // Helper to search dictionary
@@ -356,4 +580,5 @@ export const CATEGORY_LABELS: Record<string, { sk: string; en: string }> = {
   diagnosis: { sk: 'Diagnostika', en: 'Diagnosis' },
   inflammation: { sk: 'Zápalové indexy', en: 'Inflammation' },
   general: { sk: 'Všeobecné', en: 'General' },
+  toxicity: { sk: 'Toxicita', en: 'Toxicity' },
 }
