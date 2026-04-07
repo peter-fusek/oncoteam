@@ -46,13 +46,14 @@ export function useActivePatient() {
     patients.value.find(p => p.id === activePatientId.value) || patients.value[0],
   )
 
-  function switchPatient(patientId: string) {
+  async function switchPatient(patientId: string) {
     if (!canSwitchPatient.value) return
     if (allowedPatientIds.value.includes(patientId)) {
       activePatientId.value = patientId
-      // Force full reload to clear all cached API data for previous patient
+      // Clear all cached Nuxt async data so useFetch re-fetches with new patient_id
       if (import.meta.client) {
-        window.location.reload()
+        clearNuxtData()
+        await refreshNuxtData()
       }
     }
   }
