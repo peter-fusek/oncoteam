@@ -50,6 +50,10 @@ export function useActivePatient() {
     if (!canSwitchPatient.value) return
     if (allowedPatientIds.value.includes(patientId)) {
       activePatientId.value = patientId
+      // Force full reload to clear all cached API data for previous patient
+      if (import.meta.client) {
+        window.location.reload()
+      }
     }
   }
 
