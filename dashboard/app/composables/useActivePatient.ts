@@ -55,10 +55,6 @@ export function useActivePatient() {
     if (allowedPatientIds.value.includes(patientId)) {
       activePatientId.value = patientId
       patientCookie.value = patientId
-      // Full reload — cookie persists the patient selection for SSR
-      if (import.meta.client) {
-        reloadNuxtApp({ ttl: 1000 })
-      }
     }
   }
 
