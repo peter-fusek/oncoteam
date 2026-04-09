@@ -1083,14 +1083,21 @@ async def health(request: Request) -> JSONResponse:
     from .config import AUTONOMOUS_ENABLED
     from .scheduler import get_scheduler_status
 
-    data = {
+    sched = get_scheduler_status()
+    data: dict = {
         "status": "ok",
         "server": "oncoteam",
         "version": VERSION,
-        "commit": GIT_COMMIT,
-        "autonomous_enabled": AUTONOMOUS_ENABLED,
-        "scheduler": get_scheduler_status(),
     }
+    # Include detailed info only for authenticated requests
+    auth = request.headers.get("authorization", "")
+    from .config import DASHBOARD_API_KEY
+    if auth.startswith("Bearer ") and DASHBOARD_API_KEY and auth[7:] == DASHBOARD_API_KEY:
+        data["commit"] = GIT_COMMIT
+        data["autonomous_enabled"] = AUTONOMOUS_ENABLED
+        data["scheduler"] = sched
+    else:
+        data["scheduler"] = {"running": sched.get("running", False), "jobs": sched.get("jobs", 0)}
     return JSONResponse(data)
 
 

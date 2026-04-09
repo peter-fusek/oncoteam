@@ -8,9 +8,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Not authenticated' })
   }
 
+  // Validate patient_id against user's authorized patients
+  const query = getQuery(event)
+  const requestedPatientId = query.patient_id as string | undefined
+  const allowedPatientIds = (session.user as { patientIds?: string[] }).patientIds || []
+  if (requestedPatientId && allowedPatientIds.length > 0 && !allowedPatientIds.includes(requestedPatientId)) {
+    throw createError({ statusCode: 403, message: 'Access denied to patient' })
+  }
+
   const config = useRuntimeConfig()
   const path = getRouterParam(event, 'path') || ''
-  const query = getQuery(event)
 
   const backendUrl = `${config.oncoteamApiUrl}/api/${path}`
   const qs = new URLSearchParams(query as Record<string, string>).toString()

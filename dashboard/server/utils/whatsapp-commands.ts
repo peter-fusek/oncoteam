@@ -367,16 +367,30 @@ function handleSwitchCommand(
   body: string,
   lang: Lang,
   fromPhone?: string,
+  allowedPatientIds?: string[],
 ): CommandResult {
   const parts = body.trim().split(/\s+/)
   const slug = parts[1]?.toLowerCase()
 
   if (!slug) {
+    const available = allowedPatientIds?.length ? allowedPatientIds.join(', ') : '?'
     return {
       type: 'reply',
       text: t(L(
-        'Pouzitie: *prepni erika* alebo *prepni e5g*\n\nPouzi *pacienti* pre zoznam.',
-        'Usage: *switch erika* or *switch e5g*\n\nUse *patients* to list available.',
+        `Pouzitie: *prepni <meno>*\nDostupni: ${available}`,
+        `Usage: *switch <slug>*\nAvailable: ${available}`,
+      ), lang),
+    }
+  }
+
+  // Authorization check: only allow switching to authorized patients
+  if (allowedPatientIds?.length && !allowedPatientIds.includes(slug)) {
+    const available = allowedPatientIds.join(', ')
+    return {
+      type: 'reply',
+      text: t(L(
+        `Nemate pristup k pacientovi *${slug}*.\nDostupni pacienti: ${available}`,
+        `Access denied to patient *${slug}*.\nAvailable patients: ${available}`,
       ), lang),
     }
   }
@@ -399,6 +413,7 @@ async function handlePatientsCommand(
   lang: Lang,
   fromPhone?: string,
   currentPatientId?: string,
+  allowedPatientIds?: string[],
 ): Promise<CommandResult> {
   try {
     const config = useRuntimeConfig()
@@ -409,7 +424,11 @@ async function handlePatientsCommand(
       { headers },
     )
 
-    const patients = data.patients || []
+    let patients = data.patients || []
+    // Filter by authorized patients if scope is provided
+    if (allowedPatientIds?.length) {
+      patients = patients.filter(p => allowedPatientIds.includes(p.slug))
+    }
     if (!patients.length) {
       return { type: 'reply', text: t(L('Ziadni pacienti.', 'No patients found.'), lang) }
     }
@@ -438,7 +457,7 @@ export async function handleWhatsAppCommand(
   body: string,
   oncoteamApiUrl: string,
   fromPhone?: string,
-  options?: { patientId?: string },
+  options?: { patientId?: string; allowedPatientIds?: string[] },
 ): Promise<CommandResult> {
   const input = body.trim().toLowerCase().split(/\s+/)[0] || ''
   const lang = detectLang(input)
@@ -455,12 +474,12 @@ export async function handleWhatsAppCommand(
 
   // Patient switching: "prepni erika" / "switch e5g"
   if (command === 'switch') {
-    return handleSwitchCommand(body, lang, fromPhone)
+    return handleSwitchCommand(body, lang, fromPhone, options?.allowedPatientIds)
   }
 
-  // List patients: "pacienti" / "patients"
+  // List patients: "pacienti" / "patients" — filter by authorized patients
   if (command === 'patients') {
-    return handlePatientsCommand(oncoteamApiUrl, lang, fromPhone, options?.patientId)
+    return handlePatientsCommand(oncoteamApiUrl, lang, fromPhone, options?.patientId, options?.allowedPatientIds)
   }
 
   // Conversational fallback — handled async (Claude API takes 30-60s,

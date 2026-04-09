@@ -291,7 +291,7 @@ const funnelTrials = [
                       <div class="font-medium text-gray-700">{{ param.label }}</div>
                       <div v-if="param.unit" class="text-[10px] text-gray-400">{{ param.unit }}</div>
                     </td>
-                    <td class="px-4 py-2 text-xs text-gray-400">{{ param.refLow }}\u2013{{ param.refHigh }}</td>
+                    <td class="px-4 py-2 text-xs text-gray-400">{{ param.refLow }}&ndash;{{ param.refHigh }}</td>
                     <td v-for="entry in labEntriesFull" :key="entry.date" class="px-4 py-2 text-right tabular-nums"
                       :class="labStatusClass(labStatus(entry.values[param.key] as number | undefined, param))">
                       {{ formatLabVal(entry.values[param.key] as number | undefined, param) }}

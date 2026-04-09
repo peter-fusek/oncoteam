@@ -609,7 +609,7 @@ def _cors_json(
     response = JSONResponse(data, status_code=status_code)
     req = request or _CURRENT_REQUEST.get()
     origin = _get_cors_origin(req) if req else ""
-    response.headers["Access-Control-Allow-Origin"] = origin or "null"
+    response.headers["Access-Control-Allow-Origin"] = origin or ""
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Vary"] = "Origin"

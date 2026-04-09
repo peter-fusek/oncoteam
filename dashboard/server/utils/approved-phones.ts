@@ -58,5 +58,26 @@ export function setPhonePatient(phone: string, patientId: string): void {
 }
 
 export function resolvePatientIdFromPhone(phone: string): string {
-  return phoneToPatient.get(phone) || 'erika'
+  return phoneToPatient.get(phone) || ''
+}
+
+/**
+ * Get all allowed patient IDs for a phone from ROLE_MAP.
+ * Merges patient_ids from all ROLE_MAP entries sharing this phone.
+ */
+export function getAllowedPatientIdsForPhone(phone: string, roleMapRaw: string | Record<string, { phone?: string; patient_ids?: string[]; patient_id?: string }>): string[] {
+  try {
+    const roleMap = typeof roleMapRaw === 'string' ? JSON.parse(roleMapRaw || '{}') : roleMapRaw || {}
+    const normalized = phone.replace(/[\s\-()]/g, '')
+    const ids = new Set<string>()
+    for (const config of Object.values(roleMap) as Array<{ phone?: string; patient_ids?: string[]; patient_id?: string }>) {
+      const configPhone = config.phone?.replace(/[\s\-()]/g, '') || ''
+      if (configPhone === normalized) {
+        if (config.patient_ids) config.patient_ids.forEach(id => ids.add(id))
+        else if (config.patient_id) ids.add(config.patient_id)
+      }
+    }
+    return [...ids]
+  }
+  catch { return [] }
 }

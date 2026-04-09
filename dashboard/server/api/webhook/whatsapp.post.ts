@@ -2,7 +2,7 @@ import twilio from 'twilio'
 import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
 import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionCount } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
-import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient } from '../../utils/approved-phones'
+import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone } from '../../utils/approved-phones'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
@@ -84,15 +84,20 @@ function isValidPhoneFormat(phone: string): boolean {
   return /^\+[1-9]\d{6,14}$/.test(phone)
 }
 
-function extractPhoneAllowlist(roleMapRaw: string | Record<string, { phone?: string; patient_id?: string }>): Set<string> {
+function extractPhoneAllowlist(roleMapRaw: string | Record<string, { phone?: string; patient_id?: string; roles?: string[] }>): Set<string> {
   try {
     const roleMap = typeof roleMapRaw === 'string' ? JSON.parse(roleMapRaw || '{}') : roleMapRaw || {}
     const phones = new Set<string>()
-    for (const config of Object.values(roleMap) as Array<{ phone?: string; patient_id?: string }>) {
+    const entries = Object.values(roleMap) as Array<{ phone?: string; patient_id?: string; roles?: string[] }>
+    // Two-pass: advocates first so their patient_id takes priority for shared phones
+    const advocates = entries.filter(c => c.roles?.includes('advocate'))
+    const others = entries.filter(c => !c.roles?.includes('advocate'))
+    for (const config of [...advocates, ...others]) {
       if (config.phone) {
         const normalized = normalizePhone(config.phone)
         phones.add(normalized)
-        if (config.patient_id) {
+        // First-wins: don't overwrite if phone already mapped by a higher-priority entry
+        if (config.patient_id && !resolvePatientIdFromPhone(normalized)) {
           setPhonePatient(normalized, config.patient_id)
         }
       }
@@ -316,7 +321,7 @@ export default defineEventHandler(async (event) => {
                 content_type: media.contentType,
                 filename,
                 phone: from,
-                patient_id: resolvePatientIdFromPhone(from),
+                patient_id: resolvePatientIdFromPhone(from) || 'erika',
               },
               headers,
             },
@@ -358,8 +363,9 @@ export default defineEventHandler(async (event) => {
 
   // Process command and respond
   const oncoteamApiUrl = config.oncoteamApiUrl as string
-  const whatsappPatientId = resolvePatientIdFromPhone(from)
-  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId })
+  const whatsappPatientId = resolvePatientIdFromPhone(from) || 'erika'
+  const allowedPatientIds = getAllowedPatientIdsForPhone(from, config.roleMap as string)
+  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds })
 
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.
