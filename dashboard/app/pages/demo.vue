@@ -250,12 +250,12 @@ const funnelTrials = [
           </div>
           <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
             <div class="text-[10px] font-medium text-gray-400 uppercase">CEA trend</div>
-            <div class="text-2xl font-bold text-emerald-600">\u2193 {{ pctChange(labEntriesFull[0].values.CEA, labEntriesFull[2].values.CEA) }}</div>
+            <div class="text-2xl font-bold text-emerald-600">&darr; {{ pctChange(labEntriesFull[0].values.CEA, labEntriesFull[2].values.CEA) }}</div>
             <div class="text-[10px] text-gray-400">from baseline</div>
           </div>
           <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
             <div class="text-[10px] font-medium text-gray-400 uppercase">CA 19-9 trend</div>
-            <div class="text-2xl font-bold text-emerald-600">\u2193 {{ pctChange(labEntriesFull[0].values.CA_19_9, labEntriesFull[2].values.CA_19_9) }}</div>
+            <div class="text-2xl font-bold text-emerald-600">&darr; {{ pctChange(labEntriesFull[0].values.CA_19_9, labEntriesFull[2].values.CA_19_9) }}</div>
             <div class="text-[10px] text-gray-400">from baseline</div>
           </div>
         </div>
