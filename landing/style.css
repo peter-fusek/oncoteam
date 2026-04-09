@@ -993,6 +993,181 @@ html[lang="sk"] .hiw-num::before {
 
 .contact-icon { font-size: 0.5rem; color: var(--primary); }
 
+/* ── Use Cases ───────────────────────────────── */
+.use-cases {
+  padding: 100px 0;
+  background: var(--bg-warm, #fffbf5);
+}
+
+.uc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  max-width: 800px;
+  margin: 48px auto 0;
+}
+
+.uc-card {
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.uc-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+.uc-icon {
+  font-size: 1.8rem;
+  margin-bottom: 12px;
+}
+
+.uc-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.uc-card p {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.uc-cmd {
+  display: inline-block;
+  background: var(--primary);
+  color: #fff;
+  font-family: 'DM Sans', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* ── WhatsApp Showcase ──────────────────────── */
+.whatsapp-showcase {
+  padding: 100px 0;
+  background: var(--bg-alt);
+  border-top: 1px solid var(--border-light);
+}
+
+.wa-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  margin-top: 48px;
+}
+
+.wa-phone {
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.wa-phone:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.wa-phone-header {
+  background: #075e54;
+  color: #fff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wa-phone-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #128c7e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.wa-phone-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  flex: 1;
+}
+
+.wa-phone-status {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.wa-phone-body {
+  background: #e5ddd5;
+  padding: 16px 12px;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wa-msg {
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  position: relative;
+}
+
+.wa-msg-user {
+  background: #dcf8c6;
+  align-self: flex-end;
+  border-bottom-right-radius: 2px;
+  color: #303030;
+}
+
+.wa-msg-bot {
+  background: #fff;
+  align-self: flex-start;
+  border-bottom-left-radius: 2px;
+  color: #303030;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.06);
+}
+
+.wa-msg-proactive {
+  border-left: 3px solid #128c7e;
+}
+
+.wa-msg strong {
+  color: #1a1a1a;
+}
+
+.wa-msg em {
+  color: #666;
+}
+
+.wa-phone-label {
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-light);
+  background: #fff;
+  border-top: 1px solid var(--border-light);
+}
+
 /* ── Privacy ─────────────────────────────────── */
 .privacy {
   padding: 90px 0;
@@ -1028,6 +1203,63 @@ html[lang="sk"] .hiw-num::before {
   color: var(--text-light);
   font-size: 0.9rem;
   line-height: 1.65;
+}
+
+/* ── FAQ ──────────────────────────────────── */
+.faq {
+  padding: 100px 0;
+  background: var(--bg-white);
+}
+
+.faq-list {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-item summary {
+  padding: 1.25rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.faq-item summary:hover {
+  color: var(--primary);
+}
+
+.faq-item summary::after {
+  content: "+";
+  font-size: 1.4rem;
+  font-weight: 300;
+  color: var(--text-light);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+.faq-item[open] summary::after {
+  content: "\2212";
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item p {
+  padding: 0 0 1.25rem;
+  color: var(--text-light);
+  font-size: 0.95rem;
+  line-height: 1.7;
 }
 
 /* ── Footer ──────────────────────────────────── */
@@ -1515,14 +1747,18 @@ html[lang="sk"] .hiw-num::before {
   .reality-grid,
   .features-grid,
   .steps,
-  .privacy-grid {
+  .privacy-grid,
+  .wa-grid,
+  .uc-grid {
     grid-template-columns: 1fr;
   }
+
+  .wa-grid { max-width: 400px; margin-left: auto; margin-right: auto; }
 
   .hero { padding: 120px 0 70px; }
   .section-title { font-size: 1.7rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  .features, .get-started, .reality, .contact, .privacy, .ecosystem, .how-it-works { padding: 70px 0; }
+  .features, .get-started, .reality, .contact, .privacy, .faq, .ecosystem, .how-it-works, .whatsapp-showcase, .use-cases { padding: 70px 0; }
   .manifesto { padding: 48px 0; }
   .testimonial { padding: 60px 0; }
   .testimonial-card { padding: 28px 24px; }

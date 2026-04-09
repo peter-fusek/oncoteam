@@ -202,7 +202,8 @@ export default defineEventHandler(async (event) => {
         const oncoteamUrl = config.oncoteamApiUrl as string
         const apiKey = (config.oncoteamApiKey || '') as string
         const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
-        const rawFrom = String(config.twilioWhatsappFrom || '+14155238886')
+        const rawFrom = String(config.twilioWhatsappFrom || '')
+        if (!rawFrom) { console.error('[whatsapp] NUXT_TWILIO_WHATSAPP_FROM not configured'); return twimlResponse('Configuration error.') }
         const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
         const twilioTo = `whatsapp:${from}`
 
@@ -288,7 +289,8 @@ export default defineEventHandler(async (event) => {
     const oncoteamUrl = config.oncoteamApiUrl as string
     const apiKey = (config.oncoteamApiKey || '') as string
     const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
-    const rawFrom = String(config.twilioWhatsappFrom || '+14155238886')
+    const rawFrom = String(config.twilioWhatsappFrom || '')
+    if (!rawFrom) { console.error('[whatsapp] NUXT_TWILIO_WHATSAPP_FROM not configured'); return twimlResponse('Configuration error.') }
     const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
     const twilioTo = `whatsapp:${from}`
 
@@ -362,7 +364,8 @@ export default defineEventHandler(async (event) => {
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.
     // Claude API takes 30-60s, exceeding Twilio's 15s webhook timeout.
-    const rawFrom = String(config.twilioWhatsappFrom || '+14155238886')
+    const rawFrom = String(config.twilioWhatsappFrom || '')
+    if (!rawFrom) { console.error('[whatsapp] NUXT_TWILIO_WHATSAPP_FROM not configured'); return twimlResponse('Configuration error.') }
     const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
     const twilioTo = `whatsapp:${from}`
 

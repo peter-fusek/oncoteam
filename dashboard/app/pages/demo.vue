@@ -50,6 +50,66 @@ const KEY_PARAMS = [
   { key: 'CA_19_9', label: 'CA 19-9', unit: 'U/mL' },
 ]
 
+const ALL_LAB_PARAMS = [
+  { key: 'WBC', label: 'WBC', unit: '\u00d710\u00b3/\u00b5L', refLow: 4.0, refHigh: 10.0 },
+  { key: 'ANC', label: 'ANC', unit: '/\u00b5L', refLow: 1500, refHigh: 7500 },
+  { key: 'ABS_LYMPH', label: 'Lymphocytes', unit: '/\u00b5L', refLow: 1000, refHigh: 4000 },
+  { key: 'PLT', label: 'Platelets', unit: '\u00d710\u00b3/\u00b5L', refLow: 150, refHigh: 400, divisor: 1000 },
+  { key: 'hemoglobin', label: 'Hemoglobin', unit: 'g/dL', refLow: 12.0, refHigh: 17.5 },
+  { key: 'creatinine', label: 'Creatinine', unit: 'mg/dL', refLow: 0.6, refHigh: 1.2 },
+  { key: 'CEA', label: 'CEA', unit: 'ng/mL', refLow: 0, refHigh: 5.0, tumor: true },
+  { key: 'CA_19_9', label: 'CA 19-9', unit: 'U/mL', refLow: 0, refHigh: 37, tumor: true },
+  { key: 'SII', label: 'SII', unit: '', refLow: 0, refHigh: 1800, computed: true },
+  { key: 'NE_LY', label: 'Ne/Ly Ratio', unit: '', refLow: 0, refHigh: 3.0, computed: true },
+] as const
+
+type LabParam = (typeof ALL_LAB_PARAMS)[number]
+
+const labEntriesFull = labEntries.map((e) => {
+  const vals = { ...e.values } as Record<string, number | undefined>
+  if (!vals.ABS_LYMPH) {
+    if (e.date === '2026-03-19') vals.ABS_LYMPH = 1400
+    else if (e.date === '2026-02-27') vals.ABS_LYMPH = 1100
+    else vals.ABS_LYMPH = 1500
+  }
+  if (vals.ANC && vals.PLT && vals.ABS_LYMPH) {
+    vals.SII = Math.round((vals.ANC * vals.PLT) / vals.ABS_LYMPH)
+  }
+  if (vals.ANC && vals.ABS_LYMPH) {
+    vals.NE_LY = Math.round((vals.ANC / vals.ABS_LYMPH) * 100) / 100
+  }
+  return { ...e, values: vals }
+})
+
+function formatLabVal(val: number | undefined, param: LabParam) {
+  if (val == null) return '\u2014'
+  const v = 'divisor' in param && param.divisor ? val / param.divisor : val
+  if (v >= 1000) return (v / 1000).toFixed(1) + 'k'
+  if (Number.isInteger(v)) return String(v)
+  return v.toFixed(1)
+}
+
+function labStatus(val: number | undefined, param: LabParam): 'low' | 'high' | 'normal' {
+  if (val == null) return 'normal'
+  const v = 'divisor' in param && param.divisor ? val / param.divisor : val
+  if (v < param.refLow) return 'low'
+  if (v > param.refHigh) return 'high'
+  return 'normal'
+}
+
+function labStatusClass(status: 'low' | 'high' | 'normal') {
+  if (status === 'high') return 'text-amber-600 font-semibold'
+  if (status === 'low') return 'text-blue-600 font-semibold'
+  return 'text-gray-900'
+}
+
+function pctChange(current: number | undefined, previous: number | undefined): string {
+  if (current == null || previous == null || previous === 0) return ''
+  const pct = ((current - previous) / previous) * 100
+  const sign = pct > 0 ? '+' : ''
+  return sign + pct.toFixed(0) + '%'
+}
+
 const timelineEvents = [
   { event_type: 'chemotherapy', title: 'Cycle 4 — mFOLFOX6', event_date: '2026-04-02' },
   { event_type: 'lab_result', title: 'Pre-cycle labs', event_date: '2026-03-31' },
@@ -173,10 +233,93 @@ const funnelTrials = [
         </div>
       </div>
 
-      <!-- Labs view (same as overview but full-width) -->
-      <template v-if="demoView === 'labs'">
+      <!-- Labs view — full comparison table -->
+      <div v-if="demoView === 'labs'" class="space-y-4">
+        <!-- Summary cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
+            <div class="text-[10px] font-medium text-gray-400 uppercase">Entries</div>
+            <div class="text-2xl font-bold text-gray-900">{{ labEntriesFull.length }}</div>
+          </div>
+          <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
+            <div class="text-[10px] font-medium text-gray-400 uppercase">SII (latest)</div>
+            <div class="text-2xl font-bold" :class="(labEntriesFull[0].values.SII ?? 0) > 1800 ? 'text-amber-600' : 'text-emerald-600'">
+              {{ labEntriesFull[0].values.SII?.toLocaleString() ?? '\u2014' }}
+            </div>
+            <div class="text-[10px] text-gray-400">ref &lt;1800</div>
+          </div>
+          <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
+            <div class="text-[10px] font-medium text-gray-400 uppercase">CEA trend</div>
+            <div class="text-2xl font-bold text-emerald-600">\u2193 {{ pctChange(labEntriesFull[0].values.CEA, labEntriesFull[2].values.CEA) }}</div>
+            <div class="text-[10px] text-gray-400">from baseline</div>
+          </div>
+          <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
+            <div class="text-[10px] font-medium text-gray-400 uppercase">CA 19-9 trend</div>
+            <div class="text-2xl font-bold text-emerald-600">\u2193 {{ pctChange(labEntriesFull[0].values.CA_19_9, labEntriesFull[2].values.CA_19_9) }}</div>
+            <div class="text-[10px] text-gray-400">from baseline</div>
+          </div>
+        </div>
 
-      </template>
+        <!-- CBC Delta Table -->
+        <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div class="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500">Lab Values Comparison</h2>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-100">
+                  <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Parameter</th>
+                  <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Reference</th>
+                  <th v-for="entry in labEntriesFull" :key="entry.date" class="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                    {{ entry.date }}
+                  </th>
+                  <th class="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-gray-400">Change</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template v-for="(section, si) in [
+                  { title: 'Hematology', params: ALL_LAB_PARAMS.filter(p => !('tumor' in p && p.tumor) && !('computed' in p && p.computed)) },
+                  { title: 'Tumor Markers', params: ALL_LAB_PARAMS.filter(p => 'tumor' in p && p.tumor) },
+                  { title: 'Computed Indices', params: ALL_LAB_PARAMS.filter(p => 'computed' in p && p.computed) },
+                ]" :key="si">
+                  <tr class="bg-gray-50/70">
+                    <td :colspan="3 + labEntriesFull.length" class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">{{ section.title }}</td>
+                  </tr>
+                  <tr v-for="param in section.params" :key="param.key" class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <td class="px-4 py-2">
+                      <div class="font-medium text-gray-700">{{ param.label }}</div>
+                      <div v-if="param.unit" class="text-[10px] text-gray-400">{{ param.unit }}</div>
+                    </td>
+                    <td class="px-4 py-2 text-xs text-gray-400">{{ param.refLow }}\u2013{{ param.refHigh }}</td>
+                    <td v-for="entry in labEntriesFull" :key="entry.date" class="px-4 py-2 text-right tabular-nums"
+                      :class="labStatusClass(labStatus(entry.values[param.key] as number | undefined, param))">
+                      {{ formatLabVal(entry.values[param.key] as number | undefined, param) }}
+                    </td>
+                    <td class="px-4 py-2 text-right text-xs tabular-nums"
+                      :class="(() => {
+                        const cur = labEntriesFull[0].values[param.key] as number | undefined
+                        const prev = labEntriesFull[labEntriesFull.length - 1].values[param.key] as number | undefined
+                        if (cur == null || prev == null) return 'text-gray-300'
+                        const isMarker = 'tumor' in param && param.tumor
+                        const pct = ((cur - prev) / prev) * 100
+                        if (isMarker) return pct < -10 ? 'text-emerald-600 font-medium' : pct > 10 ? 'text-red-600 font-medium' : 'text-gray-500'
+                        return Math.abs(pct) < 10 ? 'text-gray-500' : labStatus(cur, param) !== 'normal' ? 'text-amber-600 font-medium' : 'text-gray-500'
+                      })()">
+                      {{ pctChange(labEntriesFull[0].values[param.key] as number | undefined, labEntriesFull[labEntriesFull.length - 1].values[param.key] as number | undefined) || '\u2014' }}
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+          <span>All hematology values within safe ranges. Tumor markers showing excellent treatment response.</span>
+        </div>
+      </div>
 
       <!-- Overview (default) -->
       <template v-if="demoView === 'overview'">

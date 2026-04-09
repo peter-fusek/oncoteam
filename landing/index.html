@@ -96,6 +96,21 @@
         "@type": "Question",
         "name": "How does clinical trial search work?",
         "acceptedAnswer": {"@type": "Answer", "text": "Oncoteam searches ClinicalTrials.gov and EU Clinical Trials Register, then uses your molecular profile and treatment history to check eligibility automatically."}
+      },
+      {
+        "@type": "Question",
+        "name": "Where is my data stored?",
+        "acceptedAnswer": {"@type": "Answer", "text": "All your medical documents stay in your own Google Drive. Oncoteam reads and analyzes them, but never copies or stores originals on any external server."}
+      },
+      {
+        "@type": "Question",
+        "name": "Does AI learn from my data?",
+        "acceptedAnswer": {"@type": "Answer", "text": "No. Neither Claude (Anthropic) nor ChatGPT (OpenAI) use data from MCP tools for model training. Your documents are processed in real-time and are not stored on any AI server."}
+      },
+      {
+        "@type": "Question",
+        "name": "Who can see my data?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Only you. We have no access to your Google Drive or Gmail. Login uses official Google OAuth. The source code is open-source, so you can verify everything."}
       }
     ]
   }]
@@ -106,7 +121,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=49">
+  <link rel="stylesheet" href="style.css?v=50">
 </head>
 <body>
   <!-- Navigation -->
@@ -128,6 +143,7 @@
           <a href="#how-it-works" class="nav-link" data-i18n="nav.how">How it works</a>
           <a href="#features" class="nav-link" data-i18n="nav.features">Features</a>
           <a href="#get-started" class="nav-link" data-i18n="nav.getstarted">Get Started</a>
+          <a href="#faq" class="nav-link" data-i18n="nav.faq">FAQ</a>
         </nav>
         <a href="https://dashboard.oncoteam.cloud/demo" class="btn btn-primary btn-sm" data-i18n="nav.demo">Try Demo</a>
         <a href="https://github.com/peter-fusek/oncoteam" class="btn btn-sm btn-ghost">GitHub</a>
@@ -269,6 +285,92 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Use Cases — from real LinkedIn signals -->
+  <section class="use-cases">
+    <div class="container">
+      <h2 class="section-title" data-i18n="uc.title">What Patients Actually Ask</h2>
+      <p class="section-subtitle" data-i18n="uc.subtitle">Real scenarios from real caregivers. One WhatsApp message away.</p>
+      <div class="uc-grid">
+        <div class="uc-card">
+          <div class="uc-icon">🩸</div>
+          <h3 data-i18n="uc.1.title">What did the last labs say?</h3>
+          <p data-i18n="uc.1.story">Mom used to bring a folder of papers to the doctor without understanding them. Now she types one word and gets a clear summary with trends.</p>
+          <div class="uc-cmd">labky</div>
+        </div>
+        <div class="uc-card">
+          <div class="uc-icon">🩺</div>
+          <h3 data-i18n="uc.2.title">I don't know what to ask at the appointment</h3>
+          <p data-i18n="uc.2.story">Fifteen minutes with the oncologist. A list of questions from the latest results and changes since the last visit — ready in seconds.</p>
+          <div class="uc-cmd" data-i18n="uc.2.cmd">questions for doctor</div>
+        </div>
+        <div class="uc-card">
+          <div class="uc-icon">📅</div>
+          <h3 data-i18n="uc.3.title">When is the next check-up?</h3>
+          <p data-i18n="uc.3.story">After treatment ends, surveillance doesn't stop. Appointments, biomarkers, next steps — all in one place.</p>
+          <div class="uc-cmd">casovka</div>
+        </div>
+        <div class="uc-card">
+          <div class="uc-icon">👨‍👩‍👧</div>
+          <h3 data-i18n="uc.4.title">The family keeps asking how it's going</h3>
+          <p data-i18n="uc.4.story">A sibling abroad, grandparents at home. A clear treatment summary without medical jargon — in one message.</p>
+          <div class="uc-cmd" data-i18n="uc.4.cmd">update for family</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WhatsApp Showcase -->
+  <section class="whatsapp-showcase">
+    <div class="container">
+      <h2 class="section-title" data-i18n="wa.title">Your AI Ally on WhatsApp</h2>
+      <p class="section-subtitle" data-i18n="wa.subtitle">Ask anything, anytime. Get informed answers with sources from your own medical records.</p>
+      <div class="wa-grid">
+        <!-- Conversation 1: Pre-appointment briefing -->
+        <div class="wa-phone">
+          <div class="wa-phone-header">
+            <span class="wa-phone-avatar">+</span>
+            <span class="wa-phone-name">Oncoteam</span>
+            <span class="wa-phone-status" data-i18n="wa.status">online</span>
+          </div>
+          <div class="wa-phone-body">
+            <div class="wa-msg wa-msg-user" data-i18n="wa.conv1.q">labs</div>
+            <div class="wa-msg wa-msg-bot" data-i18n-html="wa.conv1.a1">&#x1F4CA; <strong>Labs (Mar 19):</strong><br>WBC 3.8, ANC 2,100, HGB 112<br>CEA 8.1 &#x2193;35%, CA19-9 4,820 &#x2193;68%<br><br>&#x2705; Safe for next cycle<br>&#x26A0;&#xFE0F; HGB slightly low &mdash; ask about iron</div>
+            <div class="wa-msg wa-msg-user" data-i18n="wa.conv1.q2">questions for doctor?</div>
+            <div class="wa-msg wa-msg-bot" data-i18n-html="wa.conv1.a2">&#x1F4DD; <strong>For your oncologist:</strong><br>1. HGB trending down &mdash; iron supplementation?<br>2. Neuropathy grade after 3 cycles?<br>3. CEA response excellent &mdash; imaging timeline?</div>
+          </div>
+          <div class="wa-phone-label" data-i18n="wa.label1">Before the appointment</div>
+        </div>
+        <!-- Conversation 2: Trial discovery -->
+        <div class="wa-phone">
+          <div class="wa-phone-header">
+            <span class="wa-phone-avatar">+</span>
+            <span class="wa-phone-name">Oncoteam</span>
+            <span class="wa-phone-status" data-i18n="wa.status">online</span>
+          </div>
+          <div class="wa-phone-body">
+            <div class="wa-msg wa-msg-bot wa-msg-proactive" data-i18n-html="wa.conv2.a1">&#x1F50D; <strong>New trial match:</strong><br>NCT07284849 &mdash; FOLFOX + novel agent<br>Phase III, enrolling in Vienna (AT)<br><br>Compatible with your molecular profile.<br>Biomarker: KRAS mutant eligible &#x2705;</div>
+            <div class="wa-msg wa-msg-user" data-i18n="wa.conv2.q">more details?</div>
+            <div class="wa-msg wa-msg-bot" data-i18n-html="wa.conv2.a2">&#x1F3E5; <strong>AKH Vienna</strong>, 90 min from Bratislava<br>Enrollment open until Aug 2026<br>Requires: &#x2265;2 prior lines, ECOG 0-1<br><br><em>I can prepare a summary for your oncologist.</em></div>
+          </div>
+          <div class="wa-phone-label" data-i18n="wa.label2">AI finds trials for you</div>
+        </div>
+        <!-- Conversation 3: Family update -->
+        <div class="wa-phone">
+          <div class="wa-phone-header">
+            <span class="wa-phone-avatar">+</span>
+            <span class="wa-phone-name">Oncoteam</span>
+            <span class="wa-phone-status" data-i18n="wa.status">online</span>
+          </div>
+          <div class="wa-phone-body">
+            <div class="wa-msg wa-msg-user" data-i18n="wa.conv3.q">update for family</div>
+            <div class="wa-msg wa-msg-bot" data-i18n-html="wa.conv3.a1">&#x1F46A; <strong>Family update (Mar 20):</strong><br><br>Treatment is going well. Blood work looks good &mdash; safe to continue with the next cycle. The main tumor marker (CEA) dropped by 35% since last time, which is a very positive sign.<br><br>She may feel more tired than usual (hemoglobin is a little low). The doctor may suggest iron supplements.<br><br>Next appointment: March 28.</div>
+          </div>
+          <div class="wa-phone-label" data-i18n="wa.label3">Family understands too</div>
         </div>
       </div>
     </div>
@@ -432,7 +534,7 @@
       <div class="story-content">
         <h2 class="section-title" data-i18n="story.title">Born from Real Life</h2>
         <div class="story-text">
-          <p data-i18n="story.p1">When Erika was diagnosed with metastatic colorectal cancer, her husband Peter — a software engineer, not a doctor — found himself buried in lab results, genetic reports, and treatment protocols he didn't understand. Every oncologist visit felt too short. Every new test raised questions he didn't know how to ask.</p>
+          <p data-i18n="story.p1">When Erika was diagnosed with metastatic colorectal cancer, her husband Peter — an entrepreneur and technology enthusiast, not a doctor — found himself buried in lab results, genetic reports, and treatment protocols he didn't understand. Every oncologist visit felt too short. Every new test raised questions he didn't know how to ask.</p>
           <p data-i18n="story.p2">So he built Oncoteam. Not as a replacement for their oncologist, but as a tool to help him keep up — to understand the numbers, prepare the right questions, track what's changing, and search for clinical trials that no single doctor has time to systematically monitor across Europe and the US.</p>
           <p data-i18n="story.p3">Alongside Oncoteam, he built <a href="https://oncofiles.com" class="story-link">Oncofiles</a> — the data layer that organizes all medical documents from Google Drive: lab results, pathology reports, CT scans, genetic tests. Oncofiles structures and connects them. Oncoteam makes them useful — it's the intelligence layer that turns raw medical data into understanding, questions, and action.</p>
         </div>
@@ -536,9 +638,9 @@
         <div class="gs-whatsapp-icon">💬</div>
         <div class="gs-whatsapp-body">
           <strong data-i18n="gs.whatsapp.label">Fastest way to start:</strong>
-          <span data-i18n="gs.whatsapp.text"> Message us on WhatsApp and we'll walk you through setup.</span>
+          <span data-i18n="gs.whatsapp.text"> Just message us on WhatsApp — we'll guide you through the rest.</span>
         </div>
-        <a href="https://wa.me/421903124356" class="btn btn-primary gs-whatsapp-btn" target="_blank" rel="noopener">
+        <a href="https://wa.me/421903124356?text=Ahoj%2C%20chcem%20za%C4%8Da%C5%A5%20pou%C5%BE%C3%ADva%C5%A5%20Oncoteam" class="btn btn-primary gs-whatsapp-btn" target="_blank" rel="noopener">
           <span data-i18n="gs.whatsapp.btn">WhatsApp</span>
           <span class="gs-whatsapp-number">+421 903 124 356</span>
         </a>
@@ -562,7 +664,7 @@
             <span data-i18n="gs.free.agents">autonomous agent runs / month</span>
           </div>
         </div>
-        <p class="gs-free-tier-note" data-i18n="gs.free.note">Enough for 6+ months of active treatment. No credit card required. Premium tiers coming based on demand.</p>
+        <p class="gs-free-tier-note" data-i18n="gs.free.note">These limits are yours and we won't reduce them. We don't have a commercial model yet — our priority is the patient and getting the product right, not monetization. If that ever changes, you'll be the first to know.</p>
       </div>
     </div>
   </section>
@@ -696,6 +798,40 @@
     </div>
   </section>
 
+  <!-- FAQ -->
+  <section id="faq" class="faq">
+    <div class="container">
+      <h2 class="section-title" data-i18n="faq.title">Frequently Asked Questions</h2>
+      <p class="section-subtitle" data-i18n="faq.subtitle">How your data is protected</p>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary data-i18n="faq.q1">Where is my data stored?</summary>
+          <p data-i18n="faq.a1">All your medical documents stay in your own Google Drive. Oncoteam reads and analyzes them, but never copies or stores originals on any external server. You can revoke access anytime from your Google account settings.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q2">Does AI learn from my data?</summary>
+          <p data-i18n="faq.a2">No. Neither Claude (Anthropic) nor ChatGPT (OpenAI) use data from MCP tools for model training. Your documents are processed in real-time and are not stored on any AI server.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q3">Does Oncoteam replace my oncologist?</summary>
+          <p data-i18n="faq.a3">No. Oncoteam helps you prepare for appointments, understand lab results, and find relevant clinical trials. All treatment decisions should always be made with your oncology team.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q4">Who can see my data?</summary>
+          <p data-i18n="faq.a4">Only you. We have no access to your Google Drive or Gmail. Login uses official Google OAuth — we never see your password or your files. The source code is open-source, so you can verify everything.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q5">Is the data encrypted?</summary>
+          <p data-i18n="faq.a5">Yes. Google Drive encrypts all files at rest and in transit. Communication between Oncoteam and Google uses HTTPS. No data is transmitted unencrypted.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q6">Can I remove access?</summary>
+          <p data-i18n="faq.a6">Anytime. In your Google account settings (myaccount.google.com) you can remove Oncoteam access with one click. Your files remain untouched.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
   </main>
   <!-- Footer -->
   <footer class="footer">
@@ -703,7 +839,7 @@
       <p>&copy; 2026 Oncoteam. <span data-i18n="footer.rights">Built by a patient advocate, for patient advocates.</span></p>
       <p class="footer-note" data-i18n="footer.disclaimer">Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.</p>
       <p class="footer-note" style="margin-top:0.5rem"><span data-i18n="footer.instarea">An</span> <a href="https://www.instarea.com" class="story-link" target="_blank" rel="noopener">Instarea</a> <span data-i18n="footer.instarea2">project.</span></p>
-      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.63.0</p>
+      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.66.0</p>
     </div>
   </footer>
 
@@ -716,8 +852,8 @@
     var currentIndex = 0;
     var rotateTimer = null;
     var resumeTimer = null;
-    var ROTATE_INTERVAL = 5000;
-    var RESUME_DELAY = 10000;
+    var ROTATE_INTERVAL = 3500;
+    var RESUME_DELAY = 8000;
 
     function switchTo(index) {
       currentIndex = index;
