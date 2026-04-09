@@ -265,3 +265,4 @@ When reviewing uploaded documents:
 - `_validate_id()` in `oncofiles_client.py` validates document/file IDs at the boundary (1-200 chars)
 - `oncofiles_client.py` uses lazy import for `record_suppressed_error` to avoid circular import with `activity_logger.py`
 - `landing/i18n.js` uses `data-i18n-html` attribute (via `innerHTML`) for demo mockup strings containing HTML entities/tags — safe because all values are hardcoded static strings, no user input
+- Vue template Unicode: `\u2013` / `\u2193` in HTML template context renders as literal text. Use HTML entities (`&ndash;`, `&darr;`) or actual Unicode chars. Inside `{{ expression }}` (JS context), `\u` escapes work correctly.
