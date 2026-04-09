@@ -1092,6 +1092,7 @@ async def health(request: Request) -> JSONResponse:
     # Include detailed info only for authenticated requests
     auth = request.headers.get("authorization", "")
     from .config import DASHBOARD_API_KEY
+
     if auth.startswith("Bearer ") and DASHBOARD_API_KEY and auth[7:] == DASHBOARD_API_KEY:
         data["commit"] = GIT_COMMIT
         data["autonomous_enabled"] = AUTONOMOUS_ENABLED
