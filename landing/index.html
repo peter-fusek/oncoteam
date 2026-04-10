@@ -89,6 +89,41 @@
       },
       {
         "@type": "Question",
+        "name": "Where is my data stored?",
+        "acceptedAnswer": {"@type": "Answer", "text": "All your medical documents stay in your own Google Drive. Oncoteam reads and analyzes them, but never copies or stores originals on any external server."}
+      },
+      {
+        "@type": "Question",
+        "name": "Can I run Oncofiles on my own server?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Yes. Oncofiles is open-source — you can self-host it on your own infrastructure for maximum control, or use the managed SaaS instance on Railway (SOC 2 Type II certified). The choice is always yours."}
+      },
+      {
+        "@type": "Question",
+        "name": "Does AI learn from my data?",
+        "acceptedAnswer": {"@type": "Answer", "text": "No. Oncoteam uses the Anthropic commercial API. Their Commercial Terms explicitly state: Anthropic may not train models on Customer Content. API data is auto-deleted within 30 days."}
+      },
+      {
+        "@type": "Question",
+        "name": "Which AI models process my data?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Claude Haiku 4.5 for fast data tasks (document scanning, lab extraction) and Claude Sonnet 4.6 for advanced reasoning (trial analysis, treatment briefings). Both via Anthropic's commercial API with SOC 2 Type II and ISO 27001 certification."}
+      },
+      {
+        "@type": "Question",
+        "name": "How long does Anthropic keep my data?",
+        "acceptedAnswer": {"@type": "Answer", "text": "API inputs and outputs are automatically deleted within 30 days. This retention is solely for safety monitoring, not training. Zero Data Retention (ZDR) is available for enterprise customers."}
+      },
+      {
+        "@type": "Question",
+        "name": "How is this different from pasting results into ChatGPT?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Radically different. Consumer ChatGPT trains on your data by default. Oncoteam uses the commercial Anthropic API where training is contractually prohibited, retention is max 30 days, patients have isolated tokens, and the code is fully open-source."}
+      },
+      {
+        "@type": "Question",
+        "name": "What security certifications apply?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Anthropic: SOC 2 Type I and II, ISO 27001, ISO 42001, HIPAA BAA available. Railway: SOC 2 Type II, SOC 3, HIPAA BAA on Enterprise. Google Drive: SOC 2, ISO 27001."}
+      },
+      {
+        "@type": "Question",
         "name": "Does Oncoteam replace my oncologist?",
         "acceptedAnswer": {"@type": "Answer", "text": "No. Oncoteam helps you prepare for appointments and understand your treatment, but all medical decisions should be made with your oncology team."}
       },
@@ -96,16 +131,6 @@
         "@type": "Question",
         "name": "How does clinical trial search work?",
         "acceptedAnswer": {"@type": "Answer", "text": "Oncoteam searches ClinicalTrials.gov and EU Clinical Trials Register, then uses your molecular profile and treatment history to check eligibility automatically."}
-      },
-      {
-        "@type": "Question",
-        "name": "Where is my data stored?",
-        "acceptedAnswer": {"@type": "Answer", "text": "All your medical documents stay in your own Google Drive. Oncoteam reads and analyzes them, but never copies or stores originals on any external server."}
-      },
-      {
-        "@type": "Question",
-        "name": "Does AI learn from my data?",
-        "acceptedAnswer": {"@type": "Answer", "text": "No. Neither Claude (Anthropic) nor ChatGPT (OpenAI) use data from MCP tools for model training. Your documents are processed in real-time and are not stored on any AI server."}
       },
       {
         "@type": "Question",
@@ -121,7 +146,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=50">
+  <link rel="stylesheet" href="style.css?v=51">
 </head>
 <body>
   <!-- Navigation -->
@@ -803,30 +828,88 @@
     <div class="container">
       <h2 class="section-title" data-i18n="faq.title">Frequently Asked Questions</h2>
       <p class="section-subtitle" data-i18n="faq.subtitle">How your data is protected</p>
+
+      <!-- TLDR -->
+      <div class="faq-tldr" data-i18n-html="faq.tldr">
+        <strong>TL;DR &mdash; Data &amp; Privacy Summary</strong>
+        <ul>
+          <li>Your documents live in <strong>your own Google Drive</strong> &mdash; we never store originals.</li>
+          <li>Oncofiles (the data layer) is <strong>open-source and self-hostable</strong> &mdash; you can run it on your own server if you prefer.</li>
+          <li>AI models <strong>never train on your data</strong> &mdash; guaranteed by <a href="https://www.anthropic.com/legal/commercial-terms" target="_blank" rel="noopener">Anthropic&rsquo;s Commercial Terms</a>.</li>
+          <li>API data is <strong>auto-deleted within 30 days</strong> (safety review only, not training).</li>
+          <li>All communication is <strong>encrypted (HTTPS/TLS)</strong>. Patient IDs are <strong>anonymized</strong> in code.</li>
+          <li>Both Anthropic and Railway hold <strong>SOC 2 Type II</strong> certification.</li>
+          <li>Source code is 100% <strong>open-source</strong> &mdash; verify everything on <a href="https://github.com/peter-fusek/oncoteam" target="_blank" rel="noopener">GitHub</a>.</li>
+        </ul>
+      </div>
+
       <div class="faq-list">
+        <!-- Data & Storage -->
+        <div class="faq-section-label" data-i18n="faq.group.data">Data &amp; Storage</div>
         <details class="faq-item">
           <summary data-i18n="faq.q1">Where is my data stored?</summary>
           <p data-i18n="faq.a1">All your medical documents stay in your own Google Drive. Oncoteam reads and analyzes them, but never copies or stores originals on any external server. You can revoke access anytime from your Google account settings.</p>
         </details>
         <details class="faq-item">
-          <summary data-i18n="faq.q2">Does AI learn from my data?</summary>
-          <p data-i18n="faq.a2">No. Neither Claude (Anthropic) nor ChatGPT (OpenAI) use data from MCP tools for model training. Your documents are processed in real-time and are not stored on any AI server.</p>
-        </details>
-        <details class="faq-item">
-          <summary data-i18n="faq.q3">Does Oncoteam replace my oncologist?</summary>
-          <p data-i18n="faq.a3">No. Oncoteam helps you prepare for appointments, understand lab results, and find relevant clinical trials. All treatment decisions should always be made with your oncology team.</p>
-        </details>
-        <details class="faq-item">
-          <summary data-i18n="faq.q4">Who can see my data?</summary>
-          <p data-i18n="faq.a4">Only you. We have no access to your Google Drive or Gmail. Login uses official Google OAuth — we never see your password or your files. The source code is open-source, so you can verify everything.</p>
+          <summary data-i18n="faq.q_selfhost">Can I run Oncofiles on my own server?</summary>
+          <p data-i18n-html="faq.a_selfhost">Yes. <a href="https://github.com/peter-fusek/oncofiles" target="_blank" rel="noopener">Oncofiles is open-source</a> &mdash; you can self-host it on your own infrastructure for maximum control. Alternatively, you can use the managed instance we operate on Railway (EU-available infrastructure, SOC 2 Type II certified). The choice is always yours: self-hosted for full sovereignty, or managed SaaS for convenience. Either way, your documents stay in your own Google Drive.</p>
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q5">Is the data encrypted?</summary>
           <p data-i18n="faq.a5">Yes. Google Drive encrypts all files at rest and in transit. Communication between Oncoteam and Google uses HTTPS. No data is transmitted unencrypted.</p>
         </details>
         <details class="faq-item">
+          <summary data-i18n="faq.q4">Who can see my data?</summary>
+          <p data-i18n="faq.a4">Only you. We have no access to your Google Drive or Gmail. Login uses official Google OAuth — we never see your password or your files. The source code is open-source, so you can verify everything.</p>
+        </details>
+        <details class="faq-item">
           <summary data-i18n="faq.q6">Can I remove access?</summary>
           <p data-i18n="faq.a6">Anytime. In your Google account settings (myaccount.google.com) you can remove Oncoteam access with one click. Your files remain untouched.</p>
+        </details>
+
+        <!-- AI Models & Privacy -->
+        <div class="faq-section-label" data-i18n="faq.group.ai">AI Models &amp; Privacy</div>
+        <details class="faq-item">
+          <summary data-i18n="faq.q2">Does AI learn from my data?</summary>
+          <p data-i18n-html="faq.a2_detailed">No. Oncoteam uses the <strong>Anthropic API</strong> (not consumer Claude.ai). Anthropic&rsquo;s <a href="https://www.anthropic.com/legal/commercial-terms" target="_blank" rel="noopener">Commercial Terms</a> explicitly state: <em>&ldquo;Anthropic may not train models on Customer Content from Services.&rdquo;</em> This is fundamentally different from consumer ChatGPT, which trains on your data by default. Your medical documents are processed in real-time, never stored for training, and auto-deleted within 30 days.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_models">Which AI models process my data?</summary>
+          <p data-i18n-html="faq.a_models">Oncoteam uses two models from Anthropic, both via the commercial API (zero training on your data):<br><br><strong>Claude Haiku 4.5</strong> &mdash; lightweight model for fast data tasks: document scanning, lab value extraction, medication parsing. Cost: ~$0.80/million tokens.<br><br><strong>Claude Sonnet 4.6</strong> &mdash; advanced reasoning model for: clinical trial analysis, treatment briefings, dose extraction from handwritten notes, family-friendly summaries. Cost: ~$3/million tokens.<br><br>Both models run via Anthropic&rsquo;s API (<a href="https://trust.anthropic.com/" target="_blank" rel="noopener">SOC 2 Type II, ISO 27001</a>). No consumer-grade models (ChatGPT Free, Claude Free) are ever used.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_retention">How long does Anthropic keep my data?</summary>
+          <p data-i18n-html="faq.a_retention">API inputs and outputs are <strong>automatically deleted within 30 days</strong>. This retention is solely for safety monitoring (abuse prevention), not training. Anthropic also offers Zero Data Retention (ZDR) for enterprise customers. Details: <a href="https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data" target="_blank" rel="noopener">Anthropic Privacy Center</a>. For comparison, consumer ChatGPT retains data indefinitely unless you manually delete it.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_anon">Are patient identities anonymized?</summary>
+          <p data-i18n="faq.a_anon">Yes. Patient IDs in the system are random 3-character codes (not names or birth dates). No personally identifiable information appears in environment variables, API keys, or code. Each patient gets a dedicated bearer token that isolates their data at the database level.</p>
+        </details>
+
+        <!-- Infrastructure & Compliance -->
+        <div class="faq-section-label" data-i18n="faq.group.infra">Infrastructure &amp; Compliance</div>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_infra">Where does Oncoteam run?</summary>
+          <p data-i18n-html="faq.a_infra">Oncoteam and Oncofiles run on <a href="https://railway.com" target="_blank" rel="noopener">Railway</a> &mdash; a cloud platform with <strong>SOC 2 Type II</strong> certification (<a href="https://trust.railway.com/" target="_blank" rel="noopener">Trust Center</a>). Railway offers data centers across Americas, EMEA, and APAC. HIPAA BAA is available on their Enterprise plan. If you self-host Oncofiles, you choose your own infrastructure entirely.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_certs">What security certifications apply?</summary>
+          <p data-i18n-html="faq.a_certs"><strong>Anthropic</strong> (AI provider): SOC 2 Type I &amp; II, ISO 27001:2022, ISO 42001:2023 (AI Management), HIPAA BAA available. <a href="https://trust.anthropic.com/" target="_blank" rel="noopener">Trust Center</a>.<br><strong>Railway</strong> (hosting): SOC 2 Type II, SOC 3, HIPAA BAA on Enterprise, GDPR DPA available. <a href="https://trust.railway.com/" target="_blank" rel="noopener">Trust Center</a>.<br><strong>Google Drive</strong> (document storage): SOC 2, ISO 27001, HIPAA BAA on Workspace. Your files benefit from Google&rsquo;s enterprise-grade encryption.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_vs_chatgpt">How is this different from pasting results into ChatGPT?</summary>
+          <p data-i18n-html="faq.a_vs_chatgpt"><strong>Radically different.</strong> When you paste lab results into consumer ChatGPT, your data is used for model training by default, retained indefinitely, and has no patient isolation. Oncoteam uses the commercial Anthropic API where training on your data is contractually prohibited, retention is max 30 days, each patient has isolated access tokens, and the entire system is open-source for verification. It&rsquo;s the difference between shouting your diagnosis in a crowd vs. talking to your doctor in a private room.</p>
+        </details>
+
+        <!-- General -->
+        <div class="faq-section-label" data-i18n="faq.group.general">General</div>
+        <details class="faq-item">
+          <summary data-i18n="faq.q3">Does Oncoteam replace my oncologist?</summary>
+          <p data-i18n="faq.a3">No. Oncoteam helps you prepare for appointments, understand lab results, and find relevant clinical trials. All treatment decisions should always be made with your oncology team.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_opensource">Why is the source code open?</summary>
+          <p data-i18n-html="faq.a_opensource">Because trust requires transparency. When it comes to your health data, &ldquo;trust us&rdquo; isn&rsquo;t good enough. Every line of code is on <a href="https://github.com/peter-fusek/oncoteam" target="_blank" rel="noopener">GitHub</a> &mdash; you (or any developer you trust) can verify exactly what happens with your data. Both <a href="https://github.com/peter-fusek/oncoteam" target="_blank" rel="noopener">Oncoteam</a> and <a href="https://github.com/peter-fusek/oncofiles" target="_blank" rel="noopener">Oncofiles</a> are fully open-source.</p>
         </details>
       </div>
     </div>
@@ -843,7 +926,7 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=49"></script>
+  <script src="i18n.js?v=50"></script>
   <script>
   // Demo tab switching with auto-rotate
   (function() {

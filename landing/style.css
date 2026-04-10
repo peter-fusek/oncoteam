@@ -1262,6 +1262,49 @@ html[lang="sk"] .hiw-num::before {
   line-height: 1.7;
 }
 
+.faq-item p a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-color: rgba(34,197,94,0.3);
+}
+.faq-item p a:hover {
+  text-decoration-color: var(--primary);
+}
+
+.faq-tldr {
+  max-width: 720px;
+  margin: 0 auto 2.5rem;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, rgba(34,197,94,0.06), rgba(34,197,94,0.02));
+  border: 1px solid rgba(34,197,94,0.15);
+  border-radius: 12px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--text-light);
+}
+.faq-tldr strong {
+  color: var(--text-dark);
+  font-weight: 600;
+}
+.faq-tldr ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+}
+.faq-tldr li {
+  margin-bottom: 0.35rem;
+}
+
+.faq-section-label {
+  max-width: 720px;
+  margin: 2rem auto 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  opacity: 0.7;
+}
+
 /* ── Footer ──────────────────────────────────── */
 .footer {
   padding: 44px 0;
