@@ -1,4 +1,4 @@
-import twilio from 'twilio'
+import { sendWhatsApp } from '../../utils/twilio-send'
 
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
@@ -24,7 +24,6 @@ export default defineEventHandler(async (event) => {
     rateLimitMap.set(userKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
   }
 
-  const config = useRuntimeConfig()
   const body = await readBody(event)
   const message = body.message
   const patientName = (body.patient_name as string | undefined)?.trim() || 'Patient'
@@ -37,10 +36,6 @@ export default defineEventHandler(async (event) => {
   const phone = session.user.phone as string | undefined
   if (!phone) {
     throw createError({ statusCode: 400, message: 'No phone number configured for your account' })
-  }
-
-  if (!config.twilioAccountSid || !config.twilioAuthToken || !config.twilioWhatsappFrom) {
-    throw createError({ statusCode: 500, message: 'WhatsApp not configured' })
   }
 
   // Sanitize message: trim, cap length, strip control chars (keep newlines)
@@ -57,13 +52,11 @@ export default defineEventHandler(async (event) => {
   const userName = session.user.name || session.user.email
   const fullMessage = `Oncoteam Update\nPatient: ${patientName} | For: ${userName} (${roleName})\n---\n${sanitized}`
 
-  const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
+  const result = await sendWhatsApp({ to: phone, body: fullMessage })
 
-  const result = await client.messages.create({
-    from: config.twilioWhatsappFrom,
-    to: `whatsapp:${phone}`,
-    body: fullMessage,
-  })
+  if (!result.ok) {
+    throw createError({ statusCode: 502, message: result.error || 'Failed to send WhatsApp' })
+  }
 
   // Mask phone for privacy: +421900*** → show last 3 digits
   const maskedPhone = phone.length > 3 ? `***${phone.slice(-3)}` : phone

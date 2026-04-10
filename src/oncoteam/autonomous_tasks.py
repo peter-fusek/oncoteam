@@ -218,7 +218,7 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            await _send_whatsapp(header + summary, recipient="caregiver")
+            await _send_whatsapp(header + summary, recipient="caregiver", template_key="pre_cycle")
     except Exception as e:
         record_suppressed_error("pre_cycle_check", "whatsapp_notify", e)
 
@@ -435,7 +435,9 @@ Prioritize trials at centers within practical travel distance from Bratislava:
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            await _send_whatsapp(header + summary, recipient="caregiver")
+            await _send_whatsapp(
+                header + summary, recipient="caregiver", template_key="trial_match"
+            )
     except Exception as e:
         record_suppressed_error("trial_monitor", "whatsapp_notify", e)
 
@@ -559,7 +561,7 @@ Structure the briefing with clear sections:
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            await _send_whatsapp(header + summary, recipient="caregiver")
+            await _send_whatsapp(header + summary, recipient="caregiver", template_key="briefing")
     except Exception as e:
         record_suppressed_error("weekly_briefing", "whatsapp_notify", e)
 
@@ -652,7 +654,9 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
                             date_str=latest_date,
                         )
                         body = "\n".join(f"- {a}" for a in alerts)
-                        await _send_whatsapp(header + body, recipient="caregiver")
+                        await _send_whatsapp(
+                            header + body, recipient="caregiver", template_key="lab_alert"
+                        )
     except Exception as e:
         record_suppressed_error("lab_sync", "whatsapp_safety_alert", e)
 
@@ -1145,6 +1149,7 @@ async def run_document_pipeline(
                     + f"Dokument {document_id} ({doc_type}) — nájdené bezpečnostné upozornenie.\n"
                     f"Pozrite dashboard pre detaily.",
                     recipient="caregiver",
+                    template_key="lab_alert",
                 )
         except Exception as e:
             record_suppressed_error("document_pipeline", "whatsapp_notify", e)
@@ -1253,7 +1258,9 @@ Vyhni sa zbytočným odborným detailom.
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            await _send_whatsapp(header + summary, recipient="caregiver")
+            await _send_whatsapp(
+                header + summary, recipient="caregiver", template_key="family_update"
+            )
     except Exception as e:
         record_suppressed_error("family_update", "whatsapp_notify", e)
 
@@ -1307,7 +1314,9 @@ This is a safety check: non-compliance with critical medications is dangerous.
         if response_text and not result.get("error"):
             today = datetime.now(UTC).strftime("%Y-%m-%d")
             header = format_whatsapp_header("Kontrola liekov", date_str=today)
-            await _send_whatsapp(header + response_text[:1400], recipient="caregiver")
+            await _send_whatsapp(
+                header + response_text[:1400], recipient="caregiver", template_key="briefing"
+            )
     except Exception as e:
         record_suppressed_error("medication_adherence_check", "whatsapp_notify", e)
 
@@ -1361,13 +1370,19 @@ Structure for MDT presentation:
     return result
 
 
-async def _send_whatsapp(msg: str, recipient: str | None = None) -> dict:
+async def _send_whatsapp(
+    msg: str,
+    recipient: str | None = None,
+    template_key: str | None = None,
+    template_vars: dict[str, str] | None = None,
+) -> dict:
     """Send a WhatsApp message via dashboard internal endpoint.
 
     Args:
-        msg: Message body (header should already be formatted).
-        recipient: Optional recipient key from RECIPIENTS registry.
-                   Logged for audit but routing is handled by Twilio config.
+        msg: Message body (used for free-form within 24h session window).
+        recipient: Optional recipient key (logged for audit).
+        template_key: Template name for out-of-window messages (e.g. 'lab_alert').
+        template_vars: Variables to substitute into the template.
     """
     import httpx
 
@@ -1377,6 +1392,10 @@ async def _send_whatsapp(msg: str, recipient: str | None = None) -> dict:
     payload: dict = {"message": msg}
     if recipient:
         payload["recipient"] = recipient
+    if template_key:
+        payload["template_key"] = template_key
+    if template_vars:
+        payload["template_vars"] = template_vars
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(
             f"{dashboard_url}/api/internal/whatsapp-notify",

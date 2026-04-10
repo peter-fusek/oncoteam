@@ -3,6 +3,7 @@ import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-
 import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionCount } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
 import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone } from '../../utils/approved-phones'
+import { recordInbound } from '../../utils/twilio-send'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
@@ -164,6 +165,9 @@ export default defineEventHandler(async (event) => {
     setResponseHeader(event, 'content-type', 'text/xml')
     return twiml('Invalid sender.')
   }
+
+  // Record inbound for 24h session window tracking (template vs free-form)
+  recordInbound(from)
 
   // Rate limiting per phone — applied BEFORE onboarding to prevent abuse
   const now = Date.now()
