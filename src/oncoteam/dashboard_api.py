@@ -3961,6 +3961,19 @@ async def api_document_webhook(request: Request) -> JSONResponse:
         "uploaded_at": body.get("uploaded_at", ""),
     }
 
+    # Auto-fill metadata from oncofiles when webhook doesn't provide it
+    if not metadata["category"]:
+        try:
+            doc = await asyncio.wait_for(
+                oncofiles_client.get_document_by_id(document_id),
+                timeout=5,
+            )
+            if isinstance(doc, dict):
+                metadata["category"] = doc.get("category", "")
+                metadata["filename"] = metadata["filename"] or doc.get("filename", "")
+        except Exception as exc:
+            record_suppressed_error("api_document_webhook", "get_document_by_id", exc)
+
     asyncio.create_task(run_document_pipeline(document_id, metadata, patient_id=patient_id))
     _logger.info("Document pipeline started for doc %d (patient=%s)", document_id, patient_id)
 
@@ -4557,6 +4570,45 @@ async def api_approve_user(request: Request) -> JSONResponse:
     asyncio.ensure_future(_persist_approved_phones())
 
     return _cors_json({"status": "approved", "phone": phone}, request=request)
+
+
+async def api_whatsapp_status(request: Request) -> JSONResponse:
+    """GET /api/whatsapp/status — WhatsApp integration status.
+
+    Returns: approved phones count, active onboarding sessions,
+    recent message stats, and circuit breaker state.
+    """
+    # Approved phones
+    if not _approved_phones_loaded:
+        await load_approved_phones()
+
+    # Recent WhatsApp conversations (last 24h)
+    recent_count = 0
+    try:
+        result = await asyncio.wait_for(
+            oncofiles_client.search_conversations(
+                query="sys:whatsapp",
+                limit=100,
+            ),
+            timeout=8,
+        )
+        entries = _extract_list(result, "entries")
+        recent_count = len(entries)
+    except Exception as exc:
+        record_suppressed_error("api_whatsapp_status", "search_conversations", exc)
+
+    cb_status = oncofiles_client.get_circuit_breaker_status()
+
+    return _cors_json(
+        {
+            "status": "ok" if cb_status["state"] == "closed" else "degraded",
+            "approved_phones": len(_approved_phones),
+            "phone_patient_map": {p: pid for p, pid in _phone_patient_map.items()},
+            "recent_conversations": recent_count,
+            "circuit_breaker_state": cb_status["state"],
+        },
+        request=request,
+    )
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

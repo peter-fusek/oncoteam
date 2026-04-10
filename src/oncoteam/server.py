@@ -70,6 +70,7 @@ from .dashboard_api import (
     api_weight,
     api_whatsapp_chat,
     api_whatsapp_media,
+    api_whatsapp_status,
     load_approved_phones,
     load_patient_tokens,
 )
@@ -1132,6 +1133,7 @@ _API_ROUTES = [
     ("/api/cumulative-dose", api_cumulative_dose),
     ("/api/agents", api_agents),
     ("/api/patients", api_patients),
+    ("/api/whatsapp/status", api_whatsapp_status),
 ]
 
 _POST_ROUTES = {"/api/toxicity", "/api/labs", "/api/medications", "/api/family-update"}
