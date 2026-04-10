@@ -105,6 +105,12 @@
     "remainingCredit": "Remaining",
     "capOf": "cap ${cap}",
     "projected": "projected",
+    "statusDegraded": "Degraded",
+    "whatsapp": {
+      "phones": "Approved Phones",
+      "conversations": "Conversations",
+      "circuitBreaker": "Circuit Breaker"
+    },
     "streak": "streak",
     "level": "Level",
     "rooms": {

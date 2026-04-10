@@ -45,6 +45,15 @@ const { data: labData, refresh: refreshLabs } = fetchApi<{
   }>
 }>('/labs?limit=3', { lazy: true, server: false })
 
+// WhatsApp integration status
+const { data: whatsappStatus, refresh: refreshWhatsapp } = fetchApi<{
+  status: string
+  approved_phones: number
+  phone_patient_map: Record<string, string>
+  recent_conversations: number
+  circuit_breaker_state: string
+}>('/whatsapp/status', { lazy: true, server: false })
+
 // Fetch registered agents for the scheduled agents section (#135)
 const { data: agentsRegistry, refresh: refreshAgents } = fetchApi<{
   agents: Array<{
@@ -351,7 +360,7 @@ const roomJobs = computed(() => {
 // ── Refresh ──────────────────────────────────────
 
 async function refreshAll() {
-  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshCost(), refreshLabs(), refreshAgents()])
+  await Promise.all([refreshStatus(), refreshStats(), refreshActivity(), refreshAutonomous(), refreshCost(), refreshLabs(), refreshAgents(), refreshWhatsapp()])
 }
 
 const refreshInterval = ref<ReturnType<typeof setInterval>>()
@@ -456,6 +465,37 @@ onUnmounted(() => {
           <div class="text-xs text-gray-500">{{ $t('agents.remainingCredit') }}</div>
           <div class="text-sm font-mono" :class="costData.budget_alert ? 'text-amber-600' : 'text-emerald-600'">${{ costData.remaining_credit.toFixed(2) }}</div>
           <div class="text-[10px] text-gray-400">~{{ costData.days_remaining }}d</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WhatsApp Status Card -->
+    <div v-if="whatsappStatus && currentLevel === 0" class="rounded-xl border bg-white p-4 space-y-3" :class="whatsappStatus.status === 'degraded' ? 'border-amber-300' : 'border-gray-200'">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-lucide-message-circle" class="text-green-600 w-4 h-4" />
+          <span class="text-sm font-medium text-gray-900">WhatsApp</span>
+          <UBadge
+            :color="whatsappStatus.status === 'ok' ? 'success' : 'warning'"
+            variant="subtle"
+            size="xs"
+          >{{ whatsappStatus.status === 'ok' ? $t('common.active') : $t('agents.statusDegraded') }}</UBadge>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="text-center">
+          <div class="text-xs text-gray-500">{{ $t('agents.whatsapp.phones') }}</div>
+          <div class="text-sm font-mono text-gray-900">{{ whatsappStatus.approved_phones }}</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-500">{{ $t('agents.whatsapp.conversations') }}</div>
+          <div class="text-sm font-mono text-gray-900">{{ whatsappStatus.recent_conversations }}</div>
+        </div>
+        <div class="text-center">
+          <div class="text-xs text-gray-500">{{ $t('agents.whatsapp.circuitBreaker') }}</div>
+          <div class="text-sm font-mono" :class="whatsappStatus.circuit_breaker_state === 'closed' ? 'text-emerald-600' : 'text-amber-600'">
+            {{ whatsappStatus.circuit_breaker_state }}
+          </div>
         </div>
       </div>
     </div>

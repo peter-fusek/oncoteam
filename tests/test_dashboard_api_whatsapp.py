@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from oncoteam.dashboard_api import api_log_whatsapp, api_whatsapp_chat
+from oncoteam.dashboard_api import api_log_whatsapp, api_whatsapp_chat, api_whatsapp_status
 
 
 class FakeRequest:
@@ -232,3 +232,56 @@ async def test_whatsapp_chat_sk_fallback_message(mock_run, _mock_cb):
     data = json.loads(response.body)
 
     assert "pomoc" in data["response"].lower() or "Prepáčte" in data["response"]
+
+
+# ── /api/whatsapp/status ─────────────────────────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    return_value={"state": "closed"},
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+    new_callable=AsyncMock,
+    return_value={"entries": [{"id": 1}, {"id": 2}, {"id": 3}]},
+)
+@patch("oncoteam.dashboard_api._approved_phones_loaded", True)
+@patch("oncoteam.dashboard_api._approved_phones", {"+421900111222", "+421900333444"})
+@patch("oncoteam.dashboard_api._phone_patient_map", {"+421900111222": "erika"})
+async def test_whatsapp_status_ok(_mock_conv, _mock_cb):
+    request = FakeRequest(method="GET")
+    response = await api_whatsapp_status(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "ok"
+    assert data["approved_phones"] == 2
+    assert data["recent_conversations"] == 3
+    assert data["circuit_breaker_state"] == "closed"
+    assert data["phone_patient_map"] == {"+421900111222": "erika"}
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    return_value={"state": "open"},
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+    new_callable=AsyncMock,
+    side_effect=RuntimeError("oncofiles down"),
+)
+@patch("oncoteam.dashboard_api._approved_phones_loaded", True)
+@patch("oncoteam.dashboard_api._approved_phones", set())
+@patch("oncoteam.dashboard_api._phone_patient_map", {})
+async def test_whatsapp_status_degraded(_mock_conv, _mock_cb):
+    request = FakeRequest(method="GET")
+    response = await api_whatsapp_status(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "degraded"
+    assert data["approved_phones"] == 0
+    assert data["recent_conversations"] == 0

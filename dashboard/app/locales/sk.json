@@ -105,6 +105,12 @@
     "remainingCredit": "Zostatok",
     "capOf": "limit ${cap}",
     "projected": "prognóza",
+    "statusDegraded": "Zhoršené",
+    "whatsapp": {
+      "phones": "Schválené telefóny",
+      "conversations": "Konverzácie",
+      "circuitBreaker": "Circuit Breaker"
+    },
     "streak": "séria",
     "level": "Úroveň",
     "rooms": {
