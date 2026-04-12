@@ -325,7 +325,7 @@ export default defineEventHandler(async (event) => {
                 content_type: media.contentType,
                 filename,
                 phone: from,
-                patient_id: resolvePatientIdFromPhone(from) || 'erika',
+                patient_id: resolvePatientIdFromPhone(from) || 'q1b',
               },
               headers,
             },
@@ -367,7 +367,7 @@ export default defineEventHandler(async (event) => {
 
   // Process command and respond
   const oncoteamApiUrl = config.oncoteamApiUrl as string
-  const whatsappPatientId = resolvePatientIdFromPhone(from) || 'erika'
+  const whatsappPatientId = resolvePatientIdFromPhone(from) || 'q1b'
   const allowedPatientIds = getAllowedPatientIdsForPhone(from, config.roleMap as string)
   const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds })
 

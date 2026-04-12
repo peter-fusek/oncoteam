@@ -199,7 +199,7 @@ def _get_patient_for_request(request: Request):
 
 def _get_token_for_patient(patient_id: str) -> str | None:
     """Get the oncofiles bearer token for a patient. None = default (Erika)."""
-    if not patient_id or patient_id == "erika":
+    if not patient_id or patient_id == "q1b":
         return None  # Use default ONCOFILES_MCP_TOKEN
     return get_patient_token(patient_id)
 
@@ -1307,7 +1307,7 @@ async def api_autonomous_status(request: Request) -> JSONResponse:
     task_names = [a.id for a in get_enabled_agents(exclude_system=True)]
 
     # Parallel state fetches (was sequential N+1, #harden)
-    # State keys include patient_id (e.g. "last_daily_research:erika")
+    # State keys include patient_id (e.g. "last_daily_research:q1b")
     async def _safe_ts(name: str):
         try:
             state = await asyncio.wait_for(

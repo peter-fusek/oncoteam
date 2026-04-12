@@ -115,12 +115,12 @@ async def test_autonomous_status_uses_patient_scoped_keys():
         patch("oncoteam.autonomous_tasks._get_state", side_effect=mock_get_state),
         patch("oncoteam.autonomous_tasks._extract_timestamp", return_value=None),
     ):
-        request = _make_request("patient_id=erika")
+        request = _make_request("patient_id=q1b")
         await api_autonomous_status(request)
 
-    # All state keys should include ":erika" suffix
+    # All state keys should include ":q1b" suffix
     for key in captured_keys:
-        assert ":erika" in key, f"State key '{key}' missing patient_id suffix"
+        assert ":q1b" in key, f"State key '{key}' missing patient_id suffix"
 
 
 @pytest.mark.anyio
@@ -150,9 +150,9 @@ async def test_autonomous_status_non_default_patient():
 async def test_labs_post_invalidates_only_patient_cache():
     """Labs POST must only clear cache entries for the posting patient."""
     # Pre-populate caches for two patients
-    erika_key = _cache_key("labs", "erika", "50", "")
+    q1b_key = _cache_key("labs", "q1b", "50", "")
     jan_key = _cache_key("labs", "jan", "50", "")
-    _labs_cache[erika_key] = (time.time(), "erika_cached")
+    _labs_cache[q1b_key] = (time.time(), "q1b_cached")
     _labs_cache[jan_key] = (time.time(), "jan_cached")
 
     mock_result = {"id": 99, "event_type": "lab_result"}
@@ -168,13 +168,13 @@ async def test_labs_post_invalidates_only_patient_cache():
         ),
     ):
         body = json.dumps({"date": "2026-03-27", "values": {"ANC": 3500}}).encode()
-        request = _make_request("patient_id=erika", method="POST", body=body)
+        request = _make_request("patient_id=q1b", method="POST", body=body)
         response = await api_labs(request)
         data = json.loads(response.body)
 
     assert data.get("created") is True
     # Erika's cache should be cleared
-    assert erika_key not in _labs_cache, "Erika's cache should be invalidated"
+    assert q1b_key not in _labs_cache, "Erika's cache should be invalidated"
     # Jan's cache should remain untouched
     assert jan_key in _labs_cache, "Jan's cache should NOT be invalidated"
 

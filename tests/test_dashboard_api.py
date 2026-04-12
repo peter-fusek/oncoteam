@@ -1078,7 +1078,7 @@ async def test_api_sessions_defaults_clinical_for_ambiguous(mock_search):
 @patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
 async def test_timeline_passes_patient_token(mock_get_token, mock_list):
-    """Non-erika patient_id causes a different token to be passed to oncofiles."""
+    """Non-q1b patient_id causes a different token to be passed to oncofiles."""
     mock_list.return_value = {"events": []}
     request = _make_request("/api/timeline", "patient_id=jan")
     response = await api_timeline(request)
@@ -1090,8 +1090,8 @@ async def test_timeline_passes_patient_token(mock_get_token, mock_list):
 
 @pytest.mark.anyio
 @patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
-async def test_timeline_erika_uses_default_token(mock_list):
-    """Default patient (erika) uses token=None (default ONCOFILES_MCP_TOKEN)."""
+async def test_timeline_q1b_uses_default_token(mock_list):
+    """Default patient (q1b) uses token=None (default ONCOFILES_MCP_TOKEN)."""
     mock_list.return_value = {"events": []}
     request = _make_request("/api/timeline")
     await api_timeline(request)
@@ -1109,9 +1109,9 @@ async def test_cache_scoped_per_patient(mock_list):
 
     mock_list.return_value = {"events": [{"id": 1, "event_date": "2026-01-01", "title": "t"}]}
 
-    # Request for erika
-    req_erika = _make_request("/api/timeline", "patient_id=erika")
-    await api_timeline(req_erika)
+    # Request for q1b
+    req_q1b = _make_request("/api/timeline", "patient_id=q1b")
+    await api_timeline(req_q1b)
 
     # Request for jan (different patient)
     req_jan = _make_request("/api/timeline", "patient_id=jan")
@@ -1121,9 +1121,9 @@ async def test_cache_scoped_per_patient(mock_list):
     assert mock_list.call_count == 2
 
     # Verify cache has separate entries
-    erika_keys = [k for k in mod._timeline_cache if ":erika:" in k]
+    q1b_keys = [k for k in mod._timeline_cache if ":q1b:" in k]
     jan_keys = [k for k in mod._timeline_cache if ":jan:" in k]
-    assert len(erika_keys) >= 1
+    assert len(q1b_keys) >= 1
     assert len(jan_keys) >= 1
 
 
@@ -1134,7 +1134,7 @@ async def test_cache_scoped_per_patient(mock_list):
 )
 @patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
 async def test_api_briefings_passes_patient_token(mock_get_token, mock_search):
-    """Non-erika patient_id causes a different token to be passed to oncofiles."""
+    """Non-q1b patient_id causes a different token to be passed to oncofiles."""
     mock_search.return_value = {"entries": []}
     request = _make_request("/api/briefings", "patient_id=jan")
     response = await api_briefings(request)

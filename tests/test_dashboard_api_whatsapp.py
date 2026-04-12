@@ -249,7 +249,7 @@ async def test_whatsapp_chat_sk_fallback_message(mock_run, _mock_cb):
 )
 @patch("oncoteam.dashboard_api._approved_phones_loaded", True)
 @patch("oncoteam.dashboard_api._approved_phones", {"+421900111222", "+421900333444"})
-@patch("oncoteam.dashboard_api._phone_patient_map", {"+421900111222": "erika"})
+@patch("oncoteam.dashboard_api._phone_patient_map", {"+421900111222": "q1b"})
 async def test_whatsapp_status_ok(_mock_conv, _mock_cb):
     request = FakeRequest(method="GET")
     response = await api_whatsapp_status(request)
@@ -260,7 +260,7 @@ async def test_whatsapp_status_ok(_mock_conv, _mock_cb):
     assert data["approved_phones"] == 2
     assert data["recent_conversations"] == 3
     assert data["circuit_breaker_state"] == "closed"
-    assert data["phone_patient_map"] == {"+421900111222": "erika"}
+    assert data["phone_patient_map"] == {"+421900111222": "q1b"}
 
 
 @pytest.mark.anyio

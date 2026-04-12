@@ -208,7 +208,7 @@ async def test_api_medications_adherence_post_requires_date():
 )
 @patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
 async def test_api_medications_passes_patient_token(mock_get_token, mock_list):
-    """Non-erika patient_id causes a different token to be passed to oncofiles."""
+    """Non-q1b patient_id causes a different token to be passed to oncofiles."""
     mock_list.return_value = []
     request = FakeRequest("GET", query="patient_id=jan")
     response = await api_medications(request)

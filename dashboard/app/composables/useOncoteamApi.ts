@@ -5,7 +5,7 @@ export function useOncoteamApi() {
 
   // Read cookie directly as fallback — activePatientId may not be updated yet during SSR
   const patientCookie = useCookie('oncoteam_patient')
-  const effectivePatientId = computed(() => patientCookie.value || activePatientId.value || 'erika')
+  const effectivePatientId = computed(() => patientCookie.value || activePatientId.value || 'q1b')
 
   function fetchApi<T>(path: string | Ref<string> | (() => string), opts?: Record<string, unknown>) {
     const resolvedPath = typeof path === 'function' ? path() : unref(path)

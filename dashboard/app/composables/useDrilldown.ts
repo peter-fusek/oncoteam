@@ -42,7 +42,7 @@ export function useDrilldown() {
     error.value = null
     try {
       const { activePatientId } = useActivePatient()
-      const pid = activePatientId.value || 'erika'
+      const pid = activePatientId.value || 'q1b'
       const result = await $fetch<DetailResponse>(`/api/oncoteam/detail/${item.type}/${item.id}?patient_id=${pid}`)
       detail.value = result
     } catch (e: any) {

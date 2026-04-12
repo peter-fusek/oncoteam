@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
   const userConfig = roleMap[email] || { roles: ['advocate'] }
   const roles = userConfig.roles || ['advocate']
 
-  const patientId = userConfig.patient_id || 'erika'
+  const patientId = userConfig.patient_id || 'q1b'
   const patientIds = [...new Set(userConfig.patient_ids || [patientId])]
 
   // replaceUserSession to avoid deep-merge accumulating roles array

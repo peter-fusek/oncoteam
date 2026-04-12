@@ -20,21 +20,21 @@ from oncoteam.models import PatientProfile
 
 class TestSystemPrompt:
     def test_contains_patient_profile(self):
-        prompt = build_system_prompt("erika")
+        prompt = build_system_prompt("q1b")
         assert "KRAS G12S" in prompt
 
     def test_contains_biomarker_rules(self):
-        prompt = build_system_prompt("erika")
+        prompt = build_system_prompt("q1b")
         assert "anti-EGFR" in prompt
 
     def test_contains_clinical_protocol(self):
-        prompt = build_system_prompt("erika")
+        prompt = build_system_prompt("q1b")
         assert "Lab Safety Thresholds" in prompt
         assert "Dose Modification" in prompt
         assert "Treatment Milestones" in prompt
 
     def test_contains_safety_instructions(self):
-        prompt = build_system_prompt("erika")
+        prompt = build_system_prompt("q1b")
         assert "physician review" in prompt
         assert "NEEDS_PHYSICIAN_REVIEW" in prompt
 
@@ -73,7 +73,7 @@ class TestGeneralHealthPrompt:
 
     def test_erika_still_gets_oncology(self):
         """Regression: oncology patients must NOT be affected."""
-        prompt = build_system_prompt("erika")
+        prompt = build_system_prompt("q1b")
         assert "cancer treatment" in prompt
         assert "Lab Safety Thresholds" in prompt
         assert "KRAS G12S" in prompt
@@ -439,7 +439,7 @@ class TestBiomarkerRulesCrossPatient:
             assert "Ján Testovič" in jan_prompt
 
             # Erika's prompt MUST still have her KRAS G12S
-            erika_prompt = build_system_prompt("erika")
+            erika_prompt = build_system_prompt("q1b")
             assert "G12S" in erika_prompt
         finally:
             # Clean up registry

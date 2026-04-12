@@ -472,7 +472,7 @@ export async function handleWhatsAppCommand(
     return handleApproveCommand(body, oncoteamApiUrl, lang, fromPhone)
   }
 
-  // Patient switching: "prepni erika" / "switch e5g"
+  // Patient switching: "prepni q1b" / "switch e5g"
   if (command === 'switch') {
     return handleSwitchCommand(body, lang, fromPhone, options?.allowedPatientIds)
   }
@@ -509,7 +509,7 @@ export async function handleWhatsAppCommand(
     const apiKey = config.oncoteamApiKey || ''
     const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
     // Include patient_id in API calls for multi-patient support
-    const patientId = options?.patientId || 'erika'
+    const patientId = options?.patientId || 'q1b'
     const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}${sep}lang=${lang}&patient_id=${patientId}`, { headers })
 
     let text: string

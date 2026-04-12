@@ -17,7 +17,7 @@ from oncoteam import dashboard_api as mod
 from oncoteam import oncofiles_client
 
 
-def _make_request(patient_id: str = "erika"):
+def _make_request(patient_id: str = "q1b"):
     """Create a mock Starlette Request with query params."""
     from starlette.requests import Request
 
@@ -60,7 +60,7 @@ async def test_10_users_same_patient_dedup():
         return {"events": [{"id": 1, "event_type": "chemo", "event_date": "2026-03-01"}]}
 
     with patch.object(oncofiles_client, "list_treatment_events", side_effect=mock_list_events):
-        requests = [_make_request("erika") for _ in range(10)]
+        requests = [_make_request("q1b") for _ in range(10)]
         start = time.monotonic()
         results = await asyncio.gather(
             *[mod.api_timeline(req) for req in requests],
@@ -131,11 +131,11 @@ async def test_rate_limit_per_patient_independent():
 @pytest.mark.asyncio
 async def test_cache_isolation_under_concurrency():
     """Concurrent requests for different patients don't share cache entries."""
-    call_count = {"erika": 0, "jan": 0}
+    call_count = {"q1b": 0, "jan": 0}
 
     async def mock_list_events(**kwargs):
         token = kwargs.get("token")
-        patient = "jan" if token == "token_jan" else "erika"
+        patient = "jan" if token == "token_jan" else "q1b"
         call_count[patient] += 1
         await asyncio.sleep(0.05)
         event = {"id": 1, "event_type": "chemo", "event_date": "2026-03-01", "patient": patient}
@@ -145,13 +145,13 @@ async def test_cache_isolation_under_concurrency():
         patch.object(oncofiles_client, "list_treatment_events", side_effect=mock_list_events),
         patch(
             "oncoteam.dashboard_api.get_patient_token",
-            side_effect=lambda pid: f"token_{pid}" if pid != "erika" else None,
+            side_effect=lambda pid: f"token_{pid}" if pid != "q1b" else None,
         ),
     ):
         # Interleave requests for two patients
         requests = []
         for _ in range(5):
-            requests.append(("erika", _make_request("erika")))
+            requests.append(("q1b", _make_request("q1b")))
             requests.append(("jan", _make_request("jan")))
 
         results = await asyncio.gather(
@@ -163,5 +163,5 @@ async def test_cache_isolation_under_concurrency():
     assert len(successes) == 10
 
     # Both patients should have been called (independent caches)
-    assert call_count["erika"] >= 1, "Erika's data should have been fetched"
+    assert call_count["q1b"] >= 1, "Erika's data should have been fetched"
     assert call_count["jan"] >= 1, "Jan's data should have been fetched"

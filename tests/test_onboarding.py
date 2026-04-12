@@ -261,7 +261,7 @@ async def test_whatsapp_media_success(mock_fup, mock_upload, mock_enhance):
             "content_type": "image/jpeg",
             "filename": "whatsapp_20260324_120000.jpg",
             "phone": "+421900111222",
-            "patient_id": "erika",
+            "patient_id": "q1b",
         }
     )
     response = await api_whatsapp_media(request)
@@ -276,7 +276,7 @@ async def test_whatsapp_media_success(mock_fup, mock_upload, mock_enhance):
         content_base64="aGVsbG8=",
         filename="whatsapp_20260324_120000.jpg",
         content_type="image/jpeg",
-        patient_id="erika",
+        patient_id="q1b",
     )
     mock_enhance.assert_called_once_with("42")
 

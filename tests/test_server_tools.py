@@ -38,8 +38,8 @@ from oncoteam.server import (
 
 @pytest.fixture(autouse=True)
 def _mock_mcp_patient_token():
-    """MCP tools resolve patient from bearer token — mock to return erika/None."""
-    with patch("oncoteam.server._get_mcp_patient_token", return_value=("erika", None)):
+    """MCP tools resolve patient from bearer token — mock to return q1b/None."""
+    with patch("oncoteam.server._get_mcp_patient_token", return_value=("q1b", None)):
         yield
 
 

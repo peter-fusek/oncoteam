@@ -60,7 +60,7 @@ uv run oncoteam-mcp    # stdio mode
 - `autonomous_tasks._log_task()` stores agent_run entries with enriched tags: `cost:{cost},tools:{n},model:{model},dur:{ms}`. The `api_agent_runs` and `api_agent_runs_all` list views use `_parse_agent_run_entry()` helper to parse tags — never fetches full content (oncofiles `get_conversation` is too slow for list views).
 - Dashboard proxy timeout (`dashboard/server/api/oncoteam/[...path].ts`) is 25s. Oncofiles MCP `search_conversations` takes ~15s per query — don't reduce below 20s.
 - `document_pipeline` agent in registry has `schedule_params={"hours": 999}` — never fires on schedule. It's event-driven only, triggered by `POST /api/internal/document-webhook`.
-- `api_document_webhook` accepts `patient_id` in JSON body (defaults to "erika"). Must pass `patient_id` from oncofiles — without it, all documents are processed under Erika's context.
+- `api_document_webhook` accepts `patient_id` in JSON body (defaults to "q1b"). Must pass `patient_id` from oncofiles — without it, all documents are processed under q1b's context.
 - `view_document` MCP tool accepts both `file_id` (string) and `document_id` (int). Numeric IDs are auto-resolved to `file_id` via `get_document()`. Haiku agents consistently use `document_id` param name despite prompts — the dual-param support is required.
 - Single-doc pipeline agents (`file_scan_single`, `lab_sync_single`, `dose_extraction_single`, etc.) accept `file_id` kwarg. The pipeline resolves `file_id` once via `_resolve_file_id()` before dispatching downstream.
 - `api_document_webhook` imports `_get_state`, `_extract_timestamp`, `run_document_pipeline` lazily from `autonomous_tasks` — test patches must target `oncoteam.autonomous_tasks`, not `oncoteam.dashboard_api`.
@@ -82,7 +82,7 @@ uv run oncoteam-mcp    # stdio mode
 - RSS memory: `resource.getrusage` returns bytes on macOS, KB on Linux — use `sys.platform == "darwin"` check
 - WhatsApp conversational (non-command) messages use async pattern: immediate "Premýšľam..." TwiML, then Claude response via Twilio REST API. Commands (labky, lieky, etc.) respond synchronously.
 - `NUXT_TWILIO_WHATSAPP_FROM` env var may include `whatsapp:` prefix — code handles both formats to prevent double-wrapping.
-- Multi-patient: `patient_context.py` has `PatientRegistry` (in-memory dict), `get_patient(patient_id)`, `register_patient()`, `build_system_prompt(patient_id)`. Erika is `patient_id="erika"`. Oncofiles bearer token scopes data per-patient — no need to pass patient_id to oncofiles calls.
+- Multi-patient: `patient_context.py` has `PatientRegistry` (in-memory dict), `get_patient(patient_id)`, `register_patient()`, `build_system_prompt(patient_id)`. Erika is `patient_id="q1b"`. Oncofiles bearer token scopes data per-patient — no need to pass patient_id to oncofiles calls.
 - `run_autonomous_task()` accepts `patient_id` param — uses `build_system_prompt(patient_id)` instead of hardcoded `AUTONOMOUS_SYSTEM_PROMPT`.
 - Dashboard `useActivePatient` composable tracks active patient. `useOncoteamApi` includes `patient_id` in all API queries. Patient switcher in sidebar (advocate-only, activates when >1 patient).
 - **NEVER apply Erika's biomarker rules (KRAS G12S, anti-EGFR excluded) to other patients** — each patient has different cancer type, biomarkers, drug contraindications. Use `build_biomarker_rules(patient)` to generate per-patient rules.
@@ -111,7 +111,7 @@ uv run oncoteam-mcp    # stdio mode
 - `scheduler.get_scheduler_status()` exposes APScheduler state. `AUTONOMOUS_ENABLED` must be `true`/`1`/`yes` in Railway env.
 
 ### Multi-user hardening (Sprint 57)
-- All `oncofiles_client` wrapper functions accept `*, token: str | None = None` — pass patient-specific token for non-erika patients via `_get_token_for_patient(patient_id)`.
+- All `oncofiles_client` wrapper functions accept `*, token: str | None = None` — pass patient-specific token for non-q1b patients via `_get_token_for_patient(patient_id)`.
 - All 5 TTL caches use `_cache_key(prefix, patient_id, ...)` — NEVER use a cache key without patient_id.
 - `_CURRENT_REQUEST` is a `contextvars.ContextVar`, NOT a global. Set/reset in `_auth_wrap()`.
 - `_suppressed_errors` is `collections.deque(maxlen=100)` — bounded, never cleared on read.
@@ -121,7 +121,7 @@ uv run oncoteam-mcp    # stdio mode
 - `oncofiles_client` has two semaphore lanes: `_dashboard_semaphore` (2 slots) and `_agent_semaphore` (1 slot). `call_oncofiles(priority="express")` is the default for dashboard.
 - Circuit breaker state is `_circuit_state: dict[str, dict]` keyed by token prefix. `_is_globally_open()` trips when 3+ per-token breakers are open.
 - `_CORRELATION_ID` ContextVar generated per request in `_check_api_auth()`. Included in `X-Correlation-ID` response header.
-- All 18 `run_*()` functions in `autonomous_tasks.py` accept `patient_id: str = "erika"`. State keys include patient_id: `f"last_{task_name}:{patient_id}"`.
+- All 18 `run_*()` functions in `autonomous_tasks.py` accept `patient_id: str = "q1b"`. State keys include patient_id: `f"last_{task_name}:{patient_id}"`.
 - All `run_*()` functions resolve `token = get_patient_token(patient_id)` before `_should_skip`, then pass `token=token` to `_log_task`, `_set_state`, `_should_skip`. Never call `get_patient_token` twice.
 - `scheduler.py` creates one job per `(agent, patient)` pair via `_make_runner` closures. Multi-patient jobs staggered by 2 minutes (cron minute offset). `keepalive_ping` is system-level (no patient iteration).
 - `_get_current_patient_id()` in `server.py` resolves patient from MCP bearer token via `get_access_token().client_id`. `MCP_BEARER_TOKEN_<ID>` env vars map additional tokens to patient IDs.
@@ -212,7 +212,7 @@ When reviewing uploaded documents:
 - `list_agent_states` wrapper does NOT send `limit` to oncofiles — truncates client-side. Oncofiles v5.2.5+ accepts `limit` but older versions reject it.
 - `api_cumulative_dose` prefers real extracted data (`data_source="extracted"`) from `list_treatment_events(event_type="chemotherapy")`, falls back to `calculated` using patient profile dose. New fields: `data_source`, `cycles_detail`.
 - Agent registry count: 20. Tests in `test_agent_registry.py` and `test_dashboard_api_autonomous.py` assert counts — update when adding agents.
-- `_patient_tokens` in `patient_context.py` auto-populates from `ONCOFILES_MCP_TOKEN_<ID>` env vars at module load. Set `ONCOFILES_MCP_TOKEN_E5G` in Railway. Without it, e5g calls fail or fall back to Erika's token (data isolation bug found in Sprint 69).
+- `_patient_tokens` in `patient_context.py` auto-populates from `ONCOFILES_MCP_TOKEN_<ID>` env vars at module load. Set `ONCOFILES_MCP_TOKEN_E5G` in Railway. Without it, e5g calls fail or fall back to q1b's token (data isolation bug found in Sprint 69).
 
 ## Key commands
 

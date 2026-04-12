@@ -1060,7 +1060,7 @@ async def select_patient(patient_slug: str) -> str:
     """Switch the active patient for this session.
 
     All subsequent tool calls will return data for the selected patient.
-    Pass slug (e.g. 'erika', 'e5g') or UUID.
+    Pass slug (e.g. 'q1b', 'e5g') or UUID.
 
     Args:
         patient_slug: Patient slug or UUID to switch to.

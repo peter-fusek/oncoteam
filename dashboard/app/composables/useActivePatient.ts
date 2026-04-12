@@ -16,14 +16,14 @@ export function useActivePatient() {
   const activePatientId = useState('activePatientId', () => {
     if (patientCookie.value) return patientCookie.value
     const sessionPid = user.value?.patientId as string | undefined
-    return sessionPid || 'erika'
+    return sessionPid || 'q1b'
   })
 
   // Known patients with display info. Seeded with Erika.
   // When new patients onboard, they're added to the user's session patientIds
   // and their display info is fetched from the backend.
   const patientDisplayInfo = useState<Record<string, { name: string; diagnosis: string }>>('patientDisplayInfo', () => ({
-    erika: { name: 'Erika F.', diagnosis: 'mCRC (C18.7)' },
+    q1b: { name: 'Erika F.', diagnosis: 'mCRC (C18.7)' },
     e5g: { name: 'Peter F.', diagnosis: 'Preventive care' },
   }))
   const { activeRole } = useUserRole()
@@ -33,7 +33,7 @@ export function useActivePatient() {
   // Patient IDs this user can access (from session, set during OAuth login)
   const allowedPatientIds = computed(() => {
     const ids = user.value?.patientIds as string[] | undefined
-    return ids?.length ? [...new Set(ids)] : ['erika']
+    return ids?.length ? [...new Set(ids)] : ['q1b']
   })
 
   const patients = computed(() =>

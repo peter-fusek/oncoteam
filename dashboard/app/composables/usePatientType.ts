@@ -23,7 +23,7 @@ export function usePatientType() {
 
   // Seeded with known patients — updated from /api/patient response
   const diagnosisCodes = useState<Record<string, string>>('patientDiagnosisCodes', () => ({
-    erika: 'C18.7',
+    q1b: 'C18.7',
     e5g: 'Z00.0',
   }))
 

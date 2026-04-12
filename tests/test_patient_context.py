@@ -73,7 +73,7 @@ class TestSecondPatient:
 
         ids = list_patient_ids()
         assert "e5g" in ids
-        assert "erika" in ids
+        assert "q1b" in ids
 
     def test_e5g_profile(self):
         from oncoteam.patient_context import get_patient
@@ -105,7 +105,7 @@ class TestSecondPatient:
         """Erika's biomarker rules must not apply to e5g."""
         from oncoteam.patient_context import build_biomarker_rules, get_patient
 
-        erika = get_patient("erika")
+        erika = get_patient("q1b")
         e5g = get_patient("e5g")
         erika_rules = build_biomarker_rules(erika)
         e5g_rules = build_biomarker_rules(e5g)
@@ -120,7 +120,7 @@ class TestSecondPatient:
     def test_is_general_health_patient_oncology(self):
         from oncoteam.patient_context import get_patient, is_general_health_patient
 
-        assert is_general_health_patient(get_patient("erika")) is False
+        assert is_general_health_patient(get_patient("q1b")) is False
 
     def test_is_general_health_patient_empty_regimen(self):
         from oncoteam.patient_context import is_general_health_patient

@@ -22,7 +22,7 @@ from .patient_context import (
 
 
 async def _should_skip(
-    task_name: str, patient_id: str = "erika", *, token: str | None = None
+    task_name: str, patient_id: str = "q1b", *, token: str | None = None
 ) -> bool:
     """Check if task ran recently enough to skip this execution."""
     cooldown_hours = get_cooldown(task_name)
@@ -155,7 +155,7 @@ async def _log_task(task_name: str, result: dict, *, token: str | None = None) -
 # ── Clinical Protocol Tasks ───────────────────
 
 
-async def run_pre_cycle_check(patient_id: str = "erika") -> dict:
+async def run_pre_cycle_check(patient_id: str = "q1b") -> dict:
     """Pre-cycle safety check before each chemo infusion."""
     token = get_patient_token(patient_id)
     if await _should_skip("pre_cycle_check", patient_id, token=token):
@@ -225,7 +225,7 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
     return result
 
 
-async def run_tumor_marker_review(patient_id: str = "erika") -> dict:
+async def run_tumor_marker_review(patient_id: str = "q1b") -> dict:
     """Review CEA and CA 19-9 tumor marker trends."""
     token = get_patient_token(patient_id)
     if await _should_skip("tumor_marker_review", patient_id, token=token):
@@ -265,7 +265,7 @@ Reference ESMO/NCCN guidelines for marker interpretation.
     return result
 
 
-async def run_response_assessment(patient_id: str = "erika") -> dict:
+async def run_response_assessment(patient_id: str = "q1b") -> dict:
     """Check if response imaging is due and prepare assessment template."""
     token = get_patient_token(patient_id)
     if await _should_skip("response_assessment", patient_id, token=token):
@@ -310,7 +310,7 @@ RECIST categories: CR, PR (partial response), SD (stable disease), PD (progressi
 # ── Research Tasks ─────────────────────────────
 
 
-async def run_daily_research(patient_id: str = "erika") -> dict:
+async def run_daily_research(patient_id: str = "q1b") -> dict:
     """Daily PubMed research scan with all curated search terms."""
     token = get_patient_token(patient_id)
     if await _should_skip("daily_research", patient_id, token=token):
@@ -359,7 +359,7 @@ regimen optimization, novel targets, clinical trial results.
     return result
 
 
-async def run_trial_monitor(patient_id: str = "erika") -> dict:
+async def run_trial_monitor(patient_id: str = "q1b") -> dict:
     """Monitor clinical trials across EU (14 countries incl. major CRC centers)."""
     token = get_patient_token(patient_id)
     if await _should_skip("trial_monitor", patient_id, token=token):
@@ -444,7 +444,7 @@ Prioritize trials at centers within practical travel distance from Bratislava:
     return result
 
 
-async def run_file_scan(patient_id: str = "erika") -> dict:
+async def run_file_scan(patient_id: str = "q1b") -> dict:
     """Scan oncofiles for new document uploads."""
     token = get_patient_token(patient_id)
     if await _should_skip("file_scan", patient_id, token=token):
@@ -495,7 +495,7 @@ Search categories: "pathology", "genetics", "labs", "imaging"
 # ── Reporting Tasks ────────────────────────────
 
 
-async def run_weekly_briefing(patient_id: str = "erika") -> dict:
+async def run_weekly_briefing(patient_id: str = "q1b") -> dict:
     """Compile weekly briefing: research, trials, labs, treatment progress."""
     token = get_patient_token(patient_id)
     if await _should_skip("weekly_briefing", patient_id, token=token):
@@ -568,7 +568,7 @@ Structure the briefing with clear sections:
     return result
 
 
-async def run_lab_sync(patient_id: str = "erika") -> dict:
+async def run_lab_sync(patient_id: str = "q1b") -> dict:
     """Extract lab values from oncofiles documents and store as structured lab data."""
     token = get_patient_token(patient_id)
     if await _should_skip("lab_sync", patient_id, token=token):
@@ -663,7 +663,7 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
     return result
 
 
-async def run_toxicity_extraction(patient_id: str = "erika") -> dict:
+async def run_toxicity_extraction(patient_id: str = "q1b") -> dict:
     """Extract toxicity grades from doctor visit notes/reports."""
     token = get_patient_token(patient_id)
     if await _should_skip("toxicity_extraction", patient_id, token=token):
@@ -707,7 +707,7 @@ This creates the baseline toxicity history from existing medical documents.
     return result
 
 
-async def run_weight_extraction(patient_id: str = "erika") -> dict:
+async def run_weight_extraction(patient_id: str = "q1b") -> dict:
     """Extract weight/BMI from doctor visit notes and store as weight_measurement events."""
     token = get_patient_token(patient_id)
     if await _should_skip("weight_extraction", patient_id, token=token):
@@ -754,7 +754,7 @@ Focus on creating structured weight history from existing medical documents.
     return result
 
 
-async def _resolve_file_id(document_id: int, patient_id: str = "erika") -> str | None:
+async def _resolve_file_id(document_id: int, patient_id: str = "q1b") -> str | None:
     """Resolve a document_id to its file_id via oncofiles."""
     try:
         token = get_patient_token(patient_id)
@@ -769,7 +769,7 @@ async def _run_single_doc_task(
     task_name: str,
     document_id: int,
     prompt: str,
-    patient_id: str = "erika",
+    patient_id: str = "q1b",
     *,
     token: str | None = None,
     model: str | None = None,
@@ -798,7 +798,7 @@ async def _run_single_doc_task(
 
 
 async def run_file_scan_single(
-    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+    document_id: int, *, patient_id: str = "q1b", file_id: str | None = None
 ) -> dict:
     """Classify a single document by ID (no broad search)."""
     if not file_id:
@@ -829,7 +829,7 @@ This is a single-document scan triggered by a new upload webhook.
 
 
 async def run_lab_sync_single(
-    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+    document_id: int, *, patient_id: str = "q1b", file_id: str | None = None
 ) -> dict:
     """Extract lab values from a single document by ID."""
     view_arg = file_id or str(document_id)
@@ -860,7 +860,7 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 
 
 async def run_toxicity_extraction_single(
-    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+    document_id: int, *, patient_id: str = "q1b", file_id: str | None = None
 ) -> dict:
     """Extract toxicity grades from a single document by ID."""
     view_arg = file_id or str(document_id)
@@ -887,7 +887,7 @@ This is a single-document extraction triggered by a new upload webhook.
 
 
 async def run_weight_extraction_single(
-    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+    document_id: int, *, patient_id: str = "q1b", file_id: str | None = None
 ) -> dict:
     """Extract weight/BMI from a single document by ID."""
     view_arg = file_id or str(document_id)
@@ -914,7 +914,7 @@ This is a single-document extraction triggered by a new upload webhook.
 
 
 async def run_dose_extraction_single(
-    document_id: int, *, patient_id: str = "erika", file_id: str | None = None
+    document_id: int, *, patient_id: str = "q1b", file_id: str | None = None
 ) -> dict:
     """Extract chemotherapy administration data from a single chemo sheet."""
     from .patient_context import get_patient, is_general_health_patient
@@ -982,7 +982,7 @@ Handwritten document handling:
 
 
 async def run_document_pipeline(
-    document_id: int, metadata: dict | None = None, *, patient_id: str = "erika"
+    document_id: int, metadata: dict | None = None, *, patient_id: str = "q1b"
 ) -> dict:
     """Process a single document through the data pipeline.
 
@@ -1204,7 +1204,7 @@ def _classify_doc_type(response_text: str, metadata: dict) -> str:
     return "other"
 
 
-async def run_family_update(patient_id: str = "erika") -> dict:
+async def run_family_update(patient_id: str = "q1b") -> dict:
     """Generate weekly family update in Slovak from current clinical data."""
     token = get_patient_token(patient_id)
     if await _should_skip("family_update", patient_id, token=token):
@@ -1267,7 +1267,7 @@ Vyhni sa zbytočným odborným detailom.
     return result
 
 
-async def run_medication_adherence_check(patient_id: str = "erika") -> dict:
+async def run_medication_adherence_check(patient_id: str = "q1b") -> dict:
     """Check if today's medication adherence was logged. Flag missing critical meds."""
     token = get_patient_token(patient_id)
     if await _should_skip("medication_adherence_check", patient_id, token=token):
@@ -1323,7 +1323,7 @@ This is a safety check: non-compliance with critical medications is dangerous.
     return result
 
 
-async def run_mtb_preparation(patient_id: str = "erika") -> dict:
+async def run_mtb_preparation(patient_id: str = "q1b") -> dict:
     """Prepare tumor board (MTB) presentation summary."""
     token = get_patient_token(patient_id)
     if await _should_skip("mtb_preparation", patient_id, token=token):
@@ -1406,7 +1406,7 @@ async def _send_whatsapp(
         return resp.json()
 
 
-async def run_self_improvement(patient_id: str = "erika") -> dict:
+async def run_self_improvement(patient_id: str = "q1b") -> dict:
     """Analyze recent conversations and activity to suggest improvements."""
     token = get_patient_token(patient_id)
     if await _should_skip("self_improvement", patient_id, token=token):
@@ -1457,7 +1457,7 @@ Focus on patterns, not individual events. Be specific and actionable.
     return result
 
 
-async def run_protocol_review(patient_id: str = "erika") -> dict:
+async def run_protocol_review(patient_id: str = "q1b") -> dict:
     """Review clinical protocol against latest evidence from oncofiles research."""
     token = get_patient_token(patient_id)
     if await _should_skip("protocol_review", patient_id, token=token):
@@ -1506,7 +1506,7 @@ Focus on actionable changes that would affect current patient management.
     return result
 
 
-async def run_daily_cost_report(patient_id: str = "erika") -> dict:
+async def run_daily_cost_report(patient_id: str = "q1b") -> dict:
     """Send morning clinical summary + cost via WhatsApp (no Claude API call)."""
     from .autonomous import get_daily_cost
     from .config import ANTHROPIC_CREDIT_BALANCE, AUTONOMOUS_COST_LIMIT
@@ -1602,7 +1602,7 @@ async def run_daily_cost_report(patient_id: str = "erika") -> dict:
         return {"ok": False, "error": str(e)}
 
 
-async def run_funnel_assess(patient_id: str = "erika") -> dict:
+async def run_funnel_assess(patient_id: str = "q1b") -> dict:
     """Auto-classify new clinical trials into funnel stages."""
     token = get_patient_token(patient_id)
     if await _should_skip("funnel_assess", patient_id, token=token):

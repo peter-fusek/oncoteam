@@ -53,7 +53,7 @@ def _get_client():
     return AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
-def build_system_prompt(patient_id: str = "erika") -> str:
+def build_system_prompt(patient_id: str = "q1b") -> str:
     """Build a patient-specific system prompt for autonomous agents.
 
     Oncology patients get the full mFOLFOX6 clinical protocol (ESMO/NCCN).
@@ -321,7 +321,7 @@ TOOLS = [
 ]
 
 
-async def execute_tool(name: str, inputs: dict, *, patient_id: str = "erika") -> str:
+async def execute_tool(name: str, inputs: dict, *, patient_id: str = "q1b") -> str:
     """Dispatch tool call to the appropriate async handler.
 
     All oncofiles calls pass token for patient-scoped data isolation (#201).
@@ -426,7 +426,7 @@ async def execute_tool(name: str, inputs: dict, *, patient_id: str = "erika") ->
 
 
 def _track_cost(
-    input_tokens: int, output_tokens: int, model: str = "", patient_id: str = "erika"
+    input_tokens: int, output_tokens: int, model: str = "", patient_id: str = "q1b"
 ) -> float:
     """Track cost and return the cost for this call."""
     global _daily_cost, _daily_cost_reset_date
@@ -638,7 +638,7 @@ async def run_autonomous_task(
     task_name: str = "autonomous",
     model: str | None = None,
     thinking_budget: int | None = None,
-    patient_id: str = "erika",
+    patient_id: str = "q1b",
 ) -> dict:
     """Run an autonomous agent loop with extended thinking.
 
@@ -646,7 +646,7 @@ async def run_autonomous_task(
         model: Override model (default: AUTONOMOUS_MODEL from config).
         thinking_budget: Extended thinking budget. None = auto (10000 for
             Sonnet, disabled for Haiku). Set to 0 to disable thinking.
-        patient_id: Patient to run for (default: "erika").
+        patient_id: Patient to run for (default: "q1b").
 
     Returns dict with thinking, tool_calls, response, token counts, cost.
     """

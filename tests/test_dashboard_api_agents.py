@@ -86,7 +86,7 @@ async def test_agents_last_run_from_state():
         "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
         return_value=[
-            {"key": "last_daily_research:erika", "value": json.dumps({"timestamp": ts})},
+            {"key": "last_daily_research:q1b", "value": json.dumps({"timestamp": ts})},
         ],
     ):
         request = _make_request()

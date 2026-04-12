@@ -21,7 +21,7 @@ export default defineOAuthGoogleEventHandler({
     const userConfig = roleMap[user.email] || { roles: ['advocate'] }
     const roles = userConfig.roles || ['advocate']
     // Patient scoping: advocate sees all patient_ids, others see only their own
-    const patientId = userConfig.patient_id || 'erika'
+    const patientId = userConfig.patient_id || 'q1b'
     const patientIds = [...new Set(userConfig.patient_ids || [patientId])]
 
     await setUserSession(event, {

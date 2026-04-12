@@ -87,7 +87,7 @@ THERAPY_CATEGORIES: dict[str, dict] = {
 
 
 PATIENT = PatientProfile(
-    patient_id="erika",
+    patient_id="q1b",
     name="Erika F.",
     diagnosis_code="C18.7",
     diagnosis_description="AdenoCa colon sigmoideum, G3, mCRC",
@@ -397,7 +397,7 @@ _PATIENT_L10N: dict = {
 }
 
 
-def get_patient_localized(lang: str = "sk", patient_id: str = "erika") -> dict:
+def get_patient_localized(lang: str = "sk", patient_id: str = "q1b") -> dict:
     """Return patient profile dict with bilingual fields resolved to requested language."""
     patient = get_patient(patient_id)
     data = patient.model_dump()
@@ -405,8 +405,8 @@ def get_patient_localized(lang: str = "sk", patient_id: str = "erika") -> dict:
     if data.get("diagnosis_date"):
         data["diagnosis_date"] = str(data["diagnosis_date"])
 
-    # Overlay bilingual fields (erika has full l10n, others get raw data)
-    l10n = _PATIENT_L10N if patient_id == "erika" else {}
+    # Overlay bilingual fields (q1b has full l10n, others get raw data)
+    l10n = _PATIENT_L10N if patient_id == "q1b" else {}
     for key, bilingual_value in l10n.items():
         if key == "biomarker_annotations":
             # Special: this is extra data not in PATIENT model
@@ -432,7 +432,7 @@ RESEARCH_TERMS: list[str] = [
 ]
 
 
-def get_patient_profile_text(patient_id: str = "erika") -> str:
+def get_patient_profile_text(patient_id: str = "q1b") -> str:
     """Return formatted patient profile for MCP resource."""
     p = _patient_registry.get(patient_id, PATIENT)
     biomarkers = "\n".join(f"  - {k}: {v}" for k, v in p.biomarkers.items())
@@ -471,7 +471,7 @@ def get_patient_profile_text(patient_id: str = "erika") -> str:
     return "\n".join(line for line in parts if line) + "\n"
 
 
-def get_research_terms_text(patient_id: str = "erika") -> str:
+def get_research_terms_text(patient_id: str = "q1b") -> str:
     """Return formatted research terms for MCP resource."""
     patient_terms = _patient_research_terms.get(patient_id, RESEARCH_TERMS)
     terms = "\n".join(f"- {t}" for t in patient_terms)
@@ -500,7 +500,7 @@ def get_context_tags() -> list[str]:
 # In-memory registry of loaded patient profiles. Erika is pre-seeded.
 # Future patients load from oncofiles on first access.
 
-_patient_registry: dict[str, PatientProfile] = {"erika": PATIENT, "e5g": PATIENT_E5G}
+_patient_registry: dict[str, PatientProfile] = {"q1b": PATIENT, "e5g": PATIENT_E5G}
 
 # Per-patient bearer tokens for oncofiles. Token scopes all data automatically.
 # Erika uses the default ONCOFILES_MCP_TOKEN from config.
@@ -514,12 +514,12 @@ for _pid in list(_patient_registry.keys()):
         _patient_tokens[_pid] = _tok
 
 # Per-patient research terms. Erika's are hardcoded; others derived from profile.
-_patient_research_terms: dict[str, list[str]] = {"erika": RESEARCH_TERMS, "e5g": []}
+_patient_research_terms: dict[str, list[str]] = {"q1b": RESEARCH_TERMS, "e5g": []}
 
 # Per-patient recipients. Erika's are hardcoded; others loaded from oncofiles.
-_patient_recipients: dict[str, dict[str, Recipient]] = {"erika": RECIPIENTS, "e5g": {}}
+_patient_recipients: dict[str, dict[str, Recipient]] = {"q1b": RECIPIENTS, "e5g": {}}
 
-DEFAULT_PATIENT_ID = "erika"
+DEFAULT_PATIENT_ID = "q1b"
 
 
 def list_patient_ids() -> list[str]:
@@ -688,7 +688,7 @@ _ONCOFILES_CONCURRENCY = asyncio.Semaphore(3)
 
 
 async def get_genetic_profile(
-    patient_id: str = "erika", *, token: str | None = None
+    patient_id: str = "q1b", *, token: str | None = None
 ) -> dict[str, str]:
     """Fetch genetic/biomarker data from oncofiles documents.
 

@@ -32,17 +32,17 @@ class TestSchedulerStandalone:
 
             assert _standalone_scheduler is not None
             jobs = _standalone_scheduler.get_jobs()
-            # 2 patients: erika (all 17 agents) + e5g (2 whitelisted) + 1 keepalive = 20
+            # 2 patients: q1b (all 17 agents) + e5g (2 whitelisted) + 1 keepalive = 20
             assert len(jobs) == 20
 
             job_ids = {j.id for j in jobs}
             assert "keepalive_ping" in job_ids
             # Erika gets all agents (multi-patient format: agent:patient)
-            assert "pre_cycle_check:erika" in job_ids
-            assert "daily_research:erika" in job_ids
-            assert "trial_monitor:erika" in job_ids
-            assert "weekly_briefing:erika" in job_ids
-            assert "lab_sync:erika" in job_ids
+            assert "pre_cycle_check:q1b" in job_ids
+            assert "daily_research:q1b" in job_ids
+            assert "trial_monitor:q1b" in job_ids
+            assert "weekly_briefing:q1b" in job_ids
+            assert "lab_sync:q1b" in job_ids
             # e5g only gets whitelisted agents
             assert "weekly_briefing:e5g" in job_ids
             assert "lab_sync:e5g" in job_ids
@@ -99,10 +99,10 @@ class TestSchedulerStandalone:
         def _mock_get(pid):
             from oncoteam.patient_context import PATIENT
 
-            return PATIENT if pid == "erika" else jan
+            return PATIENT if pid == "q1b" else jan
 
         with (
-            patch("oncoteam.scheduler.list_patient_ids", return_value=["erika", "jan"]),
+            patch("oncoteam.scheduler.list_patient_ids", return_value=["q1b", "jan"]),
             patch("oncoteam.scheduler.get_patient", side_effect=_mock_get),
         ):
             scheduler = _create_scheduler()
@@ -114,7 +114,7 @@ class TestSchedulerStandalone:
             assert len(jobs) > 18, f"Expected >18 jobs for 2 patients, got {len(jobs)}"
 
             # Per-patient job IDs use "agent:patient" format
-            assert "pre_cycle_check:erika" in job_ids
+            assert "pre_cycle_check:q1b" in job_ids
             assert "pre_cycle_check:jan" in job_ids
 
             # Keepalive is system-level, not per-patient
@@ -141,10 +141,10 @@ class TestSchedulerStandalone:
         def _mock_get(pid):
             from oncoteam.patient_context import PATIENT
 
-            return PATIENT if pid == "erika" else limited
+            return PATIENT if pid == "q1b" else limited
 
         with (
-            patch("oncoteam.scheduler.list_patient_ids", return_value=["erika", "limited"]),
+            patch("oncoteam.scheduler.list_patient_ids", return_value=["q1b", "limited"]),
             patch("oncoteam.scheduler.get_patient", side_effect=_mock_get),
         ):
             scheduler = _create_scheduler()
@@ -152,7 +152,7 @@ class TestSchedulerStandalone:
             job_ids = {j.id for j in jobs}
 
             # Erika gets all agents, limited gets only 2
-            assert "pre_cycle_check:erika" in job_ids
+            assert "pre_cycle_check:q1b" in job_ids
             assert "lab_sync:limited" in job_ids
             assert "weekly_briefing:limited" in job_ids
             assert "pre_cycle_check:limited" not in job_ids
