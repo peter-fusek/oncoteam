@@ -159,6 +159,49 @@ Not as a replacement for their oncologist, but as a tool to help him understand 
 
 ---
 
+## Who's Behind This
+
+### The People
+
+<table>
+<tr>
+<td width="50%">
+
+**Peter Fusek** — CEO & Founder
+
+Serial entrepreneur and AI strategist. 4 years at Tatra banka. Co-founded marketlocator (exit to Deutsche Telekom). Advisor to VÚB Bank CEO. 18+ years building technology products.
+
+Built Oncoteam from personal need — when his wife was diagnosed with metastatic colorectal cancer, he needed a tool to keep up with a situation that moves faster than any one person can track.
+
+[LinkedIn](https://www.linkedin.com/in/peterfusek/) · peter.fusek@instarea.com
+
+</td>
+<td width="50%">
+
+**Peter Čapkovič** — CTO & Co-founder
+
+Senior IT architect with 20+ years in enterprise banking (VÚB). Expert in .NET, Python, SQL, and systems architecture. Led architecture across all Instarea products.
+
+Architecture, development, operations — everything under one roof.
+
+[LinkedIn](https://www.linkedin.com/in/peter-capkovic/)
+
+</td>
+</tr>
+</table>
+
+### The Company
+
+**[Instarea](https://www.instarea.com)** — 18 years, 23 products shipped. From telecom analytics and enterprise clients (Callinspector) to mobile-first fintech (InventButton), big data exits (marketlocator → Deutsche Telekom), IoT platforms, and AI-first products (PulseShape, ReplicaCity, HomeGrif).
+
+Oncoteam and [Oncofiles](https://github.com/peter-fusek/oncofiles) are Instarea's latest — built with the same engineering discipline that delivered enterprise-grade products for banking, telecom, and data industries.
+
+10+ verified, synchronized team members available across front-end, back-end, integration, data science, UX/UI, marketing, and cloud ops.
+
+> *"We take it personally, with our own faces, like family and at work."*
+
+---
+
 *Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.*
 
 *Built by a patient advocate, for patient advocates.*
