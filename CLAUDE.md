@@ -6,7 +6,7 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 688 tests
+uv run pytest          # 691 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
@@ -81,6 +81,10 @@ uv run oncoteam-mcp    # stdio mode
 - `api_health_deep` and `api_diagnostics` include `circuit_breaker` status. Tests mocking diagnostics must also mock `get_circuit_breaker_status`.
 - RSS memory: `resource.getrusage` returns bytes on macOS, KB on Linux — use `sys.platform == "darwin"` check
 - WhatsApp conversational (non-command) messages use async pattern: immediate "Premýšľam..." TwiML, then Claude response via Twilio REST API. Commands (labky, lieky, etc.) respond synchronously.
+- `whatsapp-commands.ts` has 20 commands (17 SK + 20 EN aliases). Sub-command routing: `parseSubCommand()` extracts `{commandWord, subarg}`. Labs support filtering (cea/krv/pecen) and pagination (labky 2).
+- `splitMessage()` splits long responses on `\n\n` boundaries (max 3 segments, 1500 chars each). Multi-segment: first via TwiML, rest via Twilio REST with 150ms delay.
+- `CommandResult` union has 3 types: `reply` (single sync), `multi` (multi-segment sync), `async` (Claude conversational).
+- WhatsApp conversation memory: `_load_wa_thread()` / `_save_wa_thread()` in `dashboard_api.py`. Keyed by `wa_thread:{patient_id}:{sha256(phone)[:12]}` in oncofiles agent_state — patient-scoped to prevent cross-patient context bleed. 2h TTL, max 5 exchanges, 3s non-blocking timeout. Tests must mock both `_load_wa_thread` and `_save_wa_thread`.
 - `NUXT_TWILIO_WHATSAPP_FROM` env var may include `whatsapp:` prefix — code handles both formats to prevent double-wrapping.
 - Multi-patient: `patient_context.py` has `PatientRegistry` (in-memory dict), `get_patient(patient_id)`, `register_patient()`, `build_system_prompt(patient_id)`. Erika is `patient_id="q1b"`. Oncofiles bearer token scopes data per-patient — no need to pass patient_id to oncofiles calls.
 - `run_autonomous_task()` accepts `patient_id` param — uses `build_system_prompt(patient_id)` instead of hardcoded `AUTONOMOUS_SYSTEM_PROMPT`.
@@ -227,7 +231,7 @@ When reviewing uploaded documents:
 
 ## Testing
 
-- `uv run pytest` — full suite (688 tests, ~4.5s)
+- `uv run pytest` — full suite (691 tests, ~4.5s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -240,7 +244,7 @@ When reviewing uploaded documents:
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 688 tests, ruff clean
+- 691 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
