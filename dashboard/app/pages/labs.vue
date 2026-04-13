@@ -448,7 +448,7 @@ async function submitLab() {
     <!-- Entry Form -->
     <div v-if="showForm" class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 class="text-sm font-semibold text-gray-900 mb-4">{{ $t('labs.enterResults') }}</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
         <div>
           <label class="text-xs text-gray-500 block mb-1">{{ $t('common.date') }}</label>
           <input

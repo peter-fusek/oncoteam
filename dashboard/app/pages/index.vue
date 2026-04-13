@@ -241,7 +241,7 @@ const EVENT_ICONS: Record<string, string> = {
         </div>
         <div v-if="mergedLabSnapshot" class="space-y-2">
           <div class="text-xs text-gray-500 mb-2">{{ formatDate(mergedLabSnapshot.date) }}</div>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
             <div
               v-for="p in KEY_PARAMS"
               :key="p.key"
@@ -351,7 +351,7 @@ const EVENT_ICONS: Record<string, string> = {
       <!-- Quick Links -->
       <div class="rounded-xl border border-gray-200 bg-white p-5">
         <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ $t('home.quickActions') }}</h2>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <template v-if="activeRole === 'advocate'">
             <NuxtLink v-if="isOncology" to="/toxicity" class="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
               <UIcon name="i-lucide-thermometer" class="h-4 w-4 text-gray-400" />
