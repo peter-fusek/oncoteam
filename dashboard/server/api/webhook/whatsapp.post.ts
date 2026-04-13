@@ -421,7 +421,7 @@ export default defineEventHandler(async (event) => {
 
     // Immediate response to Twilio — acknowledge receipt
     setResponseHeader(event, 'content-type', 'text/xml')
-    return twiml(result.lang === 'sk' ? 'Premýšľam... 🤔' : 'Thinking... 🤔')
+    return twiml(result.lang === 'sk' ? 'Premýšľam... (~30s) 🤔' : 'Thinking... (~30s) 🤔')
   }
 
   // Synchronous command response
