@@ -82,6 +82,21 @@ _AGENTS: list[AgentConfig] = [
         prompt_template="[No prompt — direct data aggregation, no Claude API call]",
     ),
     AgentConfig(
+        id="health_monitor",
+        name=L("Monitor zdravia systému", "System health monitor"),
+        description=L(
+            "Kontrola oncofiles, circuit breaker, RSS pamäte — alert pri degradácii",
+            "Check oncofiles, circuit breaker, RSS memory — alert on degradation",
+        ),
+        schedule_display=L("každé 2 hodiny", "every 2 hours"),
+        category=AgentCategory.SYSTEM,
+        schedule_type=ScheduleType.INTERVAL,
+        schedule_params={"hours": 2},
+        whatsapp_enabled=True,
+        max_turns=0,
+        prompt_template="[No prompt — direct health checks, no Claude API call]",
+    ),
+    AgentConfig(
         id="self_improvement",
         name=L("Analýza zlepšení", "Self-improvement analysis"),
         description=L(

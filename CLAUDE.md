@@ -215,7 +215,7 @@ When reviewing uploaded documents:
 - `get_doc_detail()` in `oncofiles_client.py` is a REST call (not MCP) to `GET /api/doc-detail/{doc_id}`. Returns `preview_url`, `pages[]` with per-page OCR text. `api_detail` uses this first, falls back to MCP.
 - `list_agent_states` wrapper does NOT send `limit` to oncofiles — truncates client-side. Oncofiles v5.2.5+ accepts `limit` but older versions reject it.
 - `api_cumulative_dose` prefers real extracted data (`data_source="extracted"`) from `list_treatment_events(event_type="chemotherapy")`, falls back to `calculated` using patient profile dose. New fields: `data_source`, `cycles_detail`.
-- Agent registry count: 20. Tests in `test_agent_registry.py` and `test_dashboard_api_autonomous.py` assert counts — update when adding agents.
+- Agent registry count: 21. Tests in `test_agent_registry.py` and `test_scheduler.py` assert counts — update when adding agents.
 - `_patient_tokens` in `patient_context.py` auto-populates from `ONCOFILES_MCP_TOKEN_<ID>` env vars at module load. Set `ONCOFILES_MCP_TOKEN_E5G` in Railway. Without it, e5g calls fail or fall back to q1b's token (data isolation bug found in Sprint 69).
 
 ## Key commands

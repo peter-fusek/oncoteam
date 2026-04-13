@@ -45,6 +45,7 @@ def _get_task_functions() -> dict:
         run_family_update,
         run_file_scan,
         run_funnel_assess,
+        run_health_monitor,
         run_lab_sync,
         run_medication_adherence_check,
         run_mtb_preparation,
@@ -61,6 +62,7 @@ def _get_task_functions() -> dict:
 
     return {
         "keepalive_ping": _keepalive_ping,
+        "health_monitor": run_health_monitor,
         "file_scan": run_file_scan,
         "lab_sync": run_lab_sync,
         "toxicity_extraction": run_toxicity_extraction,
@@ -106,8 +108,8 @@ def _create_scheduler():
             IntervalTrigger if config.schedule_type == ScheduleType.INTERVAL else CronTrigger
         )
 
-        # System agents (keepalive) run once, not per-patient
-        if agent_id == "keepalive_ping":
+        # System agents run once, not per-patient
+        if agent_id in ("keepalive_ping", "health_monitor"):
             trigger = trigger_cls(**config.schedule_params)
             scheduler.add_job(
                 func,

@@ -32,8 +32,8 @@ class TestSchedulerStandalone:
 
             assert _standalone_scheduler is not None
             jobs = _standalone_scheduler.get_jobs()
-            # 2 patients: q1b (all 17 agents) + e5g (2 whitelisted) + 1 keepalive = 20
-            assert len(jobs) == 20
+            # 2 patients: q1b (all 17 agents) + e5g (2 whitelisted) + 2 system (keepalive + health_monitor) = 21
+            assert len(jobs) == 21
 
             job_ids = {j.id for j in jobs}
             assert "keepalive_ping" in job_ids

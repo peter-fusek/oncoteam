@@ -1602,6 +1602,67 @@ async def run_daily_cost_report(patient_id: str = "q1b") -> dict:
         return {"ok": False, "error": str(e)}
 
 
+async def run_health_monitor(patient_id: str = "q1b") -> dict:
+    """Check oncofiles health, circuit breaker, RSS — alert on degradation.
+
+    No Claude API call. Direct HTTP + circuit breaker check.
+    Sends WhatsApp only if something is wrong.
+    """
+    logger.info(">>> Starting task: health_monitor")
+    alerts: list[str] = []
+
+    # 1. Circuit breaker status
+    cb = oncofiles_client.get_circuit_breaker_status()
+    cb_state = cb.get("state", "unknown")
+    if cb_state != "closed":
+        alerts.append(f"🔴 Circuit breaker: {cb_state}")
+
+    # 2. RSS memory
+    rss_mb = cb.get("oncofiles_rss_mb", 0)
+    if rss_mb >= 400:
+        alerts.append(f"⚠️ Oncofiles RSS: {rss_mb}MB (threshold: 400MB)")
+
+    # 3. Folder 404 suspension
+    if cb.get("folder_404_suspended"):
+        alerts.append("🔴 GDrive folder sync suspended (404)")
+
+    # 4. Oncofiles health endpoint
+    import httpx
+
+    from .config import ONCOFILES_MCP_URL
+
+    try:
+        base = (
+            ONCOFILES_MCP_URL.rsplit("/", 1)[0] if "/" in ONCOFILES_MCP_URL else ONCOFILES_MCP_URL
+        )
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{base}/health")
+            if resp.status_code != 200:
+                alerts.append(f"⚠️ Oncofiles /health: HTTP {resp.status_code}")
+            else:
+                health = resp.json()
+                of_rss = health.get("rss_mb", 0)
+                if of_rss >= 400:
+                    alerts.append(f"⚠️ Oncofiles self-reported RSS: {of_rss}MB")
+                if health.get("folder_404_suspended"):
+                    alerts.append("🔴 Oncofiles: folder_404_suspended")
+    except Exception as e:
+        alerts.append(f"🔴 Oncofiles unreachable: {e}")
+
+    if alerts:
+        msg = format_whatsapp_header(
+            "Health Alert", date_str=datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
+        )
+        msg += "\n".join(alerts)
+        msg += "\n\nAuto-check — review at dashboard.oncoteam.cloud/agents"
+        await _send_whatsapp(msg, recipient="caregiver")
+        logger.warning("<<< health_monitor: %d alerts sent", len(alerts))
+    else:
+        logger.info("<<< health_monitor: all clear")
+
+    return {"ok": True, "alerts": alerts, "alert_count": len(alerts)}
+
+
 async def run_funnel_assess(patient_id: str = "q1b") -> dict:
     """Auto-classify new clinical trials into funnel stages."""
     token = get_patient_token(patient_id)
