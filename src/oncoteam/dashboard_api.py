@@ -4381,15 +4381,46 @@ async def api_whatsapp_media(request: Request) -> JSONResponse:
             record_suppressed_error("api_whatsapp_media", "enhance_document", exc)
             summary = "Document uploaded but analysis failed."
 
+    # Step 3: Trigger document pipeline (lab_sync, dose_extraction, etc.)
+    # Same logic as api_document_webhook but inline to avoid duplicate upload
+    pipeline_status = "not_triggered"
+    if document_id:
+        try:
+            from .autonomous_tasks import run_document_pipeline
+
+            pid = patient_id or DEFAULT_PATIENT_ID
+            doc_id_int = int(document_id)
+            metadata = {
+                "filename": filename,
+                "category": "",
+                "uploaded_at": "",
+            }
+            asyncio.create_task(run_document_pipeline(doc_id_int, metadata, patient_id=pid))
+            pipeline_status = "started"
+            _logger.info(
+                "Document pipeline triggered from WhatsApp media: doc_id=%s, patient=%s",
+                document_id,
+                pid,
+            )
+        except Exception as exc:
+            record_suppressed_error("api_whatsapp_media", "trigger_pipeline", exc)
+            pipeline_status = "failed"
+
     _logger.info(
-        "WhatsApp media processed: phone=%s, file=%s, doc_id=%s",
+        "WhatsApp media processed: phone=%s, file=%s, doc_id=%s, pipeline=%s",
         phone[:6] + "..." if phone else "?",
         filename,
         document_id,
+        pipeline_status,
     )
 
     return _cors_json(
-        {"status": "ok", "document_id": document_id, "summary": summary},
+        {
+            "status": "ok",
+            "document_id": document_id,
+            "summary": summary,
+            "pipeline": pipeline_status,
+        },
         request=request,
     )
 

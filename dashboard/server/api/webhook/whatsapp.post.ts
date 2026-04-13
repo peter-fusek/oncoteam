@@ -316,7 +316,7 @@ export default defineEventHandler(async (event) => {
           const base64 = Buffer.from(arrayBuffer).toString('base64')
           const filename = generateMediaFilename(media.contentType)
 
-          const result = await $fetch<{ status: string; document_id: string; summary: string }>(
+          const result = await $fetch<{ status: string; document_id: string; summary: string; pipeline?: string }>(
             `${oncoteamUrl}/api/internal/whatsapp-media`,
             {
               method: 'POST',
@@ -331,7 +331,10 @@ export default defineEventHandler(async (event) => {
             },
           )
           const summary = result.summary || 'Dokument bol nahraný.'
-          results.push(`${filename}: ${summary}`)
+          const pipelineNote = result.pipeline === 'started'
+            ? '\n🔄 Spúšťam analýzu — labky a hodnoty sa extrahujú automaticky.'
+            : ''
+          results.push(`📄 ${filename}: ${summary}${pipelineNote}`)
         }
         catch (err) {
           console.error('[whatsapp-media] Failed to process attachment:', err)
