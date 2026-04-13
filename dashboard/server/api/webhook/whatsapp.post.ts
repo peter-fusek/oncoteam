@@ -3,7 +3,7 @@ import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-
 import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionCount } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
 import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone } from '../../utils/approved-phones'
-import { recordInbound } from '../../utils/twilio-send'
+import { recordInbound, sendWhatsApp } from '../../utils/twilio-send'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
@@ -212,7 +212,7 @@ export default defineEventHandler(async (event) => {
         const apiKey = (config.oncoteamApiKey || '') as string
         const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
         const rawFrom = String(config.twilioWhatsappFrom || '')
-        if (!rawFrom) { console.error('[whatsapp] NUXT_TWILIO_WHATSAPP_FROM not configured'); return twimlResponse('Configuration error.') }
+        if (!rawFrom) { console.error('[whatsapp] NUXT_TWILIO_WHATSAPP_FROM not configured'); return twiml('Configuration error.') }
         const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
         const twilioTo = `whatsapp:${from}`
 
@@ -299,7 +299,7 @@ export default defineEventHandler(async (event) => {
     const apiKey = (config.oncoteamApiKey || '') as string
     const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
     const rawFrom = String(config.twilioWhatsappFrom || '')
-    if (!rawFrom) { console.error('[whatsapp] NUXT_TWILIO_WHATSAPP_FROM not configured'); return twimlResponse('Configuration error.') }
+    if (!rawFrom) { console.error('[whatsapp] NUXT_TWILIO_WHATSAPP_FROM not configured'); return twiml('Configuration error.') }
     const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
     const twilioTo = `whatsapp:${from}`
 
@@ -374,48 +374,40 @@ export default defineEventHandler(async (event) => {
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.
     // Claude API takes 30-60s, exceeding Twilio's 15s webhook timeout.
-    const rawFrom = String(config.twilioWhatsappFrom || '')
-    if (!rawFrom) { console.error('[whatsapp] NUXT_TWILIO_WHATSAPP_FROM not configured'); return twimlResponse('Configuration error.') }
-    const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
-    const twilioTo = `whatsapp:${from}`
 
     // Fire-and-forget: call Claude API and send response via Twilio REST API
     ;(async () => {
       const apiKey = config.oncoteamApiKey || ''
       const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
 
-      // Step 1: Get Claude response
+      // Step 1: Get Claude response (55s timeout — generous for autonomous agent)
       let reply: string
       try {
         console.log('[whatsapp-async] Calling Claude API for:', result.message.slice(0, 50))
         const chatResult = await $fetch<{ response: string }>(`${oncoteamApiUrl}/api/internal/whatsapp-chat`, {
           method: 'POST',
-          body: { message: result.message, lang: result.lang },
+          body: { message: result.message, lang: result.lang, phone: from, patient_id: whatsappPatientId },
           headers,
+          signal: AbortSignal.timeout(55_000),
         })
         reply = chatResult.response || 'Prepáčte, nepodarilo sa spracovať správu.'
         console.log('[whatsapp-async] Claude responded:', reply.slice(0, 80))
       }
       catch (err) {
-        console.error('[whatsapp-async] Claude API failed:', err)
+        const errMsg = err instanceof Error ? err.message : String(err)
+        console.error('[whatsapp-async] Claude API failed:', errMsg)
         reply = result.lang === 'sk'
           ? 'Prepáčte, nepodarilo sa spracovať správu. Skúste príkaz ako *labky* alebo *pomoc*.'
           : 'Sorry, could not process your message. Try a command like *labs* or *help*.'
       }
 
-      // Step 2: Send reply via Twilio REST API
-      try {
-        console.log('[whatsapp-async] Sending via Twilio:', twilioFrom, '->', twilioTo, '(raw env:', rawFrom, ')')
-        const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
-        const msg = await client.messages.create({
-          from: twilioFrom,
-          to: twilioTo,
-          body: reply.slice(0, 1500),
-        })
-        console.log('[whatsapp-async] Twilio sent OK, SID:', msg.sid)
+      // Step 2: Send reply via shared twilio-send utility
+      const sendResult = await sendWhatsApp({ to: from, body: reply })
+      if (sendResult.ok) {
+        console.log('[whatsapp-async] Twilio sent OK, SID:', sendResult.sid)
       }
-      catch (err) {
-        console.error('[whatsapp-async] Twilio send failed:', err)
+      else {
+        console.error('[whatsapp-async] Twilio send failed:', sendResult.error)
       }
 
       // Step 3: Log exchange
