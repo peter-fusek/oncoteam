@@ -6,6 +6,12 @@ const MAX_SEGMENTS = 3
 
 type Lang = 'sk' | 'en'
 
+// Role display labels for user context in messages
+const _roleLabels: Record<string, Record<string, string>> = {
+  sk: { advocate: 'opatrovateľ', patient: 'pacient', doctor: 'lekár' },
+  en: { advocate: 'caregiver', patient: 'patient', doctor: 'doctor' },
+}
+
 const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval', 'prepni', 'pacienti', 'predcyklus', 'rodina', 'otazky', 'toxicita', 'vaha', 'davka'])
 const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve', 'switch', 'patients', 'precycle', 'family', 'questions', 'toxicity', 'weight', 'dose'])
 
@@ -758,6 +764,8 @@ function handleSwitchCommand(
   fromPhone?: string,
   allowedPatientIds?: string[],
   patientNameMap?: Record<string, string>,
+  userName?: string,
+  userRoles?: string[],
 ): CommandResult {
   const parts = body.trim().split(/\s+/)
   // Strip Slovak/English filler words so "prepni na q1b" / "switch to q1b" work
@@ -805,11 +813,18 @@ function handleSwitchCommand(
 
   const displayName = patientNameMap?.[resolvedSlug]
   const label = displayName ? `*${resolvedSlug}* (${displayName})` : `*${resolvedSlug}*`
+  const roleLabel = userRoles?.length ? userRoles[0] : ''
+  const userHeader = userName
+    ? (roleLabel
+      ? `${userName} (${t(L(_roleLabels.sk[roleLabel] || roleLabel, _roleLabels.en[roleLabel] || roleLabel), lang)})`
+      : userName)
+    : ''
+  const headerLine = userHeader ? `${userHeader}\n` : ''
   return {
     type: 'reply',
     text: t(L(
-      `Prepnute na pacienta: ${label}\n\nVsetky prikazy teraz zobrazuju data pre ${resolvedSlug}.`,
-      `Switched to patient: ${label}\n\nAll commands now show data for ${resolvedSlug}.`,
+      `${headerLine}Prepnute na pacienta: ${label}\n\nVsetky prikazy teraz zobrazuju data pre ${resolvedSlug}.`,
+      `${headerLine}Switched to patient: ${label}\n\nAll commands now show data for ${resolvedSlug}.`,
     ), lang),
   }
 }
@@ -863,7 +878,7 @@ export async function handleWhatsAppCommand(
   body: string,
   oncoteamApiUrl: string,
   fromPhone?: string,
-  options?: { patientId?: string; allowedPatientIds?: string[]; hasMultiplePatients?: boolean; patientNameMap?: Record<string, string> },
+  options?: { patientId?: string; allowedPatientIds?: string[]; hasMultiplePatients?: boolean; patientNameMap?: Record<string, string>; userName?: string; userRoles?: string[] },
 ): Promise<CommandResult> {
   const { commandWord, subarg } = parseSubCommand(body)
   const lang = detectLang(commandWord)
@@ -880,7 +895,7 @@ export async function handleWhatsAppCommand(
 
   // Patient switching: "prepni q1b" / "switch e5g" / "prepni na eriku"
   if (command === 'switch') {
-    return handleSwitchCommand(body, lang, fromPhone, options?.allowedPatientIds, options?.patientNameMap)
+    return handleSwitchCommand(body, lang, fromPhone, options?.allowedPatientIds, options?.patientNameMap, options?.userName, options?.userRoles)
   }
 
   // List patients: "pacienti" / "patients" — filter by authorized patients
@@ -908,7 +923,7 @@ export async function handleWhatsAppCommand(
         }
       }
       if (matchedSlug) {
-        return handleSwitchCommand(`switch ${matchedSlug}`, lang, fromPhone, options.allowedPatientIds, options.patientNameMap)
+        return handleSwitchCommand(`switch ${matchedSlug}`, lang, fromPhone, options.allowedPatientIds, options.patientNameMap, options.userName, options.userRoles)
       }
       // No slug found — list available patients with names
       const available = options.allowedPatientIds.map(id => {

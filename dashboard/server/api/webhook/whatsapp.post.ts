@@ -413,7 +413,7 @@ export default defineEventHandler(async (event) => {
   const hasMultiplePatients = allowedPatientIds.length > 1
   const userInfo = getUserInfoForPhone(from, config.roleMap as string)
   const patientNameMap = await getPatientNameMap(oncoteamApiUrl, apiKey)
-  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds, hasMultiplePatients, patientNameMap })
+  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds, hasMultiplePatients, patientNameMap, userName: userInfo.name, userRoles: userInfo.roles })
 
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.
@@ -480,7 +480,11 @@ export default defineEventHandler(async (event) => {
 
     // Immediate response to Twilio — acknowledge receipt
     setResponseHeader(event, 'content-type', 'text/xml')
-    return twiml(result.lang === 'sk' ? 'Premýšľam... (~30s) 🤔' : 'Thinking... (~30s) 🤔')
+    const patientLabel = patientNameMap[whatsappPatientId] || whatsappPatientId
+    const ackMsg = result.lang === 'sk'
+      ? `Premýšľam... (~30s) 🤔\n📋 ${patientLabel}`
+      : `Thinking... (~30s) 🤔\n📋 ${patientLabel}`
+    return twiml(ackMsg)
   }
 
   // Multi-segment response: first segment via TwiML, rest via Twilio REST API
