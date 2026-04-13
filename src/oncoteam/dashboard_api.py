@@ -3766,6 +3766,71 @@ async def api_log_whatsapp(request: Request) -> JSONResponse:
         return _cors_json({"error": str(e)}, status_code=502)
 
 
+_WA_THREAD_TTL = 2 * 3600  # 2 hours
+_WA_THREAD_MAX_EXCHANGES = 5
+
+
+def _wa_thread_key(phone: str) -> str:
+    """Hash phone for privacy — no PII in state keys."""
+    import hashlib
+
+    h = hashlib.sha256(phone.encode()).hexdigest()[:12]
+    return f"wa_thread:{h}"
+
+
+async def _load_wa_thread(phone: str, token: str | None = None) -> list[dict[str, str]]:
+    """Load conversation thread from agent_state, respecting TTL."""
+    try:
+        state = await asyncio.wait_for(
+            oncofiles_client.get_agent_state(_wa_thread_key(phone), token=token),
+            timeout=3.0,
+        )
+        if not state:
+            return []
+        data = state if isinstance(state, dict) else {}
+        # Check TTL
+        updated_at = data.get("updated_at", "")
+        if updated_at:
+            from datetime import UTC, datetime
+
+            try:
+                ts = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+                if (datetime.now(UTC) - ts).total_seconds() > _WA_THREAD_TTL:
+                    return []  # Expired
+            except (ValueError, TypeError):
+                pass
+        return data.get("exchanges", [])
+    except Exception as e:
+        record_suppressed_error("wa_thread", "load", e)
+        return []
+
+
+async def _save_wa_thread(
+    phone: str,
+    exchanges: list[dict[str, str]],
+    token: str | None = None,
+) -> None:
+    """Persist conversation thread (non-blocking, fire-and-forget)."""
+    from datetime import UTC, datetime
+
+    try:
+        await asyncio.wait_for(
+            oncofiles_client.set_agent_state(
+                _wa_thread_key(phone),
+                json.dumps(
+                    {
+                        "exchanges": exchanges[-_WA_THREAD_MAX_EXCHANGES:],
+                        "updated_at": datetime.now(UTC).isoformat(),
+                    }
+                ),
+                token=token,
+            ),
+            timeout=3.0,
+        )
+    except Exception as e:
+        record_suppressed_error("wa_thread", "save", e)
+
+
 async def api_whatsapp_chat(request: Request) -> JSONResponse:
     """POST /api/internal/whatsapp-chat — conversational Claude response."""
     auth = _check_api_auth(request)
@@ -3812,19 +3877,36 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             )
             return _cors_json({"response": msg, "cost": 0})
 
+        pid = patient_id or DEFAULT_PATIENT_ID
+        token = _get_token_for_patient(pid)
+
+        # Load conversation thread (non-blocking, 3s timeout)
+        thread = await _load_wa_thread(phone, token=token)
+
+        # Build prompt with conversation context
+        history_block = ""
+        if thread:
+            history_block = "Previous conversation:\n"
+            for ex in thread:
+                history_block += f"User: {ex.get('user', '')}\n"
+                history_block += f"Assistant: {ex.get('assistant', '')}\n"
+            history_block += "\n"
+
         prompt = (
+            f"{history_block}"
             f"User message via WhatsApp (phone: {phone}, lang: {lang}):\n\n"
             f"{message}\n\n"
             f"Respond helpfully and concisely in {'Slovak' if lang == 'sk' else 'English'}. "
-            f"Use patient context from your system prompt. Max 1500 chars."
+            f"Use patient context from your system prompt. "
+            f"If referring to previous messages, be specific. Max 1500 chars."
         )
 
         result = await run_autonomous_task(
             prompt,
-            max_turns=3,
+            max_turns=5,
             task_name="whatsapp_chat",
             model=AUTONOMOUS_MODEL_LIGHT,
-            patient_id=patient_id or DEFAULT_PATIENT_ID,
+            patient_id=pid,
         )
 
         response_text = result.get("response", "")
@@ -3835,10 +3917,17 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
                 else "Sorry, I couldn't process that. Try 'help' for available commands."
             )
 
+        response_text = response_text[:1500]
+
+        # Save updated thread (non-blocking)
+        thread.append({"user": message[:500], "assistant": response_text[:500]})
+        asyncio.create_task(_save_wa_thread(phone, thread, token=token))
+
         return _cors_json(
             {
-                "response": response_text[:1500],
+                "response": response_text,
                 "cost": result.get("cost", 0),
+                "thread_length": min(len(thread), _WA_THREAD_MAX_EXCHANGES),
             }
         )
     except Exception as e:

@@ -6,8 +6,8 @@ const MAX_SEGMENTS = 3
 
 type Lang = 'sk' | 'en'
 
-const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval', 'prepni', 'pacienti', 'predcyklus', 'rodina', 'otazky'])
-const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve', 'switch', 'patients', 'precycle', 'family', 'questions'])
+const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval', 'prepni', 'pacienti', 'predcyklus', 'rodina', 'otazky', 'toxicita', 'vaha', 'davka'])
+const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve', 'switch', 'patients', 'precycle', 'family', 'questions', 'toxicity', 'weight', 'dose'])
 
 const COMMAND_MAP: Record<string, string> = {
   // Slovak
@@ -25,6 +25,9 @@ const COMMAND_MAP: Record<string, string> = {
   predcyklus: 'precycle',
   rodina: 'family',
   otazky: 'questions',
+  toxicita: 'toxicity',
+  vaha: 'weight',
+  davka: 'dose',
   // English
   labs: 'labs',
   meds: 'meds',
@@ -42,6 +45,9 @@ const COMMAND_MAP: Record<string, string> = {
   precycle: 'precycle',
   family: 'family',
   questions: 'questions',
+  toxicity: 'toxicity',
+  weight: 'weight',
+  dose: 'dose',
 }
 
 function detectLang(input: string): Lang {
@@ -462,6 +468,102 @@ function formatQuestions(data: Record<string, unknown>, lang: Lang): string {
   ), lang)
 }
 
+const TOXICITY_GRADES: Record<string, string> = {
+  '0': '✅ 0', '1': '🟡 1', '2': '🟠 2', '3': '🔴 3', '4': '🔴 4',
+}
+
+function formatToxicity(data: Record<string, unknown>, lang: Lang): string {
+  const entries = (data.entries || []) as Array<Record<string, unknown>>
+  if (!entries.length) {
+    return t(L('Žiadne záznamy toxicity.', 'No toxicity records.'), lang)
+  }
+
+  let text = t(L('*Toxicita*\n', '*Toxicity*\n'), lang)
+  for (const entry of entries.slice(0, 3)) {
+    const date = entry.date || 'N/A'
+    let meta = entry.metadata as Record<string, unknown> | string
+    if (typeof meta === 'string') {
+      try { meta = JSON.parse(meta) } catch { meta = {} }
+    }
+    if (typeof meta !== 'object' || meta === null) meta = {}
+
+    text += `\n*${date}*\n`
+    const params = ['neuropathy', 'diarrhea', 'mucositis', 'fatigue', 'nausea', 'hand_foot']
+    for (const p of params) {
+      const val = (meta as Record<string, unknown>)[p]
+      if (val != null) {
+        const grade = TOXICITY_GRADES[String(val)] || String(val)
+        const label = p === 'hand_foot' ? 'hand-foot' : p
+        text += `${grade} ${label}\n`
+      }
+    }
+    const ecog = (meta as Record<string, unknown>).ecog
+    if (ecog != null) text += `ECOG: ${ecog}\n`
+  }
+
+  return truncate(text)
+}
+
+function formatWeight(data: Record<string, unknown>, lang: Lang): string {
+  const entries = (data.entries || []) as Array<Record<string, unknown>>
+  if (!entries.length) {
+    return t(L('Žiadne záznamy váhy.', 'No weight records.'), lang)
+  }
+
+  const baseline = data.baseline_weight_kg as number || 72
+  let text = t(L('*Váha*\n', '*Weight*\n'), lang)
+  text += `${t(L('Východisko', 'Baseline'), lang)}: ${baseline} kg\n`
+
+  for (const entry of entries.slice(0, 5)) {
+    const date = entry.date || 'N/A'
+    const weight = entry.weight_kg as number
+    if (!weight) continue
+    const change = ((weight - baseline) / baseline) * 100
+    const icon = change <= -5 ? '🔴' : change <= -3 ? '🟡' : '🟢'
+    text += `\n${icon} ${date}: ${weight} kg (${change > 0 ? '+' : ''}${change.toFixed(1)}%)`
+  }
+
+  const alerts = (data.alerts || []) as Array<Record<string, unknown>>
+  if (alerts.length) {
+    text += `\n\n⚠️ ${t(L('Upozornenie: >5% strata hmotnosti', 'Warning: >5% weight loss'), lang)}`
+  }
+
+  return truncate(text)
+}
+
+function formatDose(data: Record<string, unknown>, lang: Lang): string {
+  const drug = data.drug || 'oxaliplatin'
+  const cumulative = data.cumulative_mg_m2 as number || 0
+  const dosePerCycle = data.dose_per_cycle as number || 85
+  const cyclesCounted = data.cycles_counted as number || 0
+  const maxRecommended = data.max_recommended as number || 850
+  const pctToNext = data.pct_to_next as number || 0
+  const nextThreshold = data.next_threshold as Record<string, unknown> | null
+  const source = data.data_source === 'extracted' ? '📋' : '🔢'
+
+  let text = t(
+    L(`*Kumulatívna dávka ${drug}*\n`, `*Cumulative ${drug} dose*\n`),
+    lang,
+  )
+  text += `\n${source} ${cumulative.toFixed(1)} ${data.unit || 'mg/m²'}`
+  text += ` (${cyclesCounted} ${t(L('cyklov', 'cycles'), lang)})\n`
+  text += `${t(L('Dávka/cyklus', 'Dose/cycle'), lang)}: ${dosePerCycle} ${data.unit || 'mg/m²'}\n`
+
+  if (nextThreshold) {
+    const severity = nextThreshold.severity === 'warning' ? '🟡' : '🔴'
+    text += `\n${severity} ${t(L('Ďalší prah', 'Next threshold'), lang)}: ${nextThreshold.at} ${data.unit || 'mg/m²'} (${pctToNext}%)\n`
+    text += `   ${nextThreshold.action || ''}\n`
+  }
+
+  // Progress bar
+  const pct = Math.min((cumulative / maxRecommended) * 100, 100)
+  const filled = Math.round(pct / 10)
+  const bar = '█'.repeat(filled) + '░'.repeat(10 - filled)
+  text += `\n[${bar}] ${pct.toFixed(0)}% ${t(L('z maxima', 'of max'), lang)} (${maxRecommended})`
+
+  return truncate(text)
+}
+
 async function handleApproveCommand(
   body: string,
   oncoteamApiUrl: string,
@@ -557,6 +659,9 @@ Commands:
 • *cycle* / *cyklus* — Current cycle status
 • *family* / *rodina* — Family update summary
 • *questions* / *otazky* — Questions for oncologist
+• *toxicity* / *toxicita* — Side effects log
+• *weight* / *vaha* — Weight trend
+• *dose* / *davka* — Cumulative dose
 • *trials* / *studie* — Clinical trial matches
 • *timeline* / *casovka* — Treatment events
 • *briefing* — Latest briefing
@@ -578,6 +683,9 @@ Prikazy:
 • *cyklus* / *cycle* — Stav aktualneho cyklu
 • *rodina* / *family* — Sprava pre rodinu
 • *otazky* / *questions* — Otazky pre onkologa
+• *toxicita* / *toxicity* — Vedlajsie ucinky
+• *vaha* / *weight* — Trend vahy
+• *davka* / *dose* — Kumulativna davka
 • *studie* / *trials* — Klinicke studie
 • *casovka* / *timeline* — Udalosti liecby
 • *briefing* — Posledny briefing
@@ -759,6 +867,9 @@ export async function handleWhatsAppCommand(
     precycle: '/api/protocol',
     family: '/api/family-update?limit=1',
     questions: '/api/briefings?limit=1',
+    toxicity: '/api/toxicity?limit=3',
+    weight: '/api/weight',
+    dose: '/api/cumulative-dose',
   }
 
   const endpoint = apiMap[command]
@@ -793,6 +904,9 @@ export async function handleWhatsAppCommand(
       case 'precycle': text = formatPrecycle(data, lang); break
       case 'family': text = formatFamily(data, lang); break
       case 'questions': text = formatQuestions(data, lang); break
+      case 'toxicity': text = formatToxicity(data, lang); break
+      case 'weight': text = formatWeight(data, lang); break
+      case 'dose': text = formatDose(data, lang); break
       default: text = helpText(lang)
     }
     return { type: 'reply', text }
