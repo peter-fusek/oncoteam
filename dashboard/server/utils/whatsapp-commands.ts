@@ -751,7 +751,12 @@ function resolveNameToSlug(input: string, nameMap: Record<string, string>): stri
   if (norm.length < 3) return undefined
   for (const [slug, name] of Object.entries(nameMap)) {
     const normName = stripDiacritics(name.split(/\s/)[0] || '')
-    if (normName === norm || (norm.length >= 3 && normName.startsWith(norm.slice(0, Math.max(3, Math.min(norm.length, normName.length)))))) {
+    // Exact match or prefix match allowing declension suffix to differ
+    // "eriku" vs "erika": compare first 4 chars ("erik" === "erik") ✓
+    // "peter" vs "peter": exact match ✓
+    const minLen = Math.min(norm.length, normName.length)
+    const prefixLen = Math.max(3, minLen - 1)
+    if (normName === norm || (minLen >= 3 && norm.slice(0, prefixLen) === normName.slice(0, prefixLen))) {
       return slug
     }
   }
