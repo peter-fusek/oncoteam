@@ -3770,19 +3770,21 @@ _WA_THREAD_TTL = 2 * 3600  # 2 hours
 _WA_THREAD_MAX_EXCHANGES = 5
 
 
-def _wa_thread_key(phone: str) -> str:
-    """Hash phone for privacy — no PII in state keys."""
+def _wa_thread_key(phone: str, patient_id: str = "q1b") -> str:
+    """Hash phone for privacy — no PII in state keys. Scoped per patient."""
     import hashlib
 
     h = hashlib.sha256(phone.encode()).hexdigest()[:12]
-    return f"wa_thread:{h}"
+    return f"wa_thread:{patient_id}:{h}"
 
 
-async def _load_wa_thread(phone: str, token: str | None = None) -> list[dict[str, str]]:
+async def _load_wa_thread(
+    phone: str, token: str | None = None, patient_id: str = "q1b"
+) -> list[dict[str, str]]:
     """Load conversation thread from agent_state, respecting TTL."""
     try:
         state = await asyncio.wait_for(
-            oncofiles_client.get_agent_state(_wa_thread_key(phone), token=token),
+            oncofiles_client.get_agent_state(_wa_thread_key(phone, patient_id), token=token),
             timeout=3.0,
         )
         if not state:
@@ -3809,6 +3811,7 @@ async def _save_wa_thread(
     phone: str,
     exchanges: list[dict[str, str]],
     token: str | None = None,
+    patient_id: str = "q1b",
 ) -> None:
     """Persist conversation thread (non-blocking, fire-and-forget)."""
     from datetime import UTC, datetime
@@ -3816,7 +3819,7 @@ async def _save_wa_thread(
     try:
         await asyncio.wait_for(
             oncofiles_client.set_agent_state(
-                _wa_thread_key(phone),
+                _wa_thread_key(phone, patient_id),
                 json.dumps(
                     {
                         "exchanges": exchanges[-_WA_THREAD_MAX_EXCHANGES:],
@@ -3847,6 +3850,8 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
         message = body.get("message", "")
         phone = body.get("phone", "unknown")
         lang = body.get("lang", "sk")
+        if lang not in ("sk", "en"):
+            lang = "sk"
         patient_id = body.get("patient_id", "")
     except Exception:
         return _cors_json({"error": "Invalid request body"}, status_code=400, request=request)
@@ -3881,7 +3886,7 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
         token = _get_token_for_patient(pid)
 
         # Load conversation thread (non-blocking, 3s timeout)
-        thread = await _load_wa_thread(phone, token=token)
+        thread = await _load_wa_thread(phone, token=token, patient_id=pid)
 
         # Build prompt with conversation context
         history_block = ""
@@ -3921,7 +3926,7 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
 
         # Save updated thread (non-blocking)
         thread.append({"user": message[:500], "assistant": response_text[:500]})
-        asyncio.create_task(_save_wa_thread(phone, thread, token=token))
+        asyncio.create_task(_save_wa_thread(phone, thread, token=token, patient_id=pid))
 
         return _cors_json(
             {
