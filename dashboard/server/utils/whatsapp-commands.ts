@@ -5,8 +5,8 @@ const MAX_REPLY_LENGTH = 1500
 
 type Lang = 'sk' | 'en'
 
-const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval', 'prepni', 'pacienti'])
-const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve', 'switch', 'patients'])
+const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval', 'prepni', 'pacienti', 'predcyklus', 'rodina', 'otazky'])
+const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve', 'switch', 'patients', 'precycle', 'family', 'questions'])
 
 const COMMAND_MAP: Record<string, string> = {
   // Slovak
@@ -21,6 +21,9 @@ const COMMAND_MAP: Record<string, string> = {
   schval: 'approve',
   prepni: 'switch',
   pacienti: 'patients',
+  predcyklus: 'precycle',
+  rodina: 'family',
+  otazky: 'questions',
   // English
   labs: 'labs',
   meds: 'meds',
@@ -35,6 +38,9 @@ const COMMAND_MAP: Record<string, string> = {
   approve: 'approve',
   switch: 'switch',
   patients: 'patients',
+  precycle: 'precycle',
+  family: 'family',
+  questions: 'questions',
 }
 
 function detectLang(input: string): Lang {
@@ -51,6 +57,13 @@ function truncate(text: string, max: number = MAX_REPLY_LENGTH): string {
   return text.slice(0, max - 3) + '...'
 }
 
+// Unit map for lab parameters (matches clinical_protocol.py LAB_REFERENCE_RANGES)
+const LAB_UNITS: Record<string, string> = {
+  ANC: '/µL', PLT: '/µL', hemoglobin: 'g/dL', creatinine: 'mg/dL',
+  ALT: 'U/L', AST: 'U/L', bilirubin: 'mg/dL', CEA: 'ng/mL',
+  CA_19_9: 'U/mL', WBC: '×10³/µL', ABS_LYMPH: '/µL', SII: '', NE_LY_RATIO: '',
+}
+
 function formatLabs(data: Record<string, unknown>, lang: Lang): string {
   const entries = (data.entries || []) as Array<Record<string, unknown>>
   if (!entries.length) {
@@ -60,27 +73,44 @@ function formatLabs(data: Record<string, unknown>, lang: Lang): string {
     ), lang)
   }
 
+  const refs = (data.reference_ranges || {}) as Record<string, { min?: number; max?: number; unit?: string }>
+
   let text = t(L('*Labky*\n', '*Labs*\n'), lang)
   for (const entry of entries.slice(0, 3)) {
     const date = entry.date || 'N/A'
     const statuses = (entry.value_statuses || {}) as Record<string, string>
     const values = (entry.values || {}) as Record<string, unknown>
+    const healthDirs = (entry.health_directions || {}) as Record<string, string>
     const notes = entry.notes as string | undefined
 
     text += `\n*${date}*\n`
-    const flagged: string[] = []
-    const normal: string[] = []
 
     for (const [key, val] of Object.entries(values)) {
       const status = statuses[key] || 'normal'
-      const flag = status === 'high' ? '⬆️' : status === 'low' ? '⬇️' : ''
-      const line = `${key}: ${val}${flag}`
-      if (flag) flagged.push(line)
-      else normal.push(line)
-    }
+      const unit = refs[key]?.unit || LAB_UNITS[key] || ''
+      const unitStr = unit ? ` ${unit}` : ''
 
-    if (flagged.length) text += `⚠️ ${flagged.join(', ')}\n`
-    if (normal.length) text += `${normal.join(' | ')}\n`
+      // Trend arrow from health_directions
+      const hDir = healthDirs[key]
+      const trend = hDir === 'improving' ? ' ↓' : hDir === 'worsening' ? ' ↑' : hDir === 'stable' ? ' →' : ''
+      const trendLabel = hDir === 'improving'
+        ? t(L(' lepšie', ' improving'), lang)
+        : hDir === 'worsening'
+          ? t(L(' horšie', ' worsening'), lang)
+          : ''
+
+      if (status === 'high' || status === 'low') {
+        const icon = status === 'high' ? '⬆️' : '⬇️'
+        const ref = refs[key]
+        const threshold = ref
+          ? status === 'low' ? ` (min: ${ref.min})` : ` (max: ${ref.max})`
+          : ''
+        text += `${icon} ${key}: ${val}${unitStr}${threshold}${trend}${trendLabel}\n`
+      }
+      else {
+        text += `✓ ${key}: ${val}${unitStr}${trend}${trendLabel}\n`
+      }
+    }
     if (notes) text += `📝 ${notes.slice(0, 120)}\n`
   }
 
@@ -126,7 +156,7 @@ function formatBriefing(data: Record<string, unknown>, lang: Lang): string {
     ), lang)
   }
 
-  const latest = briefings[0]
+  const latest = briefings[0]!
   const date = latest.date || latest.created_at || 'N/A'
   const content = String(latest.content || latest.summary || t(L('Bez obsahu', 'No content'), lang))
 
@@ -220,6 +250,115 @@ function formatCycle(data: Record<string, unknown>, lang: Lang): string {
   return truncate(text)
 }
 
+function formatPrecycle(data: Record<string, unknown>, lang: Lang): string {
+  const cycle = data.current_cycle || data.cycle || '?'
+  const regimen = data.regimen || 'mFOLFOX6'
+  const labs = data.last_lab_values as Record<string, Record<string, unknown>> | undefined
+
+  let text = t(
+    L(`*Pred-cyklus ${cycle} kontrola* — ${regimen}\n`, `*Pre-cycle ${cycle} check* — ${regimen}\n`),
+    lang,
+  )
+
+  if (!labs || !Object.keys(labs).length) {
+    text += `\n${t(L('Ziadne labky k dispozicii.', 'No lab data available.'), lang)}`
+    return truncate(text)
+  }
+
+  // Safety parameters in clinical priority order
+  const safetyParams = ['ANC', 'PLT', 'HGB', 'creatinine', 'bilirubin', 'ALT', 'AST', 'WBC']
+  let allSafe = true
+
+  for (const param of safetyParams) {
+    const info = labs[param]
+    if (!info?.value) continue
+    const status = info.status as string
+    const icon = status === 'critical' ? '🔴' : status === 'warning' ? '🟡' : '🟢'
+    if (status !== 'safe') allSafe = false
+    const label = t(L(
+      param === 'ANC' ? 'Neutrofily (ANC)' : param === 'PLT' ? 'Trombocyty' : param === 'HGB' ? 'Hemoglobin' : param === 'creatinine' ? 'Kreatinin' : param === 'bilirubin' ? 'Bilirubin' : param,
+      param === 'ANC' ? 'Neutrophils (ANC)' : param === 'PLT' ? 'Platelets' : param === 'HGB' ? 'Hemoglobin' : param === 'creatinine' ? 'Creatinine' : param === 'bilirubin' ? 'Bilirubin' : param,
+    ), lang)
+    text += `${icon} ${label}: ${info.value}\n`
+  }
+
+  const sampleDate = Object.values(labs).find(l => l?.sample_date)?.sample_date
+  if (sampleDate) {
+    text += `\n📅 ${t(L('Dátum odberu', 'Sample date'), lang)}: ${sampleDate}`
+  }
+
+  text += '\n\n'
+  if (allSafe) {
+    text += t(L('✅ Všetky parametre bezpečné pre chemo.', '✅ All parameters safe for chemo.'), lang)
+  }
+  else {
+    text += t(L('⚠️ Pozor: niektoré parametre mimo bezpečného rozsahu. Konzultujte s onkológom.', '⚠️ Warning: some parameters out of safe range. Consult oncologist.'), lang)
+  }
+
+  // Safety flags
+  const flags = data.safety_flag_status as Record<string, Record<string, unknown>> | undefined
+  if (flags) {
+    const activeFlags = Object.entries(flags).filter(([, v]) => v?.active)
+    if (activeFlags.length) {
+      text += `\n\n${t(L('Bezpečnostné varovania:', 'Safety flags:'), lang)}`
+      for (const [key] of activeFlags) {
+        const name = key.replace(/_/g, ' ')
+        text += `\n🚩 ${name}`
+      }
+    }
+  }
+
+  return truncate(text)
+}
+
+function formatFamily(data: Record<string, unknown>, lang: Lang): string {
+  const updates = (data.updates || []) as Array<Record<string, unknown>>
+  if (!updates.length) {
+    return t(L(
+      'Zatiaľ žiadna správa pre rodinu.\n\nSúhrn sa generuje automaticky.',
+      'No family update yet.\n\nThe summary is generated automatically.',
+    ), lang)
+  }
+
+  const latest = updates[0]!
+  const date = latest.date || 'N/A'
+  const content = String(latest.content || t(L('Bez obsahu', 'No content'), lang))
+
+  return truncate(`*${t(L('Správa pre rodinu', 'Family Update'), lang)}* (${date})\n\n${content}`)
+}
+
+function formatQuestions(data: Record<string, unknown>, lang: Lang): string {
+  const briefings = (data.briefings || []) as Array<Record<string, unknown>>
+  if (!briefings.length) {
+    return t(L(
+      'Žiadne otázky pre onkológa.\n\nOtázky sa generujú z denného briefingu.',
+      'No questions for oncologist.\n\nQuestions are generated from the daily briefing.',
+    ), lang)
+  }
+
+  const latest = briefings[0]!
+  const content = String(latest.content || latest.summary || '')
+  const date = latest.date || latest.created_at || ''
+
+  // Extract "Questions for oncologist" section from briefing content
+  const questionsMatch = content.match(/(?:Otázky pre onkológa|Questions for (?:the )?oncologist)[:\s]*\n([\s\S]*?)(?:\n\n|\n#|$)/i)
+  if (questionsMatch?.[1]) {
+    return truncate(`*${t(L('Otázky pre onkológa', 'Questions for Oncologist'), lang)}* (${date})\n\n${questionsMatch[1].trim()}`)
+  }
+
+  // Fallback: check for numbered questions pattern anywhere
+  const lines = content.split('\n')
+  const questionLines = lines.filter(l => /^\s*\d+[\.\)]\s/.test(l) && l.includes('?'))
+  if (questionLines.length) {
+    return truncate(`*${t(L('Otázky pre onkológa', 'Questions for Oncologist'), lang)}* (${date})\n\n${questionLines.join('\n')}`)
+  }
+
+  return t(L(
+    'V poslednom briefingu neboli nájdené otázky pre onkológa.',
+    'No questions for oncologist found in the latest briefing.',
+  ), lang)
+}
+
 async function handleApproveCommand(
   body: string,
   oncoteamApiUrl: string,
@@ -310,8 +449,11 @@ function helpText(lang: Lang, hasMultiplePatients: boolean = true): string {
 
 Commands:
 • *labs* / *labky* — Latest lab results
+• *precycle* / *predcyklus* — Pre-cycle safety check
 • *meds* / *lieky* — Medications and compliance
 • *cycle* / *cyklus* — Current cycle status
+• *family* / *rodina* — Family update summary
+• *questions* / *otazky* — Questions for oncologist
 • *trials* / *studie* — Clinical trial matches
 • *timeline* / *casovka* — Treatment events
 • *briefing* — Latest briefing
@@ -326,8 +468,11 @@ Send a command or a question.`
 
 Prikazy:
 • *labky* / *labs* — Posledne labky
+• *predcyklus* / *precycle* — Pred-cyklus kontrola
 • *lieky* / *meds* — Lieky a compliance
 • *cyklus* / *cycle* — Stav aktualneho cyklu
+• *rodina* / *family* — Sprava pre rodinu
+• *otazky* / *questions* — Otazky pre onkologa
 • *studie* / *trials* — Klinicke studie
 • *casovka* / *timeline* — Udalosti liecby
 • *briefing* — Posledny briefing
@@ -501,6 +646,9 @@ export async function handleWhatsAppCommand(
     cost: '/api/autonomous/cost',
     trials: '/api/research?sort=relevance&per_page=20',
     cycle: '/api/protocol',
+    precycle: '/api/protocol',
+    family: '/api/family-update?limit=1',
+    questions: '/api/briefings?limit=1',
   }
 
   const endpoint = apiMap[command]
@@ -525,6 +673,9 @@ export async function handleWhatsAppCommand(
       case 'cost': text = formatCost(data, lang); break
       case 'trials': text = formatTrials(data, lang); break
       case 'cycle': text = formatCycle(data, lang); break
+      case 'precycle': text = formatPrecycle(data, lang); break
+      case 'family': text = formatFamily(data, lang); break
+      case 'questions': text = formatQuestions(data, lang); break
       default: text = helpText(lang)
     }
     return { type: 'reply', text }
