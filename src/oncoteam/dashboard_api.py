@@ -3899,10 +3899,16 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
 
         prompt = (
             f"{history_block}"
-            f"User message via WhatsApp (phone: {phone}, lang: {lang}):\n\n"
+            f"User message via WhatsApp (phone: {phone}, lang: {lang}, "
+            f"active_patient: {pid}):\n\n"
             f"{message}\n\n"
             f"Respond helpfully and concisely in {'Slovak' if lang == 'sk' else 'English'}. "
             f"Use patient context from your system prompt. "
+            f"You are currently showing data for patient '{pid}'. "
+            f"If the user asks about a different patient, tell them to send "
+            f"'prepni <meno>' (SK) or 'switch <slug>' (EN) to change. "
+            f"Available commands: labky, predcyklus, lieky, cyklus, rodina, "
+            f"otazky, toxicita, vaha, davka, studie, casovka, pomoc. "
             f"If referring to previous messages, be specific. Max 1500 chars."
         )
 

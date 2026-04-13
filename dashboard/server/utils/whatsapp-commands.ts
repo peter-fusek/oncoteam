@@ -846,6 +846,30 @@ export async function handleWhatsAppCommand(
     return handlePatientsCommand(oncoteamApiUrl, lang, fromPhone, options?.patientId, options?.allowedPatientIds)
   }
 
+  // Detect patient switch intent in conversational messages
+  // e.g. "prepni na eriku", "zmenit pacienta", "switch to q1b"
+  if (!command && options?.allowedPatientIds?.length && options.allowedPatientIds.length > 1) {
+    const lower = body.trim().toLowerCase()
+    const switchPatterns = /(?:prepni|zmeni[tť]\s*pacienta?|switch|change\s*patient|chcem\s+(?:data|info|údaje)\s+(?:o|pre|na)|potrebujem\s+zmeni[tť])/i
+    if (switchPatterns.test(lower)) {
+      // Check if any known patient slug is mentioned
+      const matchedSlug = options.allowedPatientIds.find(slug => lower.includes(slug))
+      if (matchedSlug) {
+        // Auto-switch to the mentioned patient
+        return handleSwitchCommand(`switch ${matchedSlug}`, lang, fromPhone, options.allowedPatientIds)
+      }
+      // No slug found — list available patients
+      const available = options.allowedPatientIds.join(', ')
+      return {
+        type: 'reply',
+        text: t(L(
+          `Pre zmenu pacienta pošlite: *prepni <meno>*\nDostupní: ${available}`,
+          `To switch patient, send: *switch <slug>*\nAvailable: ${available}`,
+        ), lang),
+      }
+    }
+  }
+
   // Conversational fallback — handled async (Claude API takes 30-60s,
   // exceeds Twilio's 15s webhook timeout). Caller sends immediate TwiML
   // ack, then sends Claude's response via Twilio REST API.
