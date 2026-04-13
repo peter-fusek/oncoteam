@@ -493,11 +493,11 @@ document.querySelectorAll(".lang-btn").forEach(btn => {
 const saved = localStorage.getItem("oncoteam-lang");
 if (saved && translations[saved]) {
   setLanguage(saved);
-} else if (navigator.language.startsWith("sk")) {
-  setLanguage("sk");
+} else if (navigator.language.startsWith("en")) {
+  setLanguage("en");
 } else {
-  // Default EN — still start the hero typewriter
-  startHeroTypewriter("en");
+  // Default SK — primary audience is Slovak caregivers/patients
+  setLanguage("sk");
 }
 
 // ── GA4 Custom Events ──────────────────────────────────────────────

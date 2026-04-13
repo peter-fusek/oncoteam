@@ -424,6 +424,43 @@ export default defineEventHandler(async (event) => {
     return twiml(result.lang === 'sk' ? 'Premýšľam... (~30s) 🤔' : 'Thinking... (~30s) 🤔')
   }
 
+  // Multi-segment response: first segment via TwiML, rest via Twilio REST API
+  if (result.type === 'multi') {
+    const segments = result.segments
+    const firstReply = segments[0] || ''
+    const remaining = segments.slice(1)
+
+    if (remaining.length > 0) {
+      ;(async () => {
+        // Send remaining segments with 150ms delay for correct ordering
+        for (const segment of remaining) {
+          await new Promise(resolve => setTimeout(resolve, 150))
+          const sendResult = await sendWhatsApp({ to: from, body: segment })
+          if (!sendResult.ok) {
+            console.error('[whatsapp-multi] Segment send failed:', sendResult.error)
+          }
+        }
+      })()
+    }
+
+    // Log the full exchange
+    try {
+      const apiKey = config.oncoteamApiKey || ''
+      const logHeaders: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+      $fetch(`${oncoteamApiUrl}/api/internal/log-whatsapp`, {
+        method: 'POST',
+        body: { phone: from, user_message: messageBody, bot_response: segments.join('\n---\n') },
+        headers: logHeaders,
+      }).catch((err: unknown) => console.warn('[whatsapp] Non-critical async failed:', (err as Error)?.message || err))
+    }
+    catch {
+      // Logging failure must not block the response
+    }
+
+    setResponseHeader(event, 'content-type', 'text/xml')
+    return twiml(firstReply)
+  }
+
   // Synchronous command response
   const reply = result.text
 

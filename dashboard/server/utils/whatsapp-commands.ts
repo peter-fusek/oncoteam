@@ -2,6 +2,7 @@ import { addApprovedPhone } from './approved-phones'
 import { getActivePatient, setActivePatient } from './whatsapp-session'
 
 const MAX_REPLY_LENGTH = 1500
+const MAX_SEGMENTS = 3
 
 type Lang = 'sk' | 'en'
 
@@ -57,6 +58,60 @@ function truncate(text: string, max: number = MAX_REPLY_LENGTH): string {
   return text.slice(0, max - 3) + '...'
 }
 
+/** Split text into WhatsApp-sized segments on paragraph boundaries. */
+function splitMessage(text: string, max: number = MAX_REPLY_LENGTH): string[] {
+  if (text.length <= max) return [text]
+  const segments: string[] = []
+  let remaining = text
+  while (remaining.length > 0 && segments.length < MAX_SEGMENTS) {
+    if (remaining.length <= max) {
+      segments.push(remaining)
+      break
+    }
+    // Find last \n\n within limit
+    const chunk = remaining.slice(0, max)
+    let splitAt = chunk.lastIndexOf('\n\n')
+    if (splitAt < max * 0.3) {
+      // Fallback: split at last newline
+      splitAt = chunk.lastIndexOf('\n')
+    }
+    if (splitAt < max * 0.2) {
+      // Hard cut at limit
+      splitAt = max - 3
+      segments.push(remaining.slice(0, splitAt) + '...')
+      remaining = remaining.slice(splitAt)
+    }
+    else {
+      segments.push(remaining.slice(0, splitAt).trimEnd())
+      remaining = remaining.slice(splitAt).trimStart()
+    }
+  }
+  if (remaining.length > 0 && segments.length >= MAX_SEGMENTS) {
+    // Truncate last segment if we hit the cap
+    const last = segments[segments.length - 1]!
+    if (last.length > max) {
+      segments[segments.length - 1] = truncate(last, max)
+    }
+  }
+  return segments
+}
+
+/** Parse "labky cea" → { command: "labky", subarg: "cea" } */
+function parseSubCommand(body: string): { commandWord: string; subarg: string } {
+  const parts = body.trim().toLowerCase().split(/\s+/)
+  return { commandWord: parts[0] || '', subarg: parts[1] || '' }
+}
+
+// Sub-command aliases for labs filtering
+const LAB_TUMOR_MARKERS = new Set(['CEA', 'CA_19_9'])
+const LAB_HEMATOLOGY = new Set(['ANC', 'PLT', 'hemoglobin', 'WBC', 'ABS_LYMPH'])
+const LAB_SUB_ALIASES: Record<string, 'tumor' | 'blood' | 'liver'> = {
+  cea: 'tumor', markery: 'tumor', markers: 'tumor', tumor: 'tumor',
+  krv: 'blood', blood: 'blood', hema: 'blood',
+  pecen: 'liver', liver: 'liver',
+}
+const LAB_LIVER = new Set(['ALT', 'AST', 'bilirubin'])
+
 // Unit map for lab parameters (matches clinical_protocol.py LAB_REFERENCE_RANGES)
 const LAB_UNITS: Record<string, string> = {
   ANC: '/µL', PLT: '/µL', hemoglobin: 'g/dL', creatinine: 'mg/dL',
@@ -64,19 +119,43 @@ const LAB_UNITS: Record<string, string> = {
   CA_19_9: 'U/mL', WBC: '×10³/µL', ABS_LYMPH: '/µL', SII: '', NE_LY_RATIO: '',
 }
 
-function formatLabs(data: Record<string, unknown>, lang: Lang): string {
+function formatLabs(data: Record<string, unknown>, lang: Lang, subarg: string = ''): string[] {
   const entries = (data.entries || []) as Array<Record<string, unknown>>
   if (!entries.length) {
-    return t(L(
+    return [t(L(
       'Zatial ziadne labky v systeme.\n\nLab data sa syncne po prvom analyze_labs cez Oncoteam.',
       'No lab data in the system yet.\n\nLab data will sync after the first analyze_labs via Oncoteam.',
-    ), lang)
+    ), lang)]
   }
 
   const refs = (data.reference_ranges || {}) as Record<string, { min?: number; max?: number; unit?: string }>
 
-  let text = t(L('*Labky*\n', '*Labs*\n'), lang)
-  for (const entry of entries.slice(0, 3)) {
+  // Sub-command filtering
+  const filter = LAB_SUB_ALIASES[subarg]
+  const filterSet = filter === 'tumor' ? LAB_TUMOR_MARKERS
+    : filter === 'blood' ? LAB_HEMATOLOGY
+      : filter === 'liver' ? LAB_LIVER
+        : null
+
+  // Pagination: "labky 2" → page 2 (entries 3-5)
+  const page = /^\d+$/.test(subarg) ? parseInt(subarg, 10) : 1
+  const perPage = 3
+  const startIdx = (page - 1) * perPage
+  const pageEntries = entries.slice(startIdx, startIdx + perPage)
+  if (!pageEntries.length) {
+    return [t(L(
+      `Žiadne ďalšie labky (strana ${page}).`,
+      `No more lab data (page ${page}).`,
+    ), lang)]
+  }
+
+  const filterLabel = filter
+    ? ` — ${filter === 'tumor' ? t(L('markery', 'markers'), lang) : filter === 'blood' ? t(L('krvný obraz', 'hematology'), lang) : t(L('pečeň', 'liver'), lang)}`
+    : ''
+  const pageLabel = page > 1 ? ` (${page}/${Math.ceil(entries.length / perPage)})` : ''
+
+  let text = t(L(`*Labky${filterLabel}*${pageLabel}\n`, `*Labs${filterLabel}*${pageLabel}\n`), lang)
+  for (const entry of pageEntries) {
     const date = entry.date || 'N/A'
     const statuses = (entry.value_statuses || {}) as Record<string, string>
     const values = (entry.values || {}) as Record<string, unknown>
@@ -86,6 +165,9 @@ function formatLabs(data: Record<string, unknown>, lang: Lang): string {
     text += `\n*${date}*\n`
 
     for (const [key, val] of Object.entries(values)) {
+      // Apply filter if set
+      if (filterSet && !filterSet.has(key)) continue
+
       const status = statuses[key] || 'normal'
       const unit = refs[key]?.unit || LAB_UNITS[key] || ''
       const unitStr = unit ? ` ${unit}` : ''
@@ -111,10 +193,10 @@ function formatLabs(data: Record<string, unknown>, lang: Lang): string {
         text += `✓ ${key}: ${val}${unitStr}${trend}${trendLabel}\n`
       }
     }
-    if (notes) text += `📝 ${notes.slice(0, 120)}\n`
+    if (notes && !filterSet) text += `📝 ${notes.slice(0, 120)}\n`
   }
 
-  return truncate(text)
+  return splitMessage(text)
 }
 
 function formatMeds(data: Record<string, unknown>, lang: Lang): string {
@@ -163,9 +245,25 @@ function formatBriefing(data: Record<string, unknown>, lang: Lang): string {
   return truncate(`*Briefing (${date})*\n\n${content}`)
 }
 
-function formatTimeline(data: Record<string, unknown>, lang: Lang): string {
-  const events = (data.events || []) as Array<Record<string, unknown>>
+function formatTimeline(data: Record<string, unknown>, lang: Lang, subarg: string = ''): string {
+  let events = (data.events || []) as Array<Record<string, unknown>>
   if (!events.length) return t(L('Ziadne udalosti v timeline.', 'No events in the timeline.'), lang)
+
+  // Sub-command filtering
+  if (subarg === 'chemo' || subarg === 'chemoterapia') {
+    events = events.filter(e => {
+      const type = e.type as string || ''
+      return type === 'chemo' || type === 'chemo_cycle' || type === 'chemotherapy'
+    })
+  }
+  else if (subarg === 'lab' || subarg === 'labky') {
+    events = events.filter(e => {
+      const type = e.type as string || ''
+      return type === 'lab_work' || type === 'lab_result'
+    })
+  }
+
+  if (!events.length) return t(L('Ziadne udalosti pre tento filter.', 'No events for this filter.'), lang)
 
   const header = t(L(`*Casova os (${events.length} udalosti)*`, `*Timeline (${events.length} events)*`), lang)
   let text = `${header}\n`
@@ -207,10 +305,14 @@ function formatCost(data: Record<string, unknown>, lang: Lang): string {
   return truncate(text)
 }
 
-function formatTrials(data: Record<string, unknown>, lang: Lang): string {
+function formatTrials(data: Record<string, unknown>, lang: Lang, subarg: string = ''): string {
   const entries = (data.entries || []) as Array<Record<string, unknown>>
   const high = entries.filter(e => e.relevance_tier === 'high')
   if (!entries.length) return t(L('Ziadne studie v systeme.', 'No trials in the system.'), lang)
+
+  // Sub-command: "studie vysoke" / "trials high" — show only high relevance
+  const showAll = subarg === 'vsetky' || subarg === 'all'
+  const showEntries = showAll ? entries.slice(0, 10) : high.slice(0, 5)
 
   const header = t(
     L(`*Klinické štúdie* (${high.length} vysoko relevantných z ${entries.length})`,
@@ -218,9 +320,10 @@ function formatTrials(data: Record<string, unknown>, lang: Lang): string {
     lang,
   )
   let text = `${header}\n`
-  for (const e of high.slice(0, 5)) {
+  for (const e of showEntries) {
     const src = e.source === 'clinicaltrials' ? '🧪' : '📄'
-    text += `\n${src} *${e.external_id || 'N/A'}*\n${String(e.title || '').slice(0, 100)}\n`
+    const tier = showAll ? ` [${e.relevance_tier}]` : ''
+    text += `\n${src} *${e.external_id || 'N/A'}*${tier}\n${String(e.title || '').slice(0, 100)}\n`
   }
   text += `\n${t(L('Viac na dashboarde: /research', 'More on dashboard: /research'), lang)}`
   return truncate(text)
@@ -461,6 +564,8 @@ Commands:
 ${patientLines}• *status* / *stav* — System status
 • *help* / *pomoc* — This help
 
+Sub-commands: labs cea | labs blood | labs liver | labs 2 | timeline chemo | trials all
+
 Send a command or a question.`
   }
 
@@ -480,11 +585,14 @@ Prikazy:
 ${patientLines}• *stav* / *status* — Stav systemu
 • *pomoc* / *help* — Tento help
 
+Pod-prikazy: labky cea | labky krv | labky pecen | labky 2 | casovka chemo | studie vsetky
+
 Posli prikaz alebo otazku.`
 }
 
 export type CommandResult =
   | { type: 'reply'; text: string }
+  | { type: 'multi'; segments: string[] }
   | { type: 'async'; lang: Lang; message: string }
 
 function extractAdminPhones(roleMapRaw: string | Record<string, { phone?: string; roles?: string[] }>): Set<string> {
@@ -607,9 +715,9 @@ export async function handleWhatsAppCommand(
   fromPhone?: string,
   options?: { patientId?: string; allowedPatientIds?: string[]; hasMultiplePatients?: boolean },
 ): Promise<CommandResult> {
-  const input = body.trim().toLowerCase().split(/\s+/)[0] || ''
-  const lang = detectLang(input)
-  const command = COMMAND_MAP[input]
+  const { commandWord, subarg } = parseSubCommand(body)
+  const lang = detectLang(commandWord)
+  const command = COMMAND_MAP[commandWord]
 
   if (command === 'help') {
     return { type: 'reply', text: helpText(lang, options?.hasMultiplePatients ?? true) }
@@ -637,11 +745,13 @@ export async function handleWhatsAppCommand(
     return { type: 'async', lang, message: body }
   }
 
+  // Increase timeline limit when filtering by type (more data to filter from)
+  const timelineLimit = subarg ? 20 : 5
   const apiMap: Record<string, string> = {
     labs: '/api/labs',
     meds: '/api/medications',
     briefing: '/api/briefings?limit=1',
-    timeline: '/api/timeline?limit=5',
+    timeline: `/api/timeline?limit=${timelineLimit}`,
     status: '/api/status',
     cost: '/api/autonomous/cost',
     trials: '/api/research?sort=relevance&per_page=20',
@@ -663,15 +773,22 @@ export async function handleWhatsAppCommand(
     const patientId = options?.patientId || 'q1b'
     const data = await $fetch<Record<string, unknown>>(`${oncoteamApiUrl}${endpoint}${sep}lang=${lang}&patient_id=${patientId}`, { headers })
 
+    // Commands that return multi-segment results
+    if (command === 'labs') {
+      const segments = formatLabs(data, lang, subarg)
+      return segments.length > 1
+        ? { type: 'multi', segments }
+        : { type: 'reply', text: segments[0] || '' }
+    }
+
     let text: string
     switch (command) {
-      case 'labs': text = formatLabs(data, lang); break
       case 'meds': text = formatMeds(data, lang); break
       case 'briefing': text = formatBriefing(data, lang); break
-      case 'timeline': text = formatTimeline(data, lang); break
+      case 'timeline': text = formatTimeline(data, lang, subarg); break
       case 'status': text = formatStatus(data, lang); break
       case 'cost': text = formatCost(data, lang); break
-      case 'trials': text = formatTrials(data, lang); break
+      case 'trials': text = formatTrials(data, lang, subarg); break
       case 'cycle': text = formatCycle(data, lang); break
       case 'precycle': text = formatPrecycle(data, lang); break
       case 'family': text = formatFamily(data, lang); break
