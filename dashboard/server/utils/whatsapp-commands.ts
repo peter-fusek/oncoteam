@@ -1,4 +1,5 @@
-import { addApprovedPhone, setPhonePatient, resolvePatientIdFromPhone } from './approved-phones'
+import { addApprovedPhone } from './approved-phones'
+import { getActivePatient, setActivePatient } from './whatsapp-session'
 
 const MAX_REPLY_LENGTH = 1500
 
@@ -297,7 +298,13 @@ async function handleApproveCommand(
   }
 }
 
-function helpText(lang: Lang): string {
+function helpText(lang: Lang, hasMultiplePatients: boolean = true): string {
+  const patientLines = hasMultiplePatients
+    ? lang === 'en'
+      ? '• *patients* / *pacienti* — List patients\n• *switch <slug>* / *prepni <meno>* — Switch patient\n'
+      : '• *pacienti* / *patients* — Zoznam pacientov\n• *prepni <meno>* / *switch <slug>* — Prepni pacienta\n'
+    : ''
+
   if (lang === 'en') {
     return `*Oncoteam WhatsApp*
 
@@ -309,9 +316,7 @@ Commands:
 • *timeline* / *casovka* — Treatment events
 • *briefing* — Latest briefing
 • *cost* / *naklady* — AI agent cost & budget
-• *patients* / *pacienti* — List patients
-• *switch <slug>* / *prepni <meno>* — Switch patient
-• *status* / *stav* — System status
+${patientLines}• *status* / *stav* — System status
 • *help* / *pomoc* — This help
 
 Send a command or a question.`
@@ -327,9 +332,7 @@ Prikazy:
 • *casovka* / *timeline* — Udalosti liecby
 • *briefing* — Posledny briefing
 • *naklady* / *cost* — Naklady a rozpocet AI agenta
-• *pacienti* / *patients* — Zoznam pacientov
-• *prepni <meno>* / *switch <slug>* — Prepni pacienta
-• *stav* / *status* — Stav systemu
+${patientLines}• *stav* / *status* — Stav systemu
 • *pomoc* / *help* — Tento help
 
 Posli prikaz alebo otazku.`
@@ -396,7 +399,7 @@ function handleSwitchCommand(
   }
 
   if (fromPhone) {
-    setPhonePatient(fromPhone.replace(/[\s\-()]/g, ''), slug)
+    setActivePatient(fromPhone.replace(/[\s\-()]/g, ''), slug)
   }
 
   return {
@@ -433,7 +436,7 @@ async function handlePatientsCommand(
       return { type: 'reply', text: t(L('Ziadni pacienti.', 'No patients found.'), lang) }
     }
 
-    const current = currentPatientId || resolvePatientIdFromPhone(fromPhone?.replace(/[\s\-()]/g, '') || '')
+    const current = currentPatientId || getActivePatient(fromPhone?.replace(/[\s\-()]/g, '') || '') || ''
     const header = t(L('*Pacienti*\n', '*Patients*\n'), lang)
     let text = header
     for (const p of patients) {
@@ -457,14 +460,14 @@ export async function handleWhatsAppCommand(
   body: string,
   oncoteamApiUrl: string,
   fromPhone?: string,
-  options?: { patientId?: string; allowedPatientIds?: string[] },
+  options?: { patientId?: string; allowedPatientIds?: string[]; hasMultiplePatients?: boolean },
 ): Promise<CommandResult> {
   const input = body.trim().toLowerCase().split(/\s+/)[0] || ''
   const lang = detectLang(input)
   const command = COMMAND_MAP[input]
 
   if (command === 'help') {
-    return { type: 'reply', text: helpText(lang) }
+    return { type: 'reply', text: helpText(lang, options?.hasMultiplePatients ?? true) }
   }
 
   // Admin-only: approve command

@@ -1,3 +1,5 @@
+import { getActivePatient } from './whatsapp-session'
+
 /**
  * Runtime set of admin-approved WhatsApp phone numbers.
  * Phones added here bypass the allowlist after completing onboarding.
@@ -59,6 +61,16 @@ export function setPhonePatient(phone: string, patientId: string): void {
 
 export function resolvePatientIdFromPhone(phone: string): string {
   return phoneToPatient.get(phone) || ''
+}
+
+/**
+ * Get the currently active patient for a phone.
+ * Priority: session override (via "prepni"/"switch") → role-map default → 'q1b'.
+ */
+export function getActivePatientForPhone(phone: string): string {
+  const sessionPatient = getActivePatient(phone)
+  if (sessionPatient) return sessionPatient
+  return resolvePatientIdFromPhone(phone) || 'q1b'
 }
 
 /**

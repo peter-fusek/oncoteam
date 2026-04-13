@@ -2,7 +2,7 @@ import twilio from 'twilio'
 import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
 import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionCount } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
-import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone } from '../../utils/approved-phones'
+import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone, getActivePatientForPhone } from '../../utils/approved-phones'
 import { recordInbound, sendWhatsApp } from '../../utils/twilio-send'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
@@ -325,7 +325,7 @@ export default defineEventHandler(async (event) => {
                 content_type: media.contentType,
                 filename,
                 phone: from,
-                patient_id: resolvePatientIdFromPhone(from) || 'q1b',
+                patient_id: getActivePatientForPhone(from),
               },
               headers,
             },
@@ -367,9 +367,10 @@ export default defineEventHandler(async (event) => {
 
   // Process command and respond
   const oncoteamApiUrl = config.oncoteamApiUrl as string
-  const whatsappPatientId = resolvePatientIdFromPhone(from) || 'q1b'
   const allowedPatientIds = getAllowedPatientIdsForPhone(from, config.roleMap as string)
-  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds })
+  const whatsappPatientId = getActivePatientForPhone(from)
+  const hasMultiplePatients = allowedPatientIds.length > 1
+  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds, hasMultiplePatients })
 
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.
