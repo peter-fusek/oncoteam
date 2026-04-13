@@ -1,3 +1,20 @@
+// Hero typewriter state (must be before setLanguage which calls startHeroTypewriter)
+var heroTimers = [];
+var heroConversations = {
+  en: [
+    { type: "user", text: "labky" },
+    { type: "bot", text: "\ud83d\udcca Labs (Mar 19):\nANC 2,100 \u2705 PLT 269k HGB 112\nCEA 8.1 \u2193 35% CA19-9 4,820 \u2193 68%\n\n\u2705 Safe for next cycle" },
+    { type: "user", text: "family update" },
+    { type: "bot", text: "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67 Treatment going well.\nMain tumor marker dropped 35% \u2014 very positive sign.\nNext appointment: Mar 28." },
+  ],
+  sk: [
+    { type: "user", text: "labky" },
+    { type: "bot", text: "\ud83d\udcca V\u00fdsledky (19. 3.):\nANC 2 100 \u2705 PLT 269k HGB 112\nCEA 8,1 \u2193 35% CA19-9 4 820 \u2193 68%\n\n\u2705 Bezpe\u010dn\u00e9 pre \u010fal\u0161\u00ed cyklus" },
+    { type: "user", text: "s\u00fahrn pre rodinu" },
+    { type: "bot", text: "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67 Lie\u010dba prebieha dobre.\nHlavn\u00fd marker klesol o 35% \u2014 ve\u013emi pozit\u00edvny sign\u00e1l.\n\u010eal\u0161ia n\u00e1v\u0161teva: 28. 3." },
+  ],
+};
+
 const translations = {
   en: {
     "nav.dashboard": "Dashboard",
@@ -12,6 +29,9 @@ const translations = {
     "hero.demo": "Try Live Demo",
     "hero.how": "See How It Works",
     "hero.github": "View on GitHub",
+    "hero.whatsapp": "Try on WhatsApp",
+    "hero.micro": "Free during active treatment. No credit card needed.",
+    "hero.phone.status": "online",
     "demo.title": "See It in Action",
     "demo.subtitle": "Real dashboard, real data, real treatment.",
     "demo.tab.dashboard": "Dashboard",
@@ -225,6 +245,9 @@ const translations = {
     "hero.demo": "Vysk\u00fa\u0161a\u0165 Demo",
     "hero.how": "Ako to funguje",
     "hero.github": "Zobrazi\u0165 na GitHub",
+    "hero.whatsapp": "Vysk\u00fa\u0161ajte cez WhatsApp",
+    "hero.micro": "Zdarma po\u010das akt\u00edvnej lie\u010dby. Bez platobnej karty.",
+    "hero.phone.status": "online",
     "demo.title": "Pozrite sa, ako to funguje",
     "demo.subtitle": "Re\u00e1lny dashboard, re\u00e1lne d\u00e1ta, re\u00e1lna lie\u010dba.",
     "demo.tab.dashboard": "Dashboard",
@@ -453,6 +476,7 @@ function setLanguage(lang) {
     a.href = url.toString();
   });
   localStorage.setItem("oncoteam-lang", lang);
+  startHeroTypewriter(lang);
 }
 
 document.querySelectorAll(".lang-btn").forEach(btn => {
@@ -471,6 +495,9 @@ if (saved && translations[saved]) {
   setLanguage(saved);
 } else if (navigator.language.startsWith("sk")) {
   setLanguage("sk");
+} else {
+  // Default EN — still start the hero typewriter
+  startHeroTypewriter("en");
 }
 
 // ── GA4 Custom Events ──────────────────────────────────────────────
@@ -517,4 +544,80 @@ if ("IntersectionObserver" in window) {
     });
   }, { threshold: 0.3 });
   sections.forEach(s => observer.observe(s));
+}
+
+// ── Hero Typewriter Engine ────────────────────────────────────────────
+
+function clearHeroTimers() {
+  heroTimers.forEach(t => clearTimeout(t));
+  heroTimers = [];
+}
+
+function startHeroTypewriter(lang) {
+  clearHeroTimers();
+  var container = document.getElementById("hero-chat-messages");
+  var inputEl = document.getElementById("hero-chat-input-text");
+  if (!container || !inputEl) return;
+
+  var conv = heroConversations[lang] || heroConversations.en;
+
+  // prefers-reduced-motion: show static final state
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    while (container.firstChild) container.removeChild(container.firstChild);
+    conv.forEach(function(step) {
+      var div = document.createElement("div");
+      div.className = "wa-msg " + (step.type === "user" ? "wa-msg-user" : "wa-msg-bot");
+      div.style.whiteSpace = "pre-line";
+      div.textContent = step.text;
+      container.appendChild(div);
+    });
+    return;
+  }
+
+  function runLoop() {
+    while (container.firstChild) container.removeChild(container.firstChild);
+    inputEl.textContent = "";
+    var delay = 800;
+
+    conv.forEach(function(step) {
+      if (step.type === "user") {
+        // Type characters one by one
+        var chars = step.text.split("");
+        chars.forEach(function(ch, ci) {
+          heroTimers.push(setTimeout(function() {
+            inputEl.textContent += ch;
+          }, delay + ci * 60));
+        });
+        delay += chars.length * 60 + 300;
+
+        // Move typed text to chat bubble
+        heroTimers.push(setTimeout(function() {
+          var div = document.createElement("div");
+          div.className = "wa-msg wa-msg-user wa-msg-fade";
+          div.textContent = step.text;
+          container.appendChild(div);
+          inputEl.textContent = "";
+          container.scrollTop = container.scrollHeight;
+        }, delay));
+        delay += 400;
+      } else {
+        // Bot: thinking pause, then fade in
+        delay += 600;
+        heroTimers.push(setTimeout(function() {
+          var div = document.createElement("div");
+          div.className = "wa-msg wa-msg-bot wa-msg-fade";
+          div.style.whiteSpace = "pre-line";
+          div.textContent = step.text;
+          container.appendChild(div);
+          container.scrollTop = container.scrollHeight;
+        }, delay));
+        delay += 800;
+      }
+    });
+
+    // Loop after pause
+    heroTimers.push(setTimeout(runLoop, delay + 4000));
+  }
+
+  runLoop();
 }

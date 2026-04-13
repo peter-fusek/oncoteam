@@ -158,11 +158,21 @@ body {
 
 /* ── Hero ────────────────────────────────────── */
 .hero {
-  padding: 150px 0 100px;
-  text-align: center;
+  padding: 130px 0 80px;
   position: relative;
   overflow: hidden;
   background: var(--bg-warm);
+}
+
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.hero-copy {
+  text-align: left;
 }
 
 .hero::before {
@@ -187,31 +197,138 @@ body {
 
 .hero h1 {
   font-family: 'DM Serif Display', Georgia, serif;
-  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
   font-weight: 400;
   line-height: 1.15;
   letter-spacing: -0.02em;
   color: var(--text);
-  max-width: 740px;
-  margin: 0 auto 22px;
+  max-width: 100%;
+  margin: 0 0 22px;
   position: relative;
 }
 
 .hero-sub {
-  font-size: clamp(1rem, 2.2vw, 1.15rem);
+  font-size: clamp(1rem, 2.2vw, 1.12rem);
   color: var(--text-light);
-  max-width: 620px;
-  margin: 0 auto 40px;
+  max-width: 100%;
+  margin: 0 0 32px;
   line-height: 1.75;
   position: relative;
 }
 
 .hero-cta {
   display: flex;
-  gap: 14px;
-  justify-content: center;
+  gap: 12px;
+  justify-content: flex-start;
   flex-wrap: wrap;
   position: relative;
+}
+
+.hero-micro {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 16px;
+}
+
+/* WhatsApp CTA */
+.btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(37,211,102,0.3);
+  border: none;
+}
+.btn-whatsapp:hover {
+  background: #1ebe5d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(37,211,102,0.35);
+  color: #fff;
+}
+
+/* Hero phone column */
+.hero-phone-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.hero-phone {
+  width: 320px;
+  max-width: 100%;
+  animation: heroPhoneFloat 6s ease-in-out infinite;
+  box-shadow: var(--shadow-lg), 0 20px 48px rgba(13,115,84,0.1);
+}
+
+.hero-phone:hover {
+  transform: none;
+}
+
+.hero-phone .wa-phone-body {
+  min-height: 240px;
+  max-height: 280px;
+  overflow-y: hidden;
+}
+
+@keyframes heroPhoneFloat {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-8px) rotate(-1.5deg); }
+}
+
+.hero-phone-glow {
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 50px;
+  background: radial-gradient(ellipse, rgba(13,115,84,0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Chat input bar */
+.hero-chat-input {
+  background: #f0f0f0;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 40px;
+  border-radius: 0 0 24px 24px;
+}
+
+.hero-chat-input-text {
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.hero-chat-cursor {
+  width: 2px;
+  height: 14px;
+  background: var(--primary);
+  animation: blink-cursor 0.85s step-end infinite;
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Bot message fade-in animation */
+.wa-msg-fade {
+  animation: heroMsgFade 0.4s ease both;
+}
+
+@keyframes heroMsgFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-phone { animation: none; transform: rotate(-1.5deg); }
+  .hero-chat-cursor { animation: none; opacity: 1; }
+  .wa-msg-fade { animation: none; }
 }
 
 /* ── Buttons ─────────────────────────────────── */
@@ -1799,6 +1916,12 @@ html[lang="sk"] .hiw-num::before {
   .wa-grid { max-width: 400px; margin-left: auto; margin-right: auto; }
 
   .hero { padding: 120px 0 70px; }
+  .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+  .hero-copy { text-align: center; }
+  .hero-copy h1, .hero-copy .hero-sub { margin-left: auto; margin-right: auto; max-width: 620px; }
+  .hero-cta { justify-content: center; }
+  .hero-micro { text-align: center; }
+  .hero-phone-wrap { display: none; }
   .section-title { font-size: 1.7rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
   .features, .get-started, .reality, .contact, .privacy, .faq, .ecosystem, .how-it-works, .whatsapp-showcase, .use-cases { padding: 70px 0; }
