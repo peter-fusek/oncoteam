@@ -1,6 +1,74 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 
+// Language toggle — synced with landing page localStorage key
+const demoLang = ref<'sk' | 'en'>(
+  (typeof localStorage !== 'undefined' && localStorage.getItem('oncoteam-lang') as 'sk' | 'en') || 'sk',
+)
+function toggleLang() {
+  demoLang.value = demoLang.value === 'sk' ? 'en' : 'sk'
+  if (typeof localStorage !== 'undefined') localStorage.setItem('oncoteam-lang', demoLang.value)
+}
+const d = computed(() => demoLang.value === 'sk' ? DT.sk : DT.en)
+
+// Demo translations
+const DT = {
+  sk: {
+    banner: 'Demo režim',
+    bannerDesc: 'Ukážkové dáta. Žiadne reálne informácie o pacientoch.',
+    backToLanding: 'Späť na oncoteam.cloud',
+    signIn: 'Prihlásiť sa',
+    subtitle: 'Prehľad liečby',
+    overview: 'Prehľad', labs: 'Laboratórium', research: 'Výskum', protocol: 'Protokol',
+    treatmentStatus: 'Stav liečby', recentLabs: 'Posledné labky',
+    molecularProfile: 'Molekulárny profil', upcoming: 'Najbližšie udalosti',
+    autonomousAgents: 'Autonómni agenti', tumorMarkersTrend: 'Trend tumorových markerov',
+    safetyFlags: 'Bezpečnostné pravidlá', trialFunnel: 'Klinické štúdie',
+    noAlerts: 'Všetky hodnoty v bezpečnom rozsahu. Žiadne upozornenia.',
+    labsAllSafe: 'Všetky hematologické hodnoty v bezpečnom rozsahu. Tumorové markery vykazujú výbornú odpoveď na liečbu.',
+    entries: 'Záznamy', latest: 'Posledné', ceaTrend: 'CEA trend', caTrend: 'CA 19-9 trend',
+    fromBaseline: 'od základnej hodnoty', labComparison: 'Porovnanie laboratórnych hodnôt',
+    parameter: 'Parameter', reference: 'Referencia', change: 'Zmena',
+    hematology: 'Hematológia', tumorMarkers: 'Tumorové markery', computedIndices: 'Vypočítané indexy',
+    readyTitle: 'Pripravení vyskúšať Oncoteam?',
+    readyDesc: 'Oncoteam je AI platforma pre onkologické tímy. Sleduje labky, manažuje klinické štúdie a poskytuje autonómne výskumné briefingy.',
+    signInGoogle: 'Prihlásiť sa cez Google', learnMore: 'Zistiť viac',
+    footer: 'AI asistent pre onkologickú liečbu. Všetky dáta sú fiktívne.',
+    permanent: 'TRVALÉ', active: 'AKTÍVNE', clear: 'OK',
+    noTrials: 'Žiadne štúdie',
+    ceaBaseline: 'CEA -62% od základnej hodnoty', caBaseline: 'CA 19-9 -83% od základnej hodnoty',
+    excellentResponse: 'Výborná odpoveď na liečbu',
+    staging: 'Štádium', date: 'Dátum',
+  },
+  en: {
+    banner: 'Demo Mode',
+    bannerDesc: 'This is a demo with sample data. No real patient information.',
+    backToLanding: 'Back to oncoteam.cloud',
+    signIn: 'Sign in',
+    subtitle: 'Treatment overview',
+    overview: 'Overview', labs: 'Labs', research: 'Research', protocol: 'Protocol',
+    treatmentStatus: 'Treatment Status', recentLabs: 'Recent Labs',
+    molecularProfile: 'Molecular Profile', upcoming: 'Upcoming',
+    autonomousAgents: 'Autonomous Agents', tumorMarkersTrend: 'Tumor Markers Trend',
+    safetyFlags: 'Safety Flags', trialFunnel: 'Trial Funnel',
+    noAlerts: 'All lab values within safe ranges. No alerts.',
+    labsAllSafe: 'All hematology values within safe ranges. Tumor markers showing excellent treatment response.',
+    entries: 'Entries', latest: 'latest', ceaTrend: 'CEA trend', caTrend: 'CA 19-9 trend',
+    fromBaseline: 'from baseline', labComparison: 'Lab Values Comparison',
+    parameter: 'Parameter', reference: 'Reference', change: 'Change',
+    hematology: 'Hematology', tumorMarkers: 'Tumor Markers', computedIndices: 'Computed Indices',
+    readyTitle: 'Ready to try Oncoteam?',
+    readyDesc: 'Oncoteam is an AI-powered treatment intelligence platform for cancer care teams. It tracks labs, manages clinical trials, and provides autonomous research briefings.',
+    signInGoogle: 'Sign in with Google', learnMore: 'Learn more',
+    footer: 'AI-powered cancer treatment intelligence. All demo data is fictional.',
+    permanent: 'PERMANENT', active: 'ACTIVE', clear: 'Clear',
+    noTrials: 'No trials',
+    ceaBaseline: 'CEA -62% since baseline', caBaseline: 'CA 19-9 -83% since baseline',
+    excellentResponse: 'Excellent treatment response',
+    staging: 'Staging', date: 'Date',
+  },
+}
+
 // Static mock data — scrambled, no real patient info
 const patient = {
   name: 'Demo Patient',
@@ -170,10 +238,12 @@ const funnelTrials = [
   <div class="min-h-screen bg-[#f8f9fb]">
     <!-- Demo banner -->
     <div class="bg-gradient-to-r from-teal-600 to-cyan-700 text-white px-4 py-2.5 text-center text-sm">
-      <span class="font-semibold">Demo Mode</span> — This is a demo with sample data. No real patient information.
-      <a href="https://oncoteam.cloud" class="ml-3 underline font-medium hover:text-teal-100">Back to oncoteam.cloud</a>
+      <span class="font-semibold">{{ d.banner }}</span> &mdash; {{ d.bannerDesc }}
+      <a href="https://oncoteam.cloud" class="ml-3 underline font-medium hover:text-teal-100">{{ d.backToLanding }}</a>
       <span class="mx-1 opacity-50">|</span>
-      <NuxtLink to="/login" class="underline font-medium hover:text-teal-100">Sign in</NuxtLink>
+      <NuxtLink to="/login" class="underline font-medium hover:text-teal-100">{{ d.signIn }}</NuxtLink>
+      <span class="mx-1 opacity-50">|</span>
+      <button class="underline font-medium hover:text-teal-100" @click="toggleLang">{{ demoLang === 'sk' ? 'EN' : 'SK' }}</button>
     </div>
 
     <div class="max-w-6xl mx-auto px-4 py-6 space-y-5">
@@ -184,22 +254,22 @@ const funnelTrials = [
         </div>
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Oncoteam <span class="text-sm font-normal text-gray-400">demo</span></h1>
-          <p class="text-sm text-gray-500">{{ patient.name }} — Treatment overview</p>
+          <p class="text-sm text-gray-500">{{ patient.name }} &mdash; {{ d.subtitle }}</p>
         </div>
       </div>
 
       <!-- View tabs -->
       <div class="flex gap-1 rounded-lg border border-gray-200 p-1 bg-gray-50 w-fit">
-        <button v-for="v in ['overview', 'labs', 'research', 'protocol']" :key="v"
+        <button v-for="v in [{ key: 'overview', label: d.overview }, { key: 'labs', label: d.labs }, { key: 'research', label: d.research }, { key: 'protocol', label: d.protocol }]" :key="v.key"
           class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          :class="demoView === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
-          @click="demoView = v as any"
-        >{{ v.charAt(0).toUpperCase() + v.slice(1) }}</button>
+          :class="demoView === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+          @click="demoView = v.key as any"
+        >{{ v.label }}</button>
       </div>
 
       <!-- Protocol view -->
       <div v-if="demoView === 'protocol'" class="space-y-3">
-        <h2 class="text-sm font-semibold text-gray-700">Safety Flags</h2>
+        <h2 class="text-sm font-semibold text-gray-700">{{ d.safetyFlags }}</h2>
         <div v-for="(flag, i) in safetyFlags" :key="i"
           class="rounded-lg border p-4"
           :class="flag.active ? 'border-red-300 bg-red-50/50 ring-1 ring-red-200' : 'border-gray-200 bg-white opacity-60'"
@@ -207,7 +277,7 @@ const funnelTrials = [
           <div class="flex items-center gap-2 mb-1">
             <span class="text-sm font-medium" :class="flag.active ? 'text-red-900' : 'text-gray-600'">{{ flag.label }}</span>
             <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" :class="flag.active ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'">
-              {{ flag.active ? (flag.severity === 'permanent' ? 'PERMANENT' : 'ACTIVE') : 'Clear' }}
+              {{ flag.active ? (flag.severity === 'permanent' ? d.permanent : d.active) : d.clear }}
             </span>
           </div>
           <div class="text-xs text-gray-500">{{ flag.rule }}</div>
@@ -216,7 +286,7 @@ const funnelTrials = [
 
       <!-- Research/Funnel view -->
       <div v-if="demoView === 'research'" class="space-y-3">
-        <h2 class="text-sm font-semibold text-gray-700">Trial Funnel</h2>
+        <h2 class="text-sm font-semibold text-gray-700">{{ d.trialFunnel }}</h2>
         <div class="flex gap-3 overflow-x-auto pb-2">
           <div v-for="stage in ['Excluded', 'Watching', 'Eligible Now']" :key="stage"
             class="w-56 flex-shrink-0 rounded-xl border border-gray-200 bg-gray-50/50 p-3"
@@ -228,7 +298,7 @@ const funnelTrials = [
               <div class="font-mono text-teal-700 text-[10px]">{{ t.id }}</div>
               <div class="text-gray-800 mt-0.5">{{ t.title }}</div>
             </div>
-            <div v-if="!funnelTrials.filter(t => t.stage === stage).length" class="text-[10px] text-gray-400 text-center py-4">No trials</div>
+            <div v-if="!funnelTrials.filter(t => t.stage === stage).length" class="text-[10px] text-gray-400 text-center py-4">{{ d.noTrials }}</div>
           </div>
         </div>
       </div>
@@ -238,50 +308,50 @@ const funnelTrials = [
         <!-- Summary cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <div class="text-[10px] font-medium text-gray-400 uppercase">Entries</div>
+            <div class="text-[10px] font-medium text-gray-400 uppercase">{{ d.entries }}</div>
             <div class="text-2xl font-bold text-gray-900">{{ labEntriesFull.length }}</div>
           </div>
           <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <div class="text-[10px] font-medium text-gray-400 uppercase">SII (latest)</div>
+            <div class="text-[10px] font-medium text-gray-400 uppercase">SII ({{ d.latest }})</div>
             <div class="text-2xl font-bold" :class="(labEntriesFull[0].values.SII ?? 0) > 1800 ? 'text-amber-600' : 'text-emerald-600'">
               {{ labEntriesFull[0].values.SII?.toLocaleString() ?? '\u2014' }}
             </div>
             <div class="text-[10px] text-gray-400">ref &lt;1800</div>
           </div>
           <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <div class="text-[10px] font-medium text-gray-400 uppercase">CEA trend</div>
+            <div class="text-[10px] font-medium text-gray-400 uppercase">{{ d.ceaTrend }}</div>
             <div class="text-2xl font-bold text-emerald-600">&darr; {{ pctChange(labEntriesFull[0].values.CEA, labEntriesFull[2].values.CEA) }}</div>
-            <div class="text-[10px] text-gray-400">from baseline</div>
+            <div class="text-[10px] text-gray-400">{{ d.fromBaseline }}</div>
           </div>
           <div class="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <div class="text-[10px] font-medium text-gray-400 uppercase">CA 19-9 trend</div>
+            <div class="text-[10px] font-medium text-gray-400 uppercase">{{ d.caTrend }}</div>
             <div class="text-2xl font-bold text-emerald-600">&darr; {{ pctChange(labEntriesFull[0].values.CA_19_9, labEntriesFull[2].values.CA_19_9) }}</div>
-            <div class="text-[10px] text-gray-400">from baseline</div>
+            <div class="text-[10px] text-gray-400">{{ d.fromBaseline }}</div>
           </div>
         </div>
 
         <!-- CBC Delta Table -->
         <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
           <div class="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500">Lab Values Comparison</h2>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500">{{ d.labComparison }}</h2>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-100">
-                  <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Parameter</th>
-                  <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Reference</th>
+                  <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">{{ d.parameter }}</th>
+                  <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">{{ d.reference }}</th>
                   <th v-for="entry in labEntriesFull" :key="entry.date" class="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                     {{ entry.date }}
                   </th>
-                  <th class="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-gray-400">Change</th>
+                  <th class="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-gray-400">{{ d.change }}</th>
                 </tr>
               </thead>
               <tbody>
                 <template v-for="(section, si) in [
-                  { title: 'Hematology', params: ALL_LAB_PARAMS.filter(p => !('tumor' in p && p.tumor) && !('computed' in p && p.computed)) },
-                  { title: 'Tumor Markers', params: ALL_LAB_PARAMS.filter(p => 'tumor' in p && p.tumor) },
-                  { title: 'Computed Indices', params: ALL_LAB_PARAMS.filter(p => 'computed' in p && p.computed) },
+                  { title: d.hematology, params: ALL_LAB_PARAMS.filter(p => !('tumor' in p && p.tumor) && !('computed' in p && p.computed)) },
+                  { title: d.tumorMarkers, params: ALL_LAB_PARAMS.filter(p => 'tumor' in p && p.tumor) },
+                  { title: d.computedIndices, params: ALL_LAB_PARAMS.filter(p => 'computed' in p && p.computed) },
                 ]" :key="si">
                   <tr class="bg-gray-50/70">
                     <td :colspan="3 + labEntriesFull.length" class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">{{ section.title }}</td>
@@ -317,7 +387,7 @@ const funnelTrials = [
 
         <!-- Alerts -->
         <div class="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-          <span>All hematology values within safe ranges. Tumor markers showing excellent treatment response.</span>
+          <span>{{ d.labsAllSafe }}</span>
         </div>
       </div>
 
@@ -325,14 +395,14 @@ const funnelTrials = [
       <template v-if="demoView === 'overview'">
       <!-- No alerts (good) -->
       <div class="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-        <span>All lab values within safe ranges. No alerts.</span>
+        <span>{{ d.noAlerts }}</span>
       </div>
 
       <!-- Treatment Status + Labs grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Treatment Status -->
         <div class="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Treatment Status</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ d.treatmentStatus }}</h2>
           <div class="space-y-3">
             <div class="flex items-baseline justify-between">
               <span class="text-2xl font-bold text-gray-900">{{ patient.treatment_regimen }}</span>
@@ -340,7 +410,7 @@ const funnelTrials = [
             </div>
             <div class="text-sm text-gray-600">{{ patient.diagnosis_description }}</div>
             <div class="flex gap-4 text-xs text-gray-500">
-              <span>Staging: <strong class="text-gray-700">{{ patient.staging }}</strong></span>
+              <span>{{ d.staging }}: <strong class="text-gray-700">{{ patient.staging }}</strong></span>
               <span>ECOG: <strong class="text-gray-700">{{ patient.ecog }}</strong></span>
             </div>
           </div>
@@ -349,7 +419,7 @@ const funnelTrials = [
         <!-- Recent Labs -->
         <div class="rounded-xl border border-gray-200 bg-white p-5">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Recent Labs</h2>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ d.recentLabs }}</h2>
             <span class="text-xs text-gray-400">{{ labEntries[0].date }}</span>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -368,7 +438,7 @@ const funnelTrials = [
 
       <!-- Biomarkers -->
       <div class="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Molecular Profile</h2>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ d.molecularProfile }}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div v-for="(val, key) in patient.biomarkers" :key="key" class="rounded-lg bg-gray-50 px-3 py-2">
             <div class="text-[10px] font-medium text-gray-400 uppercase">{{ key }}</div>
@@ -381,7 +451,7 @@ const funnelTrials = [
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Upcoming Events -->
         <div class="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Upcoming</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ d.upcoming }}</h2>
           <div class="space-y-2">
             <div v-for="evt in timelineEvents" :key="evt.title" class="flex items-center gap-3 text-sm">
               <span class="text-base">{{ EVENT_ICONS[evt.event_type] || '\uD83D\uDCC5' }}</span>
@@ -393,7 +463,7 @@ const funnelTrials = [
 
         <!-- Agents -->
         <div class="rounded-xl border border-gray-200 bg-white p-5">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Autonomous Agents</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ d.autonomousAgents }}</h2>
           <div class="space-y-2">
             <div v-for="agent in agents" :key="agent.name" class="flex items-center justify-between text-sm">
               <div class="flex items-center gap-2">
@@ -411,12 +481,12 @@ const funnelTrials = [
 
       <!-- Tumor Marker Chart placeholder -->
       <div class="rounded-xl border border-gray-200 bg-white p-5">
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Tumor Markers Trend</h2>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ d.tumorMarkersTrend }}</h2>
         <div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead>
               <tr class="text-left text-gray-500 border-b border-gray-200">
-                <th class="px-3 py-2">Date</th>
+                <th class="px-3 py-2">{{ d.date }}</th>
                 <th class="px-3 py-2">CEA (ng/mL)</th>
                 <th class="px-3 py-2">CA 19-9 (U/mL)</th>
                 <th class="px-3 py-2">ANC (/uL)</th>
@@ -435,25 +505,22 @@ const funnelTrials = [
           </table>
         </div>
         <div class="mt-3 flex items-center gap-4 text-xs text-gray-500">
-          <span class="flex items-center gap-1"><span class="text-emerald-600 font-bold">&darr;</span> CEA -62% since baseline</span>
-          <span class="flex items-center gap-1"><span class="text-emerald-600 font-bold">&darr;</span> CA 19-9 -83% since baseline</span>
-          <span class="font-medium text-emerald-600">Excellent treatment response</span>
+          <span class="flex items-center gap-1"><span class="text-emerald-600 font-bold">&darr;</span> {{ d.ceaBaseline }}</span>
+          <span class="flex items-center gap-1"><span class="text-emerald-600 font-bold">&darr;</span> {{ d.caBaseline }}</span>
+          <span class="font-medium text-emerald-600">{{ d.excellentResponse }}</span>
         </div>
       </div>
 
       <!-- CTA -->
       <div class="rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 to-cyan-50 p-6 text-center">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">Ready to try Oncoteam?</h2>
-        <p class="text-sm text-gray-600 mb-4 max-w-lg mx-auto">
-          Oncoteam is an AI-powered treatment intelligence platform for cancer care teams.
-          It tracks labs, manages clinical trials, and provides autonomous research briefings.
-        </p>
+        <h2 class="text-lg font-bold text-gray-900 mb-2">{{ d.readyTitle }}</h2>
+        <p class="text-sm text-gray-600 mb-4 max-w-lg mx-auto">{{ d.readyDesc }}</p>
         <div class="flex items-center justify-center gap-3">
           <NuxtLink to="/login" class="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors">
-            Sign in with Google
+            {{ d.signInGoogle }}
           </NuxtLink>
           <a href="https://oncoteam.cloud" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
-            Learn more
+            {{ d.learnMore }}
           </a>
         </div>
       </div>
@@ -462,8 +529,7 @@ const funnelTrials = [
 
       <!-- Footer -->
       <div class="text-center text-xs text-gray-400 py-4">
-        Oncoteam &mdash; AI-powered cancer treatment intelligence.
-        All demo data is fictional. No real patient information is displayed.
+        Oncoteam &mdash; {{ d.footer }}
       </div>
     </div>
   </div>
