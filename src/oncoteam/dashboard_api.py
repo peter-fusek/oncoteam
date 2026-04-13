@@ -3770,6 +3770,19 @@ _WA_THREAD_TTL = 2 * 3600  # 2 hours
 _WA_THREAD_MAX_EXCHANGES = 5
 
 
+def _get_patient_name_map() -> dict[str, str]:
+    """Return {patient_id: display_name} for all registered patients."""
+    from .patient_context import get_patient, list_patient_ids
+
+    result = {}
+    for pid in list_patient_ids():
+        try:
+            result[pid] = get_patient(pid).name
+        except KeyError:
+            continue
+    return result
+
+
 def _wa_thread_key(phone: str, patient_id: str = "q1b") -> str:
     """Hash phone for privacy — no PII in state keys. Scoped per patient."""
     import hashlib
@@ -3853,6 +3866,8 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
         if lang not in ("sk", "en"):
             lang = "sk"
         patient_id = body.get("patient_id", "")
+        user_name = body.get("user_name", "")
+        user_roles = body.get("user_roles", [])
     except Exception:
         return _cors_json({"error": "Invalid request body"}, status_code=400, request=request)
 
@@ -3897,19 +3912,39 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
                 history_block += f"Assistant: {ex.get('assistant', '')}\n"
             history_block += "\n"
 
+        # Build patient name map for name resolution
+        patient_names = _get_patient_name_map()
+        name_map_str = ", ".join(f"{k}={v}" for k, v in patient_names.items())
+        current_display = patient_names.get(pid, pid)
+
+        # Build user identity block
+        user_block = ""
+        if user_name:
+            user_block += f"User name: {user_name}. "
+        if user_roles:
+            roles_str = ", ".join(user_roles) if isinstance(user_roles, list) else str(user_roles)
+            user_block += f"Role: {roles_str}. "
+
         prompt = (
             f"{history_block}"
-            f"User message via WhatsApp (phone: {phone}, lang: {lang}, "
-            f"active_patient: {pid}):\n\n"
-            f"{message}\n\n"
-            f"Respond helpfully and concisely in {'Slovak' if lang == 'sk' else 'English'}. "
-            f"Use patient context from your system prompt. "
-            f"You are currently showing data for patient '{pid}'. "
-            f"If the user asks about a different patient, tell them to send "
-            f"'prepni <meno>' (SK) or 'switch <slug>' (EN) to change. "
-            f"Available commands: labky, predcyklus, lieky, cyklus, rodina, "
-            f"otazky, toxicita, vaha, davka, studie, casovka, pomoc. "
-            f"If referring to previous messages, be specific. Max 1500 chars."
+            f"User message via WhatsApp "
+            f"(lang: {lang}, patient: {pid} = {current_display}):"
+            f"\n\n{message}\n\n"
+            f"# Context\n"
+            f"{user_block}"
+            f"Patient name map: {name_map_str}. "
+            f"Currently showing: {pid} ({current_display}).\n"
+            f"If user mentions another patient by name, tell them to "
+            f"send 'prepni <slug>' to switch.\n\n"
+            f"# Instructions\n"
+            f"Respond naturally in "
+            f"{'Slovak' if lang == 'sk' else 'English'}. "
+            f"Address the user by name when natural. "
+            f"Do NOT list available commands unless the user asks "
+            f"for help. "
+            f"If you cannot answer with available data, suggest ONE "
+            f"specific command (e.g. 'labky'). "
+            f"Max 1500 chars."
         )
 
         result = await run_autonomous_task(
@@ -3925,10 +3960,29 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             response_text = (
                 "Prepáčte, nepodarilo sa spracovať správu. Skúste 'pomoc'."
                 if lang == "sk"
-                else "Sorry, I couldn't process that. Try 'help' for available commands."
+                else "Sorry, I couldn't process that. Try 'help'."
             )
 
         response_text = response_text[:1500]
+
+        # Quality signal tags for continuous improvement
+        quality_tags: list[str] = [
+            "wa:chat",
+            f"lang:{lang}",
+            f"patient:{pid}",
+        ]
+        if user_name:
+            quality_tags.append(f"user:{user_name}")
+        # Detect quality issues for audit
+        response_lower = response_text.lower()
+        if any(cmd in response_lower for cmd in ["labky,", "lieky,", "pomoc.", "dostupné príkazy"]):
+            quality_tags.append("wa:quality:command_dump")
+        if response_text == result.get("response", ""):
+            pass  # normal
+        else:
+            quality_tags.append("wa:quality:fallback")
+        if len(response_text) > 1200:
+            quality_tags.append("wa:quality:long")
 
         # Save updated thread (non-blocking)
         thread.append({"user": message[:500], "assistant": response_text[:500]})
@@ -3939,6 +3993,7 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
                 "response": response_text,
                 "cost": result.get("cost", 0),
                 "thread_length": min(len(thread), _WA_THREAD_MAX_EXCHANGES),
+                "quality_tags": quality_tags,
             }
         )
     except Exception as e:

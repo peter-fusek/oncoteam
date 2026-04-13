@@ -74,6 +74,25 @@ export function getActivePatientForPhone(phone: string): string {
 }
 
 /**
+ * Get user identity (name, roles) for a phone from ROLE_MAP.
+ * Returns first matching entry's name and roles.
+ */
+export function getUserInfoForPhone(phone: string, roleMapRaw: string | Record<string, { phone?: string; name?: string; roles?: string[] }>): { name: string; roles: string[] } {
+  try {
+    const roleMap = typeof roleMapRaw === 'string' ? JSON.parse(roleMapRaw || '{}') : roleMapRaw || {}
+    const normalized = phone.replace(/[\s\-()]/g, '')
+    for (const config of Object.values(roleMap) as Array<{ phone?: string; name?: string; roles?: string[] }>) {
+      const configPhone = config.phone?.replace(/[\s\-()]/g, '') || ''
+      if (configPhone === normalized) {
+        return { name: config.name || '', roles: config.roles || [] }
+      }
+    }
+  }
+  catch { /* ignore parse errors */ }
+  return { name: '', roles: [] }
+}
+
+/**
  * Get all allowed patient IDs for a phone from ROLE_MAP.
  * Merges patient_ids from all ROLE_MAP entries sharing this phone.
  */

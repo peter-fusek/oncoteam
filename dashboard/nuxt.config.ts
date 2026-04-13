@@ -48,6 +48,7 @@ export default defineNuxtConfig({
     twilioAccountSid: process.env.NUXT_TWILIO_ACCOUNT_SID || '',
     twilioAuthToken: process.env.NUXT_TWILIO_AUTH_TOKEN || '',
     twilioWhatsappFrom: process.env.NUXT_TWILIO_WHATSAPP_FROM || '',
+    twilioWebhookUrl: process.env.NUXT_TWILIO_WEBHOOK_URL || '',
     databaseUrl: process.env.DATABASE_URL || '',
   },
 

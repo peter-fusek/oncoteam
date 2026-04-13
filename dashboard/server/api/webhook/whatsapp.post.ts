@@ -2,7 +2,7 @@ import twilio from 'twilio'
 import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
 import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionCount } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
-import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone, getActivePatientForPhone } from '../../utils/approved-phones'
+import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone, getActivePatientForPhone, getUserInfoForPhone } from '../../utils/approved-phones'
 import { recordInbound, sendWhatsApp } from '../../utils/twilio-send'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
@@ -10,6 +10,34 @@ const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const MAX_MEDIA_ATTACHMENTS = 3
+
+// Patient name map cache (slug → display name), refreshed every 5 minutes
+let _patientNameMap: Record<string, string> = {}
+let _patientNameMapExpiry = 0
+const PATIENT_NAME_MAP_TTL_MS = 5 * 60 * 1000
+
+async function getPatientNameMap(oncoteamApiUrl: string, apiKey: string): Promise<Record<string, string>> {
+  if (Date.now() < _patientNameMapExpiry && Object.keys(_patientNameMap).length > 0) {
+    return _patientNameMap
+  }
+  try {
+    const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+    const data = await $fetch<{ patients: Array<{ slug: string; name?: string }> }>(
+      `${oncoteamApiUrl}/api/patients`,
+      { headers, signal: AbortSignal.timeout(3000) },
+    )
+    const map: Record<string, string> = {}
+    for (const p of data.patients || []) {
+      if (p.slug && p.name) map[p.slug] = p.name
+    }
+    _patientNameMap = map
+    _patientNameMapExpiry = Date.now() + PATIENT_NAME_MAP_TTL_MS
+    return map
+  }
+  catch {
+    return _patientNameMap // return stale on error
+  }
+}
 
 function mimeToExt(contentType: string): string {
   const map: Record<string, string> = {
@@ -133,7 +161,7 @@ export default defineEventHandler(async (event) => {
   const messageBody = String(body?.Body || '').trim()
   const twilioSignature = getRequestHeader(event, 'x-twilio-signature') || ''
 
-  // Validate Twilio signature (try both proxy and direct URLs)
+  // Validate Twilio signature (try proxy URL, https variant, and configured URL)
   const requestUrl = getRequestURL(event).toString()
   let isValid = twilio.validateRequest(
     config.twilioAuthToken,
@@ -152,6 +180,15 @@ export default defineEventHandler(async (event) => {
         body || {},
       )
     }
+  }
+  // Try configured webhook URL (exact URL Twilio signs against)
+  if (!isValid && config.twilioWebhookUrl) {
+    isValid = twilio.validateRequest(
+      config.twilioAuthToken,
+      twilioSignature,
+      config.twilioWebhookUrl as string,
+      body || {},
+    )
   }
 
   // Phone allowlist is enforced below — log signature failure but don't block
@@ -370,10 +407,13 @@ export default defineEventHandler(async (event) => {
 
   // Process command and respond
   const oncoteamApiUrl = config.oncoteamApiUrl as string
+  const apiKey = (config.oncoteamApiKey || '') as string
   const allowedPatientIds = getAllowedPatientIdsForPhone(from, config.roleMap as string)
   const whatsappPatientId = getActivePatientForPhone(from)
   const hasMultiplePatients = allowedPatientIds.length > 1
-  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds, hasMultiplePatients })
+  const userInfo = getUserInfoForPhone(from, config.roleMap as string)
+  const patientNameMap = await getPatientNameMap(oncoteamApiUrl, apiKey)
+  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds, hasMultiplePatients, patientNameMap })
 
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.
@@ -381,7 +421,7 @@ export default defineEventHandler(async (event) => {
 
     // Fire-and-forget: call Claude API and send response via Twilio REST API
     ;(async () => {
-      const apiKey = config.oncoteamApiKey || ''
+      const asyncStartMs = Date.now()
       const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
 
       // Step 1: Get Claude response (55s timeout — generous for autonomous agent)
@@ -390,7 +430,14 @@ export default defineEventHandler(async (event) => {
         console.log('[whatsapp-async] Calling Claude API for:', result.message.slice(0, 50))
         const chatResult = await $fetch<{ response: string }>(`${oncoteamApiUrl}/api/internal/whatsapp-chat`, {
           method: 'POST',
-          body: { message: result.message, lang: result.lang, phone: from, patient_id: whatsappPatientId },
+          body: {
+            message: result.message,
+            lang: result.lang,
+            phone: from,
+            patient_id: whatsappPatientId,
+            user_name: userInfo.name,
+            user_roles: userInfo.roles,
+          },
           headers,
           signal: AbortSignal.timeout(55_000),
         })
@@ -414,10 +461,19 @@ export default defineEventHandler(async (event) => {
         console.error('[whatsapp-async] Twilio send failed:', sendResult.error)
       }
 
-      // Step 3: Log exchange
+      // Step 3: Log exchange with audit metadata
       $fetch(`${oncoteamApiUrl}/api/internal/log-whatsapp`, {
         method: 'POST',
-        body: { phone: from, user_message: messageBody, bot_response: reply },
+        body: {
+          phone: from,
+          user_message: messageBody,
+          bot_response: reply,
+          patient_id: whatsappPatientId,
+          user_name: userInfo.name,
+          command: 'conversational',
+          lang: result.lang,
+          response_time_ms: Date.now() - asyncStartMs,
+        },
         headers,
       }).catch((err: unknown) => console.warn('[whatsapp] Non-critical async failed:', (err as Error)?.message || err))
     })()
@@ -446,13 +502,20 @@ export default defineEventHandler(async (event) => {
       })()
     }
 
-    // Log the full exchange
+    // Log the full exchange with audit metadata
     try {
-      const apiKey = config.oncoteamApiKey || ''
       const logHeaders: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
       $fetch(`${oncoteamApiUrl}/api/internal/log-whatsapp`, {
         method: 'POST',
-        body: { phone: from, user_message: messageBody, bot_response: segments.join('\n---\n') },
+        body: {
+          phone: from,
+          user_message: messageBody,
+          bot_response: segments.join('\n---\n'),
+          patient_id: whatsappPatientId,
+          user_name: userInfo.name,
+          command: 'multi',
+          lang: result.lang || 'sk',
+        },
         headers: logHeaders,
       }).catch((err: unknown) => console.warn('[whatsapp] Non-critical async failed:', (err as Error)?.message || err))
     }
@@ -467,13 +530,20 @@ export default defineEventHandler(async (event) => {
   // Synchronous command response
   const reply = result.text
 
-  // Log the WhatsApp exchange to oncofiles (fire-and-forget)
+  // Log the WhatsApp exchange to oncofiles (fire-and-forget) with audit metadata
   try {
-    const apiKey = config.oncoteamApiKey || ''
     const logHeaders: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
     $fetch(`${oncoteamApiUrl}/api/internal/log-whatsapp`, {
       method: 'POST',
-      body: { phone: from, user_message: messageBody, bot_response: reply },
+      body: {
+        phone: from,
+        user_message: messageBody,
+        bot_response: reply,
+        patient_id: whatsappPatientId,
+        user_name: userInfo.name,
+        command: 'sync_command',
+        lang: 'sk',
+      },
       headers: logHeaders,
     }).catch((err: unknown) => console.warn('[whatsapp] Non-critical async failed:', (err as Error)?.message || err))
   }

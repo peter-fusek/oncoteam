@@ -727,14 +727,43 @@ function normalizeApprovalPhone(raw: string): string {
   return phone
 }
 
+/**
+ * Strip diacritics for fuzzy Slovak name matching.
+ * "Eriku" (accusative of Erika) → "eriku", "Péťo" → "peto"
+ */
+function stripDiacritics(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
+/**
+ * Try to resolve a user-typed name to a patient slug via the name map.
+ * Handles Slovak declension by prefix matching (first 3+ chars).
+ * "eriku" matches "Erika F." because both start with "erik".
+ */
+function resolveNameToSlug(input: string, nameMap: Record<string, string>): string | undefined {
+  const norm = stripDiacritics(input)
+  if (norm.length < 3) return undefined
+  for (const [slug, name] of Object.entries(nameMap)) {
+    const normName = stripDiacritics(name.split(/\s/)[0] || '')
+    if (normName === norm || (norm.length >= 3 && normName.startsWith(norm.slice(0, Math.max(3, Math.min(norm.length, normName.length)))))) {
+      return slug
+    }
+  }
+  return undefined
+}
+
 function handleSwitchCommand(
   body: string,
   lang: Lang,
   fromPhone?: string,
   allowedPatientIds?: string[],
+  patientNameMap?: Record<string, string>,
 ): CommandResult {
   const parts = body.trim().split(/\s+/)
-  const slug = parts[1]?.toLowerCase()
+  // Strip Slovak/English filler words so "prepni na q1b" / "switch to q1b" work
+  const SWITCH_FILLER = new Set(['na', 'k', 'pre', 'to', 'for'])
+  const slugParts = parts.slice(1).filter(p => !SWITCH_FILLER.has(p.toLowerCase()))
+  const slug = slugParts[0]?.toLowerCase()
 
   if (!slug) {
     const available = allowedPatientIds?.length ? allowedPatientIds.join(', ') : '?'
@@ -747,27 +776,40 @@ function handleSwitchCommand(
     }
   }
 
-  // Authorization check: only allow switching to authorized patients
+  // Authorization check: try name-based resolution if slug doesn't match
+  let resolvedSlug = slug
   if (allowedPatientIds?.length && !allowedPatientIds.includes(slug)) {
-    const available = allowedPatientIds.join(', ')
-    return {
-      type: 'reply',
-      text: t(L(
-        `Nemate pristup k pacientovi *${slug}*.\nDostupni pacienti: ${available}`,
-        `Access denied to patient *${slug}*.\nAvailable patients: ${available}`,
-      ), lang),
+    // Try resolving as patient name (handles Slovak declension: "eriku" → "q1b")
+    const nameResolved = patientNameMap ? resolveNameToSlug(slug, patientNameMap) : undefined
+    if (nameResolved && allowedPatientIds.includes(nameResolved)) {
+      resolvedSlug = nameResolved
+    }
+    else {
+      const available = allowedPatientIds.map(id => {
+        const name = patientNameMap?.[id]
+        return name ? `${id} (${name})` : id
+      }).join(', ')
+      return {
+        type: 'reply',
+        text: t(L(
+          `Nemate pristup k pacientovi *${slug}*.\nDostupni pacienti: ${available}`,
+          `Access denied to patient *${slug}*.\nAvailable patients: ${available}`,
+        ), lang),
+      }
     }
   }
 
   if (fromPhone) {
-    setActivePatient(fromPhone.replace(/[\s\-()]/g, ''), slug)
+    setActivePatient(fromPhone.replace(/[\s\-()]/g, ''), resolvedSlug)
   }
 
+  const displayName = patientNameMap?.[resolvedSlug]
+  const label = displayName ? `*${resolvedSlug}* (${displayName})` : `*${resolvedSlug}*`
   return {
     type: 'reply',
     text: t(L(
-      `Prepnute na pacienta: *${slug}*\n\nVsetky prikazy teraz zobrazuju data pre ${slug}.`,
-      `Switched to patient: *${slug}*\n\nAll commands now show data for ${slug}.`,
+      `Prepnute na pacienta: ${label}\n\nVsetky prikazy teraz zobrazuju data pre ${resolvedSlug}.`,
+      `Switched to patient: ${label}\n\nAll commands now show data for ${resolvedSlug}.`,
     ), lang),
   }
 }
@@ -821,7 +863,7 @@ export async function handleWhatsAppCommand(
   body: string,
   oncoteamApiUrl: string,
   fromPhone?: string,
-  options?: { patientId?: string; allowedPatientIds?: string[]; hasMultiplePatients?: boolean },
+  options?: { patientId?: string; allowedPatientIds?: string[]; hasMultiplePatients?: boolean; patientNameMap?: Record<string, string> },
 ): Promise<CommandResult> {
   const { commandWord, subarg } = parseSubCommand(body)
   const lang = detectLang(commandWord)
@@ -836,9 +878,9 @@ export async function handleWhatsAppCommand(
     return handleApproveCommand(body, oncoteamApiUrl, lang, fromPhone)
   }
 
-  // Patient switching: "prepni q1b" / "switch e5g"
+  // Patient switching: "prepni q1b" / "switch e5g" / "prepni na eriku"
   if (command === 'switch') {
-    return handleSwitchCommand(body, lang, fromPhone, options?.allowedPatientIds)
+    return handleSwitchCommand(body, lang, fromPhone, options?.allowedPatientIds, options?.patientNameMap)
   }
 
   // List patients: "pacienti" / "patients" — filter by authorized patients
@@ -853,13 +895,26 @@ export async function handleWhatsAppCommand(
     const switchPatterns = /(?:prepni|zmeni[tť]\s*pacienta?|switch|change\s*patient|chcem\s+(?:data|info|údaje)\s+(?:o|pre|na)|potrebujem\s+zmeni[tť])/i
     if (switchPatterns.test(lower)) {
       // Check if any known patient slug is mentioned
-      const matchedSlug = options.allowedPatientIds.find(slug => lower.includes(slug))
-      if (matchedSlug) {
-        // Auto-switch to the mentioned patient
-        return handleSwitchCommand(`switch ${matchedSlug}`, lang, fromPhone, options.allowedPatientIds)
+      let matchedSlug = options.allowedPatientIds.find(slug => lower.includes(slug))
+      // Try name-based resolution if slug not found
+      if (!matchedSlug && options.patientNameMap) {
+        const words = lower.split(/\s+/)
+        for (const word of words) {
+          const resolved = resolveNameToSlug(word, options.patientNameMap)
+          if (resolved && options.allowedPatientIds.includes(resolved)) {
+            matchedSlug = resolved
+            break
+          }
+        }
       }
-      // No slug found — list available patients
-      const available = options.allowedPatientIds.join(', ')
+      if (matchedSlug) {
+        return handleSwitchCommand(`switch ${matchedSlug}`, lang, fromPhone, options.allowedPatientIds, options.patientNameMap)
+      }
+      // No slug found — list available patients with names
+      const available = options.allowedPatientIds.map(id => {
+        const name = options.patientNameMap?.[id]
+        return name ? `${id} (${name})` : id
+      }).join(', ')
       return {
         type: 'reply',
         text: t(L(
