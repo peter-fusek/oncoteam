@@ -163,7 +163,9 @@ async def test_whatsapp_chat_no_api_key():
     "oncoteam.dashboard_api.run_autonomous_task",
     new_callable=AsyncMock,
 )
-async def test_whatsapp_chat_empty_response_gives_fallback(mock_run, _mock_save, _mock_load, _mock_cb):
+async def test_whatsapp_chat_empty_response_gives_fallback(
+    mock_run, _mock_save, _mock_load, _mock_cb
+):
     mock_run.return_value = {"response": "", "cost": 0}
     body = json.dumps({"message": "?", "lang": "en"}).encode()
     request = FakeRequest(body=body)
