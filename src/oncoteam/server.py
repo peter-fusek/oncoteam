@@ -61,6 +61,7 @@ from .dashboard_api import (
     api_protocol,
     api_protocol_cycles,
     api_research,
+    api_resolve_patient,
     api_sessions,
     api_stats,
     api_status,
@@ -1177,6 +1178,8 @@ mcp.custom_route("/api/internal/log-whatsapp", methods=["POST"])(_auth_wrap(api_
 mcp.custom_route("/api/internal/log-whatsapp", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/internal/whatsapp-chat", methods=["POST"])(_auth_wrap(api_whatsapp_chat))
 mcp.custom_route("/api/internal/whatsapp-chat", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/internal/resolve-patient", methods=["POST"])(_auth_wrap(api_resolve_patient))
+mcp.custom_route("/api/internal/resolve-patient", methods=["OPTIONS"])(api_cors_preflight)
 _doc_webhook = _auth_wrap(api_document_webhook)
 mcp.custom_route("/api/internal/document-webhook", methods=["POST"])(_doc_webhook)
 mcp.custom_route("/api/internal/document-webhook", methods=["OPTIONS"])(api_cors_preflight)

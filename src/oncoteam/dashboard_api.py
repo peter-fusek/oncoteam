@@ -3783,6 +3783,67 @@ def _get_patient_name_map() -> dict[str, str]:
     return result
 
 
+async def api_resolve_patient(request: Request) -> JSONResponse:
+    """POST /api/internal/resolve-patient — AI-powered patient name resolution.
+
+    Uses Claude Haiku to match free-form user input (names, nicknames,
+    declined forms) to a patient slug.
+    Body: {query: "eriku", allowed_ids: ["q1b", "e5g"]}
+    Returns: {patient_id: "q1b", name: "Erika Fusekova"} or {patient_id: null}
+    """
+    auth = _check_api_auth(request)
+    if auth:
+        return auth
+    try:
+        body = json.loads(await request.body())
+        query = (body.get("query") or "").strip()
+        allowed_ids = body.get("allowed_ids") or []
+    except Exception:
+        return _cors_json({"error": "Invalid request body"}, status_code=400, request=request)
+
+    if not query or not allowed_ids:
+        return _cors_json({"patient_id": None})
+
+    # Build patient context for Claude
+    name_map = _get_patient_name_map()
+    patients_desc = "\n".join(f"- {pid}: {name_map.get(pid, '?')}" for pid in allowed_ids)
+
+    if not ANTHROPIC_API_KEY:
+        return _cors_json({"patient_id": None, "error": "AI not configured"})
+
+    try:
+        import anthropic
+
+        client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        resp = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=20,
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"Match the user input to a patient.\n\n"
+                        f'User typed: "{query}"\n\n'
+                        f"Available patients:\n{patients_desc}\n\n"
+                        f"Reply with ONLY the patient ID (e.g. q1b) "
+                        f"if you can match the input to a patient. "
+                        f"Consider name variants, nicknames, declined "
+                        f"forms (Slovak: Erika→Eriku/Eriky, Peter→Petra). "
+                        f"Reply NONE if no match."
+                    ),
+                }
+            ],
+        )
+        answer = resp.content[0].text.strip().lower()
+        # Validate answer is one of the allowed IDs
+        if answer in allowed_ids:
+            return _cors_json({"patient_id": answer, "name": name_map.get(answer, "")})
+        return _cors_json({"patient_id": None})
+    except Exception as exc:
+        record_suppressed_error("api_resolve_patient", "claude", exc)
+        return _cors_json({"patient_id": None})
+
+
 def _wa_thread_key(phone: str, patient_id: str = "q1b") -> str:
     """Hash phone for privacy — no PII in state keys. Scoped per patient."""
     import hashlib

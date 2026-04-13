@@ -734,44 +734,41 @@ function normalizeApprovalPhone(raw: string): string {
 }
 
 /**
- * Strip diacritics for fuzzy Slovak name matching.
- * "Eriku" (accusative of Erika) → "eriku", "Péťo" → "peto"
+ * AI-powered patient name resolution via oncoteam backend.
+ * Claude Haiku resolves names, nicknames, declined forms in any language.
  */
-function stripDiacritics(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-}
-
-/**
- * Try to resolve a user-typed name to a patient slug via the name map.
- * Handles Slovak declension by prefix matching (first 3+ chars).
- * "eriku" matches "Erika F." because both start with "erik".
- */
-function resolveNameToSlug(input: string, nameMap: Record<string, string>): string | undefined {
-  const norm = stripDiacritics(input)
-  if (norm.length < 3) return undefined
-  for (const [slug, name] of Object.entries(nameMap)) {
-    const normName = stripDiacritics(name.split(/\s/)[0] || '')
-    // Exact match or prefix match allowing declension suffix to differ
-    // "eriku" vs "erika": compare first 4 chars ("erik" === "erik") ✓
-    // "peter" vs "peter": exact match ✓
-    const minLen = Math.min(norm.length, normName.length)
-    const prefixLen = Math.max(3, minLen - 1)
-    if (normName === norm || (minLen >= 3 && norm.slice(0, prefixLen) === normName.slice(0, prefixLen))) {
-      return slug
-    }
+async function resolveNameWithAI(query: string, allowedIds: string[], oncoteamApiUrl: string): Promise<string | undefined> {
+  if (!query || query.length < 2 || !allowedIds.length) return undefined
+  try {
+    const config = useRuntimeConfig()
+    const apiKey = config.oncoteamApiKey || ''
+    const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+    const result = await $fetch<{ patient_id: string | null; name?: string }>(
+      `${oncoteamApiUrl}/api/internal/resolve-patient`,
+      {
+        method: 'POST',
+        body: { query, allowed_ids: allowedIds },
+        headers,
+        signal: AbortSignal.timeout(5000),
+      },
+    )
+    return result.patient_id || undefined
   }
-  return undefined
+  catch {
+    return undefined
+  }
 }
 
-function handleSwitchCommand(
+async function handleSwitchCommand(
   body: string,
   lang: Lang,
+  oncoteamApiUrl: string,
   fromPhone?: string,
   allowedPatientIds?: string[],
   patientNameMap?: Record<string, string>,
   userName?: string,
   userRoles?: string[],
-): CommandResult {
+): Promise<CommandResult> {
   const parts = body.trim().split(/\s+/)
   // Strip Slovak/English filler words so "prepni na q1b" / "switch to q1b" work
   const SWITCH_FILLER = new Set(['na', 'k', 'pre', 'to', 'for'])
@@ -789,13 +786,13 @@ function handleSwitchCommand(
     }
   }
 
-  // Authorization check: try name-based resolution if slug doesn't match
+  // Authorization check: try AI name resolution if slug doesn't match
   let resolvedSlug = slug
   if (allowedPatientIds?.length && !allowedPatientIds.includes(slug)) {
-    // Try resolving as patient name (handles Slovak declension: "eriku" → "q1b")
-    const nameResolved = patientNameMap ? resolveNameToSlug(slug, patientNameMap) : undefined
-    if (nameResolved && allowedPatientIds.includes(nameResolved)) {
-      resolvedSlug = nameResolved
+    // Use Claude AI to resolve names, nicknames, declined forms
+    const aiResolved = await resolveNameWithAI(slug, allowedPatientIds, oncoteamApiUrl)
+    if (aiResolved && allowedPatientIds.includes(aiResolved)) {
+      resolvedSlug = aiResolved
     }
     else {
       const available = allowedPatientIds.map(id => {
@@ -900,7 +897,7 @@ export async function handleWhatsAppCommand(
 
   // Patient switching: "prepni q1b" / "switch e5g" / "prepni na eriku"
   if (command === 'switch') {
-    return handleSwitchCommand(body, lang, fromPhone, options?.allowedPatientIds, options?.patientNameMap, options?.userName, options?.userRoles)
+    return handleSwitchCommand(body, lang, oncoteamApiUrl, fromPhone, options?.allowedPatientIds, options?.patientNameMap, options?.userName, options?.userRoles)
   }
 
   // List patients: "pacienti" / "patients" — filter by authorized patients
@@ -916,19 +913,13 @@ export async function handleWhatsAppCommand(
     if (switchPatterns.test(lower)) {
       // Check if any known patient slug is mentioned
       let matchedSlug = options.allowedPatientIds.find(slug => lower.includes(slug))
-      // Try name-based resolution if slug not found
-      if (!matchedSlug && options.patientNameMap) {
-        const words = lower.split(/\s+/)
-        for (const word of words) {
-          const resolved = resolveNameToSlug(word, options.patientNameMap)
-          if (resolved && options.allowedPatientIds.includes(resolved)) {
-            matchedSlug = resolved
-            break
-          }
-        }
+      // Try AI name resolution if slug not found
+      if (!matchedSlug) {
+        const aiResolved = await resolveNameWithAI(lower, options.allowedPatientIds, oncoteamApiUrl)
+        if (aiResolved) matchedSlug = aiResolved
       }
       if (matchedSlug) {
-        return handleSwitchCommand(`switch ${matchedSlug}`, lang, fromPhone, options.allowedPatientIds, options.patientNameMap, options.userName, options.userRoles)
+        return handleSwitchCommand(`switch ${matchedSlug}`, lang, oncoteamApiUrl, fromPhone, options.allowedPatientIds, options.patientNameMap, options.userName, options.userRoles)
       }
       // No slug found — list available patients with names
       const available = options.allowedPatientIds.map(id => {
