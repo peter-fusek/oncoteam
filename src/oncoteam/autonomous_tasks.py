@@ -21,6 +21,14 @@ from .patient_context import (
 )
 
 
+def _patient_display_name(patient_id: str) -> str:
+    """Get patient display name for WhatsApp headers. Returns '' if unknown."""
+    try:
+        return get_patient(patient_id).name
+    except (KeyError, AttributeError):
+        return patient_id
+
+
 async def _should_skip(
     task_name: str, patient_id: str = "q1b", *, token: str | None = None
 ) -> bool:
@@ -214,7 +222,11 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
             today = datetime.now(UTC).strftime("%Y-%m-%d")
-            header = format_whatsapp_header(f"Kontrola pred cyklom {cycle}", date_str=today)
+            header = format_whatsapp_header(
+                f"Kontrola pred cyklom {cycle}",
+                date_str=today,
+                patient_name=_patient_display_name(patient_id),
+            )
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
@@ -431,7 +443,11 @@ Prioritize trials at centers within practical travel distance from Bratislava:
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
             today = datetime.now(UTC).strftime("%Y-%m-%d")
-            header = format_whatsapp_header("Klinické štúdie — EU sken", date_str=today)
+            header = format_whatsapp_header(
+                "Klinické štúdie — EU sken",
+                date_str=today,
+                patient_name=_patient_display_name(patient_id),
+            )
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
@@ -557,7 +573,9 @@ Structure the briefing with clear sections:
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
             today = datetime.now(UTC).strftime("%Y-%m-%d")
-            header = format_whatsapp_header("Týždenný briefing", date_str=today)
+            header = format_whatsapp_header(
+                "Týždenný briefing", date_str=today, patient_name=_patient_display_name(patient_id)
+            )
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
@@ -652,6 +670,7 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
                         header = format_whatsapp_header(
                             f"Lab Safety Alert ({latest_date})",
                             date_str=latest_date,
+                            patient_name=_patient_display_name(patient_id),
                         )
                         body = "\n".join(f"- {a}" for a in alerts)
                         await _send_whatsapp(
@@ -1143,6 +1162,7 @@ async def run_document_pipeline(
                 header = format_whatsapp_header(
                     "Nový dokument — bezpečnostné upozornenie",
                     date_str=today,
+                    patient_name=_patient_display_name(patient_id),
                 )
                 await _send_whatsapp(
                     header
@@ -1254,7 +1274,11 @@ Vyhni sa zbytočným odborným detailom.
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
             today = datetime.now(UTC).strftime("%Y-%m-%d")
-            header = format_whatsapp_header("Týždenná správa pre rodinu", date_str=today)
+            header = format_whatsapp_header(
+                "Týždenná správa pre rodinu",
+                date_str=today,
+                patient_name=_patient_display_name(patient_id),
+            )
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
@@ -1313,7 +1337,9 @@ This is a safety check: non-compliance with critical medications is dangerous.
         response_text = result.get("response", "")
         if response_text and not result.get("error"):
             today = datetime.now(UTC).strftime("%Y-%m-%d")
-            header = format_whatsapp_header("Kontrola liekov", date_str=today)
+            header = format_whatsapp_header(
+                "Kontrola liekov", date_str=today, patient_name=_patient_display_name(patient_id)
+            )
             await _send_whatsapp(
                 header + response_text[:1400], recipient="caregiver", template_key="briefing"
             )
@@ -1517,7 +1543,9 @@ async def run_daily_cost_report(patient_id: str = "q1b") -> dict:
         now = datetime.now(UTC)
         month_key = now.strftime("%Y-%m")
         today = now.strftime("%Y-%m-%d")
-        header = format_whatsapp_header("Oncoteam Ranný prehľad", date_str=today)
+        header = format_whatsapp_header(
+            "Oncoteam Ranný prehľad", date_str=today, patient_name=_patient_display_name(patient_id)
+        )
         lines = [header]
 
         # --- Labs section ---

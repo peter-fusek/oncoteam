@@ -49,11 +49,12 @@ def format_whatsapp_header(
     title: str,
     recipient: Recipient | None = None,
     date_str: str = "",
+    patient_name: str = "",
 ) -> str:
     """Format a standardized WhatsApp message header.
 
     Returns lines like:
-        *Pre-cycle check (cyklus 3)*
+        *Pre-cycle check (cyklus 3)* — Erika
         Pre: Peter (opatrovateľ)
         Dátum: 2026-03-23
     """
@@ -63,7 +64,8 @@ def format_whatsapp_header(
         "physician": "lekár" if r.language == "sk" else "physician",
         "patient": "pacient" if r.language == "sk" else "patient",
     }
-    lines = [f"*{title}*"]
+    title_line = f"*{title}*" if not patient_name else f"*{title}* \u2014 {patient_name}"
+    lines = [title_line]
     lines.append(f"Pre: {r.name} ({role_labels.get(r.role, r.role)})")
     if date_str:
         lines.append(f"Dátum: {date_str}")
