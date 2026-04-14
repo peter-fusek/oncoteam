@@ -9,7 +9,6 @@ import httpx
 import pytest
 
 from oncoteam.dashboard_api import (
-    _access_rights_cache,
     _approved_phones,
     api_access_rights_get,
     api_access_rights_set,
