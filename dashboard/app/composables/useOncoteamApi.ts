@@ -4,8 +4,13 @@ export function useOncoteamApi() {
   const { activePatientId } = useActivePatient()
 
   // Read cookie directly as fallback — activePatientId may not be updated yet during SSR
+  // Validate cookie looks like a patient slug (2-10 alphanumeric chars), not a display name
   const patientCookie = useCookie('oncoteam_patient')
-  const effectivePatientId = computed(() => patientCookie.value || activePatientId.value || 'q1b')
+  const validCookie = computed(() => {
+    const v = patientCookie.value
+    return v && /^[a-z0-9]{2,10}$/.test(v) ? v : ''
+  })
+  const effectivePatientId = computed(() => validCookie.value || activePatientId.value || 'q1b')
 
   function fetchApi<T>(path: string | Ref<string> | (() => string), opts?: Record<string, unknown>) {
     const resolvedPath = typeof path === 'function' ? path() : unref(path)

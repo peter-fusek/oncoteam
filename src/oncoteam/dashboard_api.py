@@ -1127,17 +1127,17 @@ async def api_facts(request: Request) -> JSONResponse:
             return cached_response
 
     try:
-        # Fetch from multiple sources in parallel
+        # Fetch treatment events first (fast, <2s), journey timeline is slower
+        events_coro = oncofiles_client.list_treatment_events(limit=200, token=token)
         journey_coro = oncofiles_client.get_journey_timeline(
             date_from=date_from or None,
             date_to=date_to or None,
-            limit=200,
+            limit=50,
             token=token,
         )
-        events_coro = oncofiles_client.list_treatment_events(limit=200, token=token)
-        journey_raw, events_raw = await asyncio.gather(
-            asyncio.wait_for(journey_coro, timeout=12.0),
+        events_raw, journey_raw = await asyncio.gather(
             asyncio.wait_for(events_coro, timeout=8.0),
+            asyncio.wait_for(journey_coro, timeout=18.0),
             return_exceptions=True,
         )
 
