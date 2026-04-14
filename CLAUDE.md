@@ -218,6 +218,16 @@ When reviewing uploaded documents:
 - Agent registry count: 21. Tests in `test_agent_registry.py` and `test_scheduler.py` assert counts — update when adding agents.
 - `_patient_tokens` in `patient_context.py` auto-populates from `ONCOFILES_MCP_TOKEN_<ID>` env vars at module load. Set `ONCOFILES_MCP_TOKEN_E5G` in Railway. Without it, e5g calls fail or fall back to q1b's token (data isolation bug found in Sprint 69).
 
+## Multi-Document Groups (Oncofiles v5.4+)
+
+- Documents can have `group_id`, `part_number`, `total_parts` fields when they are parts of a split or consolidated group
+- `split_source_doc_id` links split children back to the original PDF (which is soft-deleted)
+- Use `get_document_group(group_id)` MCP tool to fetch all parts of a logical document ordered by part_number
+- When viewing a document that's part of a group, always mention the group context (e.g., "Part 2 of 3")
+- Lab analysis: if a lab report is split into multiple parts, combine values from all parts before analysis
+- `detect_and_split_documents(dry_run=True)` and `detect_and_consolidate_documents(dry_run=True)` MCP tools available for scanning
+- Cross-references now use AI-powered relationship types: `same_visit`, `follow_up`, `supersedes`, `related`, `contradicts` (replaces old heuristic same_visit/related)
+
 ## Key commands
 
 - `uv run oncoteam-mcp` — run MCP server (stdio)

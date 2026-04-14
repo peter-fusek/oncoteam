@@ -779,6 +779,11 @@ async def get_related_documents(doc_id: int, *, token: str | None = None) -> dic
     return await call_oncofiles("get_related_documents", {"doc_id": doc_id}, token=token)
 
 
+async def get_document_group(group_id: str, *, token: str | None = None) -> dict:
+    """Get all documents in a logical group (split siblings or consolidated parts)."""
+    return await call_oncofiles("get_document_group", {"group_id": group_id}, token=token)
+
+
 async def get_lab_safety_check(*, token: str | None = None) -> dict:
     """Pre-cycle lab safety check against mFOLFOX6 thresholds."""
     return await call_oncofiles("get_lab_safety_check", {}, token=token)
