@@ -1,5 +1,6 @@
 import { addApprovedPhone } from './approved-phones'
 import { getActivePatient, setActivePatient } from './whatsapp-session'
+import { getRoleMapSync } from './access-rights'
 
 const MAX_REPLY_LENGTH = 1500
 const MAX_SEGMENTS = 3
@@ -577,8 +578,7 @@ async function handleApproveCommand(
   fromPhone?: string,
 ): Promise<CommandResult> {
   // Admin check: only phones in the role map can approve
-  const config = useRuntimeConfig()
-  const adminPhones = extractAdminPhones(config.roleMap)
+  const adminPhones = extractAdminPhones(getRoleMapSync())
   const callerPhone = fromPhone ? fromPhone.replace(/[\s\-()]/g, '') : ''
 
   if (!callerPhone || !adminPhones.has(callerPhone)) {

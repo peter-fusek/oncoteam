@@ -30,6 +30,8 @@ from .config import (
 from .dashboard_api import (
     VERSION,
     _check_api_auth,
+    api_access_rights_get,
+    api_access_rights_set,
     api_activity,
     api_agent_config,
     api_agent_runs,
@@ -1202,6 +1204,9 @@ mcp.custom_route("/api/internal/onboarding-status", methods=["OPTIONS"])(api_cor
 _approve_user = _auth_wrap(api_approve_user)
 mcp.custom_route("/api/internal/approve-user", methods=["POST"])(_approve_user)
 mcp.custom_route("/api/internal/approve-user", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/internal/access-rights", methods=["GET"])(_auth_wrap(api_access_rights_get))
+mcp.custom_route("/api/internal/access-rights", methods=["POST"])(_auth_wrap(api_access_rights_set))
+mcp.custom_route("/api/internal/access-rights", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/bug-report", methods=["POST"])(_auth_wrap(api_bug_report))
 mcp.custom_route("/api/bug-report", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/research/assess-funnel", methods=["POST"])(_auth_wrap(api_assess_funnel))

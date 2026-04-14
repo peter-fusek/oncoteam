@@ -9,7 +9,10 @@ import httpx
 import pytest
 
 from oncoteam.dashboard_api import (
+    _access_rights_cache,
     _approved_phones,
+    api_access_rights_get,
+    api_access_rights_set,
     api_approve_user,
     api_onboard_patient,
     api_onboarding_status,
@@ -402,3 +405,107 @@ def test_fup_per_patient_isolation():
     assert status["ai_queries"]["used"] == 2
 
     _fup_ai_queries.clear()
+
+
+# ── GET/POST /api/internal/access-rights ────────────
+
+
+@pytest.fixture()
+def _clear_access_rights():
+    """Clear access rights cache between tests."""
+    import oncoteam.dashboard_api as _mod
+
+    _mod._access_rights_cache = {}
+    _mod._access_rights_ts = 0.0
+    yield
+    _mod._access_rights_cache = {}
+    _mod._access_rights_ts = 0.0
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures("_clear_access_rights")
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    new_callable=AsyncMock,
+)
+async def test_access_rights_get_from_oncofiles(mock_get):
+    """GET returns role_map from oncofiles agent_state."""
+    mock_get.return_value = {
+        "value": {
+            "role_map": {
+                "user@example.com": {
+                    "phone": "+421900111222",
+                    "roles": ["advocate"],
+                    "patient_id": "q1b",
+                }
+            }
+        }
+    }
+
+    request = FakeRequest()
+    response = await api_access_rights_get(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert "user@example.com" in data["role_map"]
+    assert data["role_map"]["user@example.com"]["phone"] == "+421900111222"
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures("_clear_access_rights")
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    new_callable=AsyncMock,
+)
+async def test_access_rights_get_fallback_on_error(mock_get):
+    """GET returns empty when oncofiles is unreachable and no cache."""
+    mock_get.side_effect = ConnectionError("offline")
+
+    request = FakeRequest()
+    response = await api_access_rights_get(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["role_map"] == {}
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures("_clear_access_rights")
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.set_agent_state",
+    new_callable=AsyncMock,
+)
+async def test_access_rights_set_success(mock_set):
+    """POST persists role_map to oncofiles."""
+    role_map = {
+        "admin@example.com": {
+            "phone": "+421900333444",
+            "roles": ["advocate"],
+            "patient_ids": ["q1b", "e5g"],
+        }
+    }
+    request = FakeRequest({"role_map": role_map})
+    response = await api_access_rights_set(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "updated"
+    assert data["entries"] == 1
+
+    mock_set.assert_called_once()
+    call_kwargs = mock_set.call_args[1]
+    assert call_kwargs["key"] == "role_map"
+    assert call_kwargs["agent_id"] == "access_rights"
+    assert call_kwargs["value"]["role_map"] == role_map
+
+
+@pytest.mark.anyio
+@pytest.mark.usefixtures("_clear_access_rights")
+async def test_access_rights_set_invalid_body():
+    """POST with missing role_map returns 400."""
+    request = FakeRequest({"not_role_map": {}})
+    response = await api_access_rights_set(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 400
+    assert "role_map" in data["error"]

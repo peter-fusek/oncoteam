@@ -4,6 +4,7 @@ import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionC
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
 import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone, getActivePatientForPhone, getUserInfoForPhone } from '../../utils/approved-phones'
 import { recordInbound, sendWhatsApp } from '../../utils/twilio-send'
+import { getRoleMap } from '../../utils/access-rights'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
@@ -236,7 +237,8 @@ export default defineEventHandler(async (event) => {
   }
 
   // Phone allowlist check (mandatory — primary security gate)
-  const allowedPhones = extractPhoneAllowlist(config.roleMap)
+  const roleMap = await getRoleMap()
+  const allowedPhones = extractPhoneAllowlist(roleMap)
 
   // Fail-closed: if ROLE_MAP is empty/missing, reject all — don't route to onboarding
   if (allowedPhones.size === 0 && !isApproved(from)) {
@@ -379,8 +381,8 @@ export default defineEventHandler(async (event) => {
     // ── Voice note handling ──────────────────────────────────────
     if (audioAttachments.length > 0) {
       const patientId = getActivePatientForPhone(from)
-      const allowedIds = getAllowedPatientIdsForPhone(from, config.roleMap as string)
-      const userInfo = getUserInfoForPhone(from, config.roleMap as string)
+      const allowedIds = getAllowedPatientIdsForPhone(from, roleMap)
+      const userInfo = getUserInfoForPhone(from, roleMap)
       const patientNameMap = await getPatientNameMap(oncoteamUrl, apiKey)
 
       // Fire-and-forget: transcribe + route through command handler
@@ -571,10 +573,10 @@ export default defineEventHandler(async (event) => {
   // Process command and respond
   const oncoteamApiUrl = config.oncoteamApiUrl as string
   const apiKey = (config.oncoteamApiKey || '') as string
-  const allowedPatientIds = getAllowedPatientIdsForPhone(from, config.roleMap as string)
+  const allowedPatientIds = getAllowedPatientIdsForPhone(from, roleMap)
   const whatsappPatientId = getActivePatientForPhone(from)
   const hasMultiplePatients = allowedPatientIds.length > 1
-  const userInfo = getUserInfoForPhone(from, config.roleMap as string)
+  const userInfo = getUserInfoForPhone(from, roleMap)
   const patientNameMap = await getPatientNameMap(oncoteamApiUrl, apiKey)
   const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds, hasMultiplePatients, patientNameMap, userName: userInfo.name, userRoles: userInfo.roles })
 

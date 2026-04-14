@@ -1,8 +1,10 @@
 /**
  * Server middleware to patch stale sessions from pre-Sprint 17.
  * Sessions created before role support lack `roles`, `activeRole`, and `phone`.
- * This patches them on-the-fly using the roleMap config so users don't need to re-login.
+ * This patches them on-the-fly using the roleMap so users don't need to re-login.
  */
+import { getRoleMapSync } from '../utils/access-rights'
+
 export default defineEventHandler(async (event) => {
   // Only patch page requests, not API calls or static assets
   const path = getRequestURL(event).pathname
@@ -16,8 +18,7 @@ export default defineEventHandler(async (event) => {
   // Re-patch when roleMap patient_ids changed (e.g. new patient added)
   let roleMapChanged = false
   try {
-    const raw = useRuntimeConfig().roleMap
-    const rm = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {})
+    const rm = getRoleMapSync()
     const email = session.user.email as string
     const uc = rm[email]
     if (uc?.patient_ids) {
@@ -27,16 +28,7 @@ export default defineEventHandler(async (event) => {
   } catch { /* re-patch on parse error */ }
   if (!roleMapChanged && session.user.roles && Array.isArray(session.user.roles) && session.user.patientId && existingIds && !hasDuplicates) return
 
-  const config = useRuntimeConfig()
-  let roleMap: Record<string, { roles?: string[]; phone?: string; patient_id?: string; patient_ids?: string[] }> = {}
-  try {
-    // Nuxt may auto-parse JSON env vars into objects
-    const raw = config.roleMap
-    roleMap = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw as typeof roleMap) || {}
-  } catch (e) {
-    console.warn('[session-patch] Failed to parse roleMap:', e)
-    roleMap = {}
-  }
+  const roleMap = getRoleMapSync()
 
   const email = session.user.email as string
   const userConfig = roleMap[email] || { roles: ['advocate'] }

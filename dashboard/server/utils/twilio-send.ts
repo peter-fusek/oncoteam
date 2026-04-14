@@ -1,4 +1,5 @@
 import twilio from 'twilio'
+import { getRoleMapSync } from './access-rights'
 
 /**
  * Shared WhatsApp message sender with template + session window support.
@@ -134,15 +135,7 @@ export async function broadcastWhatsApp(
   templateKey?: string,
   templateVars?: Record<string, string>,
 ): Promise<SendResult[]> {
-  const config = useRuntimeConfig()
-
-  let roleMap: Record<string, { phone?: string }> = {}
-  try {
-    const raw = config.roleMap
-    roleMap = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw as typeof roleMap) || {}
-  } catch {
-    roleMap = {}
-  }
+  const roleMap = getRoleMapSync()
 
   const phones = new Set<string>()
   for (const entry of Object.values(roleMap)) {

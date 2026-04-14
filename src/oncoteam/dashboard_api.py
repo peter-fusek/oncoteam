@@ -4887,6 +4887,82 @@ async def api_approve_user(request: Request) -> JSONResponse:
     return _cors_json({"status": "approved", "phone": phone}, request=request)
 
 
+# ---------------------------------------------------------------------------
+# Access rights (ROLE_MAP in database)
+# ---------------------------------------------------------------------------
+
+_access_rights_cache: dict[str, object] = {}
+_access_rights_ts: float = 0.0
+_ACCESS_RIGHTS_TTL = 60.0
+
+
+async def _load_access_rights() -> dict[str, object]:
+    """Load access rights from oncofiles agent_state, with 60s cache."""
+    global _access_rights_cache, _access_rights_ts
+    now = time.monotonic()
+    if _access_rights_cache and (now - _access_rights_ts) < _ACCESS_RIGHTS_TTL:
+        return _access_rights_cache
+    try:
+        raw = await oncofiles_client.get_agent_state(key="role_map", agent_id="access_rights")
+        if isinstance(raw, dict):
+            data = raw.get("value") or raw.get("state") or raw
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, dict):
+                role_map = data.get("role_map", data)
+                _access_rights_cache = role_map
+                _access_rights_ts = now
+                return role_map
+    except Exception as exc:
+        record_suppressed_error("_load_access_rights", "get_agent_state", exc)
+        _logger.warning("Failed to load access rights: %s", exc)
+    return _access_rights_cache
+
+
+async def api_access_rights_get(request: Request) -> JSONResponse:
+    """GET /api/internal/access-rights — read the role map from database."""
+    role_map = await _load_access_rights()
+    return _cors_json({"role_map": role_map}, request=request)
+
+
+async def api_access_rights_set(request: Request) -> JSONResponse:
+    """POST /api/internal/access-rights — update the role map in database.
+
+    Expects JSON body: {role_map: {...}}
+    """
+    global _access_rights_cache, _access_rights_ts
+    try:
+        body = await request.json()
+    except Exception:
+        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
+
+    role_map = body.get("role_map")
+    if not isinstance(role_map, dict):
+        return _cors_json(
+            {"error": "role_map must be a JSON object"}, status_code=400, request=request
+        )
+
+    from datetime import UTC
+    from datetime import datetime as _dt
+
+    try:
+        await oncofiles_client.set_agent_state(
+            key="role_map",
+            value={
+                "role_map": role_map,
+                "updated_at": _dt.now(UTC).isoformat(),
+            },
+            agent_id="access_rights",
+        )
+        _access_rights_cache = role_map
+        _access_rights_ts = time.monotonic()
+        _logger.info("Access rights updated: %d entries", len(role_map))
+        return _cors_json({"status": "updated", "entries": len(role_map)}, request=request)
+    except Exception as exc:
+        record_suppressed_error("api_access_rights_set", "set_agent_state", exc)
+        return _cors_json({"error": f"Failed to persist: {exc}"}, status_code=500, request=request)
+
+
 async def api_whatsapp_status(request: Request) -> JSONResponse:
     """GET /api/whatsapp/status — WhatsApp integration status.
 
