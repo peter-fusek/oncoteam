@@ -72,6 +72,7 @@ from .dashboard_api import (
     api_whatsapp_chat,
     api_whatsapp_media,
     api_whatsapp_status,
+    api_whatsapp_voice,
     load_approved_phones,
     load_patient_tokens,
 )
@@ -1189,6 +1190,9 @@ mcp.custom_route("/api/internal/trigger-agent", methods=["OPTIONS"])(api_cors_pr
 _whatsapp_media = _auth_wrap(api_whatsapp_media)
 mcp.custom_route("/api/internal/whatsapp-media", methods=["POST"])(_whatsapp_media)
 mcp.custom_route("/api/internal/whatsapp-media", methods=["OPTIONS"])(api_cors_preflight)
+_whatsapp_voice = _auth_wrap(api_whatsapp_voice)
+mcp.custom_route("/api/internal/whatsapp-voice", methods=["POST"])(_whatsapp_voice)
+mcp.custom_route("/api/internal/whatsapp-voice", methods=["OPTIONS"])(api_cors_preflight)
 _onboard_patient = _auth_wrap(api_onboard_patient)
 mcp.custom_route("/api/internal/onboard-patient", methods=["POST"])(_onboard_patient)
 mcp.custom_route("/api/internal/onboard-patient", methods=["OPTIONS"])(api_cors_preflight)

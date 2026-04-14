@@ -2447,6 +2447,20 @@ async def api_detail(request: Request) -> JSONResponse:
         return _cors_json({"error": str(e)}, status_code=502)
 
 
+def _get_whisper_diagnostics() -> dict:
+    """Get Whisper transcription stats for diagnostics."""
+    try:
+        from .whisper_client import get_whisper_stats
+
+        stats = get_whisper_stats()
+        from .config import OPENAI_API_KEY
+
+        stats["configured"] = bool(OPENAI_API_KEY)
+        return stats
+    except Exception:
+        return {"configured": False, "error": "module_not_loaded"}
+
+
 async def api_diagnostics(request: Request) -> JSONResponse:
     """GET /api/diagnostics — probe oncofiles connectivity and report health."""
     probes = [
@@ -2510,6 +2524,7 @@ async def api_diagnostics(request: Request) -> JSONResponse:
             "oncofiles_url": (ONCOFILES_MCP_URL[:30] + "...") if ONCOFILES_MCP_URL else "NOT SET",
             "autonomous_enabled": AUTONOMOUS_ENABLED,
             "lab_sync_stale": lab_sync_stale,
+            "whisper": _get_whisper_diagnostics(),
             "suppressed_errors": get_suppressed_errors()[-10:],
         }
     )
@@ -4539,6 +4554,60 @@ async def api_whatsapp_media(request: Request) -> JSONResponse:
         },
         request=request,
     )
+
+
+async def api_whatsapp_voice(request: Request) -> JSONResponse:
+    """POST /api/internal/whatsapp-voice — transcribe voice note via Whisper.
+
+    Accepts {audio_base64, content_type, phone, patient_id, lang_hint}.
+    Returns {text, duration_s, cost, lang} or {error}.
+    Audio is ephemeral — never stored.
+    """
+    # Parse body with 15MB limit (audio base64 can exceed default 1MB)
+    import json as _json
+
+    try:
+        raw = await request.body()
+        if len(raw) > 15_000_000:
+            return _cors_json({"error": "Request too large"}, status_code=400, request=request)
+        body = _json.loads(raw)
+    except Exception:
+        return _cors_json({"error": "Invalid JSON"}, status_code=400, request=request)
+
+    audio_b64 = body.get("audio_base64", "")
+    content_type = body.get("content_type", "audio/ogg")
+    patient_id = body.get("patient_id", "q1b")
+    lang_hint = body.get("lang_hint", "sk")
+
+    if not audio_b64:
+        return _cors_json({"error": "Missing audio_base64"}, status_code=400, request=request)
+
+    import base64
+
+    try:
+        audio_bytes = base64.b64decode(audio_b64)
+    except Exception:
+        return _cors_json({"error": "Invalid base64 audio"}, status_code=400, request=request)
+
+    # Size guards
+    if len(audio_bytes) < 1024:
+        return _cors_json({"error": "Audio too short"}, status_code=400, request=request)
+    if len(audio_bytes) > 10 * 1024 * 1024:
+        return _cors_json({"error": "Audio too large (max 10MB)"}, status_code=400, request=request)
+
+    from .whisper_client import transcribe_audio
+
+    result = await transcribe_audio(
+        audio_bytes=audio_bytes,
+        content_type=content_type,
+        patient_id=patient_id,
+        lang_hint=lang_hint,
+    )
+
+    if "error" in result:
+        return _cors_json(result, status_code=503, request=request)
+
+    return _cors_json(result, request=request)
 
 
 async def api_patients(request: Request) -> JSONResponse:

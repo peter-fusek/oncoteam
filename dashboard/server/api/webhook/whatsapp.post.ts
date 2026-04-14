@@ -40,13 +40,23 @@ async function getPatientNameMap(oncoteamApiUrl: string, apiKey: string): Promis
 }
 
 function mimeToExt(contentType: string): string {
+  // Normalize: strip codec params (e.g. "audio/ogg; codecs=opus" → "audio/ogg")
+  const mime = contentType.split(';')[0].trim()
   const map: Record<string, string> = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
     'image/webp': 'webp',
     'application/pdf': 'pdf',
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'audio/amr': 'amr',
   }
-  return map[contentType] || 'bin'
+  return map[mime] || 'bin'
+}
+
+function isAudioMime(contentType: string): boolean {
+  return contentType.startsWith('audio/')
 }
 
 function generateMediaFilename(contentType: string): string {
@@ -340,10 +350,141 @@ export default defineEventHandler(async (event) => {
     const twilioFrom = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
     const twilioTo = `whatsapp:${from}`
 
+    // Split: audio → voice transcription pipeline, non-audio → document pipeline
+    const audioAttachments = mediaAttachments.filter(m => isAudioMime(m.contentType))
+    const documentAttachments = mediaAttachments.filter(m => !isAudioMime(m.contentType))
+
+    // ── Voice note handling ──────────────────────────────────────
+    if (audioAttachments.length > 0) {
+      const patientId = getActivePatientForPhone(from)
+      const allowedIds = getAllowedPatientIdsForPhone(from, config.roleMap as string)
+      const userInfo = getUserInfoForPhone(from, config.roleMap as string)
+      const patientNameMap = await getPatientNameMap(oncoteamUrl, apiKey)
+
+      // Fire-and-forget: transcribe + route through command handler
+      ;(async () => {
+        const audio = audioAttachments[0] // Take first voice note only
+        try {
+          const arrayBuffer = await downloadTwilioMedia(
+            audio.url,
+            config.twilioAccountSid as string,
+            config.twilioAuthToken as string,
+          )
+
+          // Size guards
+          if (arrayBuffer.byteLength < 1024) {
+            await sendWhatsApp({ to: from, body: 'Hlasov\u00e1 spr\u00e1va je pr\u00edli\u0161 kr\u00e1tka. \ud83c\udfa4' })
+            return
+          }
+          if (arrayBuffer.byteLength > 10 * 1024 * 1024) {
+            await sendWhatsApp({ to: from, body: 'Hlasov\u00e1 spr\u00e1va je pr\u00edli\u0161 dlh\u00e1 (max 5 min). Sk\u00faste krat\u0161iu alebo nap\u00ed\u0161te text. \ud83c\udfa4' })
+            return
+          }
+
+          const base64 = Buffer.from(arrayBuffer).toString('base64')
+          const transcription = await $fetch<{ text: string; duration_s?: number; cost?: number; error?: string }>(
+            `${oncoteamUrl}/api/internal/whatsapp-voice`,
+            {
+              method: 'POST',
+              body: {
+                audio_base64: base64,
+                content_type: audio.contentType,
+                phone: from,
+                patient_id: patientId,
+                lang_hint: 'sk',
+              },
+              headers,
+              signal: AbortSignal.timeout(35_000),
+            },
+          )
+
+          if (transcription.error || !transcription.text?.trim()) {
+            await sendWhatsApp({ to: from, body: 'Nepodarilo sa rozpozna\u0165 hlasov\u00fa spr\u00e1vu. Sk\u00faste to znova alebo nap\u00ed\u0161te text. \ud83c\udfa4\u274c' })
+            return
+          }
+
+          const text = transcription.text.trim()
+          const voicePrefix = `\ud83c\udfa4 \u201e${text.slice(0, 200)}\u201c\n\n`
+
+          // Route transcribed text through normal command pipeline
+          const result: CommandResult = await handleWhatsAppCommand(text, oncoteamUrl, from, {
+            patientId,
+            allowedPatientIds: allowedIds,
+            hasMultiplePatients: allowedIds.length > 1,
+            patientNameMap,
+            userName: userInfo.name,
+            userRoles: userInfo.roles,
+          })
+
+          if (result.type === 'reply') {
+            await sendWhatsApp({ to: from, body: (voicePrefix + result.text).slice(0, 1600) })
+          }
+          else if (result.type === 'multi') {
+            const segments = [...result.segments]
+            segments[0] = voicePrefix + segments[0]
+            for (const seg of segments) {
+              await sendWhatsApp({ to: from, body: seg.slice(0, 1600) })
+              await new Promise(r => setTimeout(r, 150))
+            }
+          }
+          else if (result.type === 'async') {
+            // Conversational AI — send interim ack with transcription
+            const patientLabel = patientNameMap[patientId] || patientId
+            await sendWhatsApp({ to: from, body: `${voicePrefix}Prem\u00fd\u0161\u013eam... (~30s) \ud83e\udd14\n\ud83d\udccb ${patientLabel}` })
+
+            const chatResult = await $fetch<{ response: string }>(`${oncoteamUrl}/api/internal/whatsapp-chat`, {
+              method: 'POST',
+              body: {
+                message: result.message,
+                lang: result.lang,
+                phone: from,
+                patient_id: patientId,
+                user_name: userInfo.name,
+                user_roles: userInfo.roles,
+              },
+              headers,
+              signal: AbortSignal.timeout(55_000),
+            })
+            await sendWhatsApp({ to: from, body: chatResult.response || 'Prep\u00e1\u010dte, nepodarilo sa spracova\u0165 spr\u00e1vu.' })
+          }
+
+          // Log with voice metadata
+          $fetch(`${oncoteamUrl}/api/internal/log-whatsapp`, {
+            method: 'POST',
+            body: { phone: from, user_message: `[\ud83c\udfa4 voice] ${text}`, bot_response: '(async)', patient_id: patientId, user_name: userInfo.name, input_type: 'voice', duration_s: transcription.duration_s },
+            headers,
+          }).catch(() => {})
+        }
+        catch (err) {
+          console.error('[whatsapp-voice] Transcription pipeline failed:', err)
+          await sendWhatsApp({ to: from, body: 'Nepodarilo sa rozpozna\u0165 hlasov\u00fa spr\u00e1vu. Sk\u00faste to znova alebo nap\u00ed\u0161te text. \ud83c\udfa4\u274c' }).catch(() => {})
+        }
+      })()
+
+      // Also process any non-audio attachments in parallel
+      if (documentAttachments.length > 0) {
+        ;(async () => {
+          for (const media of documentAttachments) {
+            try {
+              const arrayBuffer = await downloadTwilioMedia(media.url, config.twilioAccountSid as string, config.twilioAuthToken as string)
+              const base64 = Buffer.from(arrayBuffer).toString('base64')
+              const filename = generateMediaFilename(media.contentType)
+              await $fetch(`${oncoteamUrl}/api/internal/whatsapp-media`, { method: 'POST', body: { media_base64: base64, content_type: media.contentType, filename, phone: from, patient_id: patientId }, headers })
+            }
+            catch (err) { console.error('[whatsapp-media] Failed:', err) }
+          }
+        })()
+      }
+
+      setResponseHeader(event, 'content-type', 'text/xml')
+      return twiml('Prep\u00ed\u0161em hlasov\u00fa spr\u00e1vu... \ud83c\udfa4')
+    }
+
+    // ── Document-only media (no audio) ──────────────────────────────
     // Fire-and-forget: download, upload, analyze, respond via Twilio REST
     ;(async () => {
       const results: string[] = []
-      for (const media of mediaAttachments) {
+      for (const media of documentAttachments) {
         try {
           const arrayBuffer = await downloadTwilioMedia(
             media.url,
@@ -367,15 +508,15 @@ export default defineEventHandler(async (event) => {
               headers,
             },
           )
-          const summary = result.summary || 'Dokument bol nahraný.'
+          const summary = result.summary || 'Dokument bol nahran\u00fd.'
           const pipelineNote = result.pipeline === 'started'
-            ? '\n🔄 Spúšťam analýzu — labky a hodnoty sa extrahujú automaticky.'
+            ? '\n\ud83d\udd04 Sp\u00fa\u0161\u0165am anal\u00fdzu \u2014 labky a hodnoty sa extrahuj\u00fa automaticky.'
             : ''
-          results.push(`📄 ${filename}: ${summary}${pipelineNote}`)
+          results.push(`\ud83d\udcc4 ${filename}: ${summary}${pipelineNote}`)
         }
         catch (err) {
           console.error('[whatsapp-media] Failed to process attachment:', err)
-          results.push('Chyba pri spracovaní prílohy.')
+          results.push('Chyba pri spracovan\u00ed pr\u00edlohy.')
         }
       }
 
@@ -396,13 +537,13 @@ export default defineEventHandler(async (event) => {
       // Log the exchange
       $fetch(`${oncoteamUrl}/api/internal/log-whatsapp`, {
         method: 'POST',
-        body: { phone: from, user_message: `[media x${mediaAttachments.length}] ${messageBody}`, bot_response: reply },
+        body: { phone: from, user_message: `[media x${documentAttachments.length}] ${messageBody}`, bot_response: reply },
         headers,
       }).catch((err: unknown) => console.warn('[whatsapp] Non-critical async failed:', (err as Error)?.message || err))
     })()
 
     setResponseHeader(event, 'content-type', 'text/xml')
-    return twiml('Spracovávam dokument... 📄')
+    return twiml('Spracov\u00e1vam dokument... \ud83d\udcc4')
   }
 
   // Process command and respond

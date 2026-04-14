@@ -61,6 +61,11 @@ FUP_AI_QUERIES_PER_MONTH: int = int(os.environ.get("FUP_AI_QUERIES_PER_MONTH", "
 FUP_AGENT_RUNS_PER_MONTH: int = int(os.environ.get("FUP_AGENT_RUNS_PER_MONTH", "100"))
 FUP_ONCOFILES_DOCUMENTS: int = int(os.environ.get("FUP_ONCOFILES_DOCUMENTS", "200"))
 
+# OpenAI Whisper (voice note transcription)
+OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
+WHISPER_MODEL: str = os.environ.get("WHISPER_MODEL", "whisper-1")
+WHISPER_TIMEOUT: int = int(os.environ.get("WHISPER_TIMEOUT", "30"))
+
 # HTTP timeouts (seconds)
 TIMEOUT_EXTERNAL_API: int = 30  # PubMed, ClinicalTrials.gov
 TIMEOUT_GITHUB_API: int = 15
