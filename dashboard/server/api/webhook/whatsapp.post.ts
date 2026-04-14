@@ -201,10 +201,15 @@ export default defineEventHandler(async (event) => {
     )
   }
 
-  // Phone allowlist is enforced below — log signature failure but don't block
-  // (Reverse proxy URL reconstruction may not match Twilio's expected URL)
+  // Fail-closed on signature validation failure — block unauthenticated requests
   if (!isValid) {
-    console.warn('[whatsapp-webhook] Twilio signature validation failed, relying on phone allowlist')
+    // Allow bypass only if NUXT_TWILIO_WEBHOOK_URL is not set (signature URL unknown)
+    if (config.twilioWebhookUrl) {
+      console.error('[whatsapp-webhook] Twilio signature validation FAILED from:', from)
+      setResponseHeader(event, 'content-type', 'text/xml')
+      return twiml('')  // Empty TwiML — silent reject
+    }
+    console.warn('[whatsapp-webhook] Twilio signature validation failed (no webhook URL configured for verification)')
   }
 
   // Phone format validation — reject malformed senders
@@ -232,6 +237,14 @@ export default defineEventHandler(async (event) => {
 
   // Phone allowlist check (mandatory — primary security gate)
   const allowedPhones = extractPhoneAllowlist(config.roleMap)
+
+  // Fail-closed: if ROLE_MAP is empty/missing, reject all — don't route to onboarding
+  if (allowedPhones.size === 0 && !isApproved(from)) {
+    console.error('[whatsapp] NUXT_ROLE_MAP is empty — failing closed. No phones authorized.')
+    setResponseHeader(event, 'content-type', 'text/xml')
+    return twiml('Syst\u00e9m je do\u010dasne nedostupn\u00fd. Sk\u00faste nesk\u00f4r.')
+  }
+
   let isAllowed = allowedPhones.has(from) || isApproved(from)
 
   // If not in local cache, double-check with backend (oncofiles-persisted phones)
