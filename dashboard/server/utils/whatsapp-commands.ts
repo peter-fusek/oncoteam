@@ -757,7 +757,7 @@ async function resolveNameWithAI(query: string, allowedIds: string[], oncoteamAp
         method: 'POST',
         body: { query, allowed_ids: allowedIds },
         headers,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(8000),
       },
     )
     console.log(`[resolve-patient] Resolved "${query}" → ${result.patient_id || 'null'}`)
@@ -807,13 +807,13 @@ async function handleSwitchCommand(
     else {
       const available = allowedPatientIds.map(id => {
         const name = patientNameMap?.[id]
-        return name ? `${id} (${name})` : id
+        return name ? `*${id}* (${name})` : `*${id}*`
       }).join(', ')
       return {
         type: 'reply',
         text: t(L(
-          `Nemate pristup k pacientovi *${slug}*.\nDostupni pacienti: ${available}`,
-          `Access denied to patient *${slug}*.\nAvailable patients: ${available}`,
+          `Nepodarilo sa rozpoznat *${slug}*.\nSkuste: prepni ${allowedPatientIds[0]}\nDostupni: ${available}`,
+          `Could not resolve *${slug}*.\nTry: switch ${allowedPatientIds[0]}\nAvailable: ${available}`,
         ), lang),
       }
     }
