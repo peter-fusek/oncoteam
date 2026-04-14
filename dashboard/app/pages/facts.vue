@@ -77,7 +77,7 @@ watch(apiUrl, () => {
   hasMore.value = false
 })
 
-// When new data arrives, populate
+// When new data arrives, populate (immediate: true catches initial load)
 watch(factsData, (data) => {
   if (!data?.facts) return
   if (currentOffset.value === 0) {
@@ -89,7 +89,7 @@ watch(factsData, (data) => {
   totalFacts.value = data.total
   hasMore.value = data.has_more
   loadingMore.value = false
-})
+}, { immediate: true })
 
 // Sync filters to URL (replace, not push)
 watch([activeCategory, debouncedSearch, dateFrom, dateTo, sortOrder], () => {
