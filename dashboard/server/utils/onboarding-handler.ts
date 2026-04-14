@@ -1,9 +1,10 @@
 import { getOnboardingState, setOnboardingState } from './onboarding-state'
 import type { OnboardingState } from './onboarding-state'
+import { createOAuthToken } from './oauth-tokens'
 
 type Lang = 'sk' | 'en'
 
-const ONCOFILES_URL = process.env.NUXT_ONCOFILES_PUBLIC_URL || 'https://oncofiles.com'
+const DASHBOARD_URL = process.env.NUXT_PUBLIC_SITE_URL || 'https://dashboard.oncoteam.cloud'
 
 const SLOVAK_INDICATORS = [
   'ahoj', 'dobry', 'dobrý', 'den', 'deň', 'chcem', 'potrebujem', 'pomoc',
@@ -219,11 +220,13 @@ async function handleCollectLanguage(
       },
     )
 
-    const oauthUrl = `${ONCOFILES_URL}/oauth/authorize/drive?patient_id=${state.patientId}`
+    const actualPatientId = result.patient_id || state.patientId || ''
+    const oauthToken = createOAuthToken(actualPatientId)
+    const oauthUrl = `${DASHBOARD_URL}/api/oauth/connect?token=${oauthToken}`
 
     const updatedState: OnboardingState = {
       ...provisioningState,
-      patientId: result.patient_id || state.patientId,
+      patientId: actualPatientId,
       step: 'oauth_sent',
       updatedAt: Date.now(),
     }
@@ -269,8 +272,9 @@ function handleOAuthSent(phone: string, body: string, state: OnboardingState): O
     return { type: 'reply', text }
   }
 
-  // Remind about OAuth
-  const oauthUrl = `${ONCOFILES_URL}/oauth/authorize/drive?patient_id=${state.patientId}`
+  // Remind about OAuth — generate fresh token (previous may have expired)
+  const oauthToken = createOAuthToken(state.patientId || '')
+  const oauthUrl = `${DASHBOARD_URL}/api/oauth/connect?token=${oauthToken}`
   const text = t(L(
     `Prosim, najskor prepojte Google Drive:\n\n${oauthUrl}\n\nPo prepojeni napisete *hotovo*.`,
     `Please connect Google Drive first:\n\n${oauthUrl}\n\nOnce connected, reply *done*.`,
@@ -293,15 +297,17 @@ async function handleAwaitingDocs(
   }
   setOnboardingState(phone, updatedState)
 
-  // Notify admin (fire-and-forget)
+  // Notify admin (fire-and-forget) — sanitize user-submitted values
   try {
+    const safeName = (state.patientName || '').replace(/[^\p{L}\p{N}\s.\-]/gu, '').slice(0, 100)
+    const safeDiagnosis = (state.diagnosis || '').replace(/[^\p{L}\p{N}\s.\-,()]/gu, '').slice(0, 200)
     const headers: Record<string, string> = apiKey
       ? { Authorization: `Bearer ${apiKey}` }
       : {}
     $fetch(`${oncoteamApiUrl}/api/internal/whatsapp-notify`, {
       method: 'POST',
       body: {
-        message: `[Onboarding] New patient registered: ${state.patientName} (${state.patientId}), diagnosis: ${state.diagnosis}, phone: ${phone}`,
+        message: `[Onboarding] New patient registered: ${safeName}, diagnosis: ${safeDiagnosis}`,
       },
       headers,
     }).catch(() => {})

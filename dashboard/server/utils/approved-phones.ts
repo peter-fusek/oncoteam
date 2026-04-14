@@ -20,15 +20,15 @@ export function isApproved(phone: string): boolean {
 
 /**
  * Check backend for approved status when local cache misses.
- * Returns true if the backend confirms the phone is approved (persisted in oncofiles).
- * Caches the result locally on success.
+ * Returns 'approved' if confirmed, 'denied' if explicitly not approved,
+ * or 'error' if backend is unreachable (caller must fail closed).
  */
 export async function checkApprovedWithBackend(
   phone: string,
   oncoteamApiUrl: string,
   apiKey: string,
-): Promise<boolean> {
-  if (approvedPhones.has(phone)) return true
+): Promise<'approved' | 'denied' | 'error'> {
+  if (approvedPhones.has(phone)) return 'approved'
   try {
     const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
     const result = await $fetch<{ phone: string; status: string; approved: boolean }>(
@@ -42,13 +42,14 @@ export async function checkApprovedWithBackend(
     )
     if (result.approved) {
       approvedPhones.add(phone)
-      return true
+      return 'approved'
     }
+    return 'denied'
   }
   catch {
-    // Backend unreachable — fall through to onboarding
+    console.error(`[approved-phones] Backend unreachable for phone check — failing closed`)
+    return 'error'
   }
-  return false
 }
 
 export function getApprovedPhones(): string[] {

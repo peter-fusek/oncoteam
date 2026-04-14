@@ -251,7 +251,16 @@ export default defineEventHandler(async (event) => {
   if (!isAllowed) {
     const oncoteamUrl = config.oncoteamApiUrl as string
     const apiKey = (config.oncoteamApiKey || '') as string
-    isAllowed = await checkApprovedWithBackend(from, oncoteamUrl, apiKey)
+    const backendResult = await checkApprovedWithBackend(from, oncoteamUrl, apiKey)
+    if (backendResult === 'approved') {
+      isAllowed = true
+    }
+    else if (backendResult === 'error') {
+      // Fail closed: don't route to onboarding when backend is unreachable
+      console.error('[whatsapp] Backend unreachable — failing closed, not routing to onboarding')
+      setResponseHeader(event, 'content-type', 'text/xml')
+      return twiml('Systém je dočasne nedostupný. Skúste neskôr. / System temporarily unavailable. Try again later.')
+    }
   }
 
   if (!isAllowed) {
