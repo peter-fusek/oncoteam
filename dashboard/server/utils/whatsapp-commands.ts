@@ -757,9 +757,10 @@ async function resolveNameWithAI(query: string, allowedIds: string[], oncoteamAp
         method: 'POST',
         body: { query, allowed_ids: allowedIds },
         headers,
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(15000),
       },
     )
+    console.log(`[resolve-patient] Resolved "${query}" → ${result.patient_id || 'null'}`)
     return result.patient_id || undefined
   }
   catch (err) {
