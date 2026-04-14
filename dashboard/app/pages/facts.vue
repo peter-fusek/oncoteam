@@ -52,25 +52,35 @@ watch(searchQuery, (val) => {
   searchTimer = setTimeout(() => { debouncedSearch.value = val }, 400)
 })
 
-// Build API URL from filters
-const apiUrl = computed(() => {
-  const params = new URLSearchParams()
-  if (activeCategory.value) params.set('categories', activeCategory.value)
-  if (debouncedSearch.value.length >= 3) params.set('search', debouncedSearch.value)
-  if (dateFrom.value) params.set('date_from', dateFrom.value)
-  if (dateTo.value) params.set('date_to', dateTo.value)
-  params.set('sort', sortOrder.value)
-  params.set('limit', '20')
-  const qs = params.toString()
-  return `/facts${qs ? `?${qs}` : ''}`
+// Build filter query as a reactive object (useFetch merges with useOncoteamApi query)
+const factsQuery = computed(() => {
+  const q: Record<string, string> = { sort: sortOrder.value, limit: '20' }
+  if (activeCategory.value) q.categories = activeCategory.value
+  if (debouncedSearch.value.length >= 3) q.search = debouncedSearch.value
+  if (dateFrom.value) q.date_from = dateFrom.value
+  if (dateTo.value) q.date_to = dateTo.value
+  return q
 })
 
-const { data: factsData, status: factsStatus, error: factsError, refresh } = fetchApi<FactsResponse>(
-  apiUrl, { lazy: true, server: false, watch: [apiUrl] },
+// Serialized key for watch — triggers reset when any filter changes
+const filterKey = computed(() => JSON.stringify(factsQuery.value))
+
+const { data: factsData, status: factsStatus, error: factsError, refresh } = useFetch<FactsResponse>(
+  '/api/oncoteam/facts',
+  {
+    query: computed(() => {
+      const { activePatientId } = useActivePatient()
+      const { locale } = useI18n()
+      return { ...factsQuery.value, patient_id: activePatientId.value, lang: locale.value }
+    }),
+    lazy: true,
+    server: false,
+    watch: [filterKey],
+  },
 )
 
-// When filters change (new apiUrl), reset accumulated state
-watch(apiUrl, () => {
+// When filters change, reset accumulated state
+watch(filterKey, () => {
   allFacts.value = []
   currentOffset.value = 0
   totalFacts.value = 0
@@ -107,16 +117,12 @@ async function loadMore() {
   if (loadingMore.value || !hasMore.value) return
   loadingMore.value = true
   currentOffset.value += 20
-  const params = new URLSearchParams()
-  if (activeCategory.value) params.set('categories', activeCategory.value)
-  if (debouncedSearch.value.length >= 3) params.set('search', debouncedSearch.value)
-  if (dateFrom.value) params.set('date_from', dateFrom.value)
-  if (dateTo.value) params.set('date_to', dateTo.value)
-  params.set('sort', sortOrder.value)
-  params.set('limit', '20')
-  params.set('offset', String(currentOffset.value))
+  const { activePatientId } = useActivePatient()
+  const { locale } = useI18n()
+  const q = { ...factsQuery.value, offset: String(currentOffset.value), patient_id: activePatientId.value, lang: locale.value }
+  const qs = new URLSearchParams(q).toString()
   try {
-    const data = await $fetch<FactsResponse>(`/api/oncoteam/facts?${params.toString()}&patient_id=${route.query.patient_id || 'q1b'}`)
+    const data = await $fetch<FactsResponse>(`/api/oncoteam/facts?${qs}`)
     if (data?.facts) {
       allFacts.value = [...allFacts.value, ...data.facts]
       hasMore.value = data.has_more
