@@ -202,13 +202,17 @@ jobs:
         env:
           PROD_DASHBOARD_URL: https://dashboard.oncoteam.cloud
         run: |
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L "$PROD_DASHBOARD_URL")
-          if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
-            echo "Dashboard OK (status: $STATUS)"
-          else
-            echo "Dashboard returned $STATUS"
-            exit 1
-          fi
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' -L "$PROD_DASHBOARD_URL")
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ]; then
+              echo "Dashboard OK (status: $STATUS)"
+              exit 0
+            fi
+            echo "Attempt $i: dashboard returned $STATUS, retrying in 30s..."
+            sleep 30
+          done
+          echo "Dashboard health check failed after 3 attempts"
+          exit 1
 
       - name: Post deployment status
         if: always()
