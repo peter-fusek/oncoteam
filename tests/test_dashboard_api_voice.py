@@ -44,11 +44,13 @@ async def test_voice_endpoint_success(mock_transcribe):
         "lang": "sk",
     }
     audio_b64 = base64.b64encode(b"\x00" * 2000).decode()
-    req = _make_request({
-        "audio_base64": audio_b64,
-        "content_type": "audio/ogg",
-        "patient_id": "q1b",
-    })
+    req = _make_request(
+        {
+            "audio_base64": audio_b64,
+            "content_type": "audio/ogg",
+            "patient_id": "q1b",
+        }
+    )
     response = await api_whatsapp_voice(req)
     data = json.loads(response.body)
 

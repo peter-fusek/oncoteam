@@ -87,9 +87,7 @@ async def test_transcribe_audio_no_api_key():
 @pytest.mark.anyio
 async def test_transcribe_audio_api_failure():
     mock_client = MagicMock()
-    mock_client.audio.transcriptions.create = AsyncMock(
-        side_effect=RuntimeError("API error")
-    )
+    mock_client.audio.transcriptions.create = AsyncMock(side_effect=RuntimeError("API error"))
 
     p1, p2, p3 = _mock_config()
     with p1, p2, p3, patch("openai.AsyncOpenAI", return_value=mock_client):
@@ -103,9 +101,7 @@ async def test_transcribe_audio_api_failure():
 @pytest.mark.anyio
 async def test_circuit_breaker_opens_after_threshold():
     mock_client = MagicMock()
-    mock_client.audio.transcriptions.create = AsyncMock(
-        side_effect=RuntimeError("API error")
-    )
+    mock_client.audio.transcriptions.create = AsyncMock(side_effect=RuntimeError("API error"))
 
     p1, p2, p3 = _mock_config()
     with p1, p2, p3, patch("openai.AsyncOpenAI", return_value=mock_client):
