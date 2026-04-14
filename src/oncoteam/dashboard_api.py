@@ -1001,6 +1001,239 @@ async def api_timeline(request: Request) -> JSONResponse:
         return _cors_json({"error": str(e), "events": [], "total": 0}, status_code=502)
 
 
+_facts_cache: dict[str, tuple[float, JSONResponse]] = {}
+_FACTS_CACHE_TTL = 45  # seconds
+
+# Category → event_type mapping for facts
+_FACT_CATEGORY_MAP = {
+    "clinical": {
+        "chemo_cycle",
+        "chemotherapy",
+        "lab_result",
+        "toxicity_log",
+        "weight_measurement",
+        "medication_log",
+        "medication_adherence",
+        "consultation",
+        "surgery",
+        "scan",
+        "checkup",
+        "screening",
+        "vaccination",
+        "dental",
+    },
+    "documents": {"document"},
+    "intelligence": {
+        "autonomous_briefing",
+        "session_summary",
+        "decision",
+        "note",
+        "family_update",
+        "cost_alert",
+    },
+    "operational": {"agent_run", "whatsapp"},
+}
+
+
+def _normalize_fact(item: dict, source: str) -> dict:
+    """Normalize a raw item from any source into a FactItem dict."""
+    if source == "journey":
+        # get_journey_timeline returns {date, type, subtype, title, detail, id}
+        item_type = item.get("type", "")  # "document" or "conversation"
+        subtype = item.get("subtype", "")
+        if item_type == "document":
+            category = "documents"
+            id_prefix = "doc"
+        elif subtype in _FACT_CATEGORY_MAP.get("intelligence", set()):
+            category = "intelligence"
+            id_prefix = "narr"
+        elif subtype in _FACT_CATEGORY_MAP.get("operational", set()):
+            category = "operational"
+            id_prefix = "narr"
+        else:
+            category = "intelligence"
+            id_prefix = "narr"
+        return {
+            "id": f"{id_prefix}:{item.get('id', 0)}",
+            "fact_type": item_type,
+            "category": category,
+            "event_subtype": subtype,
+            "title": item.get("title", ""),
+            "date": item.get("date", ""),
+            "summary": (item.get("detail") or "")[:300],
+            "source_label": item_type.replace("_", " ").title(),
+            "gdrive_url": item.get("gdrive_url"),
+            "document_id": item.get("id") if item_type == "document" else None,
+            "oncofiles_id": item.get("id"),
+            "tags": [],
+            "has_document": item_type == "document",
+        }
+    elif source == "treatment_event":
+        event_type = item.get("event_type", "")
+        category = "clinical"
+        return {
+            "id": f"te:{item.get('id', 0)}",
+            "fact_type": "treatment_event",
+            "category": category,
+            "event_subtype": event_type,
+            "title": item.get("title", ""),
+            "date": item.get("event_date", ""),
+            "summary": (item.get("notes") or "")[:300],
+            "source_label": "Treatment Event",
+            "gdrive_url": None,
+            "document_id": None,
+            "oncofiles_id": item.get("id"),
+            "tags": item.get("tags", []),
+            "has_document": False,
+        }
+    return {}
+
+
+async def api_facts(request: Request) -> JSONResponse:
+    """GET /api/facts — unified fact timeline across all data sources."""
+    cb_resp = _circuit_breaker_503({"facts": [], "total": 0, "has_more": False})
+    if cb_resp:
+        return cb_resp
+
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
+
+    # Parse query params
+    categories_raw = request.query_params.get("categories", "")
+    categories = set(categories_raw.split(",")) if categories_raw else set()
+    event_types_raw = request.query_params.get("event_types", "")
+    event_types = set(event_types_raw.split(",")) if event_types_raw else set()
+    search = request.query_params.get("search", "").strip().lower()
+    date_from = request.query_params.get("date_from", "")
+    date_to = request.query_params.get("date_to", "")
+    sort_order = request.query_params.get("sort", "newest")
+    offset = max(0, int(request.query_params.get("offset", "0") or "0"))
+    limit = min(50, max(1, int(request.query_params.get("limit", "20") or "20")))
+
+    # Cache only offset=0 to avoid bloat
+    cache_key = _cache_key(
+        "facts",
+        patient_id,
+        categories_raw,
+        event_types_raw,
+        search,
+        date_from,
+        date_to,
+        sort_order,
+    )
+    if offset == 0 and cache_key in _facts_cache:
+        cached_time, cached_response = _facts_cache[cache_key]
+        if time.time() - cached_time < _FACTS_CACHE_TTL:
+            return cached_response
+
+    try:
+        # Fetch from multiple sources in parallel
+        journey_coro = oncofiles_client.get_journey_timeline(
+            date_from=date_from or None,
+            date_to=date_to or None,
+            limit=200,
+            token=token,
+        )
+        events_coro = oncofiles_client.list_treatment_events(limit=200, token=token)
+        journey_raw, events_raw = await asyncio.gather(
+            asyncio.wait_for(journey_coro, timeout=12.0),
+            asyncio.wait_for(events_coro, timeout=8.0),
+            return_exceptions=True,
+        )
+
+        all_facts: list[dict] = []
+
+        # Process journey timeline (documents + conversations)
+        if not isinstance(journey_raw, BaseException):
+            items = journey_raw
+            if isinstance(items, str):
+                items = json.loads(items)
+            if isinstance(items, dict):
+                items = items.get("result") or items.get("items") or []
+                if isinstance(items, str):
+                    items = json.loads(items)
+            if isinstance(items, list):
+                for item in items:
+                    fact = _normalize_fact(item, "journey")
+                    if fact:
+                        all_facts.append(fact)
+        else:
+            record_suppressed_error("api_facts", "journey_timeline", journey_raw)
+
+        # Process treatment events
+        if not isinstance(events_raw, BaseException):
+            events = _extract_list(events_raw, "events")
+            events = _filter_test(events, request)
+            for ev in events:
+                eid = ev.get("id")
+                if isinstance(eid, int) and eid in _CONTAMINATED_EVENT_IDS:
+                    continue
+                fact = _normalize_fact(ev, "treatment_event")
+                if fact:
+                    all_facts.append(fact)
+        else:
+            record_suppressed_error("api_facts", "treatment_events", events_raw)
+
+        # Filter by categories
+        if categories:
+            all_facts = [f for f in all_facts if f["category"] in categories]
+
+        # Filter by event types
+        if event_types:
+            all_facts = [f for f in all_facts if f["event_subtype"] in event_types]
+
+        # Fulltext search (3+ chars)
+        if len(search) >= 3:
+            all_facts = [
+                f
+                for f in all_facts
+                if search in (f.get("title") or "").lower()
+                or search in (f.get("summary") or "").lower()
+                or any(search in t.lower() for t in (f.get("tags") or []))
+            ]
+
+        # Date range filter
+        if date_from:
+            all_facts = [f for f in all_facts if (f.get("date") or "") >= date_from]
+        if date_to:
+            all_facts = [f for f in all_facts if (f.get("date") or "") <= date_to]
+
+        # Sort
+        reverse = sort_order != "oldest"
+        all_facts.sort(key=lambda f: f.get("date") or "", reverse=reverse)
+
+        # Paginate
+        total = len(all_facts)
+        page = all_facts[offset : offset + limit]
+        has_more = (offset + limit) < total
+
+        response = _cors_json(
+            {
+                "facts": page,
+                "total": total,
+                "offset": offset,
+                "limit": limit,
+                "has_more": has_more,
+            }
+        )
+
+        # Cache offset=0 only
+        if offset == 0:
+            _facts_cache[cache_key] = (time.time(), response)
+            _cache_evict(_facts_cache)
+
+        return response
+
+    except Exception as exc:
+        record_suppressed_error("api_facts", "fetch", exc)
+        if cache_key in _facts_cache:
+            return _facts_cache[cache_key][1]
+        return _cors_json(
+            {"error": str(exc), "facts": [], "total": 0, "has_more": False},
+            status_code=502,
+        )
+
+
 _patient_ids_cache: dict[str, tuple[float, dict]] = {}
 _PATIENT_IDS_CACHE_TTL = 600  # 10 minutes — patient IDs change very rarely
 

@@ -50,6 +50,7 @@ const navigationSections = computed<NavSection[]>(() => {
         { label: t('nav.home'), icon: 'i-lucide-layout-dashboard', to: '/' },
         { label: t('nav.patient'), icon: 'i-lucide-user-round', to: '/patient' },
         { label: t('nav.timeline'), icon: 'i-lucide-calendar-clock', to: '/timeline' },
+        { label: t('nav.facts'), icon: 'i-lucide-layers', to: '/facts' },
       ],
     },
     {
