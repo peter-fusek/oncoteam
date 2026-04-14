@@ -742,7 +742,15 @@ async function resolveNameWithAI(query: string, allowedIds: string[], oncoteamAp
   try {
     const config = useRuntimeConfig()
     const apiKey = config.oncoteamApiKey || ''
-    const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+    if (!apiKey) {
+      console.warn('[resolve-patient] No oncoteamApiKey configured — skipping AI resolution')
+      return undefined
+    }
+    if (!oncoteamApiUrl) {
+      console.warn('[resolve-patient] No oncoteamApiUrl — skipping AI resolution')
+      return undefined
+    }
+    const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` }
     const result = await $fetch<{ patient_id: string | null; name?: string }>(
       `${oncoteamApiUrl}/api/internal/resolve-patient`,
       {
@@ -754,7 +762,8 @@ async function resolveNameWithAI(query: string, allowedIds: string[], oncoteamAp
     )
     return result.patient_id || undefined
   }
-  catch {
+  catch (err) {
+    console.error('[resolve-patient] AI name resolution failed:', (err as Error)?.message || err)
     return undefined
   }
 }

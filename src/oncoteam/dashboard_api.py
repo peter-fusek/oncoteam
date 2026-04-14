@@ -3805,10 +3805,9 @@ async def api_resolve_patient(request: Request) -> JSONResponse:
     declined forms) to a patient slug.
     Body: {query: "eriku", allowed_ids: ["q1b", "e5g"]}
     Returns: {patient_id: "q1b", name: "Erika Fusekova"} or {patient_id: null}
+
+    Note: auth is handled by _auth_wrap in server.py, not duplicated here.
     """
-    auth = _check_api_auth(request)
-    if auth:
-        return auth
     try:
         body = json.loads(await request.body())
         query = (body.get("query") or "").strip()
