@@ -210,7 +210,11 @@
     "nou_id": "NOU ID",
     "layExplanation": "Simple explanation",
     "medicalExplanation": "Medical details",
-    "topStudies": "Top Studies"
+    "topStudies": "Top Studies",
+    "milestones": "Clinical Milestones",
+    "milestoneDate": "Date",
+    "milestoneEvent": "Event",
+    "milestoneDetails": "Details"
   },
   "protocol": {
     "title": "Clinical Protocol",

@@ -118,6 +118,31 @@ const plannedTherapies = computed(() =>
 // Toggle between lay and medical explanations
 const showMedical = ref(false)
 
+// Clinical milestones (oncology patients only)
+const { data: timelineData } = fetchApi<{
+  events: Array<{ id: number; event_date: string; event_type: string; title: string; notes: string }>
+}>('/timeline?limit=50', { lazy: true, server: false })
+
+const MILESTONE_TYPES = new Set(['chemotherapy', 'chemo_cycle', 'surgery', 'scan', 'consultation', 'diagnosis'])
+const milestones = computed(() => {
+  if (!timelineData.value?.events) return []
+  return timelineData.value.events
+    .filter(e => MILESTONE_TYPES.has(e.event_type))
+    .slice(0, 10)
+})
+
+function milestoneIcon(type: string): string {
+  switch (type) {
+    case 'chemotherapy':
+    case 'chemo_cycle': return '\uD83D\uDC8A'
+    case 'surgery': return '\uD83D\uDD2A'
+    case 'scan': return '\uD83D\uDCE1'
+    case 'consultation': return '\uD83E\uDE7A'
+    case 'diagnosis': return '\uD83C\uDFE5'
+    default: return '\uD83D\uDCC5'
+  }
+}
+
 // Preventive care screenings (general health patients only)
 const { data: preventiveCare, status: preventiveCareStatus } = fetchApi<{
   screenings: Array<{ id: string; name: string; interval_label: string; min_age: number | null; last_date: string | null; next_due: string | null; status: string; source: string }>
@@ -379,6 +404,40 @@ const abbreviations: Record<string, string> = {
         {{ c }}
       </div>
       <p v-if="patient.notes" class="text-sm text-gray-500 mt-2">{{ patient.notes }}</p>
+    </div>
+
+    <!-- Clinical Milestones (oncology patients only) -->
+    <div v-if="isOncology && milestones.length" class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-900">{{ $t('patient.milestones') }}</h3>
+        <NuxtLink to="/facts" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
+      </div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-100 bg-gray-50/50">
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('patient.milestoneDate') }}</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ $t('patient.milestoneEvent') }}</th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">{{ $t('patient.milestoneDetails') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="m in milestones"
+            :key="m.id"
+            class="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 cursor-pointer"
+            @click="drilldown.open({ type: 'treatment_event', id: m.id, label: m.title })"
+          >
+            <td class="px-4 py-2.5 text-gray-500 whitespace-nowrap">{{ m.event_date }}</td>
+            <td class="px-4 py-2.5">
+              <div class="flex items-center gap-2">
+                <span class="text-base">{{ milestoneIcon(m.event_type) }}</span>
+                <span class="text-gray-900 font-medium">{{ m.title }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-2.5 text-gray-500 hidden md:table-cell max-w-xs truncate">{{ m.notes?.slice(0, 120) }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Preventive Screenings (general health patients only) -->

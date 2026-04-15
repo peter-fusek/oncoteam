@@ -210,7 +210,11 @@
     "nou_id": "NOU ID",
     "layExplanation": "Jednoduché vysvetlenie",
     "medicalExplanation": "Medicínsky detail",
-    "topStudies": "Najdôležitejšie štúdie"
+    "topStudies": "Najdôležitejšie štúdie",
+    "milestones": "Klinické míľniky",
+    "milestoneDate": "Dátum",
+    "milestoneEvent": "Udalosť",
+    "milestoneDetails": "Podrobnosti"
   },
   "protocol": {
     "title": "Klinický protokol",
