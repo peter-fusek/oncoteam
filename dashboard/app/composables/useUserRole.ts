@@ -17,6 +17,7 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/communications': ['advocate'],
   '/sessions': ['advocate'],
   '/documents': ['advocate'],
+  '/export': ['advocate', 'doctor'],
   '/oncofiles': ['advocate'],
 }
 

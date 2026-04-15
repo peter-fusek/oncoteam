@@ -69,7 +69,9 @@ const navigationSections = computed<NavSection[]>(() => {
       items: [
         { label: t('nav.briefings'), icon: 'i-lucide-bot', to: '/briefings' },
         { label: t('nav.research'), icon: 'i-lucide-microscope', to: '/research' },
+        { label: t('nav.news'), icon: 'i-lucide-newspaper', to: '/news' },
         { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
+        { label: t('nav.imaging'), icon: 'i-lucide-scan-line', to: '/imaging' },
         { label: t('nav.dictionary'), icon: 'i-lucide-book-open', to: '/dictionary' },
       ],
     },
@@ -80,6 +82,7 @@ const navigationSections = computed<NavSection[]>(() => {
         { label: t('nav.communications'), icon: 'i-lucide-mail', to: '/communications' },
         { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
         { label: t('nav.documents'), icon: 'i-lucide-file-scan', to: '/documents' },
+        { label: t('nav.export'), icon: 'i-lucide-package-open', to: '/export' },
         { label: t('nav.oncofiles'), icon: 'i-lucide-database', to: '/oncofiles' },
       ],
     },

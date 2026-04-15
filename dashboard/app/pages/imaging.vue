@@ -1,0 +1,195 @@
+<script setup lang="ts">
+const { fetchApi } = useOncoteamApi()
+const { formatDate } = useFormatDate()
+const { t } = useI18n()
+const { activePatientId } = useActivePatient()
+
+interface ImagingDoc {
+  id: number
+  filename: string
+  category: string
+  date: string | null
+  institution: string | null
+  gdrive_id: string | null
+  gdrive_url: string | null
+  has_ocr: boolean
+}
+
+const { data: docsData, status, error: fetchError, refresh } = fetchApi<{
+  documents: ImagingDoc[]
+  total: number
+  error?: string
+}>('/documents', { lazy: true, server: false })
+
+// Filter to imaging documents only
+const imagingDocs = computed(() => {
+  if (!docsData.value?.documents) return []
+  return docsData.value.documents
+    .filter(d => d.category === 'imaging')
+    .sort((a, b) => (b.date || '0000').localeCompare(a.date || '0000'))
+})
+
+// Selection state (max 2)
+const selectedIds = useState<number[]>('imaging-selected', () => [])
+
+// Reset selection on patient switch
+watch(activePatientId, () => { selectedIds.value = [] })
+
+const selectedDocs = computed(() =>
+  selectedIds.value.map(id => imagingDocs.value.find(d => d.id === id)).filter(Boolean) as ImagingDoc[],
+)
+
+function isSelected(id: number): boolean {
+  return selectedIds.value.includes(id)
+}
+
+function toggleSelect(doc: ImagingDoc) {
+  if (selectedIds.value.includes(doc.id)) {
+    selectedIds.value = selectedIds.value.filter(id => id !== doc.id)
+  }
+  else if (selectedIds.value.length < 2) {
+    selectedIds.value = [...selectedIds.value, doc.id]
+  }
+  else {
+    selectedIds.value = [selectedIds.value[1], doc.id]
+  }
+}
+
+function previewUrl(doc: ImagingDoc): string | null {
+  if (!doc.gdrive_id) return null
+  return `https://drive.google.com/file/d/${doc.gdrive_id}/preview`
+}
+
+// Timeline dots
+const timeRange = computed(() => {
+  const dated = imagingDocs.value.filter(d => d.date)
+  if (dated.length < 2) return null
+  const sorted = [...dated].sort((a, b) => a.date!.localeCompare(b.date!))
+  return { start: sorted[0].date!, end: sorted[sorted.length - 1].date! }
+})
+
+function dateToPercent(dateStr: string): number {
+  if (!timeRange.value) return 50
+  const d = new Date(dateStr + 'T00:00:00').getTime()
+  const s = new Date(timeRange.value.start + 'T00:00:00').getTime()
+  const e = new Date(timeRange.value.end + 'T00:00:00').getTime()
+  if (e === s) return 50
+  return Math.max(2, Math.min(98, ((d - s) / (e - s)) * 100))
+}
+
+const timelineDots = computed(() => {
+  const seen = new Set<string>()
+  return imagingDocs.value
+    .filter(d => d.date && !seen.has(d.date) && seen.add(d.date))
+    .map(d => ({ date: d.date!, left: dateToPercent(d.date!), count: imagingDocs.value.filter(x => x.date === d.date).length }))
+})
+</script>
+
+<template>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('imaging.title') }}</h1>
+        <p class="text-sm text-gray-500">{{ $t('imaging.subtitle', { count: imagingDocs.length }) }}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <UButton
+          v-if="selectedIds.length"
+          variant="ghost"
+          size="xs"
+          color="neutral"
+          icon="i-lucide-x"
+          @click="selectedIds = []"
+        >
+          {{ $t('imaging.clearSelection') }}
+        </UButton>
+        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
+      </div>
+    </div>
+
+    <ApiErrorBanner :error="docsData?.error || fetchError?.message" />
+    <SkeletonLoader v-if="!docsData && status === 'pending'" variant="cards" />
+
+    <template v-else-if="imagingDocs.length">
+      <!-- Timeline bar -->
+      <div v-if="timeRange" class="relative h-10 rounded-lg border border-gray-200 bg-white px-6 flex items-center">
+        <div class="absolute left-6 right-6 h-px bg-gray-200" />
+        <button
+          v-for="dot in timelineDots"
+          :key="dot.date"
+          class="absolute w-3 h-3 rounded-full border-2 border-white bg-teal-500 hover:scale-150 transition-transform -translate-x-1.5 z-10"
+          :style="{ left: `calc(24px + ${dot.left}% * (100% - 48px) / 100)` }"
+          :title="`${formatDate(dot.date)} (${dot.count} docs)`"
+        />
+        <span class="absolute left-2 text-[8px] text-gray-400">{{ timeRange.start }}</span>
+        <span class="absolute right-2 text-[8px] text-gray-400">{{ timeRange.end }}</span>
+      </div>
+
+      <!-- Comparison panes -->
+      <div v-if="selectedDocs.length" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div v-for="doc in selectedDocs" :key="'cmp-' + doc.id" class="rounded-xl border border-gray-200 overflow-hidden">
+          <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900 text-sm truncate">{{ doc.filename }}</div>
+              <div class="text-xs text-gray-500 mt-0.5">{{ formatDate(doc.date) }} &middot; {{ doc.institution || '—' }}</div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <a v-if="doc.gdrive_url" :href="doc.gdrive_url" target="_blank" @click.stop>
+                <UIcon name="i-lucide-external-link" class="w-4 h-4 text-teal-600" />
+              </a>
+              <button @click="toggleSelect(doc)">
+                <UIcon name="i-lucide-x" class="w-4 h-4 text-gray-400 hover:text-gray-700" />
+              </button>
+            </div>
+          </div>
+          <iframe
+            v-if="previewUrl(doc)"
+            :src="previewUrl(doc)"
+            class="w-full h-[500px] border-0"
+            allow="autoplay"
+            loading="lazy"
+          />
+          <div v-else class="h-[500px] flex items-center justify-center text-gray-400 text-sm">
+            {{ $t('imaging.previewUnavailable') }}
+          </div>
+        </div>
+        <div v-if="selectedDocs.length === 1" class="rounded-xl border-2 border-dashed border-gray-200 h-[560px] flex items-center justify-center text-gray-400 text-sm">
+          {{ $t('imaging.selectSecond') }}
+        </div>
+      </div>
+
+      <!-- Document list -->
+      <div class="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+        <div
+          v-for="doc in imagingDocs"
+          :key="doc.id"
+          class="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors"
+          :class="isSelected(doc.id) ? 'bg-teal-50 border-l-2 border-l-teal-500' : ''"
+          @click="toggleSelect(doc)"
+        >
+          <div
+            class="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0"
+            :class="isSelected(doc.id) ? 'bg-teal-500 border-teal-500' : 'border-gray-300'"
+          >
+            <UIcon v-if="isSelected(doc.id)" name="i-lucide-check" class="w-3 h-3 text-white" />
+          </div>
+          <UIcon name="i-lucide-scan-line" class="w-4 h-4 text-gray-400 shrink-0" />
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-gray-900 truncate">{{ doc.filename }}</div>
+            <div class="text-xs text-gray-500">{{ formatDate(doc.date) }} &middot; {{ doc.institution || '—' }}</div>
+          </div>
+          <a v-if="doc.gdrive_url" :href="doc.gdrive_url" target="_blank" @click.stop>
+            <UIcon name="i-lucide-external-link" class="w-4 h-4 text-gray-400 hover:text-teal-600" />
+          </a>
+        </div>
+      </div>
+    </template>
+
+    <!-- Empty state -->
+    <div v-else-if="status !== 'pending' && !fetchError" class="text-center py-16">
+      <UIcon name="i-lucide-scan-line" class="w-10 h-10 text-gray-300 mx-auto mb-3" />
+      <p class="text-sm text-gray-500">{{ $t('imaging.noDocuments') }}</p>
+    </div>
+  </div>
+</template>

@@ -30,7 +30,10 @@
       "intelligence": "Intelligence",
       "operations": "Operations"
     },
-    "treatmentMap": "Treatment Map"
+    "treatmentMap": "Treatment Map",
+    "export": "Export",
+    "news": "News & Articles",
+    "imaging": "Imaging"
   },
   "home": {
     "title": "Dashboard",
@@ -644,6 +647,18 @@
     "noResults": "No facts match your filters",
     "gdrive": "GDrive"
   },
+  "news": {
+    "title": "Curated News & Articles",
+    "subtitle": "Treatment updates and patient education",
+    "allCategories": "All",
+    "treatmentUpdates": "Treatment Updates",
+    "clinicalNews": "Clinical News",
+    "patientEducation": "Patient Education",
+    "noArticles": "No articles in this category",
+    "sortRelevance": "Relevance",
+    "sortDate": "Date",
+    "noLink": "No link available"
+  },
   "treatmentMap": {
     "title": "Treatment Map",
     "subtitle": "Multi-track treatment timeline visualization",
@@ -660,5 +675,40 @@
       "events": "Events",
       "markers": "Markers"
     }
+  },
+  "export": {
+    "title": "Data Export",
+    "subtitle": "Download a patient data package for offline review or sharing with your care team.",
+    "sectionsTitle": "Select sections to include",
+    "patient": "Patient Profile",
+    "patientDesc": "Diagnosis, biomarkers, treatment regimen, safety flags",
+    "labs": "Lab Results",
+    "labsDesc": "All lab values with dates and trend data",
+    "timeline": "Treatment Timeline",
+    "timelineDesc": "Chronological list of all treatment events",
+    "protocol": "Clinical Protocol",
+    "protocolDesc": "Current protocol thresholds, dose modifications, milestones",
+    "dateRange": "Date Range",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "dateHint": "Optional — leave empty to include all dates.",
+    "format": "Export Format",
+    "formatHtml": "HTML",
+    "formatHtmlDesc": "Printable document with styling, suitable for sharing",
+    "formatJson": "JSON",
+    "formatJsonDesc": "Machine-readable data for technical use",
+    "generate": "Download export",
+    "progressFetching": "Fetching data...",
+    "progressBuilding": "Building export file...",
+    "generatedNote": "Data is fetched live from your dashboard. No data is stored externally."
+  },
+  "imaging": {
+    "title": "Imaging Comparison",
+    "subtitle": "{count} imaging documents",
+    "selectHint": "Select up to 2 documents to compare side-by-side",
+    "selectSecond": "Select a second document to compare",
+    "previewUnavailable": "Preview unavailable — open in Google Drive",
+    "noDocuments": "No imaging documents found",
+    "clearSelection": "Clear selection"
   }
 }

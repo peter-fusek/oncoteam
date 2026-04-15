@@ -30,7 +30,10 @@
       "intelligence": "Analýzy",
       "operations": "Prevádzka"
     },
-    "treatmentMap": "Mapa liečby"
+    "treatmentMap": "Mapa liečby",
+    "export": "Export",
+    "news": "Správy a články",
+    "imaging": "Zobrazenia"
   },
   "home": {
     "title": "Prehľad",
@@ -644,6 +647,18 @@
     "noResults": "Žiadne fakty nezodpovedajú filtrom",
     "gdrive": "GDrive"
   },
+  "news": {
+    "title": "Vybrané správy a články",
+    "subtitle": "Aktualizácie liečby a vzdelávanie pacientov",
+    "allCategories": "Všetky",
+    "treatmentUpdates": "Aktualizácie liečby",
+    "clinicalNews": "Klinické správy",
+    "patientEducation": "Vzdelávanie pacientov",
+    "noArticles": "V tejto kategórii nie sú žiadne články",
+    "sortRelevance": "Relevancia",
+    "sortDate": "Dátum",
+    "noLink": "Odkaz nie je dostupný"
+  },
   "treatmentMap": {
     "title": "Mapa liečby",
     "subtitle": "Vizualizácia priebehu liečby",
@@ -660,5 +675,40 @@
       "events": "Udalosti",
       "markers": "Markery"
     }
+  },
+  "imaging": {
+    "title": "Porovnanie zobrazení",
+    "subtitle": "{count} zobrazovacích dokumentov",
+    "selectHint": "Vyberte až 2 dokumenty na porovnanie vedľa seba",
+    "selectSecond": "Vyberte druhý dokument na porovnanie",
+    "previewUnavailable": "Náhľad nedostupný — otvorte v Google Drive",
+    "noDocuments": "Žiadne zobrazovacie dokumenty",
+    "clearSelection": "Zrušiť výber"
+  },
+  "export": {
+    "title": "Export dát",
+    "subtitle": "Stiahnite balík údajov o pacientovi pre offline prezeranie alebo zdieľanie s lekárskym tímom.",
+    "sectionsTitle": "Vyberte sekcie na zahrnutie",
+    "patient": "Profil pacienta",
+    "patientDesc": "Diagnóza, biomarkery, liečebný režim, bezpečnostné upozornenia",
+    "labs": "Laboratórne výsledky",
+    "labsDesc": "Všetky laboratórne hodnoty s dátumami a trendmi",
+    "timeline": "Časová os liečby",
+    "timelineDesc": "Chronologický zoznam všetkých liečebných udalostí",
+    "protocol": "Klinický protokol",
+    "protocolDesc": "Aktuálne prahy protokolu, úpravy dávok, míľniky",
+    "dateRange": "Časový rozsah",
+    "dateFrom": "Od",
+    "dateTo": "Do",
+    "dateHint": "Voliteľné — nechajte prázdne pre zahrnutie všetkých dátumov.",
+    "format": "Formát exportu",
+    "formatHtml": "HTML",
+    "formatHtmlDesc": "Tlačiteľný dokument so štýlmi, vhodný na zdieľanie",
+    "formatJson": "JSON",
+    "formatJsonDesc": "Strojovo čitateľné dáta pre technické použitie",
+    "generate": "Stiahnuť export",
+    "progressFetching": "Načítavam údaje...",
+    "progressBuilding": "Vytváram exportný súbor...",
+    "generatedNote": "Údaje sa načítavajú živé z vášho dashboardu. Žiadne dáta sa neukladajú externe."
   }
 }
