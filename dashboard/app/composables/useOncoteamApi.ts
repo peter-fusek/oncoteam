@@ -30,6 +30,9 @@ export function useOncoteamApi() {
       query,
       timeout: 28000,
       server: false,
+      retry: 1,
+      retryDelay: 2000,
+      retryStatusCodes: [502, 503],
       ...opts,
     })
   }

@@ -98,14 +98,16 @@ async def test_timeline_has_events_key(mock):
 
 
 @pytest.mark.anyio
-async def test_patient_has_required_keys():
+@patch("oncoteam.dashboard_api.oncofiles_client.get_patient_context", new_callable=AsyncMock)
+async def test_patient_has_required_keys(mock):
+    mock.return_value = {"patient_ids": {}}
     data = _parse(await api_patient(_make_request()))
     assert "name" in data
     assert "therapy_categories" in data
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.search_research", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_research_has_entries_key(mock):
     mock.return_value = {"entries": []}
     data = _parse(await api_research(_make_request()))
@@ -126,17 +128,23 @@ async def test_sessions_has_sessions_key(mock):
 
 
 @pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
-async def test_autonomous_has_tasks_key(mock):
-    mock.return_value = {"entries": []}
+async def test_autonomous_has_tasks_key(mock_log, mock_state):
+    mock_log.return_value = {"entries": []}
+    mock_state.return_value = {}
     data = _parse(await api_autonomous(_make_request()))
     assert "jobs" in data
     assert isinstance(data["jobs"], list)
 
 
 @pytest.mark.anyio
-async def test_protocol_has_required_keys():
+@patch("oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_protocol_has_required_keys(mock_events, mock_trends):
+    mock_events.return_value = {"events": []}
+    mock_trends.return_value = {"trends": []}
     data = _parse(await api_protocol(_make_request()))
     assert "lab_thresholds" in data
     assert "monitoring_schedule" in data
@@ -161,9 +169,13 @@ async def test_toxicity_has_entries_key(mock):
 
 
 @pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.analyze_labs", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
-async def test_labs_has_entries_and_reference(mock):
-    mock.return_value = {"events": []}
+async def test_labs_has_entries_and_reference(mock_events, mock_trends, mock_analyze):
+    mock_events.return_value = {"events": []}
+    mock_trends.return_value = {"trends": []}
+    mock_analyze.return_value = {"entries": []}
     data = _parse(await api_labs(_make_request()))
     assert "entries" in data
     assert isinstance(data["entries"], list)
@@ -205,7 +217,9 @@ async def test_weight_has_entries_key(mock):
 
 
 @pytest.mark.anyio
-async def test_cumulative_dose_has_required_keys():
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_cumulative_dose_has_required_keys(mock_events):
+    mock_events.return_value = {"events": []}
     data = _parse(await api_cumulative_dose(_make_request()))
     assert "drug" in data
     assert "cumulative_mg_m2" in data

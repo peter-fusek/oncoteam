@@ -280,11 +280,20 @@ def _parse_result(result: object) -> dict | list | str:
     return str(result)
 
 
+_MAX_RETRIES = 3  # 3 attempts total (initial + 2 retries)
+_RETRY_BACKOFF = [0.5, 1.5]  # seconds between retries (exponential)
+
+
 async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -> dict | list | str:
-    """Execute an MCP call with one retry on failure."""
+    """Execute an MCP call with retries and exponential backoff.
+
+    Retries up to _MAX_RETRIES times with increasing delays to handle
+    transient 502s during oncofiles restarts (memory leak recovery).
+    """
     global _circuit_failures, _circuit_open_until, _total_errors, _total_circuit_trips
     circuit = _get_circuit(token)
-    for attempt in range(2):
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES):
         try:
             client = await _get_client(token)
             result = await asyncio.wait_for(
@@ -294,10 +303,19 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
             _circuit_failures = 0
             circuit["failures"] = 0
             return _parse_result(result)
-        except Exception:
-            if attempt == 0:
+        except Exception as exc:
+            last_exc = exc
+            if attempt < _MAX_RETRIES - 1:
                 await _invalidate_client(token)
-                await asyncio.sleep(0.5)
+                backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
+                _logger.debug(
+                    "oncofiles %s attempt %d failed, retrying in %.1fs: %s",
+                    tool_name,
+                    attempt + 1,
+                    backoff,
+                    exc,
+                )
+                await asyncio.sleep(backoff)
                 continue
             _total_errors += 1
             _circuit_failures += 1
@@ -313,7 +331,7 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
                     CIRCUIT_BREAKER_COOLDOWN,
                 )
             raise
-    raise RuntimeError("_call_with_retry: unreachable")
+    raise last_exc or RuntimeError("_call_with_retry: unreachable")
 
 
 async def call_oncofiles(
