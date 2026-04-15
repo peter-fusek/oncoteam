@@ -224,6 +224,50 @@ PATIENT_E5G = PatientProfile(
     agent_whitelist=["document_pipeline", "lab_sync", "keepalive_ping", "weekly_briefing"],
 )
 
+# ── Third patient: oncology — breast cancer ──────────────────────────────
+PATIENT_SGU = PatientProfile(
+    patient_id="sgu",
+    name="Nora A.",
+    diagnosis_code="C50.9",  # ICD-10: Breast, unspecified
+    diagnosis_description="Metastatic breast carcinoma — invasive ductal, HR+/HER2-negative",
+    tumor_site="Left breast",
+    diagnosis_date=date(2019, 1, 1),
+    staging="Stage IIB (initial), currently metastatic (skeletal)",
+    biomarkers={
+        "HR": "positive",
+        "HER2": "negative",
+    },
+    excluded_therapies={
+        "anti-HER2 (trastuzumab, pertuzumab)": "HER2 negative",
+    },
+    treatment_regimen="1st line palliative hormone therapy",
+    hospitals=[],
+    treating_physician="",
+    notes="Metastatic breast cancer with skeletal metastases under palliative hormone therapy.",
+    metastases=["Skeletal (Th7 — pathological fracture, stabilization + RFA + kyphoplasty)"],
+    comorbidities=[],
+    active_therapies=[
+        {
+            "name": "Hormone + CDK4/6 therapy",
+            "category": "hormonal",
+            "drugs": [
+                {"name": "Zoladex (goserelin)", "dose": "3.6mg", "lay": "Hormone suppression"},
+                {"name": "Letrozole", "dose": "", "lay": "Aromatase inhibitor"},
+                {"name": "Kisqali (ribociclib)", "dose": "200mg", "lay": "CDK4/6 inhibitor"},
+                {"name": "Denosumab", "dose": "", "lay": "Bone-strengthening antibody"},
+            ],
+        },
+    ],
+    agent_whitelist=[
+        "document_pipeline",
+        "lab_sync",
+        "keepalive_ping",
+        "weekly_briefing",
+        "daily_research",
+        "trial_monitor",
+    ],
+)
+
 
 # ── Bilingual overlay for dashboard display ──────────────────────────────
 # Keys match PATIENT fields. Values are L(sk, en) bilingual dicts.
@@ -503,7 +547,11 @@ def get_context_tags() -> list[str]:
 # In-memory registry of loaded patient profiles. Erika is pre-seeded.
 # Future patients load from oncofiles on first access.
 
-_patient_registry: dict[str, PatientProfile] = {"q1b": PATIENT, "e5g": PATIENT_E5G}
+_patient_registry: dict[str, PatientProfile] = {
+    "q1b": PATIENT,
+    "e5g": PATIENT_E5G,
+    "sgu": PATIENT_SGU,
+}
 
 # Per-patient bearer tokens for oncofiles. Token scopes all data automatically.
 # Erika uses the default ONCOFILES_MCP_TOKEN from config.
@@ -517,10 +565,10 @@ for _pid in list(_patient_registry.keys()):
         _patient_tokens[_pid] = _tok
 
 # Per-patient research terms. Erika's are hardcoded; others derived from profile.
-_patient_research_terms: dict[str, list[str]] = {"q1b": RESEARCH_TERMS, "e5g": []}
+_patient_research_terms: dict[str, list[str]] = {"q1b": RESEARCH_TERMS, "e5g": [], "sgu": []}
 
 # Per-patient recipients. Erika's are hardcoded; others loaded from oncofiles.
-_patient_recipients: dict[str, dict[str, Recipient]] = {"q1b": RECIPIENTS, "e5g": {}}
+_patient_recipients: dict[str, dict[str, Recipient]] = {"q1b": RECIPIENTS, "e5g": {}, "sgu": {}}
 
 DEFAULT_PATIENT_ID = "q1b"
 
