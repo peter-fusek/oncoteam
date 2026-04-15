@@ -52,24 +52,24 @@ watch(searchQuery, (val) => {
   searchTimer = setTimeout(() => { debouncedSearch.value = val }, 400)
 })
 
-// Build filter query as a reactive object (useFetch merges with useOncoteamApi query)
+// Build server query — category filtering is done client-side for instant response
 const factsQuery = computed(() => {
   const q: Record<string, string> = { sort: sortOrder.value, limit: '20' }
-  if (activeCategory.value) q.categories = activeCategory.value
   if (debouncedSearch.value.length >= 3) q.search = debouncedSearch.value
   if (dateFrom.value) q.date_from = dateFrom.value
   if (dateTo.value) q.date_to = dateTo.value
   return q
 })
 
-// Serialized key for watch — triggers reset when any filter, patient, or locale changes
+// Serialized key for watch — triggers reset when server-side params, patient, or locale changes
+// Note: activeCategory is NOT included — it's filtered client-side
 const filterKey = computed(() => {
   const { activePatientId } = useActivePatient()
   const { locale } = useI18n()
   return JSON.stringify({ ...factsQuery.value, pid: activePatientId.value, lang: locale.value })
 })
 
-const { data: factsData, status: factsStatus, error: factsError, refresh, clear: clearFetch } = useFetch<FactsResponse>(
+const { data: factsData, status: factsStatus, error: factsError, refresh } = useFetch<FactsResponse>(
   '/api/oncoteam/facts',
   {
     query: computed(() => {
@@ -84,13 +84,12 @@ const { data: factsData, status: factsStatus, error: factsError, refresh, clear:
   },
 )
 
-// When filters change, clear stale data so skeleton shows during refetch
+// When server-side filters change (search, date, patient, locale), reset accumulated state
 watch(filterKey, () => {
   allFacts.value = []
   currentOffset.value = 0
   totalFacts.value = 0
   hasMore.value = false
-  clearFetch()
 })
 
 // When new data arrives, populate (immediate: true catches initial load)
@@ -256,7 +255,13 @@ function groupByMonth(facts: FactItem[]): Array<{ month: string; facts: FactItem
   return Array.from(groups.entries()).map(([month, facts]) => ({ month, facts }))
 }
 
-const groupedFacts = computed(() => groupByMonth(allFacts.value))
+// Client-side category filtering — instant, no server round-trip
+const filteredFacts = computed(() => {
+  if (!activeCategory.value) return allFacts.value
+  return allFacts.value.filter(f => f.category === activeCategory.value)
+})
+
+const groupedFacts = computed(() => groupByMonth(filteredFacts.value))
 </script>
 
 <template>
@@ -265,7 +270,7 @@ const groupedFacts = computed(() => groupByMonth(allFacts.value))
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">{{ $t('facts.title') }}</h1>
-        <p class="text-sm text-gray-500">{{ $t('facts.subtitle', { count: totalFacts }) }}</p>
+        <p class="text-sm text-gray-500">{{ $t('facts.subtitle', { count: filteredFacts.length }) }}</p>
       </div>
       <div class="flex items-center gap-2">
         <UButton
