@@ -2,6 +2,7 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/': ['advocate', 'patient', 'doctor'],
   '/patient': ['advocate', 'patient', 'doctor'],
   '/timeline': ['advocate', 'patient', 'doctor'],
+  '/treatment-map': ['advocate', 'doctor'],
   '/protocol': ['advocate', 'doctor'],
   '/labs': ['advocate', 'doctor'],
   '/toxicity': ['advocate', 'patient', 'doctor'],
