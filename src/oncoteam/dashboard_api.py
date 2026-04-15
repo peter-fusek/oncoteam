@@ -1132,7 +1132,7 @@ async def api_facts(request: Request) -> JSONResponse:
         journey_coro = oncofiles_client.get_journey_timeline(
             date_from=date_from or None,
             date_to=date_to or None,
-            limit=50,
+            limit=200,
             token=token,
         )
         events_raw, journey_raw = await asyncio.gather(
@@ -1155,7 +1155,7 @@ async def api_facts(request: Request) -> JSONResponse:
             if isinstance(items, list):
                 for item in items:
                     fact = _normalize_fact(item, "journey")
-                    if fact:
+                    if fact and fact.get("date"):
                         all_facts.append(fact)
         else:
             record_suppressed_error("api_facts", "journey_timeline", journey_raw)
