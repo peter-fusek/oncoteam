@@ -62,8 +62,12 @@ const factsQuery = computed(() => {
   return q
 })
 
-// Serialized key for watch — triggers reset when any filter changes
-const filterKey = computed(() => JSON.stringify(factsQuery.value))
+// Serialized key for watch — triggers reset when any filter, patient, or locale changes
+const filterKey = computed(() => {
+  const { activePatientId } = useActivePatient()
+  const { locale } = useI18n()
+  return JSON.stringify({ ...factsQuery.value, pid: activePatientId.value, lang: locale.value })
+})
 
 const { data: factsData, status: factsStatus, error: factsError, refresh } = useFetch<FactsResponse>(
   '/api/oncoteam/facts',
