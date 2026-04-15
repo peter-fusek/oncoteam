@@ -1272,7 +1272,7 @@ async def api_patient(request: Request) -> JSONResponse:
 async def _fetch_patient_ids(patient_id: str, token: str | None = None) -> dict[str, str] | None:
     """Fetch patient_ids from oncofiles patient_context. Returns None on failure."""
     try:
-        ctx = await oncofiles_client.get_patient_context(token=token)
+        ctx = await asyncio.wait_for(oncofiles_client.get_patient_context(token=token), timeout=8.0)
         if isinstance(ctx, dict):
             ids = ctx.get("patient_ids")
             if isinstance(ids, dict) and ids:
@@ -3214,11 +3214,24 @@ async def api_preventive_care(request: Request) -> JSONResponse:
             summary[status] += 1
             summary["total"] += 1
 
+            # Human-readable interval label
+            days = scr["interval_days"]
+            if days >= 3650:
+                interval_label = f"{days // 365}y"
+            elif days >= 365:
+                y = days // 365
+                interval_label = f"{y}y" if days % 365 < 30 else f"~{y}y"
+            elif days >= 30:
+                interval_label = f"{days // 30}mo"
+            else:
+                interval_label = f"{days}d"
+
             screenings.append(
                 {
                     "id": screening_id,
                     "name": scr["name"],
                     "interval_days": scr["interval_days"],
+                    "interval_label": interval_label,
                     "min_age": scr["min_age"],
                     "last_date": last_date_str,
                     "next_due": next_due,
