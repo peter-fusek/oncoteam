@@ -620,5 +620,23 @@
         "antiemetics": "Antiemetiká predpísané"
       }
     }
+  },
+  "facts": {
+    "title": "Časová os faktov",
+    "subtitle": "{count} faktov zo všetkých zdrojov",
+    "clearFilters": "Zrušiť filtre",
+    "from": "Od",
+    "to": "Do",
+    "searchPlaceholder": "Hľadať fakty...",
+    "newest": "Najnovšie",
+    "oldest": "Najstaršie",
+    "all": "Všetky",
+    "clinical": "Klinické",
+    "documents": "Dokumenty",
+    "intelligence": "Analýzy",
+    "operational": "Prevádzka",
+    "loadMore": "Načítať viac ({loaded} z {total})",
+    "noResults": "Žiadne fakty nezodpovedajú filtrom",
+    "gdrive": "GDrive"
   }
 }

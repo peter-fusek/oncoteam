@@ -620,5 +620,23 @@
         "antiemetics": "Anti-emetics prescribed"
       }
     }
+  },
+  "facts": {
+    "title": "Fact Timeline",
+    "subtitle": "{count} facts across all sources",
+    "clearFilters": "Clear filters",
+    "from": "From",
+    "to": "To",
+    "searchPlaceholder": "Search facts...",
+    "newest": "Newest first",
+    "oldest": "Oldest first",
+    "all": "All",
+    "clinical": "Clinical",
+    "documents": "Documents",
+    "intelligence": "Intelligence",
+    "operational": "Operational",
+    "loadMore": "Load more ({loaded} of {total})",
+    "noResults": "No facts match your filters",
+    "gdrive": "GDrive"
   }
 }

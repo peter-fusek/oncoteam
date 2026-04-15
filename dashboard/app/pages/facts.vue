@@ -157,13 +157,13 @@ watch(sentinel, (el) => {
 })
 
 // Category helpers
-const categories = [
-  { key: '', label: 'All' },
-  { key: 'clinical', label: 'Clinical' },
-  { key: 'documents', label: 'Documents' },
-  { key: 'intelligence', label: 'Intelligence' },
-  { key: 'operational', label: 'Operational' },
-]
+const categories = computed(() => [
+  { key: '', label: t('facts.all') },
+  { key: 'clinical', label: t('facts.clinical') },
+  { key: 'documents', label: t('facts.documents') },
+  { key: 'intelligence', label: t('facts.intelligence') },
+  { key: 'operational', label: t('facts.operational') },
+])
 
 function hasActiveFilters() {
   return activeCategory.value || debouncedSearch.value || dateFrom.value || dateTo.value || sortOrder.value !== 'newest'
@@ -258,8 +258,8 @@ const groupedFacts = computed(() => groupByMonth(allFacts.value))
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Fact Timeline</h1>
-        <p class="text-sm text-gray-500">{{ totalFacts }} facts across all sources</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $t('facts.title') }}</h1>
+        <p class="text-sm text-gray-500">{{ $t('facts.subtitle', { count: totalFacts }) }}</p>
       </div>
       <div class="flex items-center gap-2">
         <UButton
@@ -270,7 +270,7 @@ const groupedFacts = computed(() => groupByMonth(allFacts.value))
           icon="i-lucide-x"
           @click="clearFilters"
         >
-          Clear filters
+          {{ $t('facts.clearFilters') }}
         </UButton>
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
       </div>
@@ -278,42 +278,42 @@ const groupedFacts = computed(() => groupByMonth(allFacts.value))
 
     <!-- Filters bar -->
     <div class="space-y-3">
-      <!-- Date range + Search -->
-      <div class="flex flex-wrap gap-3">
+      <!-- Date range + Search — stacks on mobile -->
+      <div class="grid grid-cols-1 sm:grid-cols-[auto_auto_1fr_auto] gap-3">
         <div class="flex items-center gap-2">
-          <label class="text-xs text-gray-500">From</label>
+          <label class="text-xs text-gray-500 shrink-0">{{ $t('facts.from') }}</label>
           <input
             v-model="dateFrom"
             type="date"
-            class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+            class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-teal-500 focus:border-teal-500 w-full sm:w-auto"
           >
         </div>
         <div class="flex items-center gap-2">
-          <label class="text-xs text-gray-500">To</label>
+          <label class="text-xs text-gray-500 shrink-0">{{ $t('facts.to') }}</label>
           <input
             v-model="dateTo"
             type="date"
-            class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+            class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-teal-500 focus:border-teal-500 w-full sm:w-auto"
           >
         </div>
-        <div class="flex-1 min-w-48">
+        <div>
           <input
             v-model="searchQuery"
             type="search"
-            placeholder="Search facts..."
+            :placeholder="$t('facts.searchPlaceholder')"
             class="w-full text-xs border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
           >
         </div>
         <select
           v-model="sortOrder"
-          class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700"
+          class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 w-full sm:w-auto"
         >
-          <option value="newest">Newest first</option>
-          <option value="oldest">Oldest first</option>
+          <option value="newest">{{ $t('facts.newest') }}</option>
+          <option value="oldest">{{ $t('facts.oldest') }}</option>
         </select>
       </div>
 
-      <!-- Category chips -->
+      <!-- Category chips — scrollable on mobile -->
       <div class="flex flex-wrap gap-2">
         <UButton
           v-for="cat in categories"
@@ -360,9 +360,9 @@ const groupedFacts = computed(() => groupByMonth(allFacts.value))
                     {{ fact.event_subtype.replace(/_/g, ' ') }}
                   </UBadge>
                 </div>
-                <div class="flex items-center gap-2 mt-1">
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
                   <span class="text-xs text-gray-500">{{ formatDate(fact.date) }}</span>
-                  <span class="text-xs text-gray-300">&middot;</span>
+                  <span class="text-xs text-gray-300 hidden sm:inline">&middot;</span>
                   <span class="text-xs text-gray-400">{{ fact.category }}</span>
                   <a
                     v-if="fact.gdrive_url"
@@ -372,7 +372,7 @@ const groupedFacts = computed(() => groupByMonth(allFacts.value))
                     @click.stop
                   >
                     <UIcon name="i-lucide-external-link" class="w-3 h-3" />
-                    GDrive
+                    {{ $t('facts.gdrive') }}
                   </a>
                 </div>
                 <p v-if="fact.summary" class="text-xs text-gray-500 mt-1.5 line-clamp-2">{{ fact.summary }}</p>
@@ -391,7 +391,7 @@ const groupedFacts = computed(() => groupByMonth(allFacts.value))
       </div>
       <div v-else-if="hasMore" class="flex justify-center py-4">
         <UButton variant="ghost" size="xs" color="neutral" @click="loadMore">
-          Load more ({{ allFacts.length }} of {{ totalFacts }})
+          {{ $t('facts.loadMore', { loaded: allFacts.length, total: totalFacts }) }}
         </UButton>
       </div>
     </div>
@@ -399,9 +399,9 @@ const groupedFacts = computed(() => groupByMonth(allFacts.value))
     <!-- Empty state -->
     <div v-else-if="factsStatus !== 'pending' && !factsError" class="text-center py-16">
       <UIcon name="i-lucide-inbox" class="w-10 h-10 text-gray-300 mx-auto mb-3" />
-      <p class="text-sm text-gray-500">No facts match your filters</p>
+      <p class="text-sm text-gray-500">{{ $t('facts.noResults') }}</p>
       <UButton v-if="hasActiveFilters()" variant="ghost" size="xs" color="neutral" class="mt-2" @click="clearFilters">
-        Clear filters
+        {{ $t('facts.clearFilters') }}
       </UButton>
     </div>
   </div>
