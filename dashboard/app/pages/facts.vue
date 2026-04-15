@@ -79,18 +79,18 @@ const { data: factsData, status: factsStatus, error: factsError, refresh, clear:
     }),
     lazy: true,
     server: false,
-    watch: false,
+    watch: [filterKey],
+    dedupe: 'cancel',
   },
 )
 
-// When filters change, reset accumulated state, clear stale fetch data, THEN refetch
+// When filters change, clear stale data so skeleton shows during refetch
 watch(filterKey, () => {
   allFacts.value = []
   currentOffset.value = 0
   totalFacts.value = 0
   hasMore.value = false
   clearFetch()
-  refresh()
 })
 
 // When new data arrives, populate (immediate: true catches initial load)
