@@ -236,7 +236,7 @@ function openFact(fact: FactItem) {
   const typeMap: Record<string, string> = {
     te: 'treatment_event',
     doc: 'document',
-    narr: 'narrative',
+    narr: 'conversation',
     lab: 'treatment_event',
   }
   drilldown.open({ type: typeMap[prefix] || 'treatment_event', id: numericId, label: fact.title })

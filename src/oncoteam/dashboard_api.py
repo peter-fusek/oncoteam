@@ -2570,7 +2570,7 @@ async def api_detail(request: Request) -> JSONResponse:
                 **trace,
             }
 
-        elif detail_type == "conversation":
+        elif detail_type in ("conversation", "narrative"):
             try:
                 raw = await oncofiles_client.get_conversation(int(detail_id), token=token)
                 data = raw if isinstance(raw, dict) else {"raw": raw}

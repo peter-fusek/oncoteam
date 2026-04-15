@@ -143,6 +143,33 @@ async def test_detail_unknown_type():
     assert resp.status_code == 400
 
 
+# ── narrative alias for conversation ────────────────────────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_conversation",
+    new_callable=AsyncMock,
+)
+async def test_detail_narrative_alias(mock_get):
+    """'narrative' type is an alias for 'conversation' in api_detail."""
+    mock_get.return_value = {
+        "id": 99,
+        "title": "Weekly briefing",
+        "content": "Summary of the week",
+        "created_at": "2026-03-15T10:00:00Z",
+    }
+    req = FakeRequest({"type": "narrative", "id": "99"})
+    resp = await api_detail(req)
+    import json
+
+    body = json.loads(resp.body)
+    assert resp.status_code == 200
+    assert body["data"]["title"] == "Weekly briefing"
+    assert body["source"]["oncofiles_id"] == 99
+    mock_get.assert_awaited_once()
+
+
 # ── patient (static) ────────────────────────────
 
 
