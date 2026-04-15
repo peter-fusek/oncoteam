@@ -79,16 +79,17 @@ const { data: factsData, status: factsStatus, error: factsError, refresh } = use
     }),
     lazy: true,
     server: false,
-    watch: [filterKey],
+    watch: false,
   },
 )
 
-// When filters change, reset accumulated state
+// When filters change, reset accumulated state THEN refetch
 watch(filterKey, () => {
   allFacts.value = []
   currentOffset.value = 0
   totalFacts.value = 0
   hasMore.value = false
+  refresh()
 })
 
 // When new data arrives, populate (immediate: true catches initial load)
