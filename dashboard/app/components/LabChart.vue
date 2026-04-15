@@ -142,15 +142,27 @@ const chartData = computed(() => {
       },
       anchor: 'end' as const,
       align: (ctx: any) => {
-        // Avoid overlap: place label below point if near chart top
-        const yPixel = ctx.chart.scales.y.getPixelForValue(ctx.dataset.data[ctx.dataIndex])
-        return yPixel < 40 ? 'bottom' : 'top'
+        const idx = ctx.dataIndex
+        const data = ctx.dataset.data
+        const yPixel = ctx.chart.scales.y.getPixelForValue(data[idx])
+        // Alternate top/bottom for adjacent labeled points to avoid overlap
+        const nonNullIndices = data.map((v: any, i: number) => v != null ? i : -1).filter((i: number) => i >= 0)
+        const labelIdx = nonNullIndices.indexOf(idx)
+        if (yPixel < 40) return 'bottom'
+        if (labelIdx > 0 && labelIdx % 2 === 1) return 'bottom'
+        return 'top'
       },
-      offset: 8,
+      offset: 6,
       clamp: true,
       padding: 2,
       font: { size: 9, weight: 'bold' as const, family: 'DM Sans' },
-      formatter: (val: number) => val?.toLocaleString() ?? '',
+      formatter: (val: number) => {
+        if (val == null) return ''
+        if (Math.abs(val) >= 100_000) return `${(val / 1000).toFixed(0)}k`
+        if (Math.abs(val) >= 10_000) return `${(val / 1000).toFixed(1)}k`
+        if (Math.abs(val) >= 1_000) return val.toLocaleString()
+        return String(val)
+      },
     },
   })
 
