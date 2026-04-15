@@ -69,7 +69,7 @@ const filterKey = computed(() => {
   return JSON.stringify({ ...factsQuery.value, pid: activePatientId.value, lang: locale.value })
 })
 
-const { data: factsData, status: factsStatus, error: factsError, refresh } = useFetch<FactsResponse>(
+const { data: factsData, status: factsStatus, error: factsError, refresh, clear: clearFetch } = useFetch<FactsResponse>(
   '/api/oncoteam/facts',
   {
     query: computed(() => {
@@ -83,12 +83,13 @@ const { data: factsData, status: factsStatus, error: factsError, refresh } = use
   },
 )
 
-// When filters change, reset accumulated state THEN refetch
+// When filters change, reset accumulated state, clear stale fetch data, THEN refetch
 watch(filterKey, () => {
   allFacts.value = []
   currentOffset.value = 0
   totalFacts.value = 0
   hasMore.value = false
+  clearFetch()
   refresh()
 })
 
