@@ -29,7 +29,8 @@
       "health": "Zdravie",
       "intelligence": "Analýzy",
       "operations": "Prevádzka"
-    }
+    },
+    "treatmentMap": "Mapa liečby"
   },
   "home": {
     "title": "Prehľad",
@@ -642,5 +643,22 @@
     "loadMore": "Načítať viac ({loaded} z {total})",
     "noResults": "Žiadne fakty nezodpovedajú filtrom",
     "gdrive": "GDrive"
+  },
+  "treatmentMap": {
+    "title": "Mapa liečby",
+    "subtitle": "Vizualizácia priebehu liečby",
+    "track": "Trasa",
+    "showAll": "Zobraziť všetky",
+    "noData": "Zatiaľ žiadne údaje",
+    "treatmentLine": "{n}. línia liečby",
+    "totalEvents": "{count} udalostí",
+    "tracks": {
+      "chemo": "Chemoterapia",
+      "immuno": "Imunoterapia",
+      "bio": "Biologická liečba",
+      "support": "Podporná liečba",
+      "events": "Udalosti",
+      "markers": "Markery"
+    }
   }
 }

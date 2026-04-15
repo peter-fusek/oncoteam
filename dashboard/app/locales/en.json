@@ -29,7 +29,8 @@
       "health": "Health",
       "intelligence": "Intelligence",
       "operations": "Operations"
-    }
+    },
+    "treatmentMap": "Treatment Map"
   },
   "home": {
     "title": "Dashboard",
@@ -642,5 +643,22 @@
     "loadMore": "Load more ({loaded} of {total})",
     "noResults": "No facts match your filters",
     "gdrive": "GDrive"
+  },
+  "treatmentMap": {
+    "title": "Treatment Map",
+    "subtitle": "Multi-track treatment timeline visualization",
+    "track": "Track",
+    "showAll": "Show all tracks",
+    "noData": "No data yet",
+    "treatmentLine": "{n}L treatment",
+    "totalEvents": "{count} events",
+    "tracks": {
+      "chemo": "Chemotherapy",
+      "immuno": "Immunotherapy",
+      "bio": "Biologic",
+      "support": "Supportive",
+      "events": "Events",
+      "markers": "Markers"
+    }
   }
 }

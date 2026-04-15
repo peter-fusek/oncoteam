@@ -8,7 +8,7 @@ const { activePatientId, activePatient, patients, hasMultiplePatients, canSwitch
 const { isOncology } = usePatientType()
 
 // Pages only shown for oncology patients
-const ONCOLOGY_ONLY_PAGES = new Set(['/protocol', '/toxicity', '/prep'])
+const ONCOLOGY_ONLY_PAGES = new Set(['/protocol', '/toxicity', '/prep', '/treatment-map'])
 
 const mobileMenuOpen = ref(false)
 const patientSwitcherOpen = ref(false)
@@ -50,6 +50,7 @@ const navigationSections = computed<NavSection[]>(() => {
         { label: t('nav.home'), icon: 'i-lucide-layout-dashboard', to: '/' },
         { label: t('nav.patient'), icon: 'i-lucide-user-round', to: '/patient' },
         { label: t('nav.timeline'), icon: 'i-lucide-calendar-clock', to: '/timeline' },
+        { label: t('nav.treatmentMap'), icon: 'i-lucide-gantt-chart', to: '/treatment-map' },
         { label: t('nav.facts'), icon: 'i-lucide-layers', to: '/facts' },
       ],
     },
