@@ -339,8 +339,6 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else-if="!research?.error && !researchError" class="text-gray-400 text-center py-16 text-sm">
-      {{ activeTab === 'trials' ? t('research.noTrials') : $t('research.noResearch') }}
-    </div>
+    <EmptyState v-else-if="!research?.error && !researchError" icon="i-lucide-microscope" :message="activeTab === 'trials' ? t('research.noTrials') : t('research.noResearch')" />
   </div>
 </template>

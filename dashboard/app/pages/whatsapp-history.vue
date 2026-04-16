@@ -129,8 +129,6 @@ function formatTime(dateStr: string): string {
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="!data?.error && !fetchError && status !== 'pending'" class="text-gray-400 text-center py-16 text-sm">
-      {{ debouncedSearch ? t('whatsapp.noResults') : t('whatsapp.noMessages') }}
-    </div>
+    <EmptyState v-else-if="!data?.error && !fetchError && status !== 'pending'" icon="i-lucide-message-circle" :message="debouncedSearch ? t('whatsapp.noResults') : t('whatsapp.noMessages')" />
   </div>
 </template>

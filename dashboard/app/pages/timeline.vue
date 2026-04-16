@@ -156,8 +156,6 @@ const drilldown = useDrilldown()
       </div>
     </div>
 
-    <div v-else-if="!timeline?.error && !timelineError" class="text-gray-500 text-center py-16 text-sm">
-      {{ $t('timeline.noEvents') }}
-    </div>
+    <EmptyState v-else-if="!timeline?.error && !timelineError" icon="i-lucide-calendar-clock" :message="$t('timeline.noEvents')" />
   </div>
 </template>

@@ -166,9 +166,7 @@ function boolLabel(val: boolean | undefined): string {
       </table>
     </div>
 
-    <div v-else-if="!docs?.error && !docsError && docsStatus !== 'pending'" class="text-gray-500 text-center py-16 text-sm">
-      {{ $t('documents.noDocs') }}
-    </div>
+    <EmptyState v-else-if="!docs?.error && !docsError && docsStatus !== 'pending'" icon="i-lucide-file-scan" :message="$t('documents.noDocs')" />
 
     <!-- Unavailable state — don't confuse "0 documents" with "backend down" -->
     <div v-if="docs?.unavailable && !docs?.documents?.length" class="text-center py-12 text-sm text-gray-500">

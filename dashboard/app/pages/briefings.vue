@@ -75,10 +75,7 @@ const allQuestions = computed(() => {
 
     <ApiErrorBanner :error="briefings?.error || briefingsError?.message" />
     <SkeletonLoader v-if="!briefings && briefingsStatus === 'pending'" variant="cards" />
-    <div v-else-if="briefingsError || briefings?.error || briefingsStatus === 'error'" class="text-center py-16 space-y-2">
-      <UIcon name="i-lucide-wifi-off" class="h-6 w-6 mx-auto text-gray-300" />
-      <p class="text-sm text-gray-500">{{ $t('common.dataUnavailable') }}</p>
-    </div>
+    <EmptyState v-else-if="briefingsError || briefings?.error || briefingsStatus === 'error'" offline :message="$t('common.dataUnavailable')" />
 
     <!-- Questions for Oncologist (aggregated) -->
     <div v-if="allQuestions.length" class="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
