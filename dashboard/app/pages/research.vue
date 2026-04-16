@@ -1,9 +1,10 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 
+const { t } = useI18n()
 const route = useRoute()
-const initialTab = route.query.tab === 'funnel' ? 'funnel' : 'trials'
-const activeTab = ref<'trials' | 'literature' | 'funnel'>(initialTab)
+const initialTab = route.query.tab === 'funnel' ? 'funnel' : route.query.tab === 'news' ? 'news' : 'trials'
+const activeTab = ref<'trials' | 'literature' | 'funnel' | 'news'>(initialTab)
 const sortBy = ref<'relevance' | 'date' | 'source'>('relevance')
 
 // Watched trials from clinical protocol
@@ -38,7 +39,49 @@ const literatureEntries = computed(() => {
   return research.value.entries.filter(e => e.source !== 'clinicaltrials')
 })
 
+// News classification (merged from /news page)
+const TREATMENT_REGEX = /phase\s*(III|3|II|2)|randomized|efficacy|first[- ]line|second[- ]line|chemotherapy|folfox|mfolfox|immunotherapy|bevacizumab|cetuximab|pembrolizumab|nivolumab|survival|overall\s+survival|progression[- ]free|response\s+rate|adjuvant|neoadjuvant|oxaliplatin|irinotecan|capecitabine/i
+const CLINICAL_NEWS_REGEX = /NCT\d+|recruiting|enrollment|enroll|open[- ]label|dose[- ]escalation|expanded\s+access|compassionate\s+use/i
+
+type NewsCategory = 'all' | 'treatment_updates' | 'clinical_news' | 'patient_education'
+const activeNewsCategory = ref<NewsCategory>('all')
+
+function classifyEntry(entry: { source: string, title: string, summary: string, relevance: string }): 'treatment_updates' | 'clinical_news' | 'patient_education' {
+  const text = `${entry.title} ${entry.summary}`
+  if (entry.source === 'clinicaltrials') return 'clinical_news'
+  if (entry.relevance === 'high' || TREATMENT_REGEX.test(text)) return 'treatment_updates'
+  if (CLINICAL_NEWS_REGEX.test(text)) return 'clinical_news'
+  return 'patient_education'
+}
+
+const classifiedEntries = computed(() => {
+  if (!research.value?.entries) return []
+  return research.value.entries.map(entry => ({
+    ...entry,
+    newsCategory: classifyEntry(entry),
+  }))
+})
+
+const newsCategoryCounts = computed(() => ({
+  all: classifiedEntries.value.length,
+  treatment_updates: classifiedEntries.value.filter(e => e.newsCategory === 'treatment_updates').length,
+  clinical_news: classifiedEntries.value.filter(e => e.newsCategory === 'clinical_news').length,
+  patient_education: classifiedEntries.value.filter(e => e.newsCategory === 'patient_education').length,
+}))
+
+const newsEntries = computed(() => {
+  let entries = classifiedEntries.value
+  if (activeNewsCategory.value !== 'all') {
+    entries = entries.filter(e => e.newsCategory === activeNewsCategory.value)
+  }
+  if (sortBy.value === 'date') {
+    return [...entries].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  }
+  return entries
+})
+
 const displayEntries = computed(() => {
+  if (activeTab.value === 'news') return newsEntries.value
   const entries = activeTab.value === 'trials' ? trialEntries.value : literatureEntries.value
   if (sortBy.value === 'date') {
     return [...entries].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
@@ -175,6 +218,17 @@ const drilldown = useDrilldown()
       </button>
       <button
         class="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+        :class="activeTab === 'news'
+          ? 'bg-white text-gray-900 shadow-sm'
+          : 'text-gray-500 hover:text-gray-700'"
+        @click="activeTab = 'news'"
+      >
+        <UIcon name="i-lucide-newspaper" class="w-4 h-4" />
+        {{ t('news.title') }}
+        <UBadge v-if="classifiedEntries.length" variant="subtle" size="xs" color="neutral">{{ classifiedEntries.length }}</UBadge>
+      </button>
+      <button
+        class="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors"
         :class="activeTab === 'funnel'
           ? 'bg-white text-gray-900 shadow-sm'
           : 'text-gray-500 hover:text-gray-700'"
@@ -183,6 +237,24 @@ const drilldown = useDrilldown()
         <UIcon name="i-lucide-kanban" class="w-4 h-4" />
         Funnel
         <UBadge v-if="trialEntries.length" variant="subtle" size="xs" color="warning">{{ trialEntries.length }}</UBadge>
+      </button>
+    </div>
+
+    <!-- News category filter (visible in news tab) -->
+    <div v-if="activeTab === 'news'" class="flex gap-1 rounded-lg border border-gray-200 p-1 bg-gray-50 w-fit flex-wrap">
+      <button
+        v-for="cat in (['all', 'treatment_updates', 'clinical_news', 'patient_education'] as const)"
+        :key="cat"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+        :class="activeNewsCategory === cat
+          ? 'bg-white text-gray-900 shadow-sm'
+          : 'text-gray-500 hover:text-gray-700'"
+        @click="activeNewsCategory = cat"
+      >
+        {{ t(`news.${cat === 'all' ? 'allCategories' : cat === 'treatment_updates' ? 'treatmentUpdates' : cat === 'clinical_news' ? 'clinicalNews' : 'patientEducation'}`) }}
+        <UBadge variant="subtle" size="xs" :color="activeNewsCategory === cat ? 'success' : 'neutral'">
+          {{ newsCategoryCounts[cat] }}
+        </UBadge>
       </button>
     </div>
 

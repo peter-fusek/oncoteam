@@ -16,7 +16,6 @@
     "timeline": "Časová os",
     "facts": "Fakty",
     "prompts": "Prompty",
-    "communications": "Komunikácia",
     "sessions": "Sedenia",
     "familyUpdate": "Správa pre rodinu",
     "documents": "Dokumenty",
@@ -32,7 +31,6 @@
     },
     "treatmentMap": "Mapa liečby",
     "export": "Export",
-    "news": "Správy a články",
     "imaging": "Zobrazenia"
   },
   "home": {
@@ -445,11 +443,6 @@
     "previousUpdates": "Predchádzajúce správy",
     "printTitle": "Oncoteam — Správa pre rodinu",
     "noUpdates": "Zatiaľ žiadne správy — kliknite na Generovať"
-  },
-  "communications": {
-    "title": "Komunikácia",
-    "subtitle": "{count} správ",
-    "noData": "Zatiaľ žiadna komunikácia"
   },
   "documents": {
     "title": "Dokumenty",

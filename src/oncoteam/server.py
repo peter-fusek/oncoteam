@@ -52,6 +52,8 @@ from .dashboard_api import (
     api_documents,
     api_facts,
     api_family_update,
+    api_funnel_stages_get,
+    api_funnel_stages_save,
     api_health_deep,
     api_labs,
     api_log_whatsapp,
@@ -1213,6 +1215,11 @@ mcp.custom_route("/api/bug-report", methods=["POST"])(_auth_wrap(api_bug_report)
 mcp.custom_route("/api/bug-report", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/research/assess-funnel", methods=["POST"])(_auth_wrap(api_assess_funnel))
 mcp.custom_route("/api/research/assess-funnel", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/research/funnel-stages", methods=["GET"])(_auth_wrap(api_funnel_stages_get))
+mcp.custom_route("/api/research/funnel-stages", methods=["POST"])(
+    _auth_wrap(api_funnel_stages_save)
+)
+mcp.custom_route("/api/research/funnel-stages", methods=["OPTIONS"])(api_cors_preflight)
 
 
 # ── Entry point ─────────────────────────────────

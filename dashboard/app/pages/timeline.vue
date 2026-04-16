@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { fetchApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
+const { isOncology } = usePatientType()
 
 const { data: timeline, status: timelineStatus, error: timelineError, refresh } = fetchApi<{
   events: Array<{
@@ -14,10 +15,12 @@ const { data: timeline, status: timelineStatus, error: timelineError, refresh } 
   error?: string
 }>('/timeline', { lazy: true, server: false })
 
-const { data: protocol } = fetchApi<{
-  milestones: Array<{ cycle: number; action: string; description: string }>
-  current_cycle: number
-}>('/protocol', { lazy: true, server: false })
+const { data: protocol } = isOncology.value
+  ? fetchApi<{
+      milestones: Array<{ cycle: number; action: string; description: string }>
+      current_cycle: number
+    }>('/protocol', { lazy: true, server: false })
+  : { data: ref(null) }
 
 const typeEmoji: Record<string, string> = {
   chemo_cycle: '💊',
@@ -26,6 +29,11 @@ const typeEmoji: Record<string, string> = {
   consultation: '🩺',
   surgery: '🔪',
   scan: '📡',
+  checkup: '🩺',
+  screening: '🔍',
+  vaccination: '💉',
+  procedure: '🏥',
+  dental: '🦷',
 }
 
 function dotColor(type: string) {
@@ -33,9 +41,14 @@ function dotColor(type: string) {
     case 'chemo_cycle':
     case 'chemo': return 'border-blue-500 bg-blue-500/20'
     case 'lab_work': return 'border-green-500 bg-green-500/20'
-    case 'surgery': return 'border-red-500 bg-red-500/20'
-    case 'consultation': return 'border-purple-500 bg-purple-500/20'
-    case 'scan': return 'border-cyan-500 bg-cyan-500/20'
+    case 'surgery':
+    case 'procedure': return 'border-red-500 bg-red-500/20'
+    case 'consultation':
+    case 'checkup': return 'border-purple-500 bg-purple-500/20'
+    case 'scan':
+    case 'screening': return 'border-cyan-500 bg-cyan-500/20'
+    case 'vaccination': return 'border-amber-500 bg-amber-500/20'
+    case 'dental': return 'border-pink-500 bg-pink-500/20'
     default: return 'border-gray-300 bg-white'
   }
 }
@@ -65,15 +78,15 @@ const drilldown = useDrilldown()
         <LastUpdated :timestamp="timeline?.last_updated" />
       </div>
       <div class="flex items-center gap-2">
-        <UBadge v-if="protocol?.current_cycle" variant="subtle" color="info" size="xs">
+        <UBadge v-if="isOncology && protocol?.current_cycle" variant="subtle" color="info" size="xs">
           {{ $t('timeline.currentCycle', { n: protocol.current_cycle }) }}
         </UBadge>
         <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
       </div>
     </div>
 
-    <!-- Milestone Summary -->
-    <div v-if="protocol?.milestones" class="rounded-xl border border-gray-200 bg-white p-4">
+    <!-- Milestone Summary (oncology only) -->
+    <div v-if="isOncology && protocol?.milestones" class="rounded-xl border border-gray-200 bg-white p-4">
       <div class="flex items-center gap-2 mb-3">
         <UIcon name="i-lucide-milestone" class="text-amber-500" />
         <span class="text-sm font-semibold text-gray-900">{{ $t('timeline.treatmentMilestones') }}</span>
@@ -117,15 +130,15 @@ const drilldown = useDrilldown()
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-medium text-gray-900 text-sm">{{ event.title }}</span>
                 <UBadge variant="subtle" size="xs" color="neutral">{{ $t(`timeline.eventTypes.${event.event_type}`, event.event_type) }}</UBadge>
-                <UBadge v-if="getCycleNumber(event.title)" variant="subtle" size="xs" color="info">
+                <UBadge v-if="isOncology && getCycleNumber(event.title)" variant="subtle" size="xs" color="info">
                   {{ $t('timeline.cycleBadge', { n: getCycleNumber(event.title) }) }}
                 </UBadge>
               </div>
               <div class="text-xs text-gray-500 mt-1">{{ formatDate(event.event_date) }}</div>
               <p v-if="event.notes" class="text-xs text-gray-500 mt-2">{{ event.notes }}</p>
 
-              <!-- Milestone callouts -->
-              <div v-if="getMilestonesForEvent(event.title).length" class="mt-2 space-y-1">
+              <!-- Milestone callouts (oncology only) -->
+              <div v-if="isOncology && getMilestonesForEvent(event.title).length" class="mt-2 space-y-1">
                 <div
                   v-for="m in getMilestonesForEvent(event.title)"
                   :key="m.action"

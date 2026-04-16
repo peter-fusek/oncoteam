@@ -59,7 +59,7 @@ from .patient_context import (
     get_patient_token,
 )
 
-VERSION = "0.73.0"
+VERSION = "0.78.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -4669,6 +4669,37 @@ async def api_assess_funnel(request: Request) -> JSONResponse:
         },
         request=request,
     )
+
+
+async def api_funnel_stages_get(request: Request) -> JSONResponse:
+    """GET /api/research/funnel-stages — load persisted funnel stage assignments."""
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
+    try:
+        result = await oncofiles_client.get_agent_state(f"funnel_stages:{patient_id}", token=token)
+        value = result.get("result") or result.get("value") or {}
+        if isinstance(value, str):
+            value = json.loads(value)
+        return _cors_json({"stages": value}, request=request)
+    except Exception as exc:
+        record_suppressed_error("api_funnel_stages_get", "fetch", exc)
+        return _cors_json({"stages": {}}, request=request)
+
+
+async def api_funnel_stages_save(request: Request) -> JSONResponse:
+    """POST /api/research/funnel-stages — persist funnel stage assignments."""
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
+    body = await _parse_json_body(request)
+    stages = body.get("stages", {})
+    if not isinstance(stages, dict):
+        return _cors_json({"error": "stages must be a dict"}, status=400, request=request)
+    try:
+        await oncofiles_client.set_agent_state(f"funnel_stages:{patient_id}", stages, token=token)
+        return _cors_json({"ok": True, "count": len(stages)}, request=request)
+    except Exception as exc:
+        record_suppressed_error("api_funnel_stages_save", "save", exc)
+        return _cors_json({"error": str(exc)}, status=500, request=request)
 
 
 async def api_whatsapp_media(request: Request) -> JSONResponse:

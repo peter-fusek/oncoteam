@@ -31,7 +31,7 @@ function isWatched(trial: ResearchEntry): boolean {
 }
 
 const { activeRole } = useUserRole()
-const { getStage, setStage, moveStage, toggleActive, clearAll, getAllStages, getLog, FUNNEL_STAGES } = useFunnelStage()
+const { getStage, setStage, moveStage, toggleActive, clearAll, getAllStages, getLog, loadFromServer, saveToServer, FUNNEL_STAGES } = useFunnelStage()
 const showLog = ref(false)
 const drilldown = useDrilldown()
 
@@ -122,6 +122,7 @@ async function assessBatch(trials: ResearchEntry[]) {
         })
       }
       stageVersion.value++
+      scheduleSave()
     }
     catch (err) {
       assessError.value = err instanceof Error ? err.message : 'Assessment failed'
@@ -135,6 +136,7 @@ async function assessBatch(trials: ResearchEntry[]) {
 function handleMove(nctId: string, newStage: FunnelStage) {
   moveStage(nctId, newStage)
   stageVersion.value++
+  scheduleSave()
 }
 
 function handleClick(trial: ResearchEntry) {
@@ -151,12 +153,34 @@ function assessAll() {
   assessBatch(toAssess)
 }
 
-// Auto-assess unassessed trials on mount
-onMounted(() => {
+// Auto-assess unassessed trials when data is available
+function autoAssessUnassessed() {
+  if (!props.trials.length) return false
   const all = getAllStages()
   const unassessed = props.trials.filter(t => !all[t.external_id])
   if (unassessed.length > 0 && unassessed.length <= 15) {
     assessBatch(unassessed)
+  }
+  return true
+}
+
+// Debounced save to server after stage changes
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => saveToServer(), 2000)
+}
+
+onMounted(async () => {
+  // Load persisted stages from server first
+  await loadFromServer()
+  stageVersion.value++
+
+  if (!autoAssessUnassessed()) {
+    // Data not yet loaded — watch for it to arrive
+    const stop = watch(() => props.trials, () => {
+      if (autoAssessUnassessed()) stop()
+    })
   }
 })
 </script>

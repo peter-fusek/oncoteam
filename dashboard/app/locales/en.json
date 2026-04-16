@@ -16,7 +16,6 @@
     "timeline": "Timeline",
     "facts": "Facts",
     "prompts": "Prompts",
-    "communications": "Communications",
     "sessions": "Sessions",
     "familyUpdate": "Family Update",
     "documents": "Documents",
@@ -32,7 +31,6 @@
     },
     "treatmentMap": "Treatment Map",
     "export": "Export",
-    "news": "News & Articles",
     "imaging": "Imaging"
   },
   "home": {
@@ -445,11 +443,6 @@
     "previousUpdates": "Previous Updates",
     "printTitle": "Oncoteam — Family Update",
     "noUpdates": "No updates yet — click Generate"
-  },
-  "communications": {
-    "title": "Communications",
-    "subtitle": "{count} messages",
-    "noData": "No communications yet"
   },
   "documents": {
     "title": "Documents",

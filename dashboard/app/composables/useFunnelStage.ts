@@ -46,6 +46,11 @@ export function useFunnelStage() {
     const existing = getStage(nctId)
     const fromStage = existing?.stage ?? 'unassessed'
 
+    // Preserve manually_moved flag from existing entry unless explicitly set
+    if (assessment.manually_moved === undefined) {
+      assessment.manually_moved = existing?.manually_moved
+    }
+
     // Default active to true for new assessments
     if (assessment.active === undefined) {
       assessment.active = existing?.active ?? true
@@ -138,5 +143,41 @@ export function useFunnelStage() {
     catch { return [] }
   }
 
-  return { getStage, setStage, moveStage, toggleActive, getAllStages, clearAll, getLog, FUNNEL_STAGES }
+  // ── Backend persistence ──────────────────────────
+  // Load stages from oncofiles on first mount, merge with localStorage (server wins for conflicts unless locally manually_moved)
+  async function loadFromServer(): Promise<void> {
+    if (!import.meta.client) return
+    try {
+      const data = await $fetch<{ stages: Record<string, FunnelAssessment> }>(
+        `/api/oncoteam/research/funnel-stages?patient_id=${activePatientId.value || 'q1b'}`,
+      )
+      const serverStages = data?.stages || {}
+      for (const [nctId, serverAssessment] of Object.entries(serverStages)) {
+        const local = getStage(nctId)
+        // Local manual move is newer than server — keep local
+        if (local?.manually_moved && local.assessed_at > (serverAssessment.assessed_at || '')) {
+          continue
+        }
+        // Server data wins — write to localStorage
+        localStorage.setItem(storageKey(nctId), JSON.stringify(serverAssessment))
+      }
+    }
+    catch { /* server unavailable — use localStorage only */ }
+  }
+
+  // Save all stages to server (debounced by caller)
+  async function saveToServer(): Promise<void> {
+    if (!import.meta.client) return
+    const stages = getAllStages()
+    if (!Object.keys(stages).length) return
+    try {
+      await $fetch(`/api/oncoteam/research/funnel-stages?patient_id=${activePatientId.value || 'q1b'}`, {
+        method: 'POST',
+        body: { stages },
+      })
+    }
+    catch { /* non-critical — localStorage is primary */ }
+  }
+
+  return { getStage, setStage, moveStage, toggleActive, getAllStages, clearAll, getLog, loadFromServer, saveToServer, FUNNEL_STAGES }
 }

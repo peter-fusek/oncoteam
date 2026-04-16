@@ -14,7 +14,6 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/dictionary': ['advocate', 'patient', 'doctor'],
   '/agents': ['advocate'],
   '/prompts': ['advocate'],
-  '/communications': ['advocate'],
   '/sessions': ['advocate'],
   '/documents': ['advocate'],
   '/export': ['advocate', 'doctor'],
