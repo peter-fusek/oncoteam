@@ -75,6 +75,7 @@ from .dashboard_api import (
     api_trigger_agent,
     api_weight,
     api_whatsapp_chat,
+    api_whatsapp_history,
     api_whatsapp_media,
     api_whatsapp_status,
     api_whatsapp_voice,
@@ -1142,6 +1143,7 @@ _API_ROUTES = [
     ("/api/agents", api_agents),
     ("/api/patients", api_patients),
     ("/api/whatsapp/status", api_whatsapp_status),
+    ("/api/whatsapp/history", api_whatsapp_history),
 ]
 
 _POST_ROUTES = {"/api/toxicity", "/api/labs", "/api/medications", "/api/family-update"}

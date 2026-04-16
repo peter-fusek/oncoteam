@@ -5232,6 +5232,66 @@ async def api_access_rights_set(request: Request) -> JSONResponse:
         return _cors_json({"error": f"Failed to persist: {exc}"}, status_code=500, request=request)
 
 
+async def api_whatsapp_history(request: Request) -> JSONResponse:
+    """GET /api/whatsapp/history — WhatsApp message history for audit trail."""
+    patient_id = _get_patient_id(request)
+    token = _get_token_for_patient(patient_id)
+    limit = min(100, max(1, int(request.query_params.get("limit", "50") or "50")))
+    search = request.query_params.get("search", "").strip()
+
+    try:
+        result = await asyncio.wait_for(
+            oncofiles_client.search_conversations(
+                entry_type="whatsapp",
+                limit=limit,
+                token=token,
+            ),
+            timeout=15.0,
+        )
+        entries = _extract_list(result, "entries")
+
+        messages: list[dict] = []
+        for e in entries:
+            content = e.get("content", "")
+            # Parse structured content from log_conversation format
+            phone = ""
+            user_msg = ""
+            bot_response = ""
+            for line in content.split("\n"):
+                if line.startswith("**From**:"):
+                    phone = line.replace("**From**:", "").strip()
+                elif line.startswith("**Message**:"):
+                    user_msg = line.replace("**Message**:", "").strip()
+                elif line.startswith("**Response**:"):
+                    # Everything after this line is the response
+                    idx = content.index("**Response**:")
+                    bot_response = content[idx + len("**Response**:") :].strip()
+                    break
+
+            msg = {
+                "id": e.get("id"),
+                "date": e.get("created_at", ""),
+                "phone_masked": phone[-4:].rjust(len(phone), "*") if phone else "",
+                "user_message": user_msg,
+                "bot_response": bot_response,
+                "title": e.get("title", ""),
+                "tags": e.get("tags", []),
+            }
+            # Fulltext search filter
+            if (
+                search
+                and search.lower()
+                not in (f"{msg['user_message']} {msg['bot_response']} {msg['title']}").lower()
+            ):
+                continue
+            messages.append(msg)
+
+        return _cors_json({"messages": messages, "total": len(messages)}, request=request)
+    except Exception as exc:
+        record_suppressed_error("api_whatsapp_history", "fetch", exc)
+        return _cors_json({"messages": [], "total": 0, "error": str(exc)}, request=request)
+
+
 async def api_whatsapp_status(request: Request) -> JSONResponse:
     """GET /api/whatsapp/status — WhatsApp integration status.
 

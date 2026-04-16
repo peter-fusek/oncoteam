@@ -85,6 +85,7 @@ const navigationSections = computed<NavSection[]>(() => {
       label: t('nav.sections.operations'),
       items: [
         { label: t('nav.agents'), icon: 'i-lucide-brain-circuit', to: '/agents' },
+        { label: t('nav.whatsappHistory'), icon: 'i-lucide-message-circle', to: '/whatsapp-history' },
         { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
         { label: t('nav.oncofiles'), icon: 'i-lucide-database', to: '/oncofiles' },
       ],

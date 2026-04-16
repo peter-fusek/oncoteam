@@ -32,7 +32,8 @@
     },
     "treatmentMap": "Treatment Map",
     "export": "Export",
-    "imaging": "Imaging"
+    "imaging": "Imaging",
+    "whatsappHistory": "WhatsApp"
   },
   "home": {
     "title": "Dashboard",
@@ -519,9 +520,13 @@
     "switchRole": "Switch role"
   },
   "whatsapp": {
-    "send": "WhatsApp",
-    "sent": "Sent!",
-    "error": "Failed to send"
+    "title": "WhatsApp History",
+    "subtitle": "{count} messages",
+    "searchPlaceholder": "Search messages...",
+    "voice": "Voice",
+    "command": "Command",
+    "noMessages": "No WhatsApp messages yet",
+    "noResults": "No messages match your search"
   },
   "components": {
     "apiError": "Unable to load data. The backend may be temporarily unavailable.",

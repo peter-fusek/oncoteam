@@ -32,7 +32,8 @@
     },
     "treatmentMap": "Mapa liečby",
     "export": "Export",
-    "imaging": "Zobrazenia"
+    "imaging": "Zobrazenia",
+    "whatsappHistory": "WhatsApp"
   },
   "home": {
     "title": "Prehľad",
@@ -519,9 +520,13 @@
     "switchRole": "Prepnúť rolu"
   },
   "whatsapp": {
-    "send": "WhatsApp",
-    "sent": "Odoslané!",
-    "error": "Nepodarilo sa odoslať"
+    "title": "WhatsApp história",
+    "subtitle": "{count} správ",
+    "searchPlaceholder": "Hľadať v správach...",
+    "voice": "Hlasová",
+    "command": "Príkaz",
+    "noMessages": "Zatiaľ žiadne WhatsApp správy",
+    "noResults": "Žiadne správy nezodpovedajú vyhľadávaniu"
   },
   "components": {
     "apiError": "Nepodarilo sa načítať údaje. Backend môže byť dočasne nedostupný.",
