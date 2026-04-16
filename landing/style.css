@@ -2224,6 +2224,208 @@ html[lang="sk"] .hiw-num::before {
 
 .stackup-footer a:hover { border-bottom-style: solid; }
 
+/* ── About / Trust (team + portfolio) ────────── */
+.about {
+  padding: 100px 0;
+  background: var(--bg-warm);
+  border-top: 1px solid var(--border-light);
+}
+
+.about .section-title { margin-bottom: 8px; }
+
+.about-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  max-width: 840px;
+  margin: 40px auto 56px;
+}
+
+.about-stat {
+  text-align: center;
+  padding: 20px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.about-stat-num {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 2.4rem;
+  color: var(--primary-dark);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.about-stat-label {
+  font-size: 0.78rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.about-founders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 900px;
+  margin: 0 auto 56px;
+}
+
+.about-founder {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 28px 26px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.about-founder-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.6rem;
+  margin: 0 auto 16px;
+}
+
+.about-founder-avatar-secondary { background: var(--accent); }
+
+.about-founder h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.about-founder-role {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+  margin-bottom: 14px;
+}
+
+.about-founder-bio {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  line-height: 1.65;
+  margin-bottom: 12px;
+}
+
+.about-founder-links {
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.about-founder-links a {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--primary);
+}
+
+.about-founder-links a:hover { border-bottom-style: solid; }
+
+.about-portfolio {
+  max-width: 840px;
+  margin: 0 auto 40px;
+}
+
+.about-portfolio-heading {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.about-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-left: 2px solid var(--primary);
+  padding-left: 28px;
+}
+
+.about-timeline li {
+  position: relative;
+  padding: 10px 0;
+  font-size: 0.92rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.about-timeline li::before {
+  content: "";
+  position: absolute;
+  left: -35px;
+  top: 18px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-warm);
+  border: 2px solid var(--primary);
+}
+
+.about-timeline-current::before {
+  background: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(13, 115, 84, 0.18);
+}
+
+.about-timeline-year {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.about-timeline-body { color: var(--text-light); }
+.about-timeline-body strong { color: var(--text); }
+
+.about-portfolio-footer {
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--text-light);
+  margin-top: 20px;
+}
+
+.about-portfolio-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--primary);
+}
+
+.about-portfolio-footer a:hover { border-bottom-style: solid; }
+
+.about-cta {
+  max-width: 720px;
+  margin: 40px auto 0;
+  padding: 22px 28px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--text);
+  background: var(--primary-light);
+  border: 1px solid rgba(13, 115, 84, 0.18);
+  border-radius: var(--radius);
+  line-height: 1.65;
+}
+
 /* ── Newsletter signup ──────────────────────── */
 .newsletter {
   padding: 64px 0 40px;
@@ -2345,6 +2547,9 @@ html[lang="sk"] .hiw-num::before {
   .newsletter { padding: 48px 0 32px; }
   .nl-form { flex-direction: column; max-width: 320px; }
   .nl-form .nl-btn { width: 100%; padding: 11px; }
+  .about { padding: 70px 0; }
+  .about-stats { grid-template-columns: repeat(2, 1fr); }
+  .about-founders { grid-template-columns: 1fr; }
   .journey-notes { grid-template-columns: 1fr; }
   .journey-coverage { width: 100% !important; margin-left: 0 !important; font-size: 0.76rem; padding: 0 14px; height: 40px; }
   .journey-coverage-oncoteam { margin-top: 8px; }
