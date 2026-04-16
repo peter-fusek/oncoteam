@@ -147,7 +147,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=53">
+  <link rel="stylesheet" href="style.css?v=54">
 </head>
 <body>
   <!-- Navigation -->
@@ -752,6 +752,59 @@
     </div>
   </section>
 
+  <!-- Journey — how Oncoteam fits with Slovak eHealth -->
+  <section class="journey" id="journey">
+    <div class="container">
+      <h2 class="section-title" data-i18n="journey.title">How Oncoteam Fits with Slovak eHealth</h2>
+      <p class="section-subtitle" data-i18n="journey.subtitle">A patient's journey has many stages. We cover the time between visits.</p>
+
+      <div class="journey-timeline" aria-hidden="true">
+        <div class="journey-coverage journey-coverage-national">
+          <span class="journey-coverage-label" data-i18n="journey.national.label">National eHealth (OnkoAsist — planned)</span>
+        </div>
+        <div class="journey-coverage journey-coverage-oncoteam">
+          <span class="journey-coverage-label" data-i18n="journey.oncoteam.label">Oncoteam (live today)</span>
+        </div>
+        <div class="journey-line"></div>
+        <div class="journey-phases">
+          <div class="journey-phase">
+            <span class="journey-dot"></span>
+            <span class="journey-label" data-i18n="journey.phase.symptoms">Symptoms</span>
+          </div>
+          <div class="journey-phase">
+            <span class="journey-dot"></span>
+            <span class="journey-label" data-i18n="journey.phase.diagnosis">Diagnosis</span>
+          </div>
+          <div class="journey-phase journey-phase-handoff">
+            <span class="journey-dot"></span>
+            <span class="journey-label" data-i18n="journey.phase.start">Start of treatment</span>
+          </div>
+          <div class="journey-phase">
+            <span class="journey-dot"></span>
+            <span class="journey-label" data-i18n="journey.phase.cycles">Active cycles</span>
+          </div>
+          <div class="journey-phase">
+            <span class="journey-dot"></span>
+            <span class="journey-label" data-i18n="journey.phase.survivorship">Survivorship</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="journey-notes">
+        <div class="journey-note">
+          <h3 data-i18n="journey.national.title">National infrastructure</h3>
+          <p data-i18n="journey.national.text">OnkoAsist (NCZI) is a planned Slovak national system covering the pre-treatment pathway — from first symptom through diagnosis to the moment treatment starts. Its stated goal: cut time-to-treatment from 160 days to 60.</p>
+        </div>
+        <div class="journey-note journey-note-primary">
+          <h3 data-i18n="journey.oncoteam.title">Patient advocacy layer</h3>
+          <p data-i18n="journey.oncoteam.text">Oncoteam covers the opposite half of the journey — from the moment treatment begins. Pre-cycle safety checks, lab trend analysis, biomarker-aware trial matching, and a WhatsApp channel for the family. Live, open-source, three patients in active use.</p>
+        </div>
+      </div>
+
+      <p class="journey-footer" data-i18n="journey.footer">We think both halves matter. When OnkoAsist is ready, we'd be happy to feed patient-reported outcomes (WhatsApp symptom reports) back into it through standards-based APIs.</p>
+    </div>
+  </section>
+
   <!-- Tech carousel -->
   <section class="tech-carousel">
     <div class="container">
@@ -944,6 +997,17 @@
           <summary data-i18n="faq.q_opensource">Why is the source code open?</summary>
           <p data-i18n-html="faq.a_opensource">Because trust requires transparency. When it comes to your health data, &ldquo;trust us&rdquo; isn&rsquo;t good enough. Every line of code is on <a href="https://github.com/peter-fusek/oncoteam" target="_blank" rel="noopener">GitHub</a> &mdash; you (or any developer you trust) can verify exactly what happens with your data. Both <a href="https://github.com/peter-fusek/oncoteam" target="_blank" rel="noopener">Oncoteam</a> and <a href="https://github.com/peter-fusek/oncofiles" target="_blank" rel="noopener">Oncofiles</a> are fully open-source.</p>
         </details>
+
+        <!-- Slovak eHealth context -->
+        <div class="faq-section-label" data-i18n="faq.group.ehealth">Slovak eHealth context</div>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_onkoasist">How does Oncoteam relate to OnkoAsist / NCZI?</summary>
+          <p data-i18n-html="faq.a_onkoasist"><strong>OnkoAsist</strong> is a Slovak national eHealth project run by <a href="https://www.nczisk.sk" target="_blank" rel="noopener">NCZI</a>. Its scope is the <em>pre-treatment</em> pathway &mdash; helping a patient get from first symptom to start of treatment within 60 days instead of 160. Oncoteam covers the opposite half of the journey: <em>from the moment treatment begins</em>, through every chemo cycle, lab result, and trial that might match. Different scope, different user, different cadence. We think it&rsquo;s a good project and we&rsquo;re happy to see the state investing in the first half.</p>
+        </details>
+        <details class="faq-item">
+          <summary data-i18n="faq.q_national">Does Oncoteam replace national eHealth systems?</summary>
+          <p data-i18n-html="faq.a_national">No. Oncoteam is not a national infrastructure or a registered medical device &mdash; it&rsquo;s a patient-and-family advocacy tool. It deliberately stays advisory-only. National systems like eZdravie, the National Oncology Register (N&Aacute;rodn&yacute; onkologick&yacute; register), and OnkoAsist have legal mandates, eID integration, and inter-provider data flow that a bottom-up tool shouldn&rsquo;t try to replicate. If any of those systems eventually expose a standards-based API, we&rsquo;d welcome the chance to feed patient-reported outcomes (symptoms, toxicity, quality-of-life from WhatsApp) back into them.</p>
+        </details>
       </div>
     </div>
   </section>
@@ -959,7 +1023,7 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=53"></script>
+  <script src="i18n.js?v=54"></script>
   <script>
   // Demo tab switching with auto-rotate
   (function() {

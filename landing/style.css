@@ -1897,6 +1897,173 @@ html[lang="sk"] .hiw-num::before {
 .ecosystem-card-files { border-top: 3px solid var(--accent); }
 .ecosystem-card-team { border-top: 3px solid var(--primary); }
 
+/* ── Journey (how we fit with Slovak eHealth) ── */
+.journey {
+  padding: 100px 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border-light);
+}
+
+.journey .section-title { margin-bottom: 8px; }
+
+.journey-timeline {
+  position: relative;
+  max-width: 920px;
+  margin: 60px auto 48px;
+  padding: 0 24px;
+}
+
+.journey-coverage {
+  position: relative;
+  height: 46px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+}
+
+.journey-coverage-national {
+  background: #eef2f7;
+  color: #475569;
+  border-color: #dbe3ee;
+  width: 62%;
+  margin-left: 0;
+  margin-bottom: 8px;
+}
+
+.journey-coverage-oncoteam {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border-color: rgba(13, 115, 84, 0.22);
+  width: 60%;
+  margin-left: 40%;
+  margin-bottom: 16px;
+}
+
+.journey-coverage-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.journey-coverage-label::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.journey-line { display: none; }
+
+.journey-phases {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin-top: 18px;
+  padding-top: 18px;
+  z-index: 1;
+}
+
+.journey-phases::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 24px;
+  height: 3px;
+  background: linear-gradient(to right, #cbd5e1 0%, #cbd5e1 37%, var(--primary) 37%, var(--primary) 63%, #cbd5e1 63%, #cbd5e1 100%);
+  z-index: 0;
+}
+
+.journey-phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.journey-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #94a3b8;
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 1px #cbd5e1;
+}
+
+.journey-phase-handoff .journey-dot {
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary), 0 0 0 6px rgba(13, 115, 84, 0.15);
+  width: 16px;
+  height: 16px;
+}
+
+.journey-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-light);
+  letter-spacing: 0.01em;
+  max-width: 140px;
+}
+
+.journey-phase-handoff .journey-label {
+  color: var(--primary-dark);
+}
+
+.journey-notes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 920px;
+  margin: 0 auto 32px;
+}
+
+.journey-note {
+  padding: 28px 26px;
+  border-radius: var(--radius);
+  background: var(--bg-alt);
+  border: 1px solid var(--border-light);
+}
+
+.journey-note h3 {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.journey-note p {
+  font-size: 0.92rem;
+  color: var(--text-light);
+  line-height: 1.65;
+}
+
+.journey-note-primary {
+  background: var(--primary-light);
+  border-color: rgba(13, 115, 84, 0.18);
+}
+
+.journey-note-primary h3 { color: var(--primary-dark); }
+.journey-note-primary p { color: var(--text); }
+
+.journey-footer {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+  font-size: 0.92rem;
+  color: var(--text-light);
+  line-height: 1.65;
+}
+
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 900px) {
   .nav-links { display: none; }
@@ -1924,7 +2091,14 @@ html[lang="sk"] .hiw-num::before {
   .hero-phone-wrap { display: none; }
   .section-title { font-size: 1.7rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  .features, .get-started, .reality, .contact, .privacy, .faq, .ecosystem, .how-it-works, .whatsapp-showcase, .use-cases { padding: 70px 0; }
+  .features, .get-started, .reality, .contact, .privacy, .faq, .ecosystem, .how-it-works, .whatsapp-showcase, .use-cases, .journey { padding: 70px 0; }
+  .journey-notes { grid-template-columns: 1fr; }
+  .journey-coverage { width: 100% !important; margin-left: 0 !important; font-size: 0.76rem; padding: 0 14px; height: 40px; }
+  .journey-coverage-oncoteam { margin-top: 8px; }
+  .journey-line { display: none; }
+  .journey-phases { grid-template-columns: 1fr; gap: 14px; margin-top: 28px; }
+  .journey-phase { flex-direction: row; gap: 14px; text-align: left; justify-content: flex-start; }
+  .journey-label { max-width: none; font-size: 0.88rem; }
   .manifesto { padding: 48px 0; }
   .testimonial { padding: 60px 0; }
   .testimonial-card { padding: 28px 24px; }
