@@ -27,7 +27,8 @@
       "treatment": "Treatment",
       "health": "Health",
       "intelligence": "Intelligence",
-      "operations": "Operations"
+      "operations": "Operations",
+      "records": "Records"
     },
     "treatmentMap": "Treatment Map",
     "export": "Export",

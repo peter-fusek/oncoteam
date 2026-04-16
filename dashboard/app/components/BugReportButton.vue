@@ -10,11 +10,6 @@ const submitted = ref(false)
 const issueUrl = ref('')
 const error = ref('')
 
-function collectContext() {
-  // NO auto-capture of page content — injection risk.
-  // User describes the bug in their own words.
-}
-
 async function submit() {
   if (!description.value.trim()) return
   isSubmitting.value = true
@@ -47,7 +42,6 @@ async function submit() {
 }
 
 function open() {
-  collectContext()
   description.value = ''
   submitted.value = false
   error.value = ''

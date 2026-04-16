@@ -27,7 +27,8 @@
       "treatment": "Liečba",
       "health": "Zdravie",
       "intelligence": "Analýzy",
-      "operations": "Prevádzka"
+      "operations": "Prevádzka",
+      "records": "Záznamy"
     },
     "treatmentMap": "Mapa liečby",
     "export": "Export",

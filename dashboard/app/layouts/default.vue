@@ -50,17 +50,17 @@ const navigationSections = computed<NavSection[]>(() => {
         { label: t('nav.home'), icon: 'i-lucide-layout-dashboard', to: '/' },
         { label: t('nav.patient'), icon: 'i-lucide-user-round', to: '/patient' },
         { label: t('nav.timeline'), icon: 'i-lucide-calendar-clock', to: '/timeline' },
-        { label: t('nav.treatmentMap'), icon: 'i-lucide-gantt-chart', to: '/treatment-map' },
-        { label: t('nav.facts'), icon: 'i-lucide-layers', to: '/facts' },
       ],
     },
     {
       label: t('nav.sections.treatment'),
       items: [
-        { label: t('nav.protocol'), icon: 'i-lucide-clipboard-check', to: '/protocol' },
         { label: t('nav.labs'), icon: 'i-lucide-test-tube-diagonal', to: '/labs' },
+        { label: t('nav.treatmentMap'), icon: 'i-lucide-gantt-chart', to: '/treatment-map' },
+        { label: t('nav.imaging'), icon: 'i-lucide-scan-line', to: '/imaging' },
         { label: t('nav.toxicity'), icon: 'i-lucide-thermometer', to: '/toxicity' },
         { label: t('nav.medications'), icon: 'i-lucide-pill', to: '/medications' },
+        { label: t('nav.protocol'), icon: 'i-lucide-clipboard-check', to: '/protocol' },
         { label: t('nav.prep'), icon: 'i-lucide-file-check', to: '/prep' },
       ],
     },
@@ -70,8 +70,15 @@ const navigationSections = computed<NavSection[]>(() => {
         { label: t('nav.briefings'), icon: 'i-lucide-bot', to: '/briefings' },
         { label: t('nav.research'), icon: 'i-lucide-microscope', to: '/research' },
         { label: t('nav.familyUpdate'), icon: 'i-lucide-heart-handshake', to: '/family-update' },
-        { label: t('nav.imaging'), icon: 'i-lucide-scan-line', to: '/imaging' },
         { label: t('nav.dictionary'), icon: 'i-lucide-book-open', to: '/dictionary' },
+      ],
+    },
+    {
+      label: t('nav.sections.records'),
+      items: [
+        { label: t('nav.facts'), icon: 'i-lucide-layers', to: '/facts' },
+        { label: t('nav.documents'), icon: 'i-lucide-file-scan', to: '/documents' },
+        { label: t('nav.export'), icon: 'i-lucide-package-open', to: '/export' },
       ],
     },
     {
@@ -79,8 +86,6 @@ const navigationSections = computed<NavSection[]>(() => {
       items: [
         { label: t('nav.agents'), icon: 'i-lucide-brain-circuit', to: '/agents' },
         { label: t('nav.sessions'), icon: 'i-lucide-messages-square', to: '/sessions' },
-        { label: t('nav.documents'), icon: 'i-lucide-file-scan', to: '/documents' },
-        { label: t('nav.export'), icon: 'i-lucide-package-open', to: '/export' },
         { label: t('nav.oncofiles'), icon: 'i-lucide-database', to: '/oncofiles' },
       ],
     },
