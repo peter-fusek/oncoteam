@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from oncoteam.dashboard_api import api_health_deep, api_patients, api_preventive_care
+from oncoteam.api_admin import api_patients
+from oncoteam.dashboard_api import api_health_deep, api_preventive_care
 
 
 def _make_request(query_string: str = "") -> object:
@@ -89,7 +90,7 @@ async def test_health_deep_includes_scheduler(mock_search):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.list_patients",
+    "oncoteam.api_admin.oncofiles_client.list_patients",
     new_callable=AsyncMock,
 )
 async def test_patients_returns_list(mock_list):
@@ -110,7 +111,7 @@ async def test_patients_returns_list(mock_list):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.list_patients",
+    "oncoteam.api_admin.oncofiles_client.list_patients",
     new_callable=AsyncMock,
     side_effect=Exception("oncofiles down"),
 )

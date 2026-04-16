@@ -401,7 +401,7 @@ MOCK_RESEARCH = {
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_research.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_api_research_returns_entries(mock_list):
     mock_list.return_value = MOCK_RESEARCH
     request = _make_request("/api/research")
@@ -421,7 +421,7 @@ async def test_api_research_returns_entries(mock_list):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_research.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_api_research_relevance_sorting(mock_list):
     """Research entries are sorted: high > medium > low > not_applicable."""
     mock_list.return_value = {
@@ -460,7 +460,7 @@ async def test_api_research_relevance_sorting(mock_list):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_research.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_api_research_false_hope_detection(mock_list):
     """Anti-EGFR and G12C studies are flagged as not_applicable."""
     mock_list.return_value = {
@@ -491,7 +491,7 @@ async def test_api_research_false_hope_detection(mock_list):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_research.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_api_research_with_source_filter(mock_list):
     mock_list.return_value = {"entries": []}
     request = _make_request("/api/research", "source=clinicaltrials&limit=5")
@@ -503,7 +503,7 @@ async def test_api_research_with_source_filter(mock_list):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_research.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_api_research_handles_error(mock_list):
     mock_list.side_effect = Exception("fail")
     request = _make_request("/api/research")
@@ -962,7 +962,7 @@ async def test_api_timeline_includes_source(mock_list):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_research.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_api_research_includes_source_ref(mock_list):
     mock_list.return_value = MOCK_RESEARCH
     request = _make_request("/api/research")

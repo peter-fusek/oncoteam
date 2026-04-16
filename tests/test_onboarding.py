@@ -8,15 +8,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from oncoteam.dashboard_api import (
-    _approved_phones,
+from oncoteam.api_admin import (
     api_access_rights_get,
     api_access_rights_set,
     api_approve_user,
     api_onboard_patient,
     api_onboarding_status,
-    api_whatsapp_media,
 )
+from oncoteam.api_whatsapp import _approved_phones
+from oncoteam.dashboard_api import api_whatsapp_media
 
 
 class FakeRequest:
@@ -35,7 +35,7 @@ class FakeRequest:
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.create_patient_via_api", new_callable=AsyncMock)
+@patch("oncoteam.api_admin.oncofiles_client.create_patient_via_api", new_callable=AsyncMock)
 @patch("oncoteam.patient_context.register_patient")
 async def test_onboard_patient_success(mock_register, mock_create):
     mock_create.return_value = {
@@ -70,7 +70,7 @@ async def test_onboard_patient_success(mock_register, mock_create):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.create_patient_via_api", new_callable=AsyncMock)
+@patch("oncoteam.api_admin.oncofiles_client.create_patient_via_api", new_callable=AsyncMock)
 async def test_onboard_patient_conflict(mock_create):
     """409 from oncofiles means patient already exists."""
     mock_response = MagicMock()
@@ -89,7 +89,7 @@ async def test_onboard_patient_conflict(mock_create):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.create_patient_via_api", new_callable=AsyncMock)
+@patch("oncoteam.api_admin.oncofiles_client.create_patient_via_api", new_callable=AsyncMock)
 async def test_onboard_patient_oncofiles_down(mock_create):
     """Connection error when oncofiles is unreachable."""
     mock_create.side_effect = ConnectionError("oncofiles unreachable")
@@ -191,7 +191,7 @@ def _clear_approved_phones():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api._persist_approved_phones", new_callable=AsyncMock)
+@patch("oncoteam.api_admin._persist_approved_phones", new_callable=AsyncMock)
 async def test_approve_user_success(mock_persist):
     """Approve a phone number successfully and persist to oncofiles."""
     request = FakeRequest({"phone": "+421900111222"})
@@ -203,7 +203,7 @@ async def test_approve_user_success(mock_persist):
     assert data["phone"] == "+421900111222"
 
     # Verify the phone is now in the approved set
-    from oncoteam.dashboard_api import is_phone_approved
+    from oncoteam.api_whatsapp import is_phone_approved
 
     assert is_phone_approved("+421900111222") is True
 
@@ -231,7 +231,7 @@ async def test_approve_user_invalid_json():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api._persist_approved_phones", new_callable=AsyncMock)
+@patch("oncoteam.api_admin._persist_approved_phones", new_callable=AsyncMock)
 async def test_approve_user_idempotent(mock_persist):
     """Approving the same phone twice works without error."""
     request1 = FakeRequest({"phone": "+421900111222"})
@@ -355,12 +355,12 @@ async def test_whatsapp_media_upload_failure(mock_fup, mock_upload):
 @patch("oncoteam.api_whatsapp.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_load_approved_phones_from_oncofiles(mock_get):
     """Load approved phones from oncofiles agent_state."""
-    from oncoteam.dashboard_api import load_approved_phones
+    from oncoteam.api_whatsapp import load_approved_phones
 
     mock_get.return_value = {"value": {"phones": ["+421900111222", "+421900333444"]}}
     await load_approved_phones()
 
-    from oncoteam.dashboard_api import is_phone_approved
+    from oncoteam.api_whatsapp import is_phone_approved
 
     assert is_phone_approved("+421900111222") is True
     assert is_phone_approved("+421900333444") is True
@@ -371,12 +371,12 @@ async def test_load_approved_phones_from_oncofiles(mock_get):
 @patch("oncoteam.api_whatsapp.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_load_approved_phones_oncofiles_down(mock_get):
     """Load gracefully handles oncofiles being down."""
-    from oncoteam.dashboard_api import load_approved_phones
+    from oncoteam.api_whatsapp import load_approved_phones
 
     mock_get.side_effect = ConnectionError("oncofiles unreachable")
     await load_approved_phones()  # Should not raise
 
-    from oncoteam.dashboard_api import is_phone_approved
+    from oncoteam.api_whatsapp import is_phone_approved
 
     assert is_phone_approved("+421900111222") is False
 
@@ -412,19 +412,19 @@ def test_fup_per_patient_isolation():
 @pytest.fixture()
 def _clear_access_rights():
     """Clear access rights cache between tests."""
-    import oncoteam.dashboard_api as _mod
+    import oncoteam.api_admin as _admin_mod
 
-    _mod._access_rights_cache = {}
-    _mod._access_rights_ts = 0.0
+    _admin_mod._access_rights_cache = {}
+    _admin_mod._access_rights_ts = 0.0
     yield
-    _mod._access_rights_cache = {}
-    _mod._access_rights_ts = 0.0
+    _admin_mod._access_rights_cache = {}
+    _admin_mod._access_rights_ts = 0.0
 
 
 @pytest.mark.anyio
 @pytest.mark.usefixtures("_clear_access_rights")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    "oncoteam.api_admin.oncofiles_client.get_agent_state",
     new_callable=AsyncMock,
 )
 async def test_access_rights_get_from_oncofiles(mock_get):
@@ -453,7 +453,7 @@ async def test_access_rights_get_from_oncofiles(mock_get):
 @pytest.mark.anyio
 @pytest.mark.usefixtures("_clear_access_rights")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    "oncoteam.api_admin.oncofiles_client.get_agent_state",
     new_callable=AsyncMock,
 )
 async def test_access_rights_get_fallback_on_error(mock_get):
@@ -471,7 +471,7 @@ async def test_access_rights_get_fallback_on_error(mock_get):
 @pytest.mark.anyio
 @pytest.mark.usefixtures("_clear_access_rights")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.set_agent_state",
+    "oncoteam.api_admin.oncofiles_client.set_agent_state",
     new_callable=AsyncMock,
 )
 async def test_access_rights_set_success(mock_set):

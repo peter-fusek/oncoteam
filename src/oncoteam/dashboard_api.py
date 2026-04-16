@@ -8,7 +8,6 @@ import contextlib
 import contextvars
 import json
 import logging
-import math
 import re
 import resource
 import sys
@@ -33,8 +32,6 @@ from .clinical_protocol import (
     WATCHED_TRIALS,
 )
 from .config import (
-    ANTHROPIC_API_KEY,
-    AUTONOMOUS_MODEL_LIGHT,
     DASHBOARD_ALLOWED_ORIGINS,
     DASHBOARD_API_KEY,
     FUP_AGENT_RUNS_PER_MONTH,
@@ -1221,96 +1218,6 @@ async def _fetch_patient_ids(patient_id: str, token: str | None = None) -> dict[
     except Exception as e:
         record_suppressed_error("api_patient", "fetch_patient_ids", e)
     return None
-
-
-_RELEVANCE_SORT_ORDER = {"high": 0, "medium": 1, "low": 2, "not_applicable": 3}
-
-
-async def api_research(request: Request) -> JSONResponse:
-    """GET /api/research — research entries from oncofiles.
-
-    Query params:
-      - limit: max entries to fetch from oncofiles (default 100)
-      - source: filter by source (pubmed, clinicaltrials)
-      - sort: relevance (default), date, source
-      - page: page number (default 1)
-      - per_page: entries per page (default 10)
-    """
-    cb_resp = _circuit_breaker_503(
-        {"entries": [], "total": 0, "page": 1, "per_page": 10, "total_pages": 0}
-    )
-    if cb_resp:
-        return cb_resp
-    patient_id = _get_patient_id(request)
-    token = _get_token_for_patient(patient_id)
-    limit = _parse_limit(request, default=100)
-    source = request.query_params.get("source")
-    sort = request.query_params.get("sort", "relevance")
-    page = max(1, int(request.query_params.get("page", "1")))
-    per_page = max(1, min(100, int(request.query_params.get("per_page", "10"))))
-    try:
-        result = await oncofiles_client.list_research_entries(
-            source=source, limit=limit, token=token
-        )
-        entries = _filter_test(_extract_list(result, "entries"), request)
-        items = []
-        for e in entries:
-            rel = assess_research_relevance(
-                e.get("title", ""),
-                e.get("summary"),
-            )
-            ext_url = _build_external_url(
-                e.get("source", ""), e.get("external_id", ""), e.get("raw_data", "")
-            )
-            items.append(
-                {
-                    "id": e.get("id"),
-                    "source": e.get("source"),
-                    "external_id": e.get("external_id"),
-                    "title": e.get("title"),
-                    "summary": e.get("summary"),
-                    "date": e.get("created_at"),
-                    "external_url": ext_url,
-                    "relevance": rel.score,
-                    "relevance_reason": rel.reason,
-                    "source_ref": _build_source_ref(e, "research"),
-                }
-            )
-        # Sort
-        if sort == "date":
-            items.sort(key=lambda x: x.get("date") or "", reverse=True)
-        elif sort == "source":
-            items.sort(key=lambda x: x.get("source") or "")
-        else:
-            items.sort(key=lambda x: _RELEVANCE_SORT_ORDER.get(x["relevance"], 2))
-        # Paginate
-        total = len(items)
-        total_pages = max(1, math.ceil(total / per_page))
-        start = (page - 1) * per_page
-        end = start + per_page
-        paginated = items[start:end]
-        return _cors_json(
-            {
-                "entries": paginated,
-                "total": total,
-                "page": page,
-                "per_page": per_page,
-                "total_pages": total_pages,
-            }
-        )
-    except Exception as e:
-        record_suppressed_error("api_research", "fetch", e)
-        return _cors_json(
-            {
-                "error": str(e),
-                "entries": [],
-                "total": 0,
-                "page": 1,
-                "per_page": per_page,
-                "total_pages": 0,
-            },
-            status_code=502,
-        )
 
 
 async def api_sessions(request: Request) -> JSONResponse:
@@ -3579,448 +3486,19 @@ async def api_family_update(request: Request) -> JSONResponse:
 
 # api_bug_report, api_document_webhook, api_trigger_agent moved to api_webhooks.py
 
-
-_FUNNEL_STAGES = ("Excluded", "Later Line", "Watching", "Eligible Now", "Action Needed")
-
-_FUNNEL_SYSTEM_PROMPT_TEMPLATE = """\
-You are a clinical trial funnel classifier for cancer treatment management.
-Classify this trial into exactly one funnel stage for the patient.
-
-## Funnel Stages
-- **Excluded**: Biomarker contraindication, eligibility hard-stop, or incompatible \
-with patient's surgical history
-- **Later Line**: Trial is for 2nd-line, 3rd-line, or later treatment. \
-Keywords: "previously treated", "refractory", "after progression on", \
-"second-line", "third-line", "2L", "3L", "salvage", "post-progression". \
-Patient is currently on 1st-line — these trials are NOT yet applicable.
-- **Watching**: Relevant to patient's cancer type and biomarkers, no \
-contraindication, but not currently actionable (e.g. not yet recruiting, \
-distant geography, phase I only, or insufficient data)
-- **Eligible Now**: Patient meets known criteria, trial is recruiting, \
-reachable geography (Slovakia/EU)
-- **Action Needed**: Eligible AND requires immediate action (enrollment \
-closing soon, limited slots)
-
-## Patient Profile
-{patient_rules}
-
-## Patient-Specific Exclusions
-Apply the patient's excluded_therapies as hard exclusion rules.
-Trials requiring "treatment-naive" or "no prior surgery" are EXCLUDED if patient had prior surgery.
-
-## Classification Rules
-1. If trial mentions 2L/3L/refractory/post-progression → "Later Line"
-2. If biomarker contraindication → "Excluded" with exclusion_reason
-3. If trial requires no prior resection and patient had surgery → "Excluded"
-4. If recruiting in EU/Slovakia and patient meets criteria → "Eligible Now"
-5. Otherwise → "Watching"
-
-You MUST respond with ONLY a valid JSON object. No markdown, no explanation:
-{"stage": "<one of the 5 stages>", "exclusion_reason": "<null or string>", \
-"next_step": "<1 sentence recommendation>", "deadline_note": "<null or string>"}
-"""
-
-
-async def api_assess_funnel(request: Request) -> JSONResponse:
-    """POST /api/research/assess-funnel — AI-classify trials into funnel stages."""
-    if not _check_expensive_rate_limit():
-        return _cors_json(
-            {"error": "Too many AI requests. Try again in a few minutes."},
-            status_code=429,
-            request=request,
-        )
-    try:
-        body = json.loads(await request.body())
-    except (json.JSONDecodeError, Exception):
-        return _cors_json({"error": "Invalid JSON"}, status_code=400, request=request)
-
-    trials = body.get("trials", [])
-    if not isinstance(trials, list) or len(trials) > 50:
-        return _cors_json(
-            {"error": "trials must be a list of max 50 entries"},
-            status_code=400,
-            request=request,
-        )
-    if not trials:
-        return _cors_json({"assessments": [], "cost_usd": 0}, request=request)
-
-    if not ANTHROPIC_API_KEY:
-        return _cors_json({"error": "AI not configured"}, status_code=500, request=request)
-
-    from anthropic import AsyncAnthropic
-
-    from .patient_context import build_biomarker_rules
-
-    patient = _get_patient_for_request(request)
-    patient_rules = build_biomarker_rules(patient)
-    funnel_prompt = _FUNNEL_SYSTEM_PROMPT_TEMPLATE.format(patient_rules=patient_rules)
-
-    client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
-    total_cost = 0.0
-    sem = asyncio.Semaphore(5)  # 5 concurrent Haiku calls
-
-    async def _assess_one(trial: dict) -> dict:
-        nonlocal total_cost
-        nct_id = trial.get("external_id", "")
-        user_msg = (
-            f"Trial: {nct_id}\nTitle: {trial.get('title', '')}\n"
-            f"Summary: {trial.get('summary', '')[:500]}\n"
-            f"Current relevance: {trial.get('relevance', '')} ({trial.get('relevance_reason', '')})"
-        )
-        async with sem:
-            try:
-                resp = await client.messages.create(
-                    model=AUTONOMOUS_MODEL_LIGHT,
-                    max_tokens=256,
-                    system=funnel_prompt,
-                    messages=[{"role": "user", "content": user_msg}],
-                )
-                text = resp.content[0].text if resp.content else "{}"
-                cost = (resp.usage.input_tokens * 0.80 + resp.usage.output_tokens * 4.0) / 1_000_000
-                total_cost += cost
-                # Extract JSON from response (Haiku may wrap in markdown)
-                clean = text.strip()
-                if "```" in clean:
-                    clean = re.sub(r"```(?:json)?\s*", "", clean).strip().rstrip("`")
-                # Find first { ... } block
-                start = clean.find("{")
-                end = clean.rfind("}") + 1
-                if start >= 0 and end > start:
-                    clean = clean[start:end]
-                parsed = json.loads(clean)
-                stage = parsed.get("stage", "Watching")
-                if stage not in _FUNNEL_STAGES:
-                    stage = "Watching"
-                return {
-                    "nct_id": nct_id,
-                    "oncofiles_id": trial.get("id"),
-                    "stage": stage,
-                    "exclusion_reason": parsed.get("exclusion_reason"),
-                    "next_step": parsed.get("next_step", "Review trial details"),
-                    "deadline_note": parsed.get("deadline_note"),
-                }
-            except Exception as e:
-                record_suppressed_error("api_assess_funnel", f"assess_{nct_id}", e)
-                return {
-                    "nct_id": nct_id,
-                    "oncofiles_id": trial.get("id"),
-                    "stage": "Watching",
-                    "exclusion_reason": None,
-                    "next_step": "Assessment failed — review manually",
-                    "deadline_note": None,
-                }
-
-    assessments = await asyncio.gather(*[_assess_one(t) for t in trials])
-
-    return _cors_json(
-        {
-            "assessments": list(assessments),
-            "model": AUTONOMOUS_MODEL_LIGHT,
-            "cost_usd": round(total_cost, 4),
-        },
-        request=request,
-    )
-
-
-async def api_funnel_stages_get(request: Request) -> JSONResponse:
-    """GET /api/research/funnel-stages — load persisted funnel stage assignments."""
-    patient_id = _get_patient_id(request)
-    token = _get_token_for_patient(patient_id)
-    try:
-        result = await oncofiles_client.get_agent_state(f"funnel_stages:{patient_id}", token=token)
-        value = result.get("result") or result.get("value") or {}
-        if isinstance(value, str):
-            value = json.loads(value)
-        return _cors_json({"stages": value}, request=request)
-    except Exception as exc:
-        record_suppressed_error("api_funnel_stages_get", "fetch", exc)
-        return _cors_json({"stages": {}}, request=request)
-
-
-async def api_funnel_stages_save(request: Request) -> JSONResponse:
-    """POST /api/research/funnel-stages — persist funnel stage assignments."""
-    patient_id = _get_patient_id(request)
-    token = _get_token_for_patient(patient_id)
-    body = await _parse_json_body(request)
-    stages = body.get("stages", {})
-    if not isinstance(stages, dict):
-        return _cors_json({"error": "stages must be a dict"}, status_code=400, request=request)
-    try:
-        await oncofiles_client.set_agent_state(f"funnel_stages:{patient_id}", stages, token=token)
-        return _cors_json({"ok": True, "count": len(stages)}, request=request)
-    except Exception as exc:
-        record_suppressed_error("api_funnel_stages_save", "save", exc)
-        return _cors_json({"error": str(exc)}, status_code=500, request=request)
-
-
 # api_whatsapp_media + api_whatsapp_voice moved to api_whatsapp.py (#353)
 
-
-async def api_patients(request: Request) -> JSONResponse:
-    """GET /api/patients — list all active patients with doc counts."""
-    token = _get_token_for_patient(_get_patient_id(request))
-    try:
-        result = await oncofiles_client.list_patients(token=token)
-        patients = result if isinstance(result, list) else result.get("patients", [])
-        return _cors_json({"patients": patients}, request=request)
-    except Exception as exc:
-        record_suppressed_error("api_patients", "list_patients", exc)
-        # Fallback to local registry
-        from .patient_context import get_patient, list_patient_ids
-
-        patients = []
-        for pid in list_patient_ids():
-            try:
-                p = get_patient(pid)
-                patients.append(
-                    {
-                        "slug": pid,
-                        "name": p.name,
-                        "patient_type": (
-                            "general" if p.diagnosis_code.startswith("Z") else "oncology"
-                        ),
-                    }
-                )
-            except Exception:
-                continue
-        return _cors_json({"patients": patients, "source": "local"}, request=request)
-
-
-async def api_onboard_patient(request: Request) -> JSONResponse:
-    """POST /api/internal/onboard-patient — create a new patient in oncofiles and register locally.
-
-    Expects JSON body: {patient_id, display_name, diagnosis_summary?, preferred_lang?, phone?}
-    Returns: {patient_id, bearer_token, status: "created"} or {status: "exists"} on 409.
-    """
-    import httpx as _httpx
-
-    from .models import PatientProfile
-    from .patient_context import register_patient
-
-    try:
-        body = await request.json()
-    except Exception:
-        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
-
-    patient_id = (body.get("patient_id") or "").strip()
-    # Accept both field name variants (frontend sends patient_name)
-    display_name = (body.get("display_name") or body.get("patient_name") or "").strip()
-    if not patient_id or not display_name:
-        return _cors_json(
-            {"error": "patient_id and display_name are required"},
-            status_code=400,
-            request=request,
-        )
-
-    diagnosis_summary = body.get("diagnosis_summary", body.get("diagnosis", ""))
-    preferred_lang = body.get("preferred_lang", body.get("lang", "sk"))
-
-    try:
-        result = await oncofiles_client.create_patient_via_api(
-            patient_id=patient_id,
-            display_name=display_name,
-            diagnosis_summary=diagnosis_summary,
-            preferred_lang=preferred_lang,
-            caregiver_email="",
-        )
-    except _httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 409:
-            _logger.info("Patient %s already exists in oncofiles", patient_id)
-            return _cors_json(
-                {"patient_id": patient_id, "status": "exists"},
-                request=request,
-            )
-        record_suppressed_error("api_onboard_patient", "create_patient", exc)
-        return _cors_json(
-            {"error": f"Oncofiles error: {exc.response.status_code}"},
-            status_code=502,
-            request=request,
-        )
-    except Exception as exc:
-        record_suppressed_error("api_onboard_patient", "create_patient", exc)
-        return _cors_json(
-            {"error": f"Failed to create patient: {exc}"},
-            status_code=502,
-            request=request,
-        )
-
-    # Register in oncoteam's in-memory patient registry
-    bearer_token = result.get("bearer_token", "")
-    profile = PatientProfile(
-        patient_id=patient_id,
-        name=display_name,
-        diagnosis_code="",
-        diagnosis_description=diagnosis_summary,
-        tumor_site="",
-        treatment_regimen="",
-    )
-    try:
-        register_patient(patient_id=patient_id, token=bearer_token, profile=profile)
-    except Exception as exc:
-        record_suppressed_error("api_onboard_patient", "register_patient", exc)
-        # Non-fatal — patient was created in oncofiles, just not registered locally
-
-    # Persist token for reload after restart (#265)
-    if bearer_token:
-        asyncio.ensure_future(_persist_patient_token(patient_id, bearer_token))
-
-    _logger.info("Onboarded patient %s", patient_id)
-
-    return _cors_json(
-        {
-            "patient_id": patient_id,
-            "bearer_token": bearer_token,
-            "status": "created",
-        },
-        request=request,
-    )
-
-
-async def api_onboarding_status(request: Request) -> JSONResponse:
-    """POST /api/internal/onboarding-status — check onboarding state for a phone number.
-
-    Expects JSON body: {phone}
-    Returns: {status: "unknown"} — placeholder for #137 state machine.
-    """
-    try:
-        body = await request.json()
-    except Exception:
-        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
-
-    phone = (body.get("phone") or "").strip()
-    if not phone:
-        return _cors_json({"error": "phone is required"}, status_code=400, request=request)
-
-    # Check if the phone is in the approved set (includes oncofiles-persisted phones)
-    approved = is_phone_approved(phone)
-    return _cors_json(
-        {
-            "phone": phone,
-            "status": "approved" if approved else "unknown",
-            "approved": approved,
-            "patient_id": _phone_patient_map.get(phone, ""),
-        },
-        request=request,
-    )
-
-
 # Phone/token state + helpers moved to api_whatsapp.py (#353)
-from .api_whatsapp import _approved_phones as _approved_phones  # noqa: E402
-from .api_whatsapp import _approved_phones_loaded as _approved_phones_loaded  # noqa: E402
-from .api_whatsapp import _persist_approved_phones as _persist_approved_phones  # noqa: E402
-from .api_whatsapp import _persist_patient_token as _persist_patient_token  # noqa: E402
-from .api_whatsapp import _phone_patient_map as _phone_patient_map  # noqa: E402
-from .api_whatsapp import is_phone_approved as is_phone_approved  # noqa: E402
-from .api_whatsapp import load_approved_phones as load_approved_phones  # noqa: E402
-from .api_whatsapp import load_patient_tokens as load_patient_tokens  # noqa: E402
-
-
-async def api_approve_user(request: Request) -> JSONResponse:
-    """POST /api/internal/approve-user — admin approves a new WhatsApp user.
-
-    Expects JSON body: {phone}
-    Stores phone in the in-memory approved set and persists to oncofiles.
-    Returns: {status: "approved", phone: str}
-    """
-    try:
-        body = await request.json()
-    except Exception:
-        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
-
-    phone = (body.get("phone") or "").strip()
-    if not phone:
-        return _cors_json({"error": "phone is required"}, status_code=400, request=request)
-
-    _approved_phones.add(phone)
-
-    # Optionally link phone to a patient_id (#265)
-    patient_id_for_phone = (body.get("patient_id") or "").strip()
-    if patient_id_for_phone:
-        _phone_patient_map[phone] = patient_id_for_phone
-
-    _logger.info("Admin approved WhatsApp user: %s", phone)
-
-    # Persist to oncofiles (fire-and-forget, don't block response)
-    asyncio.ensure_future(_persist_approved_phones())
-
-    return _cors_json({"status": "approved", "phone": phone}, request=request)
-
-
-# ---------------------------------------------------------------------------
-# Access rights (ROLE_MAP in database)
-# ---------------------------------------------------------------------------
-
-_access_rights_cache: dict[str, object] = {}
-_access_rights_ts: float = 0.0
-_ACCESS_RIGHTS_TTL = 60.0
-
-
-async def _load_access_rights() -> dict[str, object]:
-    """Load access rights from oncofiles agent_state, with 60s cache."""
-    global _access_rights_cache, _access_rights_ts
-    now = time.monotonic()
-    if _access_rights_cache and (now - _access_rights_ts) < _ACCESS_RIGHTS_TTL:
-        return _access_rights_cache
-    try:
-        raw = await oncofiles_client.get_agent_state(key="role_map", agent_id="access_rights")
-        if isinstance(raw, dict):
-            data = raw.get("value") or raw.get("state") or raw
-            if isinstance(data, str):
-                data = json.loads(data)
-            if isinstance(data, dict):
-                role_map = data.get("role_map", data)
-                _access_rights_cache = role_map
-                _access_rights_ts = now
-                return role_map
-    except Exception as exc:
-        record_suppressed_error("_load_access_rights", "get_agent_state", exc)
-        _logger.warning("Failed to load access rights: %s", exc)
-    return _access_rights_cache
-
-
-async def api_access_rights_get(request: Request) -> JSONResponse:
-    """GET /api/internal/access-rights — read the role map from database."""
-    role_map = await _load_access_rights()
-    return _cors_json({"role_map": role_map}, request=request)
-
-
-async def api_access_rights_set(request: Request) -> JSONResponse:
-    """POST /api/internal/access-rights — update the role map in database.
-
-    Expects JSON body: {role_map: {...}}
-    """
-    global _access_rights_cache, _access_rights_ts
-    try:
-        body = await request.json()
-    except Exception:
-        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
-
-    role_map = body.get("role_map")
-    if not isinstance(role_map, dict):
-        return _cors_json(
-            {"error": "role_map must be a JSON object"}, status_code=400, request=request
-        )
-
-    from datetime import UTC
-    from datetime import datetime as _dt
-
-    try:
-        await oncofiles_client.set_agent_state(
-            key="role_map",
-            value={
-                "role_map": role_map,
-                "updated_at": _dt.now(UTC).isoformat(),
-            },
-            agent_id="access_rights",
-        )
-        _access_rights_cache = role_map
-        _access_rights_ts = time.monotonic()
-        _logger.info("Access rights updated: %d entries", len(role_map))
-        return _cors_json({"status": "updated", "entries": len(role_map)}, request=request)
-    except Exception as exc:
-        record_suppressed_error("api_access_rights_set", "set_agent_state", exc)
-        return _cors_json({"error": f"Failed to persist: {exc}"}, status_code=500, request=request)
-
+# Backward compat: admin handlers moved to api_admin.py
+from .api_admin import _access_rights_cache as _access_rights_cache  # noqa: E402, F811
+from .api_admin import _access_rights_ts as _access_rights_ts  # noqa: E402, F811
+from .api_admin import _load_access_rights as _load_access_rights  # noqa: E402, F811
+from .api_admin import api_access_rights_get as api_access_rights_get  # noqa: E402, F811
+from .api_admin import api_access_rights_set as api_access_rights_set  # noqa: E402, F811
+from .api_admin import api_approve_user as api_approve_user  # noqa: E402, F811
+from .api_admin import api_onboard_patient as api_onboard_patient  # noqa: E402, F811
+from .api_admin import api_onboarding_status as api_onboarding_status  # noqa: E402, F811
+from .api_admin import api_patients as api_patients  # noqa: E402, F811
 
 # Backward compat: WhatsApp handlers moved to api_whatsapp.py (#353)
 from .api_agents import _parse_agent_run_entry as _parse_agent_run_entry  # noqa: E402, F811
@@ -4032,9 +3510,25 @@ from .api_agents import api_autonomous as api_autonomous  # noqa: E402, F811
 from .api_agents import api_autonomous_cost as api_autonomous_cost  # noqa: E402, F811
 from .api_agents import api_autonomous_status as api_autonomous_status  # noqa: E402, F811
 from .api_agents import api_diagnostics as api_diagnostics  # noqa: E402, F811
+
+# Backward compat: research handlers moved to api_research.py
+from .api_research import _FUNNEL_STAGES as _FUNNEL_STAGES  # noqa: E402, F811
+from .api_research import (  # noqa: E402
+    _FUNNEL_SYSTEM_PROMPT_TEMPLATE as _FUNNEL_SYSTEM_PROMPT_TEMPLATE,  # noqa: F811
+)
+from .api_research import _RELEVANCE_SORT_ORDER as _RELEVANCE_SORT_ORDER  # noqa: E402, F811
+from .api_research import api_assess_funnel as api_assess_funnel  # noqa: E402, F811
+from .api_research import api_funnel_stages_get as api_funnel_stages_get  # noqa: E402, F811
+from .api_research import api_funnel_stages_save as api_funnel_stages_save  # noqa: E402, F811
+from .api_research import api_research as api_research  # noqa: E402, F811
 from .api_webhooks import api_bug_report as api_bug_report  # noqa: E402, F811
 from .api_webhooks import api_document_webhook as api_document_webhook  # noqa: E402, F811
 from .api_webhooks import api_trigger_agent as api_trigger_agent  # noqa: E402, F811
+from .api_whatsapp import _approved_phones as _approved_phones  # noqa: E402
+from .api_whatsapp import _approved_phones_loaded as _approved_phones_loaded  # noqa: E402
+from .api_whatsapp import _persist_approved_phones as _persist_approved_phones  # noqa: E402
+from .api_whatsapp import _persist_patient_token as _persist_patient_token  # noqa: E402
+from .api_whatsapp import _phone_patient_map as _phone_patient_map  # noqa: E402
 from .api_whatsapp import api_log_whatsapp as api_log_whatsapp  # noqa: E402, F811
 from .api_whatsapp import api_resolve_patient as api_resolve_patient  # noqa: E402, F811
 from .api_whatsapp import api_whatsapp_chat as api_whatsapp_chat  # noqa: E402, F811
@@ -4042,6 +3536,9 @@ from .api_whatsapp import api_whatsapp_history as api_whatsapp_history  # noqa: 
 from .api_whatsapp import api_whatsapp_media as api_whatsapp_media  # noqa: E402, F811
 from .api_whatsapp import api_whatsapp_status as api_whatsapp_status  # noqa: E402, F811
 from .api_whatsapp import api_whatsapp_voice as api_whatsapp_voice  # noqa: E402, F811
+from .api_whatsapp import is_phone_approved as is_phone_approved  # noqa: E402
+from .api_whatsapp import load_approved_phones as load_approved_phones  # noqa: E402
+from .api_whatsapp import load_patient_tokens as load_patient_tokens  # noqa: E402
 
 
 async def api_cors_preflight(request: Request) -> JSONResponse:

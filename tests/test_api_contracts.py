@@ -107,7 +107,7 @@ async def test_patient_has_required_keys(mock):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_research.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_research_has_entries_key(mock):
     mock.return_value = {"entries": []}
     data = _parse(await api_research(_make_request()))

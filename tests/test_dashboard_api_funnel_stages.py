@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from oncoteam.dashboard_api import api_funnel_stages_get, api_funnel_stages_save
+from oncoteam.api_research import api_funnel_stages_get, api_funnel_stages_save
 
 
 def _make_request(query_string: str = "") -> object:
@@ -47,7 +47,7 @@ def _make_post_request(body: dict, query_string: str = "") -> object:
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    "oncoteam.api_research.oncofiles_client.get_agent_state",
     new_callable=AsyncMock,
 )
 async def test_funnel_stages_get_returns_stages(mock_get):
@@ -66,7 +66,7 @@ async def test_funnel_stages_get_returns_stages(mock_get):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    "oncoteam.api_research.oncofiles_client.get_agent_state",
     new_callable=AsyncMock,
 )
 async def test_funnel_stages_get_accepts_value_key(mock_get):
@@ -79,7 +79,7 @@ async def test_funnel_stages_get_accepts_value_key(mock_get):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    "oncoteam.api_research.oncofiles_client.get_agent_state",
     new_callable=AsyncMock,
 )
 async def test_funnel_stages_get_parses_json_string(mock_get):
@@ -92,7 +92,7 @@ async def test_funnel_stages_get_parses_json_string(mock_get):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    "oncoteam.api_research.oncofiles_client.get_agent_state",
     new_callable=AsyncMock,
     side_effect=Exception("oncofiles down"),
 )
@@ -106,7 +106,7 @@ async def test_funnel_stages_get_returns_empty_on_error(mock_get):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_agent_state",
+    "oncoteam.api_research.oncofiles_client.get_agent_state",
     new_callable=AsyncMock,
 )
 async def test_funnel_stages_get_respects_patient_id(mock_get):
@@ -122,7 +122,7 @@ async def test_funnel_stages_get_respects_patient_id(mock_get):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.set_agent_state",
+    "oncoteam.api_research.oncofiles_client.set_agent_state",
     new_callable=AsyncMock,
 )
 async def test_funnel_stages_save_persists(mock_set):
@@ -149,7 +149,7 @@ async def test_funnel_stages_save_rejects_non_dict():
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.set_agent_state",
+    "oncoteam.api_research.oncofiles_client.set_agent_state",
     new_callable=AsyncMock,
     side_effect=Exception("write failed"),
 )
@@ -165,7 +165,7 @@ async def test_funnel_stages_save_returns_500_on_error(mock_set):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.set_agent_state",
+    "oncoteam.api_research.oncofiles_client.set_agent_state",
     new_callable=AsyncMock,
 )
 async def test_funnel_stages_save_empty_is_valid(mock_set):
