@@ -92,7 +92,7 @@ async def test_10_users_different_patients_no_leakage():
 
     with (
         patch.object(oncofiles_client, "list_treatment_events", side_effect=mock_list_events),
-        patch("oncoteam.dashboard_api.get_patient_token", side_effect=lambda pid: f"token_{pid}"),
+        patch("oncoteam.request_context.get_patient_token", side_effect=lambda pid: f"token_{pid}"),
     ):
         patient_ids = [f"patient_{i}" for i in range(10)]
         requests = [_make_request(pid) for pid in patient_ids]
@@ -144,7 +144,7 @@ async def test_cache_isolation_under_concurrency():
     with (
         patch.object(oncofiles_client, "list_treatment_events", side_effect=mock_list_events),
         patch(
-            "oncoteam.dashboard_api.get_patient_token",
+            "oncoteam.request_context.get_patient_token",
             side_effect=lambda pid: f"token_{pid}" if pid != "q1b" else None,
         ),
     ):

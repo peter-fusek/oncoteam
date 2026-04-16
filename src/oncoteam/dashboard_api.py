@@ -56,7 +56,18 @@ from .patient_context import (
     THERAPY_CATEGORIES,
     get_patient,
     get_patient_localized,
-    get_patient_token,
+)
+from .request_context import (
+    get_correlation_id,
+)
+from .request_context import (
+    get_token_for_patient as _get_token_for_patient,
+)
+from .request_context import (
+    new_correlation_id as _new_correlation_id,
+)
+from .request_context import (
+    set_correlation_id as _set_correlation_id,
 )
 
 VERSION = "0.78.0"
@@ -197,11 +208,7 @@ def _get_patient_for_request(request: Request):
     return get_patient(pid)
 
 
-def _get_token_for_patient(patient_id: str) -> str | None:
-    """Get the oncofiles bearer token for a patient. None = default (Erika)."""
-    if not patient_id or patient_id == "q1b":
-        return None  # Use default ONCOFILES_MCP_TOKEN
-    return get_patient_token(patient_id)
+# _get_token_for_patient — moved to request_context.py, imported above.
 
 
 def _extract_output_data(tool_name: str | None, output_str: str | None) -> dict | None:
@@ -511,20 +518,7 @@ _CURRENT_REQUEST: contextvars.ContextVar[Request | None] = contextvars.ContextVa
 )
 
 # ── Request correlation ID ─────────────────────────────────────────────
-# Short UUID generated per API request for log correlation.
-_CORRELATION_ID: contextvars.ContextVar[str] = contextvars.ContextVar("_CORRELATION_ID", default="")
-
-
-def _new_correlation_id() -> str:
-    """Generate a short correlation ID (8 hex chars)."""
-    import uuid
-
-    return uuid.uuid4().hex[:8]
-
-
-def get_correlation_id() -> str:
-    """Return current request's correlation ID (empty if none)."""
-    return _CORRELATION_ID.get()
+# Moved to request_context.py — imported above for backward compat.
 
 
 def _parse_agent_run_entry(e: dict, default_task_name: str = "unknown") -> dict:
@@ -613,7 +607,7 @@ def _cors_json(
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Vary"] = "Origin"
-    cid = _CORRELATION_ID.get()
+    cid = get_correlation_id()
     if cid:
         response.headers["X-Correlation-ID"] = cid
     return response
@@ -625,7 +619,7 @@ def _check_api_auth(request: Request) -> JSONResponse | None:
     Also generates a correlation ID for this request and stores it in ContextVar.
     """
     # Generate correlation ID for every request (even failed auth)
-    _CORRELATION_ID.set(_new_correlation_id())
+    _set_correlation_id(_new_correlation_id())
 
     if not DASHBOARD_API_KEY:
         if MCP_TRANSPORT == "stdio":

@@ -16,13 +16,10 @@ _logger = logging.getLogger("oncoteam.oncofiles_client")
 
 
 def _get_correlation_id() -> str:
-    """Get the current request correlation ID (lazy import to avoid circular)."""
-    try:
-        from .dashboard_api import get_correlation_id
+    """Get the current request correlation ID."""
+    from .request_context import get_correlation_id
 
-        return get_correlation_id()
-    except (ImportError, AttributeError):
-        return ""
+    return get_correlation_id()
 
 
 if not ONCOFILES_MCP_URL:

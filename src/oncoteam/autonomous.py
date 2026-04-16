@@ -326,9 +326,9 @@ async def execute_tool(name: str, inputs: dict, *, patient_id: str = "q1b") -> s
 
     All oncofiles calls pass token for patient-scoped data isolation (#201).
     """
-    from .dashboard_api import _get_token_for_patient
+    from .request_context import get_token_for_patient
 
-    token = _get_token_for_patient(patient_id)
+    token = get_token_for_patient(patient_id)
 
     try:
         if name == "search_pubmed":

@@ -1076,7 +1076,7 @@ async def test_api_sessions_defaults_clinical_for_ambiguous(mock_search):
 
 @pytest.mark.anyio
 @patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
+@patch("oncoteam.request_context.get_patient_token", return_value="tok_jan_123")
 async def test_timeline_passes_patient_token(mock_get_token, mock_list):
     """Non-q1b patient_id causes a different token to be passed to oncofiles."""
     mock_list.return_value = {"events": []}
@@ -1132,7 +1132,7 @@ async def test_cache_scoped_per_patient(mock_list):
     "oncoteam.dashboard_api.oncofiles_client.search_conversations",
     new_callable=AsyncMock,
 )
-@patch("oncoteam.dashboard_api.get_patient_token", return_value="tok_jan_123")
+@patch("oncoteam.request_context.get_patient_token", return_value="tok_jan_123")
 async def test_api_briefings_passes_patient_token(mock_get_token, mock_search):
     """Non-q1b patient_id causes a different token to be passed to oncofiles."""
     mock_search.return_value = {"entries": []}
