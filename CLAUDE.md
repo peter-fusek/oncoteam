@@ -13,8 +13,10 @@ uv run oncoteam-mcp    # stdio mode
 
 ## Project structure
 
-- `src/oncoteam/server.py` — MCP server, 26 tools + 22 dashboard API routes (6 POST, 2 parameterized), system instructions with biomarker rules + QA protocol
-- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: /api/{status,activity,stats,timeline,patient,research,sessions,autonomous,protocol,briefings,toxicity,labs,diagnostics,documents,medications,weight,family-update,cumulative-dose,agent-runs,detail/{type}/{id},internal/document-webhook,internal/trigger-agent}
+- `src/oncoteam/server.py` — MCP server, 26 tools + dashboard API route registration, system instructions with biomarker rules + QA protocol
+- `src/oncoteam/dashboard_api.py` — Dashboard JSON API: clinical handlers (timeline, labs, protocol, patient, research, sessions, briefings, toxicity, medications, etc.) + shared infrastructure (auth, caching, rate limiting, CORS)
+- `src/oncoteam/api_whatsapp.py` — WhatsApp handlers: log, chat, resolve-patient, media, voice, history, status + thread memory + approved phones
+- `src/oncoteam/request_context.py` — Request-scoped utilities: correlation ID, patient token resolution (extracted to break circular imports)
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
 - `src/oncoteam/autonomous_tasks.py` — 18 autonomous task wrappers + document pipeline orchestrator with cooldown guards and WhatsApp notifications
