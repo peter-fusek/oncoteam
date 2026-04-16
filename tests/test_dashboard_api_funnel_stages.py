@@ -141,9 +141,7 @@ async def test_funnel_stages_save_persists(mock_set):
 @pytest.mark.anyio
 async def test_funnel_stages_save_rejects_non_dict():
     """Should return 400 when stages is not a dict."""
-    response = await api_funnel_stages_save(
-        _make_post_request({"stages": ["NCT001"]})
-    )
+    response = await api_funnel_stages_save(_make_post_request({"stages": ["NCT001"]}))
     data = json.loads(response.body)
     assert response.status_code == 400
     assert "error" in data
