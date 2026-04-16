@@ -18,6 +18,8 @@ uv run oncoteam-mcp    # stdio mode
 - `src/oncoteam/api_whatsapp.py` — WhatsApp handlers: log, chat, resolve-patient, media, voice, history, status + thread memory + approved phones
 - `src/oncoteam/api_agents.py` — Agent/autonomous handlers: autonomous status/cost, agent list/config/runs, diagnostics
 - `src/oncoteam/api_webhooks.py` — Webhook handlers: bug-report, document-webhook, trigger-agent
+- `src/oncoteam/api_admin.py` — Admin handlers: patients, onboard-patient, approve-user, access-rights
+- `src/oncoteam/api_research.py` — Research handlers: research list, assess-funnel, funnel-stages GET/POST
 - `src/oncoteam/request_context.py` — Request-scoped utilities: correlation ID, patient token resolution (extracted to break circular imports)
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
