@@ -132,8 +132,8 @@ Trials requiring "treatment-naive" or "no prior surgery" are EXCLUDED if patient
 5. Otherwise → "Watching"
 
 You MUST respond with ONLY a valid JSON object. No markdown, no explanation:
-{"stage": "<one of the 5 stages>", "exclusion_reason": "<null or string>", \
-"next_step": "<1 sentence recommendation>", "deadline_note": "<null or string>"}
+{{"stage": "<one of the 5 stages>", "exclusion_reason": "<null or string>", \
+"next_step": "<1 sentence recommendation>", "deadline_note": "<null or string>"}}
 """
 
 
