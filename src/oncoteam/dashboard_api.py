@@ -996,7 +996,7 @@ async def api_timeline(request: Request) -> JSONResponse:
 
 
 _facts_cache: dict[str, tuple[float, JSONResponse]] = {}
-_FACTS_CACHE_TTL = 45  # seconds
+_FACTS_CACHE_TTL = 90  # seconds — facts make 2 parallel oncofiles calls
 
 # Category → event_type mapping for facts
 _FACT_CATEGORY_MAP = {
@@ -1693,20 +1693,21 @@ async def api_protocol(request: Request) -> JSONResponse:
         data = resolve_protocol(lang)
 
     # Fetch lab values + treatment events + lab trends concurrently (#106 perf fix)
-    # All 3 calls in parallel to avoid sequential fallback penalty
-    import asyncio
-
+    # Deduplicated: concurrent protocol requests share a single in-flight fetch
     try:
-        lab_result, events_result, trends_result = await asyncio.wait_for(
-            asyncio.gather(
-                oncofiles_client.list_treatment_events(
-                    event_type="lab_result", limit=1, token=token
+        lab_result, events_result, trends_result = await _deduplicated_fetch(
+            cache_key,
+            lambda: asyncio.wait_for(
+                asyncio.gather(
+                    oncofiles_client.list_treatment_events(
+                        event_type="lab_result", limit=1, token=token
+                    ),
+                    oncofiles_client.list_treatment_events(limit=20, token=token),
+                    oncofiles_client.get_lab_trends_data(limit=200, token=token),
+                    return_exceptions=True,
                 ),
-                oncofiles_client.list_treatment_events(limit=20, token=token),
-                oncofiles_client.get_lab_trends_data(limit=200, token=token),
-                return_exceptions=True,
+                timeout=8.0,
             ),
-            timeout=8.0,
         )
     except TimeoutError:
         record_suppressed_error("api_protocol", "oncofiles_timeout", TimeoutError("8s"))
