@@ -6,7 +6,7 @@ Persistent AI agent for cancer treatment management. Searches PubMed and Clinica
 
 ```bash
 uv sync --extra dev
-uv run pytest          # 691 tests
+uv run pytest          # 744 tests
 uv run ruff check
 uv run oncoteam-mcp    # stdio mode
 ```
@@ -16,6 +16,8 @@ uv run oncoteam-mcp    # stdio mode
 - `src/oncoteam/server.py` — MCP server, 26 tools + dashboard API route registration, system instructions with biomarker rules + QA protocol
 - `src/oncoteam/dashboard_api.py` — Dashboard JSON API: clinical handlers (timeline, labs, protocol, patient, research, sessions, briefings, toxicity, medications, etc.) + shared infrastructure (auth, caching, rate limiting, CORS)
 - `src/oncoteam/api_whatsapp.py` — WhatsApp handlers: log, chat, resolve-patient, media, voice, history, status + thread memory + approved phones
+- `src/oncoteam/api_agents.py` — Agent/autonomous handlers: autonomous status/cost, agent list/config/runs, diagnostics
+- `src/oncoteam/api_webhooks.py` — Webhook handlers: bug-report, document-webhook, trigger-agent
 - `src/oncoteam/request_context.py` — Request-scoped utilities: correlation ID, patient token resolution (extracted to break circular imports)
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
@@ -244,7 +246,7 @@ When reviewing uploaded documents:
 
 ## Testing
 
-- `uv run pytest` — full suite (691 tests, ~4.5s)
+- `uv run pytest` — full suite (744 tests, ~4.5s)
 - Tests mock `oncofiles_client` wrapper functions, not `call_oncofiles` directly
 - Use `respx` for HTTP mocking (PubMed, ClinicalTrials.gov, GitHub)
 - PostToolUse hook auto-runs tests after editing `src/oncoteam/`
@@ -257,7 +259,7 @@ When reviewing uploaded documents:
 - Requires oncofiles MCP (`ONCOFILES_MCP_URL` env var)
 - Requires `GITHUB_TOKEN` for create_improvement_issue tool
 - **Security**: HTTP transport requires `MCP_BEARER_TOKEN`, `DASHBOARD_API_KEY`, `DASHBOARD_ALLOWED_ORIGINS`
-- 691 tests, ruff clean
+- 744 tests, ruff clean
 - Claude.ai connectors: "Oncoteam" + "Oncofiles" custom connectors (Always allow)
 
 ## Environment variables
