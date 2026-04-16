@@ -18,7 +18,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from . import oncofiles_client
-from .activity_logger import get_session_id, get_suppressed_errors, record_suppressed_error
+from .activity_logger import get_session_id, record_suppressed_error
 from .clinical_protocol import (
     CUMULATIVE_DOSE_THRESHOLDS,
     DOSE_MODIFICATION_RULES,
@@ -34,10 +34,6 @@ from .clinical_protocol import (
 )
 from .config import (
     ANTHROPIC_API_KEY,
-    ANTHROPIC_BUDGET_ALERT_THRESHOLD,
-    ANTHROPIC_CREDIT_BALANCE,
-    AUTONOMOUS_COST_LIMIT,
-    AUTONOMOUS_ENABLED,
     AUTONOMOUS_MODEL_LIGHT,
     DASHBOARD_ALLOWED_ORIGINS,
     DASHBOARD_API_KEY,
@@ -46,7 +42,6 @@ from .config import (
     FUP_ONCOFILES_DOCUMENTS,
     GIT_COMMIT,
     MCP_TRANSPORT,
-    ONCOFILES_MCP_URL,
 )
 from .eligibility import assess_research_relevance
 from .locale import get_lang, resolve
@@ -89,8 +84,7 @@ def _circuit_breaker_503(fallback_data: dict) -> JSONResponse | None:
     return None
 
 
-# Last trigger result (for debugging via /api/autonomous?last_trigger=1)
-_last_trigger_result: dict | None = None
+# _last_trigger_result moved to api_agents.py
 
 # Patterns that identify test/E2E data created by automated tests
 _TEST_TITLE_PATTERNS = ("e2e-test-", "e2e test", "testovacia")
@@ -520,53 +514,7 @@ _CURRENT_REQUEST: contextvars.ContextVar[Request | None] = contextvars.ContextVa
 # Moved to request_context.py — imported above for backward compat.
 
 
-def _parse_agent_run_entry(e: dict, default_task_name: str = "unknown") -> dict:
-    """Parse an oncofiles agent_run entry into a lightweight summary dict."""
-    tags = e.get("tags", [])
-    tag_map = {}
-    for t in tags if isinstance(tags, list) else []:
-        if ":" in t:
-            k, v = t.split(":", 1)
-            tag_map[k] = v
-
-    content = e.get("content", "")
-    trace: dict = {}
-    try:
-        trace = json.loads(content) if isinstance(content, str) else content
-        if not isinstance(trace, dict):
-            trace = {}
-    except (json.JSONDecodeError, TypeError):
-        trace = {}
-
-    n_tool_calls = len(trace.get("tool_calls", []))
-
-    def _safe_float(val: object, default: float = 0.0) -> float:
-        try:
-            return float(val)
-        except (ValueError, TypeError):
-            return default
-
-    def _safe_int(val: object, default: int = 0) -> int:
-        try:
-            return int(val)
-        except (ValueError, TypeError):
-            return default
-
-    return {
-        "id": e.get("id"),
-        "timestamp": e.get("created_at"),
-        "task_name": tag_map.get("task", trace.get("task_name", default_task_name)),
-        "model": tag_map.get("model", trace.get("model", "")),
-        "cost": _safe_float(tag_map.get("cost", trace.get("cost", 0))),
-        "duration_ms": _safe_int(tag_map.get("dur", trace.get("duration_ms", 0))),
-        "error": trace.get("error"),
-        "input_tokens": trace.get("input_tokens", 0),
-        "output_tokens": trace.get("output_tokens", 0),
-        "turns": trace.get("turns", 0),
-        "tool_call_count": _safe_int(tag_map.get("tools", n_tool_calls)),
-        "started_at": trace.get("started_at"),
-        "completed_at": trace.get("completed_at"),
-    }
+# _parse_agent_run_entry moved to api_agents.py — re-exported at bottom of file
 
 
 MAX_REQUEST_BODY_BYTES = 1_000_000  # 1 MB — prevents oversized POST payloads
@@ -1430,186 +1378,7 @@ async def api_sessions(request: Request) -> JSONResponse:
         )
 
 
-async def api_autonomous(request: Request) -> JSONResponse:
-    """GET /api/autonomous — autonomous agent status and manual trigger."""
-    from .autonomous import get_daily_cost
-
-    # Check last trigger result
-    if request.query_params.get("last_trigger"):
-        return _cors_json(_last_trigger_result or {"status": "no_trigger_yet"})
-
-    # Manual trigger via ?trigger=<task_name>
-    trigger = request.query_params.get("trigger")
-    if trigger:
-        from . import autonomous_tasks
-
-        task_fn = getattr(autonomous_tasks, f"run_{trigger}", None)
-        if task_fn is None:
-            return _cors_json({"error": f"Unknown task: {trigger}"}, status_code=400)
-
-        from .config import ANTHROPIC_API_KEY
-
-        if not ANTHROPIC_API_KEY:
-            return _cors_json({"error": "ANTHROPIC_API_KEY not configured"}, status_code=500)
-
-        trigger_patient_id = _get_patient_id(request)
-
-        # Run in background with error capture
-        async def _run_with_capture():
-            global _last_trigger_result
-            try:
-                result = await task_fn(patient_id=trigger_patient_id)
-                _last_trigger_result = {
-                    "task": trigger,
-                    "status": "completed",
-                    "cost": result.get("cost", 0),
-                    "tool_calls": len(result.get("tool_calls", [])),
-                    "citations": len(result.get("citations", [])),
-                    "error": result.get("error"),
-                    "duration_ms": result.get("duration_ms", 0),
-                }
-                _logger.info("Trigger %s completed: %s", trigger, _last_trigger_result)
-            except Exception as e:
-                _last_trigger_result = {
-                    "task": trigger,
-                    "status": "failed",
-                    "error": str(e),
-                }
-                _logger.error("Trigger %s failed: %s", trigger, e, exc_info=True)
-
-        asyncio.create_task(_run_with_capture())
-        return _cors_json({"triggered": trigger, "status": "started"})
-
-    # Default: return scheduler status — prefer persisted cost over in-memory
-    from datetime import UTC
-    from datetime import datetime as _dt
-
-    daily_cost = get_daily_cost()
-    cost_last_updated: str | None = None
-    try:
-        # Cost tracking is intentionally global (not per-patient) — tracks total API spend
-        state = await oncofiles_client.get_agent_state("autonomous_daily_cost")
-        if isinstance(state, dict):
-            val = state.get("value", state)
-            if isinstance(val, dict):
-                val = val.get("value", val)
-            persisted_date = val.get("date", "") if isinstance(val, dict) else ""
-            today_str = _dt.now(UTC).strftime("%Y-%m-%d")
-            if persisted_date == today_str:
-                daily_cost = float(val.get("cost_usd", daily_cost))
-                cost_last_updated = val.get("updated_at") or state.get("updated_at")
-    except Exception as e:
-        record_suppressed_error("api_autonomous", "get_daily_cost_state", e)
-    data: dict = {
-        "enabled": AUTONOMOUS_ENABLED,
-        "daily_cost": round(daily_cost, 4),
-        "last_updated": cost_last_updated,
-    }
-
-    if AUTONOMOUS_ENABLED:
-        try:
-            lang = get_lang(request)
-            # Jobs read from agent registry — single source of truth (#92)
-            from .agent_registry import get_dashboard_jobs
-
-            jobs = get_dashboard_jobs(lang)
-            data["jobs"] = jobs
-            data["job_count"] = len(jobs)
-        except Exception:
-            data["jobs"] = []
-            data["job_count"] = 0
-
-    return _cors_json(data)
-
-
-async def api_autonomous_status(request: Request) -> JSONResponse:
-    """GET /api/autonomous/status — per-task last-run timestamps."""
-    # Read task names from agent registry (#92)
-    from .agent_registry import get_enabled_agents
-    from .autonomous_tasks import _extract_timestamp, _get_state
-
-    patient_id = _get_patient_id(request)
-    token = _get_token_for_patient(patient_id)
-    task_names = [a.id for a in get_enabled_agents(exclude_system=True)]
-
-    # Parallel state fetches (was sequential N+1, #harden)
-    # State keys include patient_id (e.g. "last_daily_research:q1b")
-    async def _safe_ts(name: str):
-        try:
-            state = await asyncio.wait_for(
-                _get_state(f"last_{name}:{patient_id}", token=token), timeout=2.0
-            )
-            return _extract_timestamp(state)
-        except Exception:
-            return None
-
-    timestamps = await asyncio.gather(*[_safe_ts(n) for n in task_names])
-    tasks = {
-        name: {"last_run": ts or None} for name, ts in zip(task_names, timestamps, strict=True)
-    }
-    return _cors_json({"tasks": tasks})
-
-
-async def api_autonomous_cost(request: Request) -> JSONResponse:
-    """GET /api/autonomous/cost — budget overview for dashboard widget.
-
-    Returns MTD spend, daily spend, expected EOM bill, remaining credit,
-    daily cap, and budget alert status. Visible to all roles.
-    """
-    from calendar import monthrange
-    from datetime import UTC, datetime
-
-    from .autonomous import get_daily_cost
-
-    now = datetime.now(UTC)
-    days_in_month = monthrange(now.year, now.month)[1]
-    day_of_month = now.day
-
-    # Today's spend (from in-memory accumulator, restored from DB on cold start)
-    today_spend = round(get_daily_cost(), 4)
-
-    # Fetch MTD spend from oncofiles agent_state
-    mtd_spend = today_spend
-    try:
-        from .autonomous import _unwrap_agent_state
-
-        raw = await oncofiles_client.get_agent_state("autonomous_mtd_cost")
-        state = _unwrap_agent_state(raw)
-        if state.get("month") == now.strftime("%Y-%m"):
-            mtd_spend = round(float(state.get("cost_usd", 0.0)) + today_spend, 4)
-    except Exception as e:
-        record_suppressed_error("api_autonomous_cost", "fetch_mtd", e)
-
-    # Project EOM spend (linear extrapolation)
-    if day_of_month > 0:
-        daily_avg = mtd_spend / day_of_month
-        expected_eom = round(daily_avg * days_in_month, 2)
-    else:
-        daily_avg = 0.0
-        expected_eom = 0.0
-
-    remaining_credit = round(ANTHROPIC_CREDIT_BALANCE - mtd_spend, 2)
-    days_remaining = round(remaining_credit / daily_avg, 1) if daily_avg > 0 else 999
-
-    budget_alert = remaining_credit <= ANTHROPIC_BUDGET_ALERT_THRESHOLD
-
-    return _cors_json(
-        {
-            "today_spend": today_spend,
-            "daily_cap": AUTONOMOUS_COST_LIMIT,
-            "mtd_spend": round(mtd_spend, 2),
-            "expected_eom": expected_eom,
-            "remaining_credit": max(remaining_credit, 0),
-            "total_credit": ANTHROPIC_CREDIT_BALANCE,
-            "days_remaining": days_remaining,
-            "budget_alert": budget_alert,
-            "alert_threshold": ANTHROPIC_BUDGET_ALERT_THRESHOLD,
-            "month": now.strftime("%Y-%m"),
-            "day_of_month": day_of_month,
-            "days_in_month": days_in_month,
-            "fup": _get_fup_status(),
-        }
-    )
+# api_autonomous, api_autonomous_status, api_autonomous_cost moved to api_agents.py
 
 
 # ── Cache helpers (patient-scoped) ────────────────────────────────────────
@@ -2683,87 +2452,7 @@ async def api_detail(request: Request) -> JSONResponse:
         return _cors_json({"error": str(e)}, status_code=502)
 
 
-def _get_whisper_diagnostics() -> dict:
-    """Get Whisper transcription stats for diagnostics."""
-    try:
-        from .whisper_client import get_whisper_stats
-
-        stats = get_whisper_stats()
-        from .config import OPENAI_API_KEY
-
-        stats["configured"] = bool(OPENAI_API_KEY)
-        return stats
-    except Exception:
-        return {"configured": False, "error": "module_not_loaded"}
-
-
-async def api_diagnostics(request: Request) -> JSONResponse:
-    """GET /api/diagnostics — probe oncofiles connectivity and report health."""
-    probes = [
-        ("treatment_events", oncofiles_client.list_treatment_events, {"limit": 1}, "events"),
-        ("research_entries", oncofiles_client.list_research_entries, {"limit": 1}, "entries"),
-        ("conversations", oncofiles_client.search_conversations, {"limit": 1}, "entries"),
-        ("activity_log", oncofiles_client.search_activity_log, {"limit": 1}, "entries"),
-    ]
-
-    async def _run_probe(name: str, fn, kwargs: dict, key: str) -> dict:
-        try:
-            t0 = time.time()
-            result = await fn(**kwargs)
-            ms = int((time.time() - t0) * 1000)
-            count = len(_extract_list(result, key))
-            return {"name": name, "ok": True, "ms": ms, "sample_count": count}
-        except Exception as e:
-            return {"name": name, "ok": False, "error": str(e)}
-
-    checks = list(
-        await asyncio.wait_for(
-            asyncio.gather(*[_run_probe(*p) for p in probes]),
-            timeout=15.0,
-        )
-    )
-
-    # Check if lab_result data is stale (>48h since last lab_result event)
-    lab_sync_stale = False
-    te_check = next((c for c in checks if c["name"] == "treatment_events"), None)
-    if te_check and te_check.get("ok"):
-        try:
-            diag_patient_id = _get_patient_id(request)
-            diag_token = _get_token_for_patient(diag_patient_id)
-            lab_events = await oncofiles_client.list_treatment_events(
-                event_type="lab_result", limit=1, token=diag_token
-            )
-            events = _extract_list(lab_events, "events")
-            if events:
-                from datetime import UTC, datetime
-
-                created = events[0].get("created_at", "")
-                if created:
-                    # Parse ISO timestamp (with or without Z suffix)
-                    ts = created.replace("Z", "+00:00")
-                    last_sync = datetime.fromisoformat(ts)
-                    age_hours = (datetime.now(UTC) - last_sync).total_seconds() / 3600
-                    lab_sync_stale = age_hours > 48
-            else:
-                # No lab_result events at all — stale
-                lab_sync_stale = True
-        except Exception as e:
-            record_suppressed_error("api_diagnostics", "lab_sync_check", e)
-
-    cb_status = oncofiles_client.get_circuit_breaker_status()
-
-    return _cors_json(
-        {
-            "healthy": all(c["ok"] for c in checks) and cb_status["state"] == "closed",
-            "checks": checks,
-            "circuit_breaker": cb_status,
-            "oncofiles_url": (ONCOFILES_MCP_URL[:30] + "...") if ONCOFILES_MCP_URL else "NOT SET",
-            "autonomous_enabled": AUTONOMOUS_ENABLED,
-            "lab_sync_stale": lab_sync_stale,
-            "whisper": _get_whisper_diagnostics(),
-            "suppressed_errors": get_suppressed_errors()[-10:],
-        }
-    )
+# _get_whisper_diagnostics, api_diagnostics moved to api_agents.py
 
 
 _documents_cache: dict[str, tuple[float, JSONResponse]] = {}
@@ -3882,326 +3571,13 @@ async def api_family_update(request: Request) -> JSONResponse:
         return _cors_json({"error": str(e), "updates": [], "total": 0}, status_code=502)
 
 
-async def api_agents(request: Request) -> JSONResponse:
-    """Return agent registry with last-run status for each agent (#92, #105, #236)."""
-    from .agent_registry import AGENT_REGISTRY, AgentCategory
-    from .autonomous_tasks import _extract_timestamp
-
-    patient_id = _get_patient_id(request)
-    token = _get_token_for_patient(patient_id)
-    lang = get_lang(request)
-
-    # Build agent list (excluding system agents)
-    non_system = [
-        (aid, cfg) for aid, cfg in AGENT_REGISTRY.items() if cfg.category != AgentCategory.SYSTEM
-    ]
-
-    # Batch-fetch all agent states in ONE call (#236 — individual calls timeout)
-    state_map: dict[str, str] = {}
-    try:
-        all_states = await asyncio.wait_for(
-            oncofiles_client.list_agent_states(limit=200, token=token),
-            timeout=10.0,
-        )
-        entries = _extract_list(all_states, "states") or (
-            all_states if isinstance(all_states, list) else []
-        )
-        for entry in entries:
-            key = entry.get("key", "")
-            state_map[key] = _extract_timestamp(entry)
-    except Exception as e:
-        record_suppressed_error("api_agents", "batch_state_fetch", e)
-
-    agents = []
-    for _agent_id, config in non_system:
-        ts = state_map.get(f"last_{_agent_id}:{patient_id}", "")
-        agents.append(
-            resolve(
-                {
-                    "id": config.id,
-                    "name": config.name,
-                    "description": config.description,
-                    "category": config.category.value,
-                    "model": config.model or "sonnet",
-                    "schedule": config.schedule_display,
-                    "cooldown_hours": config.cooldown_hours,
-                    "max_turns": config.max_turns,
-                    "whatsapp_enabled": config.whatsapp_enabled,
-                    "last_run": ts or None,
-                    "enabled": config.enabled,
-                },
-                lang,
-            )
-        )
-    return _cors_json({"agents": agents, "total": len(agents)})
-
-
-async def api_agent_config(request: Request) -> JSONResponse:
-    """Return full config for a single agent including prompt_template (#92 Phase 4)."""
-    agent_id = request.path_params.get("id", "")
-    from .agent_registry import AGENT_REGISTRY
-
-    config = AGENT_REGISTRY.get(agent_id)
-    if not config:
-        return _cors_json({"error": f"Agent {agent_id} not found"}, status_code=404)
-    data = config.model_dump()
-    # Include system prompt for full observability
-    from .autonomous import build_system_prompt
-
-    patient_id = _get_patient_id(request)
-    data["system_prompt"] = build_system_prompt(patient_id)
-    return _cors_json(data)
-
-
-async def api_agent_runs(request: Request) -> JSONResponse:
-    """Return recent run traces for a specific agent (#92)."""
-    agent_id = request.path_params.get("id", "")
-    patient_id = _get_patient_id(request)
-    token = _get_token_for_patient(patient_id)
-    limit = _parse_limit(request, default=10)
-
-    try:
-        result = await oncofiles_client.search_conversations(
-            tags=f"task:{agent_id},sys:agent-run",
-            limit=limit,
-            token=token,
-        )
-    except Exception as e:
-        record_suppressed_error("api_agent_runs", f"fetch:{agent_id}", e)
-        return _cors_json(
-            {"agent_id": agent_id, "runs": [], "total": 0, "error": str(e)},
-            status_code=502,
-        )
-
-    entries = _filter_test(_extract_list(result, "entries"), request)
-
-    # List view: lightweight summary from tags or content header fields.
-    # Full content (prompt, messages, thinking, tool outputs) via /api/detail/agent_run/{id}.
-    runs = [_parse_agent_run_entry(e, default_task_name=agent_id) for e in entries]
-    return _cors_json({"agent_id": agent_id, "runs": runs, "total": len(runs)})
-
-
-async def api_agent_runs_all(request: Request) -> JSONResponse:
-    """Return recent run traces across ALL agents — single MCP call (#113)."""
-    patient_id = _get_patient_id(request)
-    token = _get_token_for_patient(patient_id)
-    limit = _parse_limit(request, default=50)
-
-    try:
-        result = await oncofiles_client.search_conversations(
-            tags="sys:agent-run",
-            limit=limit,
-            token=token,
-        )
-    except Exception as e:
-        record_suppressed_error("api_agent_runs_all", "fetch", e)
-        return _cors_json(
-            {"runs": [], "total": 0, "error": str(e)},
-            status_code=502,
-        )
-
-    entries = _filter_test(_extract_list(result, "entries"), request)
-    runs = [_parse_agent_run_entry(e) for e in entries]
-    return _cors_json({"runs": runs, "total": len(runs)})
+# api_agents, api_agent_config, api_agent_runs, api_agent_runs_all moved to api_agents.py
 
 
 # WhatsApp handlers moved to api_whatsapp.py (#353)
 
 
-async def api_bug_report(request: Request) -> JSONResponse:
-    """POST /api/bug-report — create a GitHub issue from dashboard bug reporter.
-
-    Expects JSON: {description: str, url: str, route: str, viewport: str,
-                    role: str, locale: str}
-    """
-    try:
-        body = json.loads(await request.body())
-    except (json.JSONDecodeError, Exception):
-        return _cors_json({"error": "Invalid JSON"}, status_code=400)
-
-    description = body.get("description", "").strip()
-    if not description:
-        return _cors_json({"error": "description is required"}, status_code=400)
-
-    url = body.get("url", "")
-    route = body.get("route", "")
-    viewport = body.get("viewport", "")
-    role = body.get("role", "")
-    locale = body.get("locale", "")
-    # page_text removed — auto-capture of DOM content is an injection risk.
-    user_agent = request.headers.get("user-agent", "")[:200]
-
-    from datetime import UTC, datetime
-
-    now_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-    page_file = route.strip("/") or "index"
-
-    issue_body = (
-        f"## Bug Report\n\n"
-        f"**{description}**\n\n"
-        f"### Context\n"
-        f"| Field | Value |\n|-------|-------|\n"
-        f"| Page | `{route}` |\n"
-        f"| URL | {url} |\n"
-        f"| Viewport | {viewport} |\n"
-        f"| Role | {role} |\n"
-        f"| Locale | {locale} |\n"
-        f"| User Agent | {user_agent[:100]} |\n"
-        f"| Reported | {now_str} |\n\n"
-        f"### For Claude Code\n"
-        f"- **File**: `dashboard/app/pages/{page_file}.vue`\n"
-        f"- **Repro**: `{url}` as `{role}` / `{locale}`\n"
-        f"- **Checklist**: [ ] Root cause [ ] Fix [ ] Test\n\n"
-        f"---\n*Reported via dashboard bug reporter*\n"
-    )
-
-    try:
-        from .github_client import create_issue
-
-        result = await create_issue(
-            repo="peter-fusek/oncoteam",
-            title=f"Bug: {description[:80]}",
-            body=issue_body,
-            labels=["bug"],
-        )
-        return _cors_json({"created": True, **result})
-    except Exception as e:
-        record_suppressed_error("api_bug_report", "create_issue", e)
-        return _cors_json({"error": str(e)}, status_code=502)
-
-
-async def api_document_webhook(request: Request) -> JSONResponse:
-    """POST /api/internal/document-webhook — triggered by oncofiles on new upload.
-
-    Expects JSON body: {document_id: int, patient_id?: str, filename?: str,
-    category?: str, uploaded_at?: str}
-    Launches the document pipeline as a background task.
-    """
-    import asyncio
-
-    from .autonomous_tasks import _extract_timestamp, _get_state, run_document_pipeline
-
-    if not _check_expensive_rate_limit():
-        return _cors_json(
-            {"error": "Too many pipeline triggers. Try again later."},
-            status_code=429,
-            request=request,
-        )
-
-    try:
-        body = await request.json()
-    except Exception:
-        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
-
-    document_id = body.get("document_id")
-    if not isinstance(document_id, int) or document_id <= 0:
-        return _cors_json(
-            {"error": "document_id must be a positive integer"}, status_code=400, request=request
-        )
-
-    patient_id = body.get("patient_id", DEFAULT_PATIENT_ID)
-    token = _get_token_for_patient(patient_id)
-
-    # Quick dedup check before launching background task
-    existing = await _get_state(f"pipeline:{document_id}", token=token)
-    if _extract_timestamp(existing):
-        return _cors_json(
-            {"status": "already_processed", "document_id": document_id}, request=request
-        )
-
-    metadata = {
-        "filename": body.get("filename", ""),
-        "category": body.get("category", ""),
-        "uploaded_at": body.get("uploaded_at", ""),
-    }
-
-    # Auto-fill metadata from oncofiles when webhook doesn't provide it
-    if not metadata["category"]:
-        try:
-            doc = await asyncio.wait_for(
-                oncofiles_client.get_document_by_id(document_id),
-                timeout=5,
-            )
-            if isinstance(doc, dict):
-                metadata["category"] = doc.get("category", "")
-                metadata["filename"] = metadata["filename"] or doc.get("filename", "")
-        except Exception as exc:
-            record_suppressed_error("api_document_webhook", "get_document_by_id", exc)
-
-    asyncio.create_task(run_document_pipeline(document_id, metadata, patient_id=patient_id))
-    _logger.info("Document pipeline started for doc %d (patient=%s)", document_id, patient_id)
-
-    return _cors_json(
-        {"status": "pipeline_started", "document_id": document_id, "patient_id": patient_id},
-        request=request,
-    )
-
-
-async def api_trigger_agent(request: Request) -> JSONResponse:
-    """POST /api/internal/trigger-agent — manually trigger a full agent run.
-
-    Expects JSON body: {agent_id: str}
-    Launches the agent as a background task with full resources (no cooldown skip).
-    """
-    import asyncio
-
-    from .agent_registry import AGENT_REGISTRY
-
-    if not _check_expensive_rate_limit():
-        return _cors_json(
-            {"error": "Too many agent triggers. Try again later."},
-            status_code=429,
-            request=request,
-        )
-
-    try:
-        body = await request.json()
-    except Exception:
-        return _cors_json({"error": "Invalid JSON body"}, status_code=400, request=request)
-
-    agent_id = body.get("agent_id", "")
-    trigger_patient_id = body.get("patient_id", "")
-
-    if not _check_fup_agent_run(trigger_patient_id or "global"):
-        return _cors_json(
-            {"error": f"Monthly agent run limit reached ({FUP_AGENT_RUNS_PER_MONTH})."},
-            status_code=429,
-            request=request,
-        )
-    if agent_id not in AGENT_REGISTRY:
-        return _cors_json(
-            {"error": f"Unknown agent: {agent_id}", "available": list(AGENT_REGISTRY.keys())},
-            status_code=400,
-            request=request,
-        )
-
-    # Import task functions dynamically (same map as scheduler.py)
-    from .scheduler import _get_task_functions
-
-    task_functions = _get_task_functions()
-    func = task_functions.get(agent_id)
-    if func is None:
-        return _cors_json(
-            {"error": f"No runnable function for agent: {agent_id}"},
-            status_code=400,
-            request=request,
-        )
-
-    # Clear cooldown state so the agent runs unconditionally
-    effective_patient_id = trigger_patient_id or DEFAULT_PATIENT_ID
-    token = _get_token_for_patient(effective_patient_id)
-    try:
-        await oncofiles_client.set_agent_state(
-            f"last_{agent_id}:{effective_patient_id}", {}, token=token
-        )
-        _logger.info("Cleared cooldown for %s:%s", agent_id, effective_patient_id)
-    except Exception as e:
-        _logger.warning("Could not clear cooldown for %s: %s", agent_id, e)
-
-    asyncio.create_task(func(patient_id=effective_patient_id))
-    _logger.info("Manually triggered agent: %s (patient=%s)", agent_id, effective_patient_id)
-
-    return _cors_json({"status": "triggered", "agent_id": agent_id}, request=request)
+# api_bug_report, api_document_webhook, api_trigger_agent moved to api_webhooks.py
 
 
 _FUNNEL_STAGES = ("Excluded", "Later Line", "Watching", "Eligible Now", "Action Needed")
@@ -4647,6 +4023,18 @@ async def api_access_rights_set(request: Request) -> JSONResponse:
 
 
 # Backward compat: WhatsApp handlers moved to api_whatsapp.py (#353)
+from .api_agents import _parse_agent_run_entry as _parse_agent_run_entry  # noqa: E402, F811
+from .api_agents import api_agent_config as api_agent_config  # noqa: E402, F811
+from .api_agents import api_agent_runs as api_agent_runs  # noqa: E402, F811
+from .api_agents import api_agent_runs_all as api_agent_runs_all  # noqa: E402, F811
+from .api_agents import api_agents as api_agents  # noqa: E402, F811
+from .api_agents import api_autonomous as api_autonomous  # noqa: E402, F811
+from .api_agents import api_autonomous_cost as api_autonomous_cost  # noqa: E402, F811
+from .api_agents import api_autonomous_status as api_autonomous_status  # noqa: E402, F811
+from .api_agents import api_diagnostics as api_diagnostics  # noqa: E402, F811
+from .api_webhooks import api_bug_report as api_bug_report  # noqa: E402, F811
+from .api_webhooks import api_document_webhook as api_document_webhook  # noqa: E402, F811
+from .api_webhooks import api_trigger_agent as api_trigger_agent  # noqa: E402, F811
 from .api_whatsapp import api_log_whatsapp as api_log_whatsapp  # noqa: E402, F811
 from .api_whatsapp import api_resolve_patient as api_resolve_patient  # noqa: E402, F811
 from .api_whatsapp import api_whatsapp_chat as api_whatsapp_chat  # noqa: E402, F811

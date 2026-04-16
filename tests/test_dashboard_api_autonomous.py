@@ -22,7 +22,7 @@ def _make_request(query_string: str = "") -> object:
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_returns_jobs():
     """Should return 15 jobs with assigned_tool field."""
     request = _make_request()
@@ -37,7 +37,7 @@ async def test_autonomous_returns_jobs():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_jobs_have_assigned_tool():
     """Every job must have an assigned_tool for the task assignment UI."""
     request = _make_request()
@@ -52,7 +52,7 @@ async def test_autonomous_jobs_have_assigned_tool():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_lang_en():
     """Should return English descriptions when ?lang=en."""
     request = _make_request("lang=en")
@@ -66,7 +66,7 @@ async def test_autonomous_lang_en():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_lang_sk():
     """Should return Slovak descriptions by default."""
     request = _make_request()
@@ -78,7 +78,7 @@ async def test_autonomous_lang_sk():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", False)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", False)
 async def test_autonomous_disabled():
     """Should return enabled=false with no jobs when disabled."""
     request = _make_request()
@@ -90,7 +90,7 @@ async def test_autonomous_disabled():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_trigger_unknown():
     """Should return 400 for unknown task name."""
     request = _make_request("trigger=nonexistent_task")
@@ -102,7 +102,7 @@ async def test_autonomous_trigger_unknown():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_trigger_no_api_key():
     """Should return 500 when ANTHROPIC_API_KEY is not set."""
     with patch("oncoteam.config.ANTHROPIC_API_KEY", ""):
@@ -115,10 +115,10 @@ async def test_autonomous_trigger_no_api_key():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_last_trigger_empty():
     """Should return no_trigger_yet when no task has been triggered."""
-    import oncoteam.dashboard_api as mod
+    import oncoteam.api_agents as mod
 
     mod._last_trigger_result = None
     request = _make_request("last_trigger=1")
@@ -130,7 +130,7 @@ async def test_autonomous_last_trigger_empty():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_has_cors():
     request = _make_request()
     response = await api_autonomous(request)
@@ -138,7 +138,7 @@ async def test_autonomous_has_cors():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_job_tool_mapping():
     """Verify specific job-to-tool mappings match the scheduler."""
     request = _make_request("lang=en")

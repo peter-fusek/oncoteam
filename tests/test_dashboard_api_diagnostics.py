@@ -34,13 +34,13 @@ def _make_request(query_string: str = "") -> object:
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_agents.oncofiles_client.get_circuit_breaker_status",
     return_value=_CB_CLOSED,
 )
-@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_conversations", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
 async def test_diagnostics_all_healthy(
     mock_events, mock_research, mock_convos, mock_activity, _mock_cb
 ):
@@ -66,13 +66,13 @@ async def test_diagnostics_all_healthy(
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_agents.oncofiles_client.get_circuit_breaker_status",
     return_value=_CB_CLOSED,
 )
-@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_conversations", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
 async def test_diagnostics_partial_failure(
     mock_events, mock_research, mock_convos, mock_activity, _mock_cb
 ):
@@ -94,13 +94,13 @@ async def test_diagnostics_partial_failure(
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_agents.oncofiles_client.get_circuit_breaker_status",
     return_value=_CB_CLOSED,
 )
-@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_conversations", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
 async def test_diagnostics_all_down(
     mock_events, mock_research, mock_convos, mock_activity, _mock_cb
 ):
@@ -120,28 +120,28 @@ async def test_diagnostics_all_down(
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_agents.oncofiles_client.get_circuit_breaker_status",
     return_value=_CB_CLOSED,
 )
 async def test_diagnostics_has_cors(_mock_cb):
     with (
         patch(
-            "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+            "oncoteam.api_agents.oncofiles_client.list_treatment_events",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
-            "oncoteam.dashboard_api.oncofiles_client.list_research_entries",
+            "oncoteam.api_agents.oncofiles_client.list_research_entries",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
-            "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+            "oncoteam.api_agents.oncofiles_client.search_conversations",
             new_callable=AsyncMock,
             return_value=[],
         ),
         patch(
-            "oncoteam.dashboard_api.oncofiles_client.search_activity_log",
+            "oncoteam.api_agents.oncofiles_client.search_activity_log",
             new_callable=AsyncMock,
             return_value=[],
         ),

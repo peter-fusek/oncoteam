@@ -26,7 +26,7 @@ def _make_request(query_string: str = "", path_params: dict | None = None) -> ob
 async def test_agents_returns_non_system_agents():
     """Should return all agents except SYSTEM category."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
+        "oncoteam.api_agents.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
         return_value=[],
     ):
@@ -51,7 +51,7 @@ async def test_agents_returns_non_system_agents():
 async def test_agents_includes_expected_fields():
     """Each agent should have all required fields."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
+        "oncoteam.api_agents.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
         return_value=[],
     ):
@@ -83,7 +83,7 @@ async def test_agents_last_run_from_state():
     """Should populate last_run from agent state timestamp."""
     ts = "2026-03-17T10:00:00+00:00"
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
+        "oncoteam.api_agents.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
         return_value=[
             {"key": "last_daily_research:q1b", "value": json.dumps({"timestamp": ts})},
@@ -101,7 +101,7 @@ async def test_agents_last_run_from_state():
 async def test_agents_lang_en():
     """Should return English descriptions when ?lang=en."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.list_agent_states",
+        "oncoteam.api_agents.oncofiles_client.list_agent_states",
         new_callable=AsyncMock,
         return_value=[],
     ):
@@ -147,7 +147,7 @@ async def test_agent_runs_returns_traces():
         ]
     }
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+        "oncoteam.api_agents.oncofiles_client.search_conversations",
         new_callable=AsyncMock,
         return_value=mock_result,
     ):
@@ -185,7 +185,7 @@ async def test_agent_runs_handles_invalid_content():
         ]
     }
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+        "oncoteam.api_agents.oncofiles_client.search_conversations",
         new_callable=AsyncMock,
         return_value=mock_result,
     ):
@@ -204,7 +204,7 @@ async def test_agent_runs_handles_invalid_content():
 async def test_agent_runs_error_returns_502():
     """Should return 502 when oncofiles is unreachable."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+        "oncoteam.api_agents.oncofiles_client.search_conversations",
         new_callable=AsyncMock,
         side_effect=ConnectionError("timeout"),
     ):
@@ -232,7 +232,7 @@ async def test_agent_runs_list_view_lightweight():
         "entries": [{"id": 1, "created_at": "2026-03-17T10:00:00+00:00", "content": trace_content}]
     }
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+        "oncoteam.api_agents.oncofiles_client.search_conversations",
         new_callable=AsyncMock,
         return_value=mock_result,
     ):
@@ -275,7 +275,7 @@ async def test_agent_runs_all_returns_traces():
         ]
     }
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+        "oncoteam.api_agents.oncofiles_client.search_conversations",
         new_callable=AsyncMock,
         return_value=mock_result,
     ) as mock_search:
@@ -297,7 +297,7 @@ async def test_agent_runs_all_returns_traces():
 async def test_agent_runs_all_error_returns_502():
     """Aggregated endpoint returns 502 when oncofiles is unreachable."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+        "oncoteam.api_agents.oncofiles_client.search_conversations",
         new_callable=AsyncMock,
         side_effect=ConnectionError("timeout"),
     ):

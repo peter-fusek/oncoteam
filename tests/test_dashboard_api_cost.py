@@ -28,7 +28,7 @@ def _make_request(query_string: str = "") -> object:
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_returns_all_fields(mock_state):
     mock_state.return_value = {"month": _current_month(), "cost_usd": 12.50}
     request = _make_request()
@@ -48,7 +48,7 @@ async def test_cost_endpoint_returns_all_fields(mock_state):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_has_cors(mock_state):
     mock_state.return_value = {}
     request = _make_request()
@@ -57,7 +57,7 @@ async def test_cost_endpoint_has_cors(mock_state):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_handles_no_mtd_state(mock_state):
     mock_state.return_value = {}
     request = _make_request()
@@ -70,7 +70,7 @@ async def test_cost_endpoint_handles_no_mtd_state(mock_state):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_handles_error(mock_state):
     mock_state.side_effect = Exception("connection refused")
     request = _make_request()
@@ -83,7 +83,7 @@ async def test_cost_endpoint_handles_error(mock_state):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_budget_alert_when_low(mock_state):
     # Set MTD spend to be close to credit balance
     mock_state.return_value = {"month": _current_month(), "cost_usd": 25.0}
@@ -96,7 +96,7 @@ async def test_cost_budget_alert_when_low(mock_state):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_nested_value_format(mock_state):
     """Regression: oncofiles returns {"value": {...}} wrapper around actual data."""
     mock_state.return_value = {"value": {"month": _current_month(), "cost_usd": 5.0}}
@@ -109,7 +109,7 @@ async def test_cost_endpoint_nested_value_format(mock_state):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_cost_endpoint_nested_json_string_format(mock_state):
     """Regression: oncofiles may return value as JSON string."""
     mock_state.return_value = {"value": json.dumps({"month": _current_month(), "cost_usd": 3.0})}

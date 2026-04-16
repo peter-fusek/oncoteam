@@ -128,9 +128,9 @@ async def test_sessions_has_sessions_key(mock):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.AUTONOMOUS_ENABLED", True)
+@patch("oncoteam.api_agents.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.AUTONOMOUS_ENABLED", True)
 async def test_autonomous_has_tasks_key(mock_log, mock_state):
     mock_log.return_value = {"entries": []}
     mock_state.return_value = {}
@@ -183,10 +183,10 @@ async def test_labs_has_entries_and_reference(mock_events, mock_trends, mock_ana
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.list_research_entries", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.list_research_entries", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_conversations", new_callable=AsyncMock)
+@patch("oncoteam.api_agents.oncofiles_client.search_activity_log", new_callable=AsyncMock)
 async def test_diagnostics_has_checks_key(mock_log, mock_conv, mock_research, mock_events):
     mock_events.return_value = {"events": []}
     mock_research.return_value = {"entries": []}

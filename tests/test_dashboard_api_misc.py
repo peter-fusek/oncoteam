@@ -153,7 +153,7 @@ async def test_trigger_agent_unknown_agent():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.set_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_webhooks.oncofiles_client.set_agent_state", new_callable=AsyncMock)
 async def test_trigger_agent_success(mock_set):
     """Should trigger a known agent and return success."""
     mock_set.return_value = {}
