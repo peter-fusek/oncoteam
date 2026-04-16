@@ -2064,6 +2064,166 @@ html[lang="sk"] .hiw-num::before {
   line-height: 1.65;
 }
 
+/* ── Head-to-head comparison ─────────────────── */
+.stackup {
+  padding: 90px 0;
+  background: var(--bg-alt);
+  border-top: 1px solid var(--border-light);
+}
+
+.stackup .section-title { margin-bottom: 8px; }
+
+.stackup-intro {
+  max-width: 720px;
+  margin: 0 auto 40px;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--text-light);
+  line-height: 1.65;
+}
+
+.stackup-table-wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-light);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.stackup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 860px;
+}
+
+.stackup-table thead th {
+  background: var(--bg-alt);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.stackup-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: top;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.stackup-table tbody tr:last-child td { border-bottom: none; }
+
+.stackup-table tbody tr.stackup-row-us {
+  background: var(--primary-light);
+}
+
+.stackup-table tbody tr.stackup-row-us td {
+  font-weight: 500;
+  color: var(--primary-dark);
+}
+
+.stackup-table tbody tr.stackup-row-us td strong {
+  color: var(--primary-dark);
+}
+
+.stackup-platform {
+  font-weight: 600;
+  min-width: 160px;
+}
+
+.stackup-platform .stackup-platform-sub {
+  display: block;
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+.stackup-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.stackup-status-live {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+.stackup-status-planned {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.stackup-status-stalled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.stackup-status-active {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.stackup-ai-yes {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.stackup-ai-no {
+  color: var(--text-muted);
+}
+
+.stackup-notes {
+  max-width: 1080px;
+  margin: 32px auto 0;
+  padding: 20px 26px;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  color: var(--text-light);
+  line-height: 1.7;
+}
+
+.stackup-notes strong { color: var(--text); font-weight: 600; }
+
+.stackup-notes ul {
+  margin: 10px 0 0;
+  padding-left: 22px;
+}
+
+.stackup-notes li { margin-bottom: 6px; }
+
+.stackup-footer {
+  max-width: 720px;
+  margin: 24px auto 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.stackup-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--primary);
+}
+
+.stackup-footer a:hover { border-bottom-style: solid; }
+
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 900px) {
   .nav-links { display: none; }
@@ -2091,7 +2251,9 @@ html[lang="sk"] .hiw-num::before {
   .hero-phone-wrap { display: none; }
   .section-title { font-size: 1.7rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  .features, .get-started, .reality, .contact, .privacy, .faq, .ecosystem, .how-it-works, .whatsapp-showcase, .use-cases, .journey { padding: 70px 0; }
+  .features, .get-started, .reality, .contact, .privacy, .faq, .ecosystem, .how-it-works, .whatsapp-showcase, .use-cases, .journey, .stackup { padding: 70px 0; }
+  .stackup-table { font-size: 0.8rem; }
+  .stackup-table thead th, .stackup-table tbody td { padding: 10px 12px; }
   .journey-notes { grid-template-columns: 1fr; }
   .journey-coverage { width: 100% !important; margin-left: 0 !important; font-size: 0.76rem; padding: 0 14px; height: 40px; }
   .journey-coverage-oncoteam { margin-top: 8px; }

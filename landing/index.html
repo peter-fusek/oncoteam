@@ -147,7 +147,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=54">
+  <link rel="stylesheet" href="style.css?v=55">
 </head>
 <body>
   <!-- Navigation -->
@@ -1012,6 +1012,100 @@
     </div>
   </section>
 
+  <!-- Stack-up — honest head-to-head -->
+  <section class="stackup" id="stackup">
+    <div class="container">
+      <h2 class="section-title" data-i18n="stackup.title">How We Stack Up — Honestly</h2>
+      <p class="section-subtitle" data-i18n="stackup.subtitle">A factual comparison with existing and upcoming oncology platforms across the EU and CEE.</p>
+      <p class="stackup-intro" data-i18n-html="stackup.intro">We think the honest comparison matters more than any marketing claim. Numbers and dates are from public sources &mdash; tender portals, press releases, official registries &mdash; linked in our <a href="https://github.com/peter-fusek/oncoteam/blob/main/docs/competitive-landscape.md" target="_blank" rel="noopener">competitive landscape document</a>.</p>
+
+      <div class="stackup-table-wrap">
+        <table class="stackup-table">
+          <thead>
+            <tr>
+              <th data-i18n="stackup.col.platform">Platform</th>
+              <th data-i18n="stackup.col.status">Status (Apr 2026)</th>
+              <th data-i18n="stackup.col.ai">AI</th>
+              <th data-i18n="stackup.col.scope">Scope</th>
+              <th data-i18n="stackup.col.funding">Funding &amp; model</th>
+              <th data-i18n="stackup.col.access">Patient access</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="stackup-row-us">
+              <td class="stackup-platform"><strong>Oncoteam</strong><span class="stackup-platform-sub">SK / EU</span></td>
+              <td><span class="stackup-status stackup-status-live" data-i18n="stackup.row.us.status">Live &middot; 3 patients &middot; v0.80.0</span></td>
+              <td class="stackup-ai-yes" data-i18n="stackup.row.us.ai">21 Claude agents</td>
+              <td data-i18n="stackup.row.us.scope">During-treatment &rarr; survivorship</td>
+              <td data-i18n="stackup.row.us.funding">Bootstrapped, open-source, free</td>
+              <td data-i18n="stackup.row.us.access">Self-enroll via WhatsApp</td>
+            </tr>
+            <tr>
+              <td class="stackup-platform"><strong>OnkoAsist</strong> (NCZI)<span class="stackup-platform-sub">Slovakia</span></td>
+              <td><span class="stackup-status stackup-status-stalled" data-i18n="stackup.row.onkoasist.status">In tender since Jan 2023 &middot; 0 patients</span></td>
+              <td class="stackup-ai-no" data-i18n="stackup.row.onkoasist.ai">None &mdash; rule-based SOA</td>
+              <td data-i18n="stackup.row.onkoasist.scope">Symptom &rarr; start of treatment</td>
+              <td data-i18n="stackup.row.onkoasist.funding">&euro;7.2M CAPEX, EU funds (planned)</td>
+              <td data-i18n="stackup.row.onkoasist.access">National eID portal (planned)</td>
+            </tr>
+            <tr>
+              <td class="stackup-platform"><strong>KSO + Nat'l Onco Portal</strong><span class="stackup-platform-sub">Poland</span></td>
+              <td><span class="stackup-status stackup-status-live" data-i18n="stackup.row.kso.status">Live &middot; Apr 2025</span></td>
+              <td class="stackup-ai-no" data-i18n="stackup.row.kso.ai">None</td>
+              <td data-i18n="stackup.row.kso.scope">Coordinator-driven pathways</td>
+              <td data-i18n="stackup.row.kso.funding">Gov-funded (Fundusze Europejskie)</td>
+              <td data-i18n="stackup.row.kso.access">Coordinator-mediated referrals</td>
+            </tr>
+            <tr>
+              <td class="stackup-platform"><strong>Belong.Life</strong> (Dave)<span class="stackup-platform-sub">Israel / global</span></td>
+              <td><span class="stackup-status stackup-status-live" data-i18n="stackup.row.belong.status">Live</span></td>
+              <td class="stackup-ai-yes" data-i18n="stackup.row.belong.ai">LLM mentor</td>
+              <td data-i18n="stackup.row.belong.scope">Community + trial matching</td>
+              <td data-i18n="stackup.row.belong.funding">VC &middot; freemium</td>
+              <td data-i18n="stackup.row.belong.access">Self-enroll app</td>
+            </tr>
+            <tr>
+              <td class="stackup-platform"><strong>Outcomes4Me + Mika</strong><span class="stackup-platform-sub">US &rarr; EU (DE)</span></td>
+              <td><span class="stackup-status stackup-status-live" data-i18n="stackup.row.o4m.status">Live &middot; 380k users combined</span></td>
+              <td class="stackup-ai-yes" data-i18n="stackup.row.o4m.ai">AI-driven (breast + lung)</td>
+              <td data-i18n="stackup.row.o4m.scope">Full journey, breast/lung only</td>
+              <td data-i18n="stackup.row.o4m.funding">$21M Series 2025, closed-source</td>
+              <td data-i18n="stackup.row.o4m.access">Self-enroll app (EN + DE)</td>
+            </tr>
+            <tr>
+              <td class="stackup-platform"><strong>Kaiku Health</strong> (Elekta ONE)<span class="stackup-platform-sub">Finland / global</span></td>
+              <td><span class="stackup-status stackup-status-live" data-i18n="stackup.row.kaiku.status">Live (enterprise)</span></td>
+              <td class="stackup-ai-no" data-i18n="stackup.row.kaiku.ai">ePRO analytics, no LLM</td>
+              <td data-i18n="stackup.row.kaiku.scope">During-treatment ePRO</td>
+              <td data-i18n="stackup.row.kaiku.funding">Elekta-owned enterprise</td>
+              <td data-i18n="stackup.row.kaiku.access">Hospital contract only</td>
+            </tr>
+            <tr>
+              <td class="stackup-platform"><strong>Careology</strong><span class="stackup-platform-sub">United Kingdom</span></td>
+              <td><span class="stackup-status stackup-status-live" data-i18n="stackup.row.careology.status">Live &middot; NHS pilots 2025</span></td>
+              <td class="stackup-ai-no" data-i18n="stackup.row.careology.ai">None</td>
+              <td data-i18n="stackup.row.careology.scope">Symptom logging + wearables</td>
+              <td data-i18n="stackup.row.careology.funding">VC + NHS pilots</td>
+              <td data-i18n="stackup.row.careology.access">Self-enroll (English only)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stackup-notes">
+        <strong data-i18n="stackup.notes.heading">What the numbers reveal</strong>
+        <ul>
+          <li data-i18n-html="stackup.notes.1"><strong>&euro;7.2M CAPEX &middot; zero live patients &middot; still in procurement since January 2023.</strong> That's OnkoAsist &mdash; Slovakia's national oncology eHealth tender. Oncoteam is a bootstrapped one-person hobby project that has shipped 89 sprints and has 3 patients in active use. When a weekend-coded open-source tool outpaces a &euro;7M+ state initiative by three live patients to zero, that says something about top-down procurement versus patient-driven iteration.</li>
+          <li data-i18n-html="stackup.notes.2"><strong>No surveyed national eHealth project uses AI agents.</strong> OnkoAsist (SK), KSO (PL), Czech Patient Portal (2026), EESZT (HU), Slovenian CRPD &mdash; all are classical SOA with rule-based decision logic. Many of these digital-health strategies span 2016 to 2026 and are still rolling out pre-AI architectures while LLM-agent platforms ship weekly.</li>
+          <li data-i18n-html="stackup.notes.3"><strong>Enterprise ePRO vs. self-enroll.</strong> Kaiku Health (Elekta), Noona (Siemens), Moovcare and Resilience PRO all require a hospital or oncologist to enroll you. Oncoteam requires a WhatsApp number. Different go-to-market, different user.</li>
+          <li data-i18n-html="stackup.notes.4"><strong>Oncoteam's unique intersection.</strong> No other surveyed platform covers all six of these at once: LLM-agent-native, WhatsApp/voice channel, open-source, multi-patient advocate mode, SK+EN multi-lingual, during-treatment clinical-protocol depth (pre-cycle safety, dose mods, cumulative dose, biomarker-aware exclusions).</li>
+        </ul>
+      </div>
+
+      <p class="stackup-footer" data-i18n-html="stackup.footer">Full methodology, all 20+ surveyed platforms, and every source link lives in the <a href="https://github.com/peter-fusek/oncoteam/blob/main/docs/competitive-landscape.md" target="_blank" rel="noopener">competitive landscape document on GitHub</a>. We update it when anything changes &mdash; pull requests welcome.</p>
+    </div>
+  </section>
+
   </main>
   <!-- Footer -->
   <footer class="footer">
@@ -1023,7 +1117,7 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=54"></script>
+  <script src="i18n.js?v=55"></script>
   <script>
   // Demo tab switching with auto-rotate
   (function() {
