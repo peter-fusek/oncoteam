@@ -1,7 +1,38 @@
 # LinkedIn Post Drafts — Oncoteam
 
 > DO NOT publish without explicit user approval
-> Updated: 2026-04-07 (Sprint 67)
+> Updated: 2026-04-16 (Sprint 89)
+
+## Post 4: Sprint 87-89 Showcase (Personal Profile — when ready for an update)
+
+**Six weeks of patient feedback, turned into product.**
+
+When you build a tool for someone in active cancer treatment, every small friction compounds. Over the last three sprints, I focused on the parts of Oncoteam that caregivers actually touch every day.
+
+What shipped:
+
+→ **WhatsApp conversation history** — every message saved, searchable on the dashboard. When a sibling abroad asks "what did the doctor say last week?" the thread is right there.
+
+→ **Hereditary DNA panel** — BRCA1/2, Lynch syndrome, ATM, PALB2 now shown directly on the patient page with plain-language context. Linked back to the source report so the oncologist sees exactly what was tested.
+
+→ **Research hub with persistent kanban** — clinical trial funnel that remembers where you parked each trial (excluded / later line / watching / action needed). Full movement audit log in localStorage.
+
+→ **Restructured dashboard navigation** — 5 logical sections (Overview, Clinical, Intelligence, Records, Operations) — based on where caregivers were actually losing time.
+
+→ **Reliability** — retry budget, protocol caching, request deduplication. The boring work behind "it just works when you need it at 11pm."
+
+→ **Modularized 5,300-line backend file into 7 focused modules.** Tests up to 744 from 688. Three patients now in active use.
+
+None of this is glamorous. It's the kind of work that only matters if someone is using the product for real. But that's the whole point.
+
+Free during active treatment. Open source.
+
+→ See it: https://oncoteam.cloud
+→ Try the demo: https://dashboard.oncoteam.cloud/demo
+
+#PatientAdvocacy #CancerCare #HealthTech #AI #OpenSource
+
+---
 
 ## Post 1: The Story (Personal Profile — publish first)
 
@@ -46,7 +77,7 @@ This is the reality of modern oncology. It's not anyone's fault. It's just too m
 
 That's why I built Oncoteam — an open-source AI tool for patient advocates:
 
-→ 19 AI agents work for you around the clock
+→ 21 AI agents work for you around the clock
 → 500+ clinical trials monitored across US and EU registries
 → Lab trend analysis with safety checks before every cycle
 → WhatsApp chat for quick answers, dashboard for deep dives
@@ -74,13 +105,13 @@ When my wife was diagnosed with cancer, I needed a tool to help me keep up with 
 
 **Two-layer architecture:**
 - **Oncofiles** (oncofiles.com) — data layer. Organizes medical documents from Google Drive: lab results, pathology reports, CT scans, genetic tests. OCR, structured extraction, metadata linking.
-- **Oncoteam** (oncoteam.cloud) — intelligence layer. 19 autonomous AI agents analyze everything Oncofiles organizes. Searches PubMed and ClinicalTrials.gov. Cross-references with NCCN guidelines. Tracks trends. Prepares questions.
+- **Oncoteam** (oncoteam.cloud) — intelligence layer. 21 autonomous AI agents analyze everything Oncofiles organizes. Searches PubMed and ClinicalTrials.gov. Cross-references with NCCN guidelines. Tracks trends. Prepares questions.
 
 **By the numbers:**
-- 19 autonomous AI agents per patient
-- 684 automated tests passing
+- 21 autonomous AI agents per patient
+- 744 automated tests passing
 - 500+ clinical trials monitored across US and EU registries
-- 2 patients in active use (oncology + general health)
+- 3 patients in active use (oncology + general health)
 - Multi-patient architecture with per-patient data isolation
 
 **Key technical decisions:**

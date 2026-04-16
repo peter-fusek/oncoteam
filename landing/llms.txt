@@ -22,25 +22,28 @@ An [Instarea](https://www.instarea.com) project.
 - Explains lab results in plain language with trend charts, safety thresholds, and cycle-over-cycle comparisons
 - Prepares personalized questions before every oncologist visit based on your latest data
 - Searches clinical trials from ClinicalTrials.gov and EU registries across 14 European countries, matched to your molecular profile
-- AI-powered trial funnel: classifies each trial into excluded / later line / watching / action needed
+- AI-powered trial funnel with persistent kanban: classifies each trial into excluded / later line / watching / action needed, with full movement audit log
 - Cross-references your treatment with medical textbooks (DeVita), NCCN protocols, and latest PubMed research
 - Tracks treatment trends — tumor markers, blood counts, inflammation indices — so you can see if treatment is working
 - Pre-cycle safety checks with automated hold/go recommendations
 - Sends WhatsApp alerts for safety issues, weekly briefings, and trial updates
+- WhatsApp conversation history: every message persisted and reviewable on the dashboard
 - Provides bilingual interface (Slovak/English) with medical and plain-language modes
 - Generates family-friendly treatment summaries shareable via WhatsApp or print
 - WhatsApp onboarding: 8-step state machine with media attachments and admin approval
-- 19 autonomous AI agents for monitoring, research, and reporting
+- Hereditary DNA panel display (BRCA1/2, Lynch syndrome, ATM, PALB2) on the patient page
+- Research hub with category tabs (treatment updates, clinical news, patient education)
+- 21 autonomous AI agents for monitoring, research, and reporting
 - Stores all patient data in your own Google Drive (GDPR compliant)
 
 ## Stats
 
-- 20 AI agents working autonomously per patient
+- 21 AI agents working autonomously per patient
 - 50+ tasks per patient per week (briefings, trial searches, lab checks, alerts)
 - 500+ clinical trials monitored across US and EU registries
-- 2 patients in active use (oncology + general health)
-- 26 MCP tools, 22 dashboard API routes
-- 688 passing tests
+- 3 patients in active use (oncology + general health)
+- 26 MCP tools, 34 dashboard API routes
+- 744 passing tests
 - Multi-patient support with per-patient scheduling, OAuth, and data isolation
 
 ## Architecture

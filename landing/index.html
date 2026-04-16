@@ -48,11 +48,12 @@
     "featureList": [
       "Lab result interpretation with trend analysis and safety checks",
       "Clinical trial matching across Europe and the US",
-      "AI-powered trial funnel with eligibility classification",
+      "AI-powered trial funnel with persistent eligibility classification",
       "Molecular profile-aware eligibility checking",
       "Appointment preparation with suggested questions",
       "Treatment dashboard with alerts and lab trends",
-      "WhatsApp chat for on-the-go access",
+      "WhatsApp chat with full conversation history and audit trail",
+      "Hereditary cancer panel display (BRCA, Lynch, ATM, PALB2)",
       "Family-friendly treatment summaries",
       "GDPR-compliant patient-owned data storage"
     ]
@@ -146,7 +147,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=52">
+  <link rel="stylesheet" href="style.css?v=53">
 </head>
 <body>
   <!-- Navigation -->
@@ -446,7 +447,7 @@
           </div>
           <div class="hiw-num">2</div>
           <h3 data-i18n="hiw.step2.title">AI Processes Everything</h3>
-          <p data-i18n="hiw.step2.text">Oncofiles structures the documents automatically. Oncoteam's 20 AI agents analyze them — tracking trends, checking safety, searching for trials.</p>
+          <p data-i18n="hiw.step2.text">Oncofiles structures the documents automatically. Oncoteam's 21 AI agents analyze them — tracking trends, checking safety, searching for trials.</p>
         </div>
         <div class="hiw-arrow">
           <svg width="40" height="24" viewBox="0 0 40 24"><path d="M0 12h32M26 6l8 6-8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -506,11 +507,11 @@
     <div class="container">
       <div class="stats-grid">
         <div class="stat">
-          <div class="stat-num">20</div>
+          <div class="stat-num">21</div>
           <div class="stat-label" data-i18n="stats.agents">AI Agents Working 24/7</div>
         </div>
         <div class="stat">
-          <div class="stat-num">688</div>
+          <div class="stat-num">744</div>
           <div class="stat-label" data-i18n="stats.tests">Automated Tests Passing</div>
         </div>
         <div class="stat">
@@ -518,7 +519,7 @@
           <div class="stat-label" data-i18n="stats.trials">Clinical Trials Monitored</div>
         </div>
         <div class="stat">
-          <div class="stat-num">2</div>
+          <div class="stat-num">3</div>
           <div class="stat-label" data-i18n="stats.patients">Patients in Active Use</div>
         </div>
       </div>
@@ -570,6 +571,16 @@
           <div class="feature-icon">👨‍👩‍👧</div>
           <h3 data-i18n="features.family.title">Keep Your Family Informed</h3>
           <p data-i18n="features.family.text">Generate clear, compassionate treatment summaries for family members who want to help but don't know how to ask. Share via WhatsApp or print — no medical degree required to understand.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🧬</div>
+          <h3 data-i18n="features.genetics.title">Hereditary DNA Insights</h3>
+          <p data-i18n="features.genetics.text">Automatically surfaces hereditary cancer panel results — BRCA1/2, Lynch syndrome, ATM, PALB2 and more — with plain-language context. Every finding links back to the source report, so your oncologist (and your family) see exactly what was tested and why it matters.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3 data-i18n="features.waudit.title">WhatsApp Conversation History</h3>
+          <p data-i18n="features.waudit.text">Every WhatsApp message — questions, alerts, family updates — is saved and viewable on the dashboard. Nothing gets lost in scrollback. Ideal when the patient is in active treatment and caregivers are coordinating across time zones.</p>
         </div>
       </div>
     </div>
@@ -944,11 +955,11 @@
       <p>&copy; 2026 Oncoteam. <span data-i18n="footer.rights">Built by a patient advocate, for patient advocates.</span></p>
       <p class="footer-note" data-i18n="footer.disclaimer">Oncoteam is an AI-powered decision support tool. It does not replace professional medical advice. Always consult your oncologist for treatment decisions.</p>
       <p class="footer-note" style="margin-top:0.5rem"><span data-i18n="footer.instarea">An</span> <a href="https://www.instarea.com" class="story-link" target="_blank" rel="noopener">Instarea</a> <span data-i18n="footer.instarea2">project.</span></p>
-      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.67.0</p>
+      <p class="footer-note" style="margin-top:0.5rem;opacity:0.5">v0.80.0</p>
     </div>
   </footer>
 
-  <script src="i18n.js?v=52"></script>
+  <script src="i18n.js?v=53"></script>
   <script>
   // Demo tab switching with auto-rotate
   (function() {
