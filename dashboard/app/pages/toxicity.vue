@@ -147,7 +147,7 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
       <!-- Toxicity Grade Selectors -->
       <div class="space-y-3 mb-4">
         <div v-for="field in toxicityFields" :key="field.key" class="flex items-center gap-3">
-          <div class="flex items-center gap-2 w-48 shrink-0">
+          <div class="flex items-center gap-2 w-32 sm:w-48 shrink-0">
             <UIcon :name="field.icon" class="text-gray-500" />
             <span class="text-sm text-gray-700">{{ field.label }}</span>
           </div>

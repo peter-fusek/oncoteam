@@ -527,8 +527,10 @@ async function submitLab() {
           <span class="inline-flex items-center gap-1"><UIcon name="i-lucide-octagon-alert" class="text-red-600 w-3 h-3" /> Critical</span>
         </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs">
+      <div class="relative">
+        <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none z-10 sm:hidden"></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
           <thead>
             <tr class="text-left text-gray-500 border-b border-gray-200">
               <th class="px-4 py-2 sticky left-0 bg-white z-10">
@@ -628,7 +630,8 @@ async function submitLab() {
               <td class="px-3 py-2.5 text-gray-400 border-l border-gray-100 max-w-[200px] truncate">{{ entry.notes || '—' }}</td>
             </tr>
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
     </template>
