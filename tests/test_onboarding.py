@@ -181,13 +181,13 @@ async def test_onboarding_status_invalid_json():
 @pytest.fixture(autouse=True)
 def _clear_approved_phones():
     """Clear approved phones set between tests."""
-    import oncoteam.dashboard_api as _mod
+    import oncoteam.api_whatsapp as _wa_mod
 
     _approved_phones.clear()
-    _mod._approved_phones_loaded = False
+    _wa_mod._approved_phones_loaded = False
     yield
     _approved_phones.clear()
-    _mod._approved_phones_loaded = False
+    _wa_mod._approved_phones_loaded = False
 
 
 @pytest.mark.anyio
@@ -249,9 +249,9 @@ async def test_approve_user_idempotent(mock_persist):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.enhance_document_via_mcp", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api.oncofiles_client.upload_document_via_mcp", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api._check_fup_ai_query", return_value=True)
+@patch("oncoteam.api_whatsapp.oncofiles_client.enhance_document_via_mcp", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp.oncofiles_client.upload_document_via_mcp", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp._check_fup_ai_query", return_value=True)
 async def test_whatsapp_media_success(mock_fup, mock_upload, mock_enhance):
     """Upload + enhance succeeds, returns document_id and summary."""
     mock_upload.return_value = {"document_id": "42", "filename": "test.jpg"}
@@ -284,7 +284,7 @@ async def test_whatsapp_media_success(mock_fup, mock_upload, mock_enhance):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api._check_fup_ai_query", return_value=False)
+@patch("oncoteam.api_whatsapp._check_fup_ai_query", return_value=False)
 async def test_whatsapp_media_fup_exceeded(mock_fup):
     """429 when monthly FUP limit is exceeded."""
     request = FakeRequest(
@@ -326,8 +326,8 @@ async def test_whatsapp_media_invalid_json():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.upload_document_via_mcp", new_callable=AsyncMock)
-@patch("oncoteam.dashboard_api._check_fup_ai_query", return_value=True)
+@patch("oncoteam.api_whatsapp.oncofiles_client.upload_document_via_mcp", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp._check_fup_ai_query", return_value=True)
 async def test_whatsapp_media_upload_failure(mock_fup, mock_upload):
     """502 when upload to oncofiles fails."""
     mock_upload.side_effect = ConnectionError("oncofiles unreachable")
@@ -352,7 +352,7 @@ async def test_whatsapp_media_upload_failure(mock_fup, mock_upload):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_load_approved_phones_from_oncofiles(mock_get):
     """Load approved phones from oncofiles agent_state."""
     from oncoteam.dashboard_api import load_approved_phones
@@ -368,7 +368,7 @@ async def test_load_approved_phones_from_oncofiles(mock_get):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.oncofiles_client.get_agent_state", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp.oncofiles_client.get_agent_state", new_callable=AsyncMock)
 async def test_load_approved_phones_oncofiles_down(mock_get):
     """Load gracefully handles oncofiles being down."""
     from oncoteam.dashboard_api import load_approved_phones

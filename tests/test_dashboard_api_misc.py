@@ -57,7 +57,7 @@ async def test_resolve_patient_no_allowed_ids_returns_null():
 @pytest.mark.anyio
 async def test_resolve_patient_no_api_key_returns_error():
     """Should return error when ANTHROPIC_API_KEY is not set."""
-    with patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", ""):
+    with patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", ""):
         response = await api_resolve_patient(
             _make_post_request({"query": "erika", "allowed_ids": ["q1b"]})
         )
@@ -76,7 +76,7 @@ async def test_resolve_patient_claude_match():
     mock_client.messages.create = AsyncMock(return_value=mock_resp)
 
     with (
-        patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "test-key"),
+        patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key"),
         patch("anthropic.AsyncAnthropic", return_value=mock_client),
     ):
         response = await api_resolve_patient(

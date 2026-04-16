@@ -28,7 +28,7 @@ class FakeRequest:
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.log_conversation",
+    "oncoteam.api_whatsapp.oncofiles_client.log_conversation",
     new_callable=AsyncMock,
 )
 async def test_log_whatsapp_success(mock_log):
@@ -55,7 +55,7 @@ async def test_log_whatsapp_success(mock_log):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.log_conversation",
+    "oncoteam.api_whatsapp.oncofiles_client.log_conversation",
     new_callable=AsyncMock,
     side_effect=RuntimeError("connection failed"),
 )
@@ -73,7 +73,7 @@ async def test_log_whatsapp_error_returns_502(mock_log):
 async def test_log_whatsapp_defaults_phone():
     """Missing phone defaults to 'unknown'."""
     with patch(
-        "oncoteam.dashboard_api.oncofiles_client.log_conversation",
+        "oncoteam.api_whatsapp.oncofiles_client.log_conversation",
         new_callable=AsyncMock,
     ) as mock_log:
         mock_log.return_value = {"id": 1}
@@ -91,16 +91,16 @@ async def test_log_whatsapp_defaults_phone():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "test-key")
-@patch("oncoteam.dashboard_api.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "closed"},
 )
-@patch("oncoteam.dashboard_api._load_wa_thread", new_callable=AsyncMock, return_value=[])
-@patch("oncoteam.dashboard_api._save_wa_thread", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp._load_wa_thread", new_callable=AsyncMock, return_value=[])
+@patch("oncoteam.api_whatsapp._save_wa_thread", new_callable=AsyncMock)
 @patch(
-    "oncoteam.dashboard_api.run_autonomous_task",
+    "oncoteam.api_whatsapp.run_autonomous_task",
     new_callable=AsyncMock,
 )
 async def test_whatsapp_chat_success(mock_run, _mock_save, _mock_load, _mock_cb):
@@ -121,9 +121,9 @@ async def test_whatsapp_chat_success(mock_run, _mock_save, _mock_load, _mock_cb)
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "open"},
 )
 async def test_whatsapp_chat_circuit_breaker_open(_mock_cb):
@@ -139,7 +139,7 @@ async def test_whatsapp_chat_circuit_breaker_open(_mock_cb):
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "")
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "")
 async def test_whatsapp_chat_no_api_key():
     body = json.dumps({"message": "hello"}).encode()
     request = FakeRequest(body=body)
@@ -151,16 +151,16 @@ async def test_whatsapp_chat_no_api_key():
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "test-key")
-@patch("oncoteam.dashboard_api.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "closed"},
 )
-@patch("oncoteam.dashboard_api._load_wa_thread", new_callable=AsyncMock, return_value=[])
-@patch("oncoteam.dashboard_api._save_wa_thread", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp._load_wa_thread", new_callable=AsyncMock, return_value=[])
+@patch("oncoteam.api_whatsapp._save_wa_thread", new_callable=AsyncMock)
 @patch(
-    "oncoteam.dashboard_api.run_autonomous_task",
+    "oncoteam.api_whatsapp.run_autonomous_task",
     new_callable=AsyncMock,
 )
 async def test_whatsapp_chat_empty_response_gives_fallback(
@@ -177,16 +177,16 @@ async def test_whatsapp_chat_empty_response_gives_fallback(
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "test-key")
-@patch("oncoteam.dashboard_api.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "closed"},
 )
-@patch("oncoteam.dashboard_api._load_wa_thread", new_callable=AsyncMock, return_value=[])
-@patch("oncoteam.dashboard_api._save_wa_thread", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp._load_wa_thread", new_callable=AsyncMock, return_value=[])
+@patch("oncoteam.api_whatsapp._save_wa_thread", new_callable=AsyncMock)
 @patch(
-    "oncoteam.dashboard_api.run_autonomous_task",
+    "oncoteam.api_whatsapp.run_autonomous_task",
     new_callable=AsyncMock,
 )
 async def test_whatsapp_chat_truncates_long_response(mock_run, _mock_save, _mock_load, _mock_cb):
@@ -200,16 +200,16 @@ async def test_whatsapp_chat_truncates_long_response(mock_run, _mock_save, _mock
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "test-key")
-@patch("oncoteam.dashboard_api.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "closed"},
 )
-@patch("oncoteam.dashboard_api._load_wa_thread", new_callable=AsyncMock, return_value=[])
-@patch("oncoteam.dashboard_api._save_wa_thread", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp._load_wa_thread", new_callable=AsyncMock, return_value=[])
+@patch("oncoteam.api_whatsapp._save_wa_thread", new_callable=AsyncMock)
 @patch(
-    "oncoteam.dashboard_api.run_autonomous_task",
+    "oncoteam.api_whatsapp.run_autonomous_task",
     new_callable=AsyncMock,
     side_effect=RuntimeError("API down"),
 )
@@ -224,16 +224,16 @@ async def test_whatsapp_chat_error_returns_fallback(mock_run, _mock_save, _mock_
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "test-key")
-@patch("oncoteam.dashboard_api.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "closed"},
 )
-@patch("oncoteam.dashboard_api._load_wa_thread", new_callable=AsyncMock, return_value=[])
-@patch("oncoteam.dashboard_api._save_wa_thread", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp._load_wa_thread", new_callable=AsyncMock, return_value=[])
+@patch("oncoteam.api_whatsapp._save_wa_thread", new_callable=AsyncMock)
 @patch(
-    "oncoteam.dashboard_api.run_autonomous_task",
+    "oncoteam.api_whatsapp.run_autonomous_task",
     new_callable=AsyncMock,
 )
 async def test_whatsapp_chat_sk_fallback_message(mock_run, _mock_save, _mock_load, _mock_cb):
@@ -248,20 +248,20 @@ async def test_whatsapp_chat_sk_fallback_message(mock_run, _mock_save, _mock_loa
 
 
 @pytest.mark.anyio
-@patch("oncoteam.dashboard_api.ANTHROPIC_API_KEY", "test-key")
-@patch("oncoteam.dashboard_api.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "closed"},
 )
 @patch(
-    "oncoteam.dashboard_api._load_wa_thread",
+    "oncoteam.api_whatsapp._load_wa_thread",
     new_callable=AsyncMock,
     return_value=[{"user": "Ake su labky?", "assistant": "ANC 3200, PLT 180k."}],
 )
-@patch("oncoteam.dashboard_api._save_wa_thread", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp._save_wa_thread", new_callable=AsyncMock)
 @patch(
-    "oncoteam.dashboard_api.run_autonomous_task",
+    "oncoteam.api_whatsapp.run_autonomous_task",
     new_callable=AsyncMock,
 )
 async def test_whatsapp_chat_includes_thread_context(mock_run, _mock_save, _mock_load, _mock_cb):
@@ -285,17 +285,17 @@ async def test_whatsapp_chat_includes_thread_context(mock_run, _mock_save, _mock
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "closed"},
 )
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+    "oncoteam.api_whatsapp.oncofiles_client.search_conversations",
     new_callable=AsyncMock,
     return_value={"entries": [{"id": 1}, {"id": 2}, {"id": 3}]},
 )
-@patch("oncoteam.dashboard_api._approved_phones_loaded", True)
-@patch("oncoteam.dashboard_api._approved_phones", {"+421900111222", "+421900333444"})
-@patch("oncoteam.dashboard_api._phone_patient_map", {"+421900111222": "q1b"})
+@patch("oncoteam.api_whatsapp._approved_phones_loaded", True)
+@patch("oncoteam.api_whatsapp._approved_phones", {"+421900111222", "+421900333444"})
+@patch("oncoteam.api_whatsapp._phone_patient_map", {"+421900111222": "q1b"})
 async def test_whatsapp_status_ok(_mock_conv, _mock_cb):
     request = FakeRequest(method="GET")
     response = await api_whatsapp_status(request)
@@ -311,17 +311,17 @@ async def test_whatsapp_status_ok(_mock_conv, _mock_cb):
 
 @pytest.mark.anyio
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.get_circuit_breaker_status",
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
     return_value={"state": "open"},
 )
 @patch(
-    "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+    "oncoteam.api_whatsapp.oncofiles_client.search_conversations",
     new_callable=AsyncMock,
     side_effect=RuntimeError("oncofiles down"),
 )
-@patch("oncoteam.dashboard_api._approved_phones_loaded", True)
-@patch("oncoteam.dashboard_api._approved_phones", set())
-@patch("oncoteam.dashboard_api._phone_patient_map", {})
+@patch("oncoteam.api_whatsapp._approved_phones_loaded", True)
+@patch("oncoteam.api_whatsapp._approved_phones", set())
+@patch("oncoteam.api_whatsapp._phone_patient_map", {})
 async def test_whatsapp_status_degraded(_mock_conv, _mock_cb):
     request = FakeRequest(method="GET")
     response = await api_whatsapp_status(request)
