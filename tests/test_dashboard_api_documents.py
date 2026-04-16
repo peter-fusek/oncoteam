@@ -107,3 +107,51 @@ async def test_documents_error(mock_call):
     assert "error" in data
     assert data["total"] == 0
     assert data["summary"]["total"] == 0
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_documents", new_callable=AsyncMock)
+async def test_documents_category_routes_to_search(mock_search):
+    """?category=genetics must call search_documents, not get_document_status_matrix,
+    and return full envelopes (ai_summary, structured_metadata, gdrive_url)."""
+    mock_search.return_value = {
+        "documents": [
+            {
+                "id": 169,
+                "filename": "20260415_genetics.jpg",
+                "document_date": "2026-04-15",
+                "category": "genetics",
+                "gdrive_url": "https://drive.google.com/file/d/abc/view",
+                "ai_summary": "Hereditary panel: no pathogenic mutations identified",
+                "structured_metadata": {
+                    "findings": ["BRCA1/BRCA2 tested", "No variants"],
+                    "doctors": ["Dr. Test"],
+                },
+            }
+        ]
+    }
+
+    request = _make_request("category=genetics&limit=5")
+    response = await api_documents(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["category"] == "genetics"
+    assert data["total"] == 1
+    assert data["documents"][0]["ai_summary"].startswith("Hereditary panel")
+    assert data["documents"][0]["gdrive_url"].startswith("https://drive.google.com/")
+    mock_search.assert_called_once_with(text="", category="genetics", limit=5, token=None)
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.call_oncofiles", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api.oncofiles_client.search_documents", new_callable=AsyncMock)
+async def test_documents_category_does_not_call_status_matrix(mock_search, mock_call):
+    """When ?category= is provided, the status-matrix path must NOT be invoked."""
+    mock_search.return_value = {"documents": []}
+
+    request = _make_request("category=pathology")
+    await api_documents(request)
+
+    mock_search.assert_called_once()
+    mock_call.assert_not_called()

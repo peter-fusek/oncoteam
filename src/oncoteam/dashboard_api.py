@@ -1999,6 +1999,42 @@ async def api_labs(request: Request) -> JSONResponse:
             except Exception as fallback_err:
                 record_suppressed_error("api_labs", "analyze_labs_fallback", fallback_err)
 
+        # Dedupe by event_date — keep the entry with the richest metadata.
+        # Root cause: lab_sync / document_pipeline can create multiple
+        # treatment_events for the same sample date (re-ingest, manual entry,
+        # backfill). Charts otherwise render duplicate x-axis labels and
+        # flat-line artifacts (#366). Preference order:
+        #   1) most populated metadata (by non-empty value count)
+        #   2) newest created_at as tiebreaker
+        def _event_metadata_count(ev: dict) -> int:
+            m = ev.get("metadata", {})
+            if isinstance(m, str):
+                try:
+                    m = json.loads(m)
+                except (json.JSONDecodeError, TypeError):
+                    return 0
+            if not isinstance(m, dict):
+                return 0
+            return sum(1 for v in m.values() if v not in (None, "", {}, []))
+
+        by_event_date: dict[str, dict] = {}
+        for e in events:
+            d = e.get("event_date")
+            if not d:
+                continue
+            existing = by_event_date.get(d)
+            if existing is None:
+                by_event_date[d] = e
+                continue
+            new_score = _event_metadata_count(e)
+            old_score = _event_metadata_count(existing)
+            if new_score > old_score or (
+                new_score == old_score
+                and (e.get("created_at") or "") > (existing.get("created_at") or "")
+            ):
+                by_event_date[d] = e
+        events = list(by_event_date.values())
+
         # Sort events by date descending (newest first)
         events.sort(key=lambda e: e.get("event_date", ""), reverse=True)
 
@@ -2367,11 +2403,22 @@ _DOCUMENTS_CACHE_TTL = 120  # 2 minutes — heavy query, cache aggressively
 
 
 async def api_documents(request: Request) -> JSONResponse:
-    """GET /api/documents — document status matrix from oncofiles."""
+    """GET /api/documents — document status matrix or category-filtered list.
+
+    Two modes:
+      - Default (?filter=...): status matrix from get_document_status_matrix,
+        with has_ocr / has_ai / has_metadata flags. Used by the Documents page.
+      - Category mode (?category=genetics|pathology|...): full document
+        envelopes from search_documents, with ai_summary, structured_metadata,
+        gdrive_url, filename, document_date, institution, doctors. Used by the
+        Patient page hereditary panel.
+    """
     patient_id = _get_patient_id(request)
     token = _get_token_for_patient(patient_id)
+    category = request.query_params.get("category")
     filter_param = request.query_params.get("filter", "all")
-    cache_key = _cache_key("docs", patient_id, filter_param)
+    limit = _parse_limit(request, default=50)
+    cache_key = _cache_key("docs", patient_id, category or filter_param, str(limit))
 
     # Serve from cache if fresh
     if cache_key in _documents_cache:
@@ -2391,6 +2438,7 @@ async def api_documents(request: Request) -> JSONResponse:
                 "documents": [],
                 "total": 0,
                 "filter": filter_param,
+                "category": category,
                 "summary": {"total": 0, "ocr_complete": 0, "missing_ocr": 0, "missing_metadata": 0},
                 "unavailable": True,
             },
@@ -2398,36 +2446,55 @@ async def api_documents(request: Request) -> JSONResponse:
         )
 
     try:
-        result = await _deduplicated_fetch(
-            cache_key,
-            lambda: asyncio.wait_for(
-                oncofiles_client.call_oncofiles(
-                    "get_document_status_matrix", {"filter": filter_param}, token=token
+        if category:
+            result = await _deduplicated_fetch(
+                cache_key,
+                lambda: asyncio.wait_for(
+                    oncofiles_client.search_documents(
+                        text="", category=category, limit=limit, token=token
+                    ),
+                    timeout=12.0,
                 ),
-                timeout=12.0,
-            ),
-        )
-        docs = result if isinstance(result, list) else result.get("documents", [])
-        # Compute summary counts
-        # Oncofiles get_document_status_matrix returns boolean flags:
-        # has_ocr, has_ai, has_metadata, fully_complete, is_synced, etc.
-        total = len(docs)
-        ocr_complete = sum(1 for d in docs if d.get("has_ocr") or d.get("has_ai"))
-        missing_ocr = sum(1 for d in docs if not d.get("has_ocr") and not d.get("has_ai"))
-        missing_metadata = sum(1 for d in docs if not d.get("has_metadata"))
-        response = _cors_json(
-            {
-                "documents": docs,
-                "total": total,
-                "filter": filter_param,
-                "summary": {
+            )
+            docs = result if isinstance(result, list) else result.get("documents", [])
+            response = _cors_json(
+                {
+                    "documents": docs,
+                    "total": len(docs),
+                    "category": category,
+                }
+            )
+        else:
+            result = await _deduplicated_fetch(
+                cache_key,
+                lambda: asyncio.wait_for(
+                    oncofiles_client.call_oncofiles(
+                        "get_document_status_matrix", {"filter": filter_param}, token=token
+                    ),
+                    timeout=12.0,
+                ),
+            )
+            docs = result if isinstance(result, list) else result.get("documents", [])
+            # Compute summary counts
+            # Oncofiles get_document_status_matrix returns boolean flags:
+            # has_ocr, has_ai, has_metadata, fully_complete, is_synced, etc.
+            total = len(docs)
+            ocr_complete = sum(1 for d in docs if d.get("has_ocr") or d.get("has_ai"))
+            missing_ocr = sum(1 for d in docs if not d.get("has_ocr") and not d.get("has_ai"))
+            missing_metadata = sum(1 for d in docs if not d.get("has_metadata"))
+            response = _cors_json(
+                {
+                    "documents": docs,
                     "total": total,
-                    "ocr_complete": ocr_complete,
-                    "missing_ocr": missing_ocr,
-                    "missing_metadata": missing_metadata,
-                },
-            }
-        )
+                    "filter": filter_param,
+                    "summary": {
+                        "total": total,
+                        "ocr_complete": ocr_complete,
+                        "missing_ocr": missing_ocr,
+                        "missing_metadata": missing_metadata,
+                    },
+                }
+            )
         _documents_cache[cache_key] = (time.time(), response)
         _cache_evict(_documents_cache)
         return response
@@ -2442,6 +2509,7 @@ async def api_documents(request: Request) -> JSONResponse:
                 "documents": [],
                 "total": 0,
                 "filter": filter_param,
+                "category": category,
                 "summary": {"total": 0, "ocr_complete": 0, "missing_ocr": 0, "missing_metadata": 0},
             },
             status_code=502,

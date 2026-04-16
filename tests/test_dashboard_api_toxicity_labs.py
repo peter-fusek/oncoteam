@@ -227,6 +227,71 @@ async def test_api_labs_post_requires_date():
 # ── Labs analyze_labs fallback ─────────────────
 
 
+# ── /api/labs dedup (issue #366) ──────────────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_dedupes_same_date_events(mock_list):
+    """Multiple treatment_events on the same event_date collapse to one entry,
+    keeping the one with the richest metadata (issue #366).
+    """
+    mock_list.return_value = {
+        "events": [
+            # Empty metadata — should lose the dedup
+            {
+                "id": 100,
+                "event_date": "2026-03-13",
+                "event_type": "lab_result",
+                "metadata": {},
+                "created_at": "2026-03-14T09:00:00Z",
+            },
+            # Rich metadata — should win
+            {
+                "id": 101,
+                "event_date": "2026-03-13",
+                "event_type": "lab_result",
+                "metadata": {"ANC": 1150, "PLT": 250000, "CEA": 500.0},
+                "created_at": "2026-03-13T10:00:00Z",
+            },
+            # Yet another same-date duplicate, sparser metadata
+            {
+                "id": 102,
+                "event_date": "2026-03-13",
+                "event_type": "lab_result",
+                "metadata": {"ANC": 1150},
+                "created_at": "2026-03-15T08:00:00Z",
+            },
+            # Different date — survives
+            {
+                "id": 103,
+                "event_date": "2026-03-26",
+                "event_type": "lab_result",
+                "metadata": {"ANC": 1100, "PLT": 587000, "CEA": 732.9},
+                "created_at": "2026-03-26T12:00:00Z",
+            },
+        ]
+    }
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    dates = [e["date"] for e in data["entries"]]
+    # Exactly one entry per date
+    assert dates.count("2026-03-13") == 1
+    assert dates.count("2026-03-26") == 1
+    # The richest metadata (id=101) wins for 2026-03-13
+    for e in data["entries"]:
+        if e["date"] == "2026-03-13":
+            assert e["id"] == 101
+            assert e["values"]["PLT"] == 250000
+            assert e["values"]["CEA"] == 500.0
+
+
 # ── /api/labs reference ranges ──────────────────
 
 

@@ -72,31 +72,31 @@ const { data: geneticsDocs } = fetchApi<{
   }>
 }>('/documents?category=genetics&limit=5', { lazy: true, server: false })
 
-// Known hereditary cancer genes to look for in document findings
 const GERMLINE_GENES = ['BRCA1', 'BRCA2', 'CHEK2', 'PALB2', 'ATM', 'NBN', 'RAD51C', 'RAD51D', 'TP53', 'BRIP1', 'MLH1', 'MSH2', 'MSH6', 'PMS2', 'APC', 'MUTYH']
+const HEREDITARY_HINTS = ['hereditary', 'germline', 'family history', 'rodinn', 'oncological risk', 'onkologick', 'genetic risk', 'predispoz']
 
 const germlinePanel = computed(() => {
   if (!geneticsDocs.value?.documents?.length) return null
-  // Find docs that mention germline genes
-  const germlineDocs = geneticsDocs.value.documents.filter(doc => {
-    const text = `${doc.ai_summary || ''} ${(doc.structured_metadata?.findings || []).join(' ')}`
-    return GERMLINE_GENES.some(g => text.toUpperCase().includes(g))
-  })
-  if (!germlineDocs.length) return null
-  const doc = germlineDocs[0] // Use the first/most relevant
-  // Extract tested genes from findings
+  const docs = geneticsDocs.value.documents
+  const score = (doc: any) => {
+    const text = `${doc.ai_summary || ''} ${(doc.structured_metadata?.findings || []).join(' ')} ${doc.structured_metadata?.plain_summary || ''}`.toLowerCase()
+    let s = 0
+    for (const g of GERMLINE_GENES) if (text.includes(g.toLowerCase())) s += 10
+    for (const h of HEREDITARY_HINTS) if (text.includes(h)) s += 1
+    return s
+  }
+  const ranked = [...docs].map(d => ({ d, s: score(d) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s)
+  if (!ranked.length) return null
+  const doc = ranked[0].d
   const findings = doc.structured_metadata?.findings || []
   const summary = doc.structured_metadata?.plain_summary || doc.ai_summary || ''
-  const isNegative = summary.toLowerCase().includes('no pathogenic') ||
-    summary.toLowerCase().includes('žiadna patogénna') ||
-    summary.toLowerCase().includes('not identified') ||
-    summary.toLowerCase().includes('neidentifikovaná')
+  const text = `${summary} ${findings.join(' ')}`.toLowerCase()
+  const isNegative = text.includes('no pathogenic') || text.includes('žiadna patogénna')
+    || text.includes('not identified') || text.includes('neidentifikovaná')
+  const knownGenes = GERMLINE_GENES.filter(g => text.toUpperCase().includes(g))
   return {
     doc,
-    genes: GERMLINE_GENES.filter(g => {
-      const text = `${summary} ${findings.join(' ')}`
-      return text.toUpperCase().includes(g)
-    }),
+    genes: knownGenes,
     result: isNegative ? 'negative' : 'pending_review',
     doctors: doc.structured_metadata?.doctors || [],
     date: doc.document_date,
