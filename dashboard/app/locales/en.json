@@ -401,7 +401,15 @@
       "medium": "Related",
       "low": "General",
       "not_applicable": "Not applicable"
-    }
+    },
+    "tabs": {
+      "trials": "Clinical Trials",
+      "literature": "Literature",
+      "funnel": "Funnel"
+    },
+    "watchedTrials": "Actively Monitored Trials",
+    "noTrials": "No clinical trials found",
+    "fromProtocol": "From clinical protocol"
   },
   "timeline": {
     "title": "Treatment Timeline",

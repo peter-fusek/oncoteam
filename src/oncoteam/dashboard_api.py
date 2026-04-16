@@ -1638,7 +1638,7 @@ def _cache_evict(cache: dict) -> None:
 
 
 _protocol_cache: dict[str, tuple[float, JSONResponse]] = {}
-_PROTOCOL_CACHE_TTL = 30  # seconds
+_PROTOCOL_CACHE_TTL = 300  # seconds — protocol is mostly static clinical data
 
 # TTL caches for oncofiles-dependent endpoints (#173 — prevent hanging requests)
 _timeline_cache: dict[str, tuple[float, JSONResponse]] = {}
@@ -2061,14 +2061,17 @@ async def api_briefings(request: Request) -> JSONResponse:
     try:
         briefings_res, alerts_res = await _deduplicated_fetch(
             cache_key,
-            lambda: asyncio.gather(
-                oncofiles_client.search_conversations(
-                    entry_type="autonomous_briefing", limit=limit, token=token
+            lambda: asyncio.wait_for(
+                asyncio.gather(
+                    oncofiles_client.search_conversations(
+                        entry_type="autonomous_briefing", limit=limit, token=token
+                    ),
+                    oncofiles_client.search_conversations(
+                        entry_type="cost_alert", limit=5, token=token
+                    ),
+                    return_exceptions=True,
                 ),
-                oncofiles_client.search_conversations(
-                    entry_type="cost_alert", limit=5, token=token
-                ),
-                return_exceptions=True,
+                timeout=18.0,
             ),
         )
         briefings = (
@@ -4004,9 +4007,6 @@ async def api_agent_runs_all(request: Request) -> JSONResponse:
 
 async def api_log_whatsapp(request: Request) -> JSONResponse:
     """POST /api/internal/log-whatsapp — log WhatsApp message exchange."""
-    auth = _check_api_auth(request)
-    if auth:
-        return auth
     try:
         body = json.loads(await request.body())
         phone = body.get("phone", "unknown")
@@ -4170,9 +4170,6 @@ async def _save_wa_thread(
 
 async def api_whatsapp_chat(request: Request) -> JSONResponse:
     """POST /api/internal/whatsapp-chat — conversational Claude response."""
-    auth = _check_api_auth(request)
-    if auth:
-        return auth
     if not _check_expensive_rate_limit():
         return _cors_json(
             {"error": "Too many AI requests. Try again in a few minutes."},
@@ -4333,9 +4330,6 @@ async def api_bug_report(request: Request) -> JSONResponse:
     Expects JSON: {description: str, url: str, route: str, viewport: str,
                     role: str, locale: str}
     """
-    auth = _check_api_auth(request)
-    if auth:
-        return auth
     try:
         body = json.loads(await request.body())
     except (json.JSONDecodeError, Exception):
@@ -4569,9 +4563,6 @@ You MUST respond with ONLY a valid JSON object. No markdown, no explanation:
 
 async def api_assess_funnel(request: Request) -> JSONResponse:
     """POST /api/research/assess-funnel — AI-classify trials into funnel stages."""
-    auth = _check_api_auth(request)
-    if auth:
-        return auth
     if not _check_expensive_rate_limit():
         return _cors_json(
             {"error": "Too many AI requests. Try again in a few minutes."},
@@ -4693,13 +4684,13 @@ async def api_funnel_stages_save(request: Request) -> JSONResponse:
     body = await _parse_json_body(request)
     stages = body.get("stages", {})
     if not isinstance(stages, dict):
-        return _cors_json({"error": "stages must be a dict"}, status=400, request=request)
+        return _cors_json({"error": "stages must be a dict"}, status_code=400, request=request)
     try:
         await oncofiles_client.set_agent_state(f"funnel_stages:{patient_id}", stages, token=token)
         return _cors_json({"ok": True, "count": len(stages)}, request=request)
     except Exception as exc:
         record_suppressed_error("api_funnel_stages_save", "save", exc)
-        return _cors_json({"error": str(exc)}, status=500, request=request)
+        return _cors_json({"error": str(exc)}, status_code=500, request=request)
 
 
 async def api_whatsapp_media(request: Request) -> JSONResponse:

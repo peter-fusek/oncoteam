@@ -177,8 +177,8 @@ const drilldown = useDrilldown()
     <div v-if="protocol?.watched_trials?.length && activeTab === 'trials'" class="rounded-xl border border-teal-200 bg-teal-50/50 p-4">
       <div class="flex items-center gap-2 mb-3">
         <UIcon name="i-lucide-radar" class="text-teal-700 w-4 h-4" />
-        <h2 class="text-sm font-semibold text-teal-900">Actively Monitored Trials</h2>
-        <span class="text-[10px] text-teal-600 ml-auto">From clinical protocol</span>
+        <h2 class="text-sm font-semibold text-teal-900">{{ t('research.watchedTrials') }}</h2>
+        <span class="text-[10px] text-teal-600 ml-auto">{{ t('research.fromProtocol') }}</span>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <div
@@ -202,7 +202,7 @@ const drilldown = useDrilldown()
         @click="activeTab = 'trials'"
       >
         <UIcon name="i-lucide-flask-conical" class="w-4 h-4" />
-        Clinical Trials
+        {{ t('research.tabs.trials') }}
         <UBadge v-if="trialEntries.length" variant="subtle" size="xs" color="success">{{ trialEntries.length }}</UBadge>
       </button>
       <button
@@ -213,7 +213,7 @@ const drilldown = useDrilldown()
         @click="activeTab = 'literature'"
       >
         <UIcon name="i-lucide-book-open" class="w-4 h-4" />
-        Literature
+        {{ t('research.tabs.literature') }}
         <UBadge v-if="literatureEntries.length" variant="subtle" size="xs" color="info">{{ literatureEntries.length }}</UBadge>
       </button>
       <button
@@ -235,7 +235,7 @@ const drilldown = useDrilldown()
         @click="activeTab = 'funnel'"
       >
         <UIcon name="i-lucide-kanban" class="w-4 h-4" />
-        Funnel
+        {{ t('research.tabs.funnel') }}
         <UBadge v-if="trialEntries.length" variant="subtle" size="xs" color="warning">{{ trialEntries.length }}</UBadge>
       </button>
     </div>
@@ -340,7 +340,7 @@ const drilldown = useDrilldown()
     </div>
 
     <div v-else-if="!research?.error && !researchError" class="text-gray-400 text-center py-16 text-sm">
-      {{ activeTab === 'trials' ? 'No clinical trials found' : $t('research.noResearch') }}
+      {{ activeTab === 'trials' ? t('research.noTrials') : $t('research.noResearch') }}
     </div>
   </div>
 </template>

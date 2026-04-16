@@ -401,7 +401,15 @@
       "medium": "Súvisiace",
       "low": "Všeobecné",
       "not_applicable": "Nevzťahuje sa"
-    }
+    },
+    "tabs": {
+      "trials": "Klinické štúdie",
+      "literature": "Literatúra",
+      "funnel": "Lievik"
+    },
+    "watchedTrials": "Aktívne sledované štúdie",
+    "noTrials": "Nenašli sa žiadne klinické štúdie",
+    "fromProtocol": "Z klinického protokolu"
   },
   "timeline": {
     "title": "Časová os liečby",
