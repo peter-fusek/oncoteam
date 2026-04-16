@@ -54,6 +54,56 @@ const topStudies = computed(() =>
   (researchData.value?.items ?? []).slice(0, 3)
 )
 
+// Hereditary/germline genetics panel
+const { data: geneticsDocs } = fetchApi<{
+  documents: Array<{
+    id: number
+    filename: string
+    document_date: string
+    institution: string
+    gdrive_url: string
+    ai_summary: string
+    structured_metadata: {
+      findings?: string[]
+      doctors?: string[]
+      providers?: string[]
+      plain_summary?: string
+    }
+  }>
+}>('/documents?category=genetics&limit=5', { lazy: true, server: false })
+
+// Known hereditary cancer genes to look for in document findings
+const GERMLINE_GENES = ['BRCA1', 'BRCA2', 'CHEK2', 'PALB2', 'ATM', 'NBN', 'RAD51C', 'RAD51D', 'TP53', 'BRIP1', 'MLH1', 'MSH2', 'MSH6', 'PMS2', 'APC', 'MUTYH']
+
+const germlinePanel = computed(() => {
+  if (!geneticsDocs.value?.documents?.length) return null
+  // Find docs that mention germline genes
+  const germlineDocs = geneticsDocs.value.documents.filter(doc => {
+    const text = `${doc.ai_summary || ''} ${(doc.structured_metadata?.findings || []).join(' ')}`
+    return GERMLINE_GENES.some(g => text.toUpperCase().includes(g))
+  })
+  if (!germlineDocs.length) return null
+  const doc = germlineDocs[0] // Use the first/most relevant
+  // Extract tested genes from findings
+  const findings = doc.structured_metadata?.findings || []
+  const summary = doc.structured_metadata?.plain_summary || doc.ai_summary || ''
+  const isNegative = summary.toLowerCase().includes('no pathogenic') ||
+    summary.toLowerCase().includes('žiadna patogénna') ||
+    summary.toLowerCase().includes('not identified') ||
+    summary.toLowerCase().includes('neidentifikovaná')
+  return {
+    doc,
+    genes: GERMLINE_GENES.filter(g => {
+      const text = `${summary} ${findings.join(' ')}`
+      return text.toUpperCase().includes(g)
+    }),
+    result: isNegative ? 'negative' : 'pending_review',
+    doctors: doc.structured_metadata?.doctors || [],
+    date: doc.document_date,
+    gdrive_url: doc.gdrive_url,
+  }
+})
+
 const relevanceBadgeColor: Record<string, string> = {
   high: 'success',
   medium: 'warning',
@@ -321,6 +371,42 @@ const abbreviations: Record<string, string> = {
           :implication="b.implication"
           @drilldown="drilldown.open({ type: 'biomarker', id: b.name, label: b.name })"
         />
+      </div>
+    </div>
+
+    <!-- Hereditary/Germline Panel -->
+    <div v-if="germlinePanel && activeRole !== 'patient'">
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ $t('patient.germlinePanel', 'Hereditary Cancer Panel') }}</h2>
+      <div class="rounded-xl border border-gray-200 bg-white p-4">
+        <div class="flex items-center gap-3 mb-3">
+          <UIcon name="i-lucide-dna" class="w-5 h-5 text-purple-600" />
+          <div>
+            <div class="text-sm font-medium text-gray-900">
+              {{ germlinePanel.result === 'negative' ? $t('patient.germlineNegative', 'No pathogenic mutations identified') : $t('patient.germlinePending', 'Review required') }}
+            </div>
+            <div class="text-xs text-gray-500">
+              {{ germlinePanel.date }} &middot; {{ germlinePanel.doctors.join(', ') }}
+            </div>
+          </div>
+          <a v-if="germlinePanel.gdrive_url" :href="germlinePanel.gdrive_url" target="_blank" rel="noopener" class="ml-auto">
+            <UButton icon="i-lucide-external-link" variant="ghost" size="xs" color="neutral" />
+          </a>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <UBadge
+            v-for="gene in germlinePanel.genes"
+            :key="gene"
+            variant="subtle"
+            size="xs"
+            :color="germlinePanel.result === 'negative' ? 'success' : 'warning'"
+          >
+            <UIcon :name="germlinePanel.result === 'negative' ? 'i-lucide-check' : 'i-lucide-alert-triangle'" class="w-3 h-3 mr-0.5" />
+            {{ gene }}
+          </UBadge>
+        </div>
+        <p v-if="germlinePanel.result === 'negative'" class="text-xs text-gray-500 mt-3">
+          {{ $t('patient.germlineNote', 'Negative results do not completely exclude genetic risk. Recommend repeat consultation if further oncological disease occurs in the family.') }}
+        </p>
       </div>
     </div>
 

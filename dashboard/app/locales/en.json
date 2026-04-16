@@ -218,7 +218,11 @@
     "milestones": "Clinical Milestones",
     "milestoneDate": "Date",
     "milestoneEvent": "Event",
-    "milestoneDetails": "Details"
+    "milestoneDetails": "Details",
+    "germlinePanel": "Hereditary Cancer Panel",
+    "germlineNegative": "No pathogenic mutations identified",
+    "germlinePending": "Review required",
+    "germlineNote": "Negative results do not completely exclude genetic risk. Recommend repeat consultation if further oncological disease occurs in the family."
   },
   "protocol": {
     "title": "Clinical Protocol",

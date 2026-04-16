@@ -218,7 +218,11 @@
     "milestones": "Klinické míľniky",
     "milestoneDate": "Dátum",
     "milestoneEvent": "Udalosť",
-    "milestoneDetails": "Podrobnosti"
+    "milestoneDetails": "Podrobnosti",
+    "germlinePanel": "Dedičný onkologický panel",
+    "germlineNegative": "Nebola identifikovaná žiadna patogénna mutácia",
+    "germlinePending": "Vyžaduje sa preskúmanie",
+    "germlineNote": "Negatívne výsledky úplne nevylučujú genetické riziko. Odporúča sa opakovanie genetickej konzultácie v prípade ďalších onkologických ochorení v rodine."
   },
   "protocol": {
     "title": "Klinický protokol",
