@@ -72,7 +72,9 @@ def _is_globally_open() -> bool:
 
 
 # Per-call timeout (seconds) — prevents indefinite hangs when oncofiles is slow.
-CALL_TIMEOUT = 20.0
+# Normal calls get 10s; heavy queries (search_conversations, search_documents) get 20s.
+CALL_TIMEOUT = 10.0
+CALL_TIMEOUT_HEAVY = 20.0
 # Max time to wait for a semaphore slot before rejecting the request (#173).
 # Prevents zombie queue buildup when timed-out proxy requests keep holding slots.
 SEMAPHORE_WAIT_TIMEOUT = 8.0
@@ -280,8 +282,8 @@ def _parse_result(result: object) -> dict | list | str:
     return str(result)
 
 
-_MAX_RETRIES = 3  # 3 attempts total (initial + 2 retries)
-_RETRY_BACKOFF = [0.5, 1.5]  # seconds between retries (exponential)
+_MAX_RETRIES = 2  # 2 attempts total (initial + 1 retry)
+_RETRY_BACKOFF = [0.5]  # seconds between retries
 
 
 async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -> dict | list | str:
@@ -289,23 +291,28 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
 
     Retries up to _MAX_RETRIES times with increasing delays to handle
     transient 502s during oncofiles restarts (memory leak recovery).
+    Total worst-case: 10s + 0.5s + 10s = 20.5s (normal) or 20s + 0.5s + 20s = 40.5s (heavy).
+    Heavy tools only retry once but get longer per-call timeout.
     """
     global _circuit_failures, _circuit_open_until, _total_errors, _total_circuit_trips
     circuit = _get_circuit(token)
+    timeout = CALL_TIMEOUT_HEAVY if tool_name in _HEAVY_TOOLS else CALL_TIMEOUT
+    # Heavy tools: no retry (single 20s attempt stays within 25s proxy)
+    max_attempts = 1 if tool_name in _HEAVY_TOOLS else _MAX_RETRIES
     last_exc: Exception | None = None
-    for attempt in range(_MAX_RETRIES):
+    for attempt in range(max_attempts):
         try:
             client = await _get_client(token)
             result = await asyncio.wait_for(
                 client.call_tool(tool_name, arguments),
-                timeout=CALL_TIMEOUT,
+                timeout=timeout,
             )
             _circuit_failures = 0
             circuit["failures"] = 0
             return _parse_result(result)
         except Exception as exc:
             last_exc = exc
-            if attempt < _MAX_RETRIES - 1:
+            if attempt < max_attempts - 1:
                 await _invalidate_client(token)
                 backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
                 _logger.debug(

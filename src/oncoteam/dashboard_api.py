@@ -2556,7 +2556,10 @@ async def api_detail(request: Request) -> JSONResponse:
                 raw = await oncofiles_client.get_conversation(int(detail_id), token=token)
                 entry = raw if isinstance(raw, dict) else {"raw": raw}
             except Exception:
-                result = await oncofiles_client.search_conversations(limit=100, token=token)
+                result = await asyncio.wait_for(
+                    oncofiles_client.search_conversations(limit=100, token=token),
+                    timeout=8.0,
+                )
                 entries = _extract_list(result, "entries")
                 match = [e for e in entries if e.get("id") == int(detail_id)]
                 entry = match[0] if match else {"error": "not found"}
@@ -2578,7 +2581,10 @@ async def api_detail(request: Request) -> JSONResponse:
                 raw = await oncofiles_client.get_conversation(int(detail_id), token=token)
                 data = raw if isinstance(raw, dict) else {"raw": raw}
             except Exception:
-                result = await oncofiles_client.search_conversations(limit=100, token=token)
+                result = await asyncio.wait_for(
+                    oncofiles_client.search_conversations(limit=100, token=token),
+                    timeout=8.0,
+                )
                 entries = _extract_list(result, "entries")
                 match = [e for e in entries if e.get("id") == int(detail_id)]
                 data = match[0] if match else {"error": "not found"}
