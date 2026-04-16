@@ -2224,6 +2224,94 @@ html[lang="sk"] .hiw-num::before {
 
 .stackup-footer a:hover { border-bottom-style: solid; }
 
+/* ── Newsletter signup ──────────────────────── */
+.newsletter {
+  padding: 64px 0 40px;
+  background: var(--bg);
+  border-top: 1px solid var(--border-light);
+  text-align: center;
+}
+
+.newsletter-heading {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.newsletter-sub {
+  font-size: 0.92rem;
+  color: var(--text-light);
+  max-width: 520px;
+  margin: 0 auto 20px;
+  line-height: 1.6;
+}
+
+.nl-form {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.nl-form input[type="email"] {
+  flex: 1;
+  padding: 11px 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.nl-form input[type="email"]:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.nl-form .nl-btn {
+  padding: 0 18px;
+  font-size: 1.1rem;
+  font-family: inherit;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+  min-width: 48px;
+}
+
+.nl-form .nl-btn:hover { background: var(--primary-dark); }
+.nl-form .nl-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.nl-msg {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.nl-msg.success { color: var(--primary-dark); }
+.nl-msg.error { color: #b91c1c; }
+
+.nl-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: nlSpin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes nlSpin { to { transform: rotate(360deg); } }
+
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 900px) {
   .nav-links { display: none; }
@@ -2254,6 +2342,9 @@ html[lang="sk"] .hiw-num::before {
   .features, .get-started, .reality, .contact, .privacy, .faq, .ecosystem, .how-it-works, .whatsapp-showcase, .use-cases, .journey, .stackup { padding: 70px 0; }
   .stackup-table { font-size: 0.8rem; }
   .stackup-table thead th, .stackup-table tbody td { padding: 10px 12px; }
+  .newsletter { padding: 48px 0 32px; }
+  .nl-form { flex-direction: column; max-width: 320px; }
+  .nl-form .nl-btn { width: 100%; padding: 11px; }
   .journey-notes { grid-template-columns: 1fr; }
   .journey-coverage { width: 100% !important; margin-left: 0 !important; font-size: 0.76rem; padding: 0 14px; height: 40px; }
   .journey-coverage-oncoteam { margin-top: 8px; }

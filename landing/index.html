@@ -147,7 +147,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=55">
+  <link rel="stylesheet" href="style.css?v=56">
 </head>
 <body>
   <!-- Navigation -->
@@ -1106,6 +1106,19 @@
     </div>
   </section>
 
+  <!-- Newsletter — posts to oncofiles.com newsletter endpoint (CORS wildcard) -->
+  <section class="newsletter" id="newsletter">
+    <div class="container">
+      <h2 class="newsletter-heading" data-i18n="newsletter.heading">Stay in the loop</h2>
+      <p class="newsletter-sub" data-i18n="newsletter.sub">Occasional updates on new features, clinical-protocol additions, and release notes. No spam, unsubscribe any time.</p>
+      <form class="nl-form" data-nl-source="oncoteam-landing" onsubmit="return nlSubmit(this,event)">
+        <input type="email" required data-placeholder-en="Your email" data-placeholder-sk="V&aacute;&scaron; email" placeholder="Your email">
+        <button type="submit" class="nl-btn" aria-label="Subscribe">&#8594;</button>
+      </form>
+      <div class="nl-msg" data-nl-msg="oncoteam-landing"></div>
+    </div>
+  </section>
+
   </main>
   <!-- Footer -->
   <footer class="footer">
@@ -1117,7 +1130,7 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=55"></script>
+  <script src="i18n.js?v=56"></script>
   <script>
   // Demo tab switching with auto-rotate
   (function() {
@@ -1180,6 +1193,72 @@
     });
 
     startRotation();
+  })();
+  </script>
+
+  <script>
+  // Newsletter signup — posts to oncofiles.com (CORS-wildcard endpoint, shared subscriber DB)
+  function nlSubmit(form, e) {
+    e.preventDefault();
+    var source = form.getAttribute('data-nl-source') || 'oncoteam-landing';
+    var input = form.querySelector('input[type="email"]');
+    var btn = form.querySelector('.nl-btn');
+    var msgEl = document.querySelector('[data-nl-msg="' + source + '"]');
+    var email = input.value.trim();
+    if (!email) return false;
+
+    btn.disabled = true;
+    var originalBtnText = btn.textContent;
+    // Swap button content for spinner using DOM APIs (no innerHTML)
+    while (btn.firstChild) btn.removeChild(btn.firstChild);
+    var spinner = document.createElement('span');
+    spinner.className = 'nl-spinner';
+    btn.appendChild(spinner);
+    if (msgEl) { msgEl.textContent = ''; msgEl.className = 'nl-msg'; }
+
+    var lang = (document.documentElement.lang || 'en').toLowerCase().startsWith('sk') ? 'sk' : 'en';
+
+    // Use text/plain to avoid CORS preflight — server parses body as JSON regardless
+    fetch('https://oncofiles.com/api/newsletter/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ email: email, source: source })
+    }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+    .then(function(res) {
+      if (res.ok && res.data.ok) {
+        if (msgEl) {
+          msgEl.textContent = lang === 'sk' ? 'Ďakujeme! Budeme v kontakte.' : 'Thanks — we\u2019ll be in touch.';
+          msgEl.className = 'nl-msg success';
+        }
+        input.value = '';
+        if (typeof gtag === 'function') gtag('event', 'newsletter_signup', { source: source });
+      } else {
+        throw new Error((res.data && res.data.error) || 'Subscription failed');
+      }
+    }).catch(function(err) {
+      if (msgEl) {
+        msgEl.textContent = (err && err.message) || (lang === 'sk' ? 'Niečo sa pokazilo.' : 'Something went wrong.');
+        msgEl.className = 'nl-msg error';
+      }
+    }).finally(function() {
+      btn.disabled = false;
+      while (btn.firstChild) btn.removeChild(btn.firstChild);
+      btn.textContent = originalBtnText;
+    });
+    return false;
+  }
+  // Update placeholder on language change
+  (function() {
+    function updatePlaceholders() {
+      var lang = (document.documentElement.lang || 'en').toLowerCase().startsWith('sk') ? 'sk' : 'en';
+      document.querySelectorAll('[data-placeholder-' + lang + ']').forEach(function(el) {
+        el.placeholder = el.getAttribute('data-placeholder-' + lang);
+      });
+    }
+    document.querySelectorAll('.lang-btn').forEach(function(b) {
+      b.addEventListener('click', function() { setTimeout(updatePlaceholders, 20); });
+    });
+    updatePlaceholders();
   })();
   </script>
 </body>
