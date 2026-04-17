@@ -1939,11 +1939,14 @@ async def api_labs(request: Request) -> JSONResponse:
         )
         events = _filter_test(_extract_list(result, "events"), request)
 
-        # Fallback: try lab_values table if no events exist OR any events
-        # have empty metadata (lab_sync agent writes to lab_values table but
-        # often omits metadata in treatment events — merge from lab_values).
-        has_empty = events and any(not e.get("metadata") for e in events)
-        if not events or has_empty:
+        # Always attempt enrichment from the lab_values table — even when every
+        # event already has some metadata. The lab_sync agent often writes
+        # PARTIAL metadata (e.g. CEA only) while the lab_values rows hold the
+        # full panel (CEA + CA 19-9 + ANC + …). Without this pass, clinically
+        # relevant parameters are silently dropped from charts (#386). The
+        # merge is non-destructive — curated event values always win.
+        enrich_from_lab_values = True
+        if enrich_from_lab_values:
             try:
                 trends = await oncofiles_client.get_lab_trends_data(limit=200, token=token)
                 values_list = _extract_list(trends, "values")
@@ -1958,13 +1961,35 @@ async def api_labs(request: Request) -> JSONResponse:
                             continue
                         by_date[d]["metadata"][v["parameter"]] = v["value"]
                         by_date[d]["document_id"] = v.get("document_id")
-                    # Enrich existing events or add new ones
+                    # Enrich existing events with any parameters missing from
+                    # their curated metadata. The treatment_event metadata is
+                    # authoritative for keys it already holds — lab_values rows
+                    # only backfill missing keys. Previous logic (#386) skipped
+                    # enrichment entirely when an event had ANY metadata, which
+                    # silently dropped CA 19-9 / ANC when the lab_sync agent
+                    # extracted only CEA for a given date.
                     existing_dates = {e.get("event_date"): e for e in events}
                     for d, data in by_date.items():
                         _normalize_lab_values(data["metadata"])
-                        if d in existing_dates and not existing_dates[d].get("metadata"):
-                            existing_dates[d]["metadata"] = data["metadata"]
-                        elif d not in existing_dates:
+                        if d in existing_dates:
+                            existing_meta = existing_dates[d].get("metadata") or {}
+                            if isinstance(existing_meta, str):
+                                try:
+                                    existing_meta = json.loads(existing_meta)
+                                except (json.JSONDecodeError, TypeError):
+                                    existing_meta = {}
+                            if not isinstance(existing_meta, dict):
+                                existing_meta = {}
+                            for k, v in data["metadata"].items():
+                                if k not in existing_meta or existing_meta.get(k) in (
+                                    None,
+                                    "",
+                                    {},
+                                    [],
+                                ):
+                                    existing_meta[k] = v
+                            existing_dates[d]["metadata"] = existing_meta
+                        else:
                             events.append(
                                 {
                                     "event_date": d,

@@ -442,15 +442,22 @@ async def test_api_labs_fallback_to_analyze_labs(mock_list, mock_trends, mock_an
     "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
     new_callable=AsyncMock,
 )
-async def test_api_labs_fallback_skipped_when_events_exist(mock_list, mock_trends, mock_analyze):
-    """Fallback should not be called when structured events exist."""
+async def test_api_labs_enrichment_always_runs_analyze_skipped_when_events_exist(
+    mock_list, mock_trends, mock_analyze
+):
+    """Enrichment from lab_values always runs (#386 fix) to backfill missing
+    parameters. The analyze_labs fallback is still skipped when structured
+    events exist — it's only for the no-events case."""
     mock_list.return_value = MOCK_LAB_EVENTS
+    mock_trends.return_value = {"values": [], "total": 0}
     request = FakeRequest("GET")
     response = await api_labs(request)
     data = json.loads(response.body)
 
     assert data["total"] == 2
-    mock_trends.assert_not_called()
+    # lab_values enrichment always runs now — non-destructive backfill
+    mock_trends.assert_called_once()
+    # analyze_labs only runs when events are empty
     mock_analyze.assert_not_called()
 
 
@@ -543,3 +550,131 @@ async def test_api_labs_passes_patient_token(mock_get_token, mock_list):
     mock_get_token.assert_called_with("jan")
     mock_list.assert_called_once()
     assert mock_list.call_args.kwargs.get("token") == "tok_jan_123"
+
+
+# ── Enrichment merge behavior (#386) ─────────────
+# Partial metadata on a treatment_event must be backfilled from lab_values
+# rows when those rows contain parameters the event lacks — otherwise
+# clinically important values (CA 19-9, ANC, …) are silently dropped from
+# charts when the lab_sync agent extracted only a subset.
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_partial_metadata_enriched_from_lab_values(mock_list, mock_trends):
+    """Regression #386: event has CEA-only, lab_values has CEA+CA_19_9+ANC.
+    All three must appear in the returned entry."""
+    mock_list.return_value = [
+        {
+            "id": 42,
+            "event_date": "2026-03-19",
+            "event_type": "lab_result",
+            "title": "Labs Mar 19",
+            "metadata": {"CEA": 732.9},
+            "notes": "",
+        }
+    ]
+    mock_trends.return_value = {
+        "values": [
+            {"lab_date": "2026-03-19", "parameter": "CEA", "value": 732.9, "document_id": 7},
+            {"lab_date": "2026-03-19", "parameter": "CA_19_9", "value": 22294, "document_id": 7},
+            {"lab_date": "2026-03-19", "parameter": "ANC", "value": 3300, "document_id": 7},
+        ],
+        "total": 3,
+    }
+
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 1
+    entry = data["entries"][0]
+    assert entry["date"] == "2026-03-19"
+    assert entry["values"]["CEA"] == 732.9
+    assert entry["values"]["CA_19_9"] == 22294
+    assert entry["values"]["ANC"] == 3300
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_enrichment_preserves_curated_values(mock_list, mock_trends):
+    """The curated treatment_event value must win over a conflicting
+    lab_values row. Event is the source of truth for keys it holds."""
+    mock_list.return_value = [
+        {
+            "id": 42,
+            "event_date": "2026-03-19",
+            "event_type": "lab_result",
+            "metadata": {"CEA": 732.9},
+            "notes": "",
+        }
+    ]
+    mock_trends.return_value = {
+        "values": [
+            {"lab_date": "2026-03-19", "parameter": "CEA", "value": 732.5, "document_id": 7},
+            {"lab_date": "2026-03-19", "parameter": "CA_19_9", "value": 22294, "document_id": 7},
+        ],
+        "total": 2,
+    }
+
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    entry = data["entries"][0]
+    # Event's curated CEA (732.9) wins over conflicting lab_values (732.5)
+    assert entry["values"]["CEA"] == 732.9
+    # Missing key (CA_19_9) is backfilled from lab_values
+    assert entry["values"]["CA_19_9"] == 22294
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_enrichment_fills_empty_string_values(mock_list, mock_trends):
+    """Existing metadata with an empty-string value must be backfilled,
+    not treated as 'already populated'."""
+    mock_list.return_value = [
+        {
+            "id": 42,
+            "event_date": "2026-02-13",
+            "event_type": "lab_result",
+            "metadata": {"CEA": 1911.5, "CA_19_9": ""},
+            "notes": "",
+        }
+    ]
+    mock_trends.return_value = {
+        "values": [
+            {"lab_date": "2026-02-13", "parameter": "CA_19_9", "value": 134735, "document_id": 3},
+        ],
+        "total": 1,
+    }
+
+    request = FakeRequest("GET")
+    response = await api_labs(request)
+    data = json.loads(response.body)
+
+    entry = data["entries"][0]
+    assert entry["values"]["CEA"] == 1911.5
+    assert entry["values"]["CA_19_9"] == 134735
