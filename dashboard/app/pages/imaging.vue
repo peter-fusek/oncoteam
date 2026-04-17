@@ -8,25 +8,28 @@ interface ImagingDoc {
   id: number
   filename: string
   category: string
-  date: string | null
+  document_date: string | null
   institution: string | null
-  gdrive_id: string | null
   gdrive_url: string | null
-  has_ocr: boolean
+  ai_summary?: string
+  file_id?: string
 }
 
-const { data: docsData, status, error: fetchError, refresh } = fetchApi<{
+// Query category=imaging directly so we get full document envelopes from
+// search_documents (not the status-matrix shape). Previously the page asked
+// for /documents (status matrix) then filtered client-side, which returned
+// 0 imaging docs because the matrix truncated the tail of the catalog (#376).
+const { data: docsData, status, error: fetchError, refresh, forceRefresh } = fetchApi<{
   documents: ImagingDoc[]
   total: number
   error?: string
-}>('/documents', { lazy: true, server: false })
+}>('/documents?category=imaging&limit=100', { lazy: true, server: false })
 
-// Filter to imaging documents only
 const imagingDocs = computed(() => {
   if (!docsData.value?.documents) return []
-  return docsData.value.documents
-    .filter(d => d.category === 'imaging')
-    .sort((a, b) => (b.date || '0000').localeCompare(a.date || '0000'))
+  return [...docsData.value.documents].sort(
+    (a, b) => (b.document_date || '0000').localeCompare(a.document_date || '0000'),
+  )
 })
 
 // Selection state (max 2)
@@ -55,17 +58,20 @@ function toggleSelect(doc: ImagingDoc) {
   }
 }
 
+// gdrive_url shape: https://drive.google.com/file/d/{id}/view
+// Turn it into the /preview variant for inline embedding.
 function previewUrl(doc: ImagingDoc): string | null {
-  if (!doc.gdrive_id) return null
-  return `https://drive.google.com/file/d/${doc.gdrive_id}/preview`
+  const m = doc.gdrive_url?.match(/\/d\/([^/]+)\//)
+  if (!m) return null
+  return `https://drive.google.com/file/d/${m[1]}/preview`
 }
 
 // Timeline dots
 const timeRange = computed(() => {
-  const dated = imagingDocs.value.filter(d => d.date)
+  const dated = imagingDocs.value.filter(d => d.document_date)
   if (dated.length < 2) return null
-  const sorted = [...dated].sort((a, b) => a.date!.localeCompare(b.date!))
-  return { start: sorted[0].date!, end: sorted[sorted.length - 1].date! }
+  const sorted = [...dated].sort((a, b) => a.document_date!.localeCompare(b.document_date!))
+  return { start: sorted[0].document_date!, end: sorted[sorted.length - 1].document_date! }
 })
 
 function dateToPercent(dateStr: string): number {
@@ -80,8 +86,12 @@ function dateToPercent(dateStr: string): number {
 const timelineDots = computed(() => {
   const seen = new Set<string>()
   return imagingDocs.value
-    .filter(d => d.date && !seen.has(d.date) && seen.add(d.date))
-    .map(d => ({ date: d.date!, left: dateToPercent(d.date!), count: imagingDocs.value.filter(x => x.date === d.date).length }))
+    .filter(d => d.document_date && !seen.has(d.document_date) && seen.add(d.document_date))
+    .map(d => ({
+      date: d.document_date!,
+      left: dateToPercent(d.document_date!),
+      count: imagingDocs.value.filter(x => x.document_date === d.document_date).length,
+    }))
 })
 </script>
 
@@ -104,7 +114,7 @@ const timelineDots = computed(() => {
         >
           {{ $t('imaging.clearSelection') }}
         </UButton>
-        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
+        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" :loading="status === 'pending'" @click="forceRefresh" />
       </div>
     </div>
 
@@ -132,7 +142,7 @@ const timelineDots = computed(() => {
           <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <div class="min-w-0">
               <div class="font-medium text-gray-900 text-sm truncate">{{ doc.filename }}</div>
-              <div class="text-xs text-gray-500 mt-0.5">{{ formatDate(doc.date) }} &middot; {{ doc.institution || '—' }}</div>
+              <div class="text-xs text-gray-500 mt-0.5">{{ formatDate(doc.document_date) }} &middot; {{ doc.institution || '—' }}</div>
             </div>
             <div class="flex items-center gap-2 shrink-0">
               <a v-if="doc.gdrive_url" :href="doc.gdrive_url" target="_blank" @click.stop>
@@ -177,7 +187,7 @@ const timelineDots = computed(() => {
           <UIcon name="i-lucide-scan-line" class="w-4 h-4 text-gray-400 shrink-0" />
           <div class="flex-1 min-w-0">
             <div class="text-sm text-gray-900 truncate">{{ doc.filename }}</div>
-            <div class="text-xs text-gray-500">{{ formatDate(doc.date) }} &middot; {{ doc.institution || '—' }}</div>
+            <div class="text-xs text-gray-500">{{ formatDate(doc.document_date) }} &middot; {{ doc.institution || '—' }}</div>
           </div>
           <a v-if="doc.gdrive_url" :href="doc.gdrive_url" target="_blank" @click.stop>
             <UIcon name="i-lucide-external-link" class="w-4 h-4 text-gray-400 hover:text-teal-600" />

@@ -292,6 +292,42 @@ async def test_api_labs_dedupes_same_date_events(mock_list):
             assert e["values"]["CEA"] == 500.0
 
 
+# ── /api/labs nocache cache-bust (#373) ─────────
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+async def test_api_labs_nocache_bypasses_ttl_cache(mock_list):
+    """Manual refresh with ?nocache=1 must skip _labs_cache and refetch from
+    oncofiles — otherwise the refresh button silently returns stale data (#373).
+    """
+    from oncoteam.dashboard_api import _labs_cache
+
+    mock_list.return_value = MOCK_LAB_EVENTS
+
+    # First call populates cache
+    first = await api_labs(FakeRequest("GET"))
+    assert first.status_code == 200
+    assert mock_list.call_count == 1
+
+    # Second call without nocache — served from cache, oncofiles untouched
+    cached = await api_labs(FakeRequest("GET"))
+    assert cached.status_code == 200
+    assert mock_list.call_count == 1
+
+    # Third call WITH nocache=1 — must refetch
+    fresh = await api_labs(FakeRequest("GET", query="nocache=1&_t=123"))
+    assert fresh.status_code == 200
+    assert mock_list.call_count == 2
+
+    # Cache was rewritten (not multiplied) — same key regardless of nocache/_t
+    labs_keys = [k for k in _labs_cache if k.startswith("labs:")]
+    assert len(labs_keys) == 1
+
+
 # ── /api/labs reference ranges ──────────────────
 
 

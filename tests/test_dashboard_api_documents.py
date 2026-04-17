@@ -60,7 +60,9 @@ async def test_documents_returns_list(mock_call):
     assert data["summary"]["ocr_complete"] == 1
     assert data["summary"]["missing_ocr"] == 1
     assert data["summary"]["missing_metadata"] == 1
-    mock_call.assert_called_once_with("get_document_status_matrix", {"filter": "all"}, token=None)
+    mock_call.assert_called_once_with(
+        "get_document_status_matrix", {"filter": "all", "limit": 500}, token=None
+    )
 
 
 @pytest.mark.anyio
@@ -74,7 +76,7 @@ async def test_documents_with_filter(mock_call):
 
     assert data["filter"] == "missing_ocr"
     mock_call.assert_called_once_with(
-        "get_document_status_matrix", {"filter": "missing_ocr"}, token=None
+        "get_document_status_matrix", {"filter": "missing_ocr", "limit": 500}, token=None
     )
 
 
@@ -107,6 +109,38 @@ async def test_documents_error(mock_call):
     assert "error" in data
     assert data["total"] == 0
     assert data["summary"]["total"] == 0
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.call_oncofiles", new_callable=AsyncMock)
+async def test_documents_returns_all_docs_when_patient_has_over_100(mock_call):
+    """#378 regression: q1b had 109 docs in oncofiles but the dashboard showed
+    100 because the default limit silently truncated the archive. The status-
+    matrix mode must request at least 500 and surface the full count.
+    """
+    mock_call.return_value = {
+        "documents": [
+            {
+                "id": i,
+                "filename": f"doc_{i}.pdf",
+                "has_ocr": True,
+                "has_ai": True,
+                "has_metadata": True,
+            }
+            for i in range(109)
+        ]
+    }
+
+    request = _make_request()
+    response = await api_documents(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 109
+    assert len(data["documents"]) == 109
+    # The call must have requested ≥500 so oncofiles doesn't cap the archive.
+    args, kwargs = mock_call.call_args
+    assert args[1]["limit"] >= 500
 
 
 @pytest.mark.anyio

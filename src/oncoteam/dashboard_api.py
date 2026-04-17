@@ -61,7 +61,7 @@ from .request_context import (
     set_correlation_id as _set_correlation_id,
 )
 
-VERSION = "0.80.0"
+VERSION = "0.81.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -890,19 +890,83 @@ async def api_stats(request: Request) -> JSONResponse:
         return _cors_json({"error": str(e)}, status_code=502)
 
 
+# Document category → timeline event_type. Used when treatment_events are
+# sparse/empty and we fall back to documents so the timeline shows something
+# real instead of a red error banner (#369).
+_DOC_SUBTYPE_TO_EVENT_TYPE = {
+    "labs": "lab_work",
+    "lab_report": "lab_work",
+    "chemo_sheet": "chemo_cycle",
+    "chemo_record": "chemo_cycle",
+    "chemotherapy": "chemo_cycle",
+    "imaging": "scan",
+    "radiology": "scan",
+    "pathology": "consultation",
+    "genetics": "consultation",
+    "reports": "consultation",
+    "consultation": "consultation",
+    "surgery": "surgery",
+    "vaccination": "vaccination",
+    "dental": "dental",
+    "screening": "screening",
+    "checkup": "checkup",
+}
+
+
+def _doc_to_timeline_event(item: dict) -> dict | None:
+    """Project a get_journey_timeline document item into a timeline event.
+
+    Only documents are projected — conversations stay in /facts. The synthesized
+    id is prefixed with `doc:` so the frontend drilldown opens the document
+    detail (`document_id` path), not a non-existent treatment_event.
+    """
+    if item.get("type") != "document":
+        return None
+    date = item.get("date")
+    if not date:
+        return None
+    subtype = item.get("subtype", "")
+    event_type = _DOC_SUBTYPE_TO_EVENT_TYPE.get(subtype, "document")
+    return {
+        "id": f"doc:{item.get('id', 0)}",
+        "event_date": date,
+        "event_type": event_type,
+        "title": item.get("title", "") or subtype.replace("_", " ").title(),
+        "notes": (item.get("detail") or "")[:300],
+        "source": {
+            "type": "document",
+            "id": item.get("id"),
+            "label": "Document",
+            "url": item.get("gdrive_url"),
+        },
+        "_synthetic": True,
+    }
+
+
 async def api_timeline(request: Request) -> JSONResponse:
-    """GET /api/timeline — treatment events timeline."""
+    """GET /api/timeline — treatment events timeline.
+
+    Primary source: `list_treatment_events`. When empty or erroring, falls back
+    to `get_journey_timeline` so historical documents (labs, chemo sheets,
+    imaging, reports) render as timeline dots. Empty oncofiles state was
+    surfacing as "backend unavailable" even though the service was fine (#369).
+    """
     cb_resp = _circuit_breaker_503({"events": [], "total": 0})
     if cb_resp:
         return cb_resp
     patient_id = _get_patient_id(request)
     token = _get_token_for_patient(patient_id)
     limit = _parse_limit(request, default=50)
-    cache_key = _cache_key("timeline", patient_id, str(limit), str(request.query_params))
-    if cache_key in _timeline_cache:
+    scrubbed_params = {k: v for k, v in request.query_params.items() if k not in ("nocache", "_t")}
+    cache_key = _cache_key("timeline", patient_id, str(limit), str(sorted(scrubbed_params.items())))
+    nocache = request.query_params.get("nocache") == "1"
+    if not nocache and cache_key in _timeline_cache:
         cached_time, cached_response = _timeline_cache[cache_key]
         if time.time() - cached_time < _TIMELINE_CACHE_TTL:
             return cached_response
+
+    events: list[dict] = []
+    primary_error: str | None = None
     try:
         result = await _deduplicated_fetch(
             cache_key,
@@ -912,31 +976,58 @@ async def api_timeline(request: Request) -> JSONResponse:
         )
         events = _filter_test(_extract_list(result, "events"), request)
         events = _deduplicate_timeline(events)
-        response = _cors_json(
-            {
-                "events": [
-                    {
-                        "id": e.get("id"),
-                        "event_date": e.get("event_date"),
-                        "event_type": e.get("event_type"),
-                        "title": e.get("title"),
-                        "notes": e.get("notes"),
-                        "source": _build_source_ref(e, "treatment_event"),
-                    }
-                    for e in events
-                ],
-                "total": len(events),
-            }
-        )
-        _timeline_cache[cache_key] = (time.time(), response)
-        _cache_evict(_timeline_cache)
-        return response
     except Exception as e:
-        record_suppressed_error("api_timeline", "fetch", e)
-        # Serve stale cache on error
-        if cache_key in _timeline_cache:
-            return _timeline_cache[cache_key][1]
-        return _cors_json({"error": str(e), "events": [], "total": 0}, status_code=502)
+        primary_error = str(e)
+        record_suppressed_error("api_timeline", "fetch_treatment_events", e)
+
+    # Fallback: synthesize from documents when treatment_events is empty
+    # (pre-migration state, or lab_sync hasn't produced events yet).
+    if not events:
+        try:
+            journey = await asyncio.wait_for(
+                oncofiles_client.get_journey_timeline(limit=limit, token=token), timeout=8.0
+            )
+            items = journey
+            if isinstance(items, str):
+                items = json.loads(items)
+            if isinstance(items, dict):
+                items = items.get("result") or items.get("items") or []
+                if isinstance(items, str):
+                    items = json.loads(items)
+            if isinstance(items, list):
+                synthesized: list[dict] = []
+                for item in items:
+                    ev = _doc_to_timeline_event(item)
+                    if ev:
+                        synthesized.append(ev)
+                synthesized.sort(key=lambda e: e.get("event_date", ""), reverse=True)
+                events = synthesized[:limit]
+        except Exception as e:
+            record_suppressed_error("api_timeline", "fallback_journey_timeline", e)
+
+    if not events and primary_error:
+        # Both paths failed — honest error, cache miss
+        return _cors_json({"error": primary_error, "events": [], "total": 0}, status_code=502)
+
+    response = _cors_json(
+        {
+            "events": [
+                {
+                    "id": e.get("id"),
+                    "event_date": e.get("event_date"),
+                    "event_type": e.get("event_type"),
+                    "title": e.get("title"),
+                    "notes": e.get("notes"),
+                    "source": e.get("source") or _build_source_ref(e, "treatment_event"),
+                }
+                for e in events
+            ],
+            "total": len(events),
+        }
+    )
+    _timeline_cache[cache_key] = (time.time(), response)
+    _cache_evict(_timeline_cache)
+    return response
 
 
 _facts_cache: dict[str, tuple[float, JSONResponse]] = {}
@@ -1922,8 +2013,12 @@ async def api_labs(request: Request) -> JSONResponse:
 
     # GET: list lab results
     limit = _parse_limit(request, default=50)
-    cache_key = _cache_key("labs", patient_id, str(limit), str(request.query_params))
-    if cache_key in _labs_cache:
+    # Strip cache-busting params from the cache key so nocache=1 and _t
+    # don't each create a new cache slot (would leak memory).
+    scrubbed_params = {k: v for k, v in request.query_params.items() if k not in ("nocache", "_t")}
+    cache_key = _cache_key("labs", patient_id, str(limit), str(sorted(scrubbed_params.items())))
+    nocache = request.query_params.get("nocache") == "1"
+    if not nocache and cache_key in _labs_cache:
         cached_time, cached_response = _labs_cache[cache_key]
         if time.time() - cached_time < _LABS_CACHE_TTL:
             return cached_response
@@ -2445,11 +2540,18 @@ async def api_documents(request: Request) -> JSONResponse:
     token = _get_token_for_patient(patient_id)
     category = request.query_params.get("category")
     filter_param = request.query_params.get("filter", "all")
-    limit = _parse_limit(request, default=50)
+    # Status-matrix mode is the Documents archive view — it must return the
+    # entire catalog or the header total silently undercounts (#378 — q1b had
+    # 109 docs but was showing 100 because the default defaulted to 50).
+    # Category mode stays at 50 because it's typically used for a single panel.
+    default_limit = 500 if (category is None) else 50
+    max_limit = 2000 if (category is None) else 500
+    limit = _parse_limit(request, default=default_limit, max_val=max_limit)
     cache_key = _cache_key("docs", patient_id, category or filter_param, str(limit))
+    nocache = request.query_params.get("nocache") == "1"
 
-    # Serve from cache if fresh
-    if cache_key in _documents_cache:
+    # Serve from cache if fresh (unless caller forced a refresh)
+    if not nocache and cache_key in _documents_cache:
         cached_time, cached_response = _documents_cache[cache_key]
         if time.time() - cached_time < _DOCUMENTS_CACHE_TTL:
             return cached_response
@@ -2497,7 +2599,9 @@ async def api_documents(request: Request) -> JSONResponse:
                 cache_key,
                 lambda: asyncio.wait_for(
                     oncofiles_client.call_oncofiles(
-                        "get_document_status_matrix", {"filter": filter_param}, token=token
+                        "get_document_status_matrix",
+                        {"filter": filter_param, "limit": limit},
+                        token=token,
                     ),
                     timeout=12.0,
                 ),

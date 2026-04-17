@@ -325,13 +325,80 @@ async def test_api_timeline_returns_events(mock_list):
 
 
 @pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_journey_timeline", new_callable=AsyncMock)
 @patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
-async def test_api_timeline_handles_error(mock_list):
+async def test_api_timeline_handles_error(mock_list, mock_journey):
+    """Both primary + fallback failing → honest 502."""
     mock_list.side_effect = Exception("fail")
+    mock_journey.side_effect = Exception("journey down")
     request = _make_request("/api/timeline")
     response = await api_timeline(request)
 
     assert response.status_code == 502
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_journey_timeline", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_api_timeline_falls_back_to_journey_docs_when_events_empty(mock_list, mock_journey):
+    """When treatment_events is empty (pre-migration, lab_sync hasn't run, etc.),
+    the timeline synthesizes events from journey documents instead of showing
+    a misleading 'backend unavailable' banner (#369).
+    """
+    mock_list.return_value = {"events": []}
+    mock_journey.return_value = [
+        {
+            "id": 42,
+            "type": "document",
+            "subtype": "labs",
+            "date": "2026-03-13",
+            "title": "Lab report",
+            "detail": "CEA 732",
+        },
+        {
+            "id": 43,
+            "type": "document",
+            "subtype": "imaging",
+            "date": "2026-03-01",
+            "title": "CT scan",
+        },
+        {
+            "id": 44,
+            "type": "conversation",
+            "subtype": "note",
+            "date": "2026-03-05",
+            "title": "note",
+        },
+    ]
+    request = _make_request("/api/timeline")
+    response = await api_timeline(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 2  # conversation is excluded, only documents
+    types = {e["event_type"] for e in data["events"]}
+    assert types == {"lab_work", "scan"}
+    # Newest first
+    assert data["events"][0]["event_date"] == "2026-03-13"
+    assert data["events"][0]["id"] == "doc:42"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.get_journey_timeline", new_callable=AsyncMock)
+@patch("oncoteam.dashboard_api.oncofiles_client.list_treatment_events", new_callable=AsyncMock)
+async def test_api_timeline_empty_when_both_sources_empty(mock_list, mock_journey):
+    """No treatment_events AND no documents → graceful empty state (200),
+    never a 'backend unavailable' banner."""
+    mock_list.return_value = {"events": []}
+    mock_journey.return_value = []
+    request = _make_request("/api/timeline")
+    response = await api_timeline(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["total"] == 0
+    assert data["events"] == []
+    assert "error" not in data
 
 
 # ── /api/patient ──────────────────────────────────

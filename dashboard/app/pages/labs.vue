@@ -4,7 +4,7 @@ const { formatDate } = useFormatDate()
 const { t } = useI18n()
 const { isOncology, cancerType } = usePatientType()
 
-const { data: labs, status: labsStatus, error: labsError, refresh } = fetchApi<{
+const { data: labs, status: labsStatus, error: labsError, refresh, forceRefresh } = fetchApi<{
   entries: Array<{
     id: number
     date: string
@@ -20,8 +20,16 @@ const { data: labs, status: labsStatus, error: labsError, refresh } = fetchApi<{
   }>
   reference_ranges: Record<string, { min: number; max: number; unit: string; note?: string }>
   total: number
+  last_updated?: string
   error?: string
 }>('/labs', { lazy: true, server: false })
+
+// Auto-poll every 60s so stale data self-heals without user action.
+// Uses background refresh (cache may return faster); manual button forces fresh.
+if (import.meta.client) {
+  const pollId = setInterval(() => { refresh() }, 60_000)
+  onBeforeUnmount(() => clearInterval(pollId))
+}
 
 const { data: protocol } = fetchApi<{
   lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; action: string }>
@@ -403,7 +411,7 @@ async function submitLab() {
         >
           {{ showForm ? $t('common.cancel') : $t('labs.addLabs') }}
         </UButton>
-        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" @click="refresh" />
+        <UButton icon="i-lucide-refresh-cw" variant="ghost" size="xs" color="neutral" :loading="labsStatus === 'pending'" @click="forceRefresh" />
       </div>
     </div>
 

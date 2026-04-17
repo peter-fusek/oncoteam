@@ -17,15 +17,22 @@ export function useOncoteamApi() {
     const pid = effectivePatientId.value
 
     const key = `oncoteam:${pid}:${resolvedPath}`
+    const nocacheTick = ref(0)
 
     const query = computed(() => {
       const q: Record<string, string> = { lang: locale.value }
       if (showTestData.value) q.show_test = 'true'
       q.patient_id = effectivePatientId.value
+      // Bypass backend TTL cache on forced refresh (#373). The tick also
+      // becomes part of the URL so Nuxt's own request dedupe won't drop it.
+      if (nocacheTick.value) {
+        q.nocache = '1'
+        q._t = String(nocacheTick.value)
+      }
       return q
     })
 
-    return useFetch<T>(`/api/oncoteam${resolvedPath}`, {
+    const fetched = useFetch<T>(`/api/oncoteam${resolvedPath}`, {
       key,
       query,
       timeout: 28000,
@@ -35,6 +42,13 @@ export function useOncoteamApi() {
       retryStatusCodes: [502, 503],
       ...opts,
     })
+
+    async function forceRefresh() {
+      nocacheTick.value = Date.now()
+      await fetched.refresh()
+    }
+
+    return { ...fetched, forceRefresh }
   }
 
   async function postApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
