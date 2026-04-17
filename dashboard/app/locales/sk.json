@@ -534,6 +534,11 @@
   },
   "components": {
     "apiError": "Nepodarilo sa načítať údaje. Backend môže byť dočasne nedostupný.",
+    "clinicalSource": {
+      "disclaimer": "Informatívny prehľad — overí ošetrujúci lekár.",
+      "source": "Zdroj",
+      "sourceDocument": "Zdrojový dokument"
+    },
     "emergency": {
       "title": "KRITICKÉ — Kontaktujte onkológa",
       "callNow": "Okamžite zavolajte na onkologickú pohotovosť",

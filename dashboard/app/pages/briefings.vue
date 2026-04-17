@@ -124,5 +124,13 @@ const allQuestions = computed(() => {
         </div>
       </div>
     </div>
+
+    <ClinicalSourceFooter
+      :sources="[
+        { label: 'PubMed / ClinicalTrials.gov', url: 'https://pubmed.ncbi.nlm.nih.gov/' },
+        { label: 'ESMO Clinical Practice Guidelines', url: 'https://www.esmo.org/guidelines' },
+      ]"
+      compact
+    />
   </div>
 </template>

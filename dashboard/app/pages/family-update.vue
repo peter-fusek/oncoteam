@@ -200,5 +200,7 @@ const drilldown = useDrilldown()
     <div v-else-if="!updates?.error && !updatesError && !latestGenerated" class="text-gray-500 text-center py-8 text-sm">
       {{ $t('familyUpdate.noUpdates') }}
     </div>
+
+    <ClinicalSourceFooter compact />
   </div>
 </template>

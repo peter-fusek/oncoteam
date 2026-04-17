@@ -660,5 +660,14 @@ async function submitLab() {
       </div>
     </div>
     </template>
+
+    <!-- Physician-trust footer: every lab panel cites its clinical source (#382) -->
+    <ClinicalSourceFooter
+      :sources="[
+        { label: 'ESMO 2022 mCRC Living Guidelines', url: 'https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer' },
+        { label: 'NCCN Colon v3.2024', url: 'https://www.nccn.org/guidelines/category_1' },
+        { label: 'NACB tumor marker guideline', url: 'https://pubmed.ncbi.nlm.nih.gov/17850744/' },
+      ]"
+    />
   </div>
 </template>

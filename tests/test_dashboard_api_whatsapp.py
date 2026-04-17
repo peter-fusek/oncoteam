@@ -111,13 +111,66 @@ async def test_whatsapp_chat_success(mock_run, _mock_save, _mock_load, _mock_cb)
     data = json.loads(response.body)
 
     assert response.status_code == 200
-    assert data["response"] == "Lab values look normal."
+    assert data["response"].startswith("Lab values look normal.")
+    # #382: every WA reply ends with a physician-verifies disclaimer
+    assert "overí lekár" in data["response"]
     assert data["cost"] == 0.002
     assert data["thread_length"] == 1
     mock_run.assert_called_once()
     call_kwargs = mock_run.call_args[1]
     assert call_kwargs["task_name"] == "whatsapp_chat"
     assert call_kwargs["max_turns"] == 5
+
+
+@pytest.mark.anyio
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
+@patch(
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
+    return_value={"state": "closed"},
+)
+@patch("oncoteam.api_whatsapp._load_wa_thread", new_callable=AsyncMock, return_value=[])
+@patch("oncoteam.api_whatsapp._save_wa_thread", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp.run_autonomous_task", new_callable=AsyncMock)
+async def test_whatsapp_chat_english_gets_english_disclaimer(
+    mock_run, _mock_save, _mock_load, _mock_cb
+):
+    """EN replies get the English disclaimer; SK replies get the Slovak one (#382)."""
+    mock_run.return_value = {"response": "Your ANC is within safe range.", "cost": 0.001}
+    body = json.dumps({"message": "How are my labs?", "lang": "en"}).encode()
+    request = FakeRequest(body=body)
+    response = await api_whatsapp_chat(request)
+    data = json.loads(response.body)
+
+    assert "physician verifies" in data["response"]
+    assert "overí lekár" not in data["response"]
+
+
+@pytest.mark.anyio
+@patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "test-key")
+@patch("oncoteam.api_whatsapp.AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
+@patch(
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
+    return_value={"state": "closed"},
+)
+@patch("oncoteam.api_whatsapp._load_wa_thread", new_callable=AsyncMock, return_value=[])
+@patch("oncoteam.api_whatsapp._save_wa_thread", new_callable=AsyncMock)
+@patch("oncoteam.api_whatsapp.run_autonomous_task", new_callable=AsyncMock)
+async def test_whatsapp_chat_does_not_duplicate_disclaimer(
+    mock_run, _mock_save, _mock_load, _mock_cb
+):
+    """If the model already included a physician-verifies line, don't double it up."""
+    mock_run.return_value = {
+        "response": "ANC is normal. Informatívne, overí lekár.",
+        "cost": 0.001,
+    }
+    body = json.dumps({"message": "labky", "lang": "sk"}).encode()
+    request = FakeRequest(body=body)
+    response = await api_whatsapp_chat(request)
+    data = json.loads(response.body)
+
+    # Only one occurrence — the model's own line is kept, no second line appended
+    assert data["response"].count("overí lekár") == 1
 
 
 @pytest.mark.anyio

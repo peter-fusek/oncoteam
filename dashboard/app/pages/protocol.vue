@@ -364,5 +364,14 @@ const tabs = computed(() => [
         </div>
       </div>
     </div>
+
+    <!-- #382 — every threshold + dose-mod rule links to its clinical source. -->
+    <ClinicalSourceFooter
+      :sources="[
+        { label: 'ESMO 2022 mCRC Living Guidelines', url: 'https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer' },
+        { label: 'NCCN Colon v3.2024 §TOX-1', url: 'https://www.nccn.org/guidelines/category_1' },
+        { label: 'ASH 2021 VTE in Cancer (platelet rules on LMWH)', url: 'https://ashpublications.org/bloodadvances/article/5/4/927/475154' },
+      ]"
+    />
   </div>
 </template>

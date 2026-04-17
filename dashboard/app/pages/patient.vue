@@ -409,6 +409,13 @@ const abbreviations: Record<string, string> = {
           @drilldown="drilldown.open({ type: 'biomarker', id: b.name, label: b.name })"
         />
       </div>
+      <ClinicalSourceFooter
+        :sources="[
+          { label: 'ESMO 2022 mCRC §3.1.2 (KRAS/NRAS/BRAF)', url: 'https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer' },
+          { label: 'NCCN Colon v3.2024', url: 'https://www.nccn.org/guidelines/category_1' },
+        ]"
+        compact
+      />
     </div>
 
     <!-- Hereditary/Germline Panel -->
@@ -465,6 +472,12 @@ const abbreviations: Record<string, string> = {
           <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
         </div>
       </div>
+      <ClinicalSourceFooter
+        :sources="[
+          { label: 'ESMO 2022 mCRC §3.1.2 (anti-EGFR contraindicated if KRAS/NRAS/BRAF mutant)', url: 'https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer' },
+        ]"
+        compact
+      />
     </div>
 
     <!-- Safety Flags (hidden for patient role) -->

@@ -445,7 +445,21 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
                 else "Sorry, I couldn't process that. Try 'help'."
             )
 
-        response_text = response_text[:1500]
+        # Leave ~50 chars for the traceability disclaimer (#382) appended below.
+        response_text = response_text[:1450]
+
+        # Every AI-generated medical reply ends with a physician-verifies line
+        # (#382 traceability). Suppressed only if the response is a pure error
+        # fallback (no medical content to disclaim) or already ends with one.
+        disclaimer_sk = "\n\n— Informatívne, overí lekár."
+        disclaimer_en = "\n\n— Informational, your physician verifies."
+        disclaimer = disclaimer_sk if lang == "sk" else disclaimer_en
+        already_disclaimed = any(
+            marker in response_text
+            for marker in ("overí lekár", "physician verifies", "Informatívne", "Informational")
+        )
+        if response_text and not already_disclaimed:
+            response_text = f"{response_text.rstrip()}{disclaimer}"
 
         # Quality signal tags for continuous improvement
         quality_tags: list[str] = [
