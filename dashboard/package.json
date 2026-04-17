@@ -17,6 +17,7 @@
     "chartjs-plugin-datalabels": "^2.2.0",
     "nuxt": "^4.4.2",
     "nuxt-auth-utils": "^0.5.29",
+    "qrcode": "^1.5.4",
     "tailwindcss": "^4.2.2",
     "twilio": "^5.13.1",
     "vue": "^3.5.32",

@@ -5,6 +5,19 @@ const { formatDate } = useFormatDate()
 const { t } = useI18n()
 const { isOncology, cancerType, setDiagnosisCode } = usePatientType()
 const { activePatientId } = useActivePatient()
+const { onboarded: waOnboarded, readFlags: readWaFlags, track: trackWa } = useWhatsAppOnboarding()
+
+// WhatsApp wizard — auto-opens on very first Home visit for a user,
+// then never again (localStorage flag). Dismissible banner is always visible
+// unless explicitly dismissed (30-day cooldown). See useWhatsAppOnboarding.
+const waWizardOpen = ref(false)
+onMounted(() => {
+  readWaFlags()
+  if (!waOnboarded.value) {
+    waWizardOpen.value = true
+    trackWa('wa_promo_viewed', { surface: 'auto-wizard' })
+  }
+})
 
 // Client-only fetches — server:false prevents SSR from attempting these calls,
 // which caused 503 timeouts when oncofiles was slow (16s+ TTFB → Railway edge 503).
@@ -191,6 +204,10 @@ const EVENT_ICONS: Record<string, string> = {
       <UIcon name="i-lucide-server-crash" class="shrink-0" />
       <span>{{ $t('home.systemDegraded') }}</span>
     </div>
+
+    <!-- WhatsApp onboarding promo (#371) -->
+    <WhatsAppOnboardingCard @open-wizard="waWizardOpen = true" />
+    <WhatsAppWizard v-model="waWizardOpen" />
 
     <!-- Header -->
     <div>

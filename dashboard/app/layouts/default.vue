@@ -5,6 +5,7 @@ const { t, locale } = useI18n()
 const { setLocale } = useI18n()
 const { activeRole, roles, hasMultipleRoles, canAccess, landingPage } = useUserRole()
 const { activePatientId, activePatient, patients, hasMultiplePatients, canSwitchPatient, switchPatient } = useActivePatient()
+const { waNumber, waLink, track: trackWa } = useWhatsAppOnboarding()
 const { isOncology } = usePatientType()
 
 // Pages only shown for oncology patients
@@ -230,6 +231,19 @@ async function logout() {
 
       <!-- Footer -->
       <div class="border-t border-gray-200 px-3 py-2 space-y-2">
+        <!-- WhatsApp channel (compact, permanent) — issue #371 -->
+        <a
+          :href="waLink"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 px-2 py-1.5 text-[11px] text-emerald-800 transition-colors"
+          :title="$t('waChannel.tooltip', 'Message Oncoteam on WhatsApp — approved phones only')"
+          @click="trackWa('wa_promo_cta_clicked', { surface: 'sidebar' })"
+        >
+          <UIcon name="i-lucide-message-circle" class="w-3.5 h-3.5 shrink-0 text-emerald-700" />
+          <span class="font-medium truncate">{{ waNumber }}</span>
+          <UIcon name="i-lucide-external-link" class="ml-auto w-3 h-3 shrink-0 opacity-60" />
+        </a>
         <div class="flex items-center justify-between">
           <label v-if="activeRole === 'advocate'" class="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700">
             <input v-model="showTestData" type="checkbox" class="rounded border-gray-300 bg-white text-teal-600 focus:ring-teal-500/30 w-3.5 h-3.5" />
