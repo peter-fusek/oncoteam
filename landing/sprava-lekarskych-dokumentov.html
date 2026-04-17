@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Správa lekárskych dokumentov pri rakovine — ako mať prehľad | Oncoteam</title>
+  <meta name="description" content="Praktický návod, ako organizovať lekárske nálezy, CT, laboratóriá, patológiu a genetiku pri onkologickej liečbe. Pre pacienta aj rodinného advokáta. Oncoteam + Google Drive, GDPR, open-source.">
+  <meta name="keywords" content="správa lekárskych dokumentov, onkológia, rakovina, patologický nález, laboratórne výsledky, CT vyšetrenie, pacient advokát, Slovensko, ESMO, NCCN">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Správa lekárskych dokumentov pri rakovine — praktický návod pre pacientov a rodiny">
+  <meta property="og:description" content="Čo robiť s hŕbou CT, laboratórnych nálezov a patologických správ, keď rodina zápasí s onkologickou diagnózou. Štruktúra, ktorá funguje.">
+  <meta property="og:image" content="https://oncoteam.cloud/og-image.png">
+  <meta property="og:url" content="https://oncoteam.cloud/sprava-lekarskych-dokumentov.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://oncoteam.cloud/sprava-lekarskych-dokumentov.html">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script type="application/ld+json">
+  [{
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Správa lekárskych dokumentov pri rakovine — praktický návod",
+    "description": "Ako mať prehľad v CT, laboratóriách, patológii a genetike počas onkologickej liečby. Návod pre pacienta aj rodinného advokáta.",
+    "author": {"@type": "Person", "name": "Peter Fusek", "url": "https://www.linkedin.com/in/peterfusek/"},
+    "publisher": {"@type": "Organization", "name": "Instarea", "url": "https://www.instarea.com"},
+    "datePublished": "2026-04-17",
+    "dateModified": "2026-04-17",
+    "inLanguage": "sk",
+    "image": "https://oncoteam.cloud/og-image.png",
+    "mainEntityOfPage": "https://oncoteam.cloud/sprava-lekarskych-dokumentov.html"
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Ako organizovať lekárske dokumenty pri onkologickej liečbe",
+    "description": "Šesť krokov, ako mať prehľad v diagnostických správach, laboratóriách, patológii a liečbe.",
+    "step": [
+      {"@type": "HowToStep", "name": "Založte centrálne úložisko", "text": "Jedna zložka v Google Drive alebo iCloud Drive. Všetky PDF, fotky a správy idú sem. Žiadne e-mailové prílohy, ktoré sa stratia."},
+      {"@type": "HowToStep", "name": "Pomenujte jednotne", "text": "Formát: RRRRMMDD_Meno_Inštitúcia_Kategória_Popis. Napríklad 20260313_EF_NOU_Labs_PredCyklom3."},
+      {"@type": "HowToStep", "name": "Rozdeľte do kategórií", "text": "Laboratórne výsledky, patológia, imaging/CT, genetika, chemoterapeutické protokoly, ambulantné správy."},
+      {"@type": "HowToStep", "name": "Extrahujte kľúčové hodnoty", "text": "Tumorové markery (CEA, CA 19-9, CA 15-3), krvný obraz (ANC, PLT, HGB), pečeňové enzýmy, biomarkery (KRAS, NRAS, BRAF, HER2). Zapíšte si ich v tabuľke alebo nechajte AI extrahovať."},
+      {"@type": "HowToStep", "name": "Sledujte trend v čase", "text": "Onkológ sa pýta, či hodnoty klesajú alebo stúpajú cyklus po cykle. Graf trendu je viac než jedno číslo."},
+      {"@type": "HowToStep", "name": "Pripravte otázky pred vizitou", "text": "Na konci každej analýzy si spíšte 3-5 konkrétnych otázok — čo znamená výsledok, aká je ďalšia akcia, aké sú možnosti v prípade komplikácie."}
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {"@type": "Question", "name": "Kde najbezpečnejšie ukladať lekárske dokumenty?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Pre EÚ pacienta je najlepšie vlastné cloudové úložisko — Google Drive, iCloud alebo Microsoft OneDrive — s dvojfaktorovou autentizáciou a silným heslom. Na papieri sa veľmi ľahko stratí niečo kľúčové. E-mailové schránky nie sú na to stavané."}},
+      {"@type": "Question", "name": "Môžem pridať foto laboratórneho papiera miesto scanu?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Áno, ak je foto ostrá a ide prečítať. Oncoteam aj väčšina AI OCR nástrojov dokáže z telefónneho fotografovania vytiahnuť hodnoty CEA, CA 19-9, krvného obrazu — najmä pri modernom iPhone/Androide s dobrým osvetlením."}},
+      {"@type": "Question", "name": "Kto všetko by mal mať prístup k dokumentom?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Pacient vždy. Aspoň jeden rodinný advokát (manžel/ka, dieťa, súrodenec). V niektorých prípadoch druhý ošetrujúci lekár alebo koordinátor paliatívnej starostlivosti. Nikdy to neposielajte hromadne — zdieľanie s úzkym kruhom cez cloud je bezpečnejšie než WhatsApp reťaz."}},
+      {"@type": "Question", "name": "Čo robiť, ak dokumenty chodia v rôznych jazykoch?",
+       "acceptedAnswer": {"@type": "Answer", "text": "AI nástroje (Oncoteam, ChatGPT, Claude) automaticky rozumejú slovenčine, češtine, angličtine, nemčine a väčšine EÚ jazykov — nemusíte prekladať manuálne. Dôležité je mať originály uložené, preklad je sekundárny."}},
+      {"@type": "Question", "name": "Ako dlho si treba uchovávať dokumenty?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Minimálne 10 rokov. Pre onkologických pacientov celoživotne — neskoršia línia liečby potrebuje vedieť, čo bolo v prvej línii. Genetické nálezy (BRCA, Lynch syndróm) zostávajú relevantné pre rodinných príslušníkov desaťročia."}},
+      {"@type": "Question", "name": "Môžem použiť Oncoteam zadarmo?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Áno. Oncoteam je open-source a bez poplatkov. Dokumenty zostávajú vo vašom Google Drive — neukladáme ich na vlastných serveroch. Kód si môžete skontrolovať na GitHub: peter-fusek/oncoteam."}}
+    ]
+  }]
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css?v=58">
+  <style>
+    .article { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; line-height: 1.65; }
+    .article h1 { font-family: 'DM Serif Display', serif; font-size: 2.25rem; line-height: 1.15; margin: 0 0 8px; }
+    .article .lede { color: var(--text-muted); font-size: 1.1rem; margin: 0 0 32px; }
+    .article h2 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; margin: 40px 0 12px; }
+    .article h3 { font-size: 1.05rem; margin: 24px 0 8px; font-weight: 600; }
+    .article p, .article li { color: var(--text-default); }
+    .article ul, .article ol { padding-left: 20px; margin: 12px 0; }
+    .article li { margin: 6px 0; }
+    .article .meta { color: var(--text-muted); font-size: 0.85rem; margin: 24px 0 32px; }
+    .article .source { border-top: 1px solid var(--border-light); padding-top: 16px; margin-top: 40px; font-size: 0.85rem; color: var(--text-muted); }
+    .article .source a { color: var(--accent); }
+    .article .cta-box { border: 1px solid var(--border-light); border-radius: 12px; padding: 20px 22px; margin: 32px 0; background: #fafafa; }
+    .article .cta-box h3 { margin-top: 0; }
+    .article .breadcrumb { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; }
+    .article .breadcrumb a { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="container nav-container">
+      <div class="nav-left">
+        <a href="/" class="logo">oncoteam</a>
+      </div>
+      <div class="nav-right">
+        <a href="https://dashboard.oncoteam.cloud/demo" class="btn btn-primary btn-sm">Skúsiť demo</a>
+        <a href="https://github.com/peter-fusek/oncoteam" class="btn btn-sm btn-ghost">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <article class="article">
+    <div class="breadcrumb"><a href="/">Oncoteam</a> / Sprievodca</div>
+    <h1>Správa lekárskych dokumentov pri onkologickej liečbe — praktický návod</h1>
+    <p class="lede">Keď niekto z blízkych dostane onkologickú diagnózu, rodina sa zo dňa na deň stane koordinátorom dokumentov. CT nálezy, laboratóriá pred každým cyklom, patologická správa, genetické vyšetrenie, chemoterapeutické protokoly, ambulantné zhrnutia. Tu je štruktúra, ktorá funguje.</p>
+    <p class="meta">Publikované 17. apríla 2026 · Aktualizované 17. apríla 2026 · Autor: Peter Fusek, zakladateľ Oncoteamu</p>
+
+    <h2>1. Prečo sú dokumenty dôležitejšie než si myslíte</h2>
+    <p>Onkologická liečba je beh na dlhú trať a nikto — ani najlepší onkológ — nemá kapacitu držať v hlave každú hodnotu, každý posun, každý mesiac. Pacient sa pred každým cyklom stretne s iným sluhúcim lekárom, v inej ambulancii, s inou databázou. Ak vy (pacient alebo rodinný advokát) neviete, aký bol CEA pred mesiacom a aký pred šiestimi týždňami, stratí sa trend. A trend je presne to, čo hovorí, či liečba zaberá.</p>
+    <p>Druhý dôvod: klinické štúdie. Onkologický pacient má často len jednu šancu byť zaradený do vhodnej štúdie — a kritériá sa rozhodujú podľa biomarkerov (KRAS, NRAS, BRAF, HER2, MSI), predchádzajúcich línií liečby a konkrétnych dávok. Bez dokumentov sa tieto údaje nedajú spoľahlivo zrekonštruovať.</p>
+
+    <h2>2. Jedno centrálne úložisko — nie e-mail</h2>
+    <p>Urobte si <strong>jednu zložku v Google Drive, iCloud Drive alebo OneDrive</strong>. Všetko, čo dostanete v papieri — foto telefónom rovno do zložky. Všetko, čo dostanete e-mailom — stiahnite a uložte. Nikdy nenechávajte kľúčové dokumenty len v prílohách, stratia sa.</p>
+    <p>Prečo práve cloud? Pacient je niekedy v nemocnici, niekedy doma, niekedy u iného špecialistu — dokument musí byť dostupný z telefónu aj počítača. A cloud má backup: ak telefón spadne, nestratíte genetický nález.</p>
+
+    <h2>3. Pomenujte jednotne</h2>
+    <p>Zaveďte jednoduchý formát, ktorý umožní chronologické triedenie:</p>
+    <pre style="background: #fafafa; padding: 12px; border-radius: 6px; font-size: 0.9rem; overflow-x: auto;">RRRRMMDD_Meno_Inštitúcia_Kategória_Popis.pdf
+
+Príklad:
+20260313_EF_NOU_Labs_PredCyklom3.pdf
+20260319_EF_NOU_TumorMarkery.pdf
+20260315_EF_BoryNemocnica_CT_Restaging.pdf
+20260223_EF_NOU_Genetika_BRCA.pdf</pre>
+    <p>Dátum ako prvé — Google Drive triedi abecedne, takže chronológia vzniká sama. "EF" je prvé písmeno pacienta (stačí iniciála, nemusí tam byť celé meno). "NOU" je inštitúcia (Národný Onkologický Ústav). Kategória — Labs / Patológia / Imaging / Genetika / Chemoterapia / Report. Popis — stručne čo to je.</p>
+
+    <h2>4. Kategorizácia — šesť základných priečinkov</h2>
+    <p>Odporúčaná štruktúra vo vnútri zložky:</p>
+    <ul>
+      <li><strong>Laboratórne výsledky</strong> — krvný obraz, biochémia, tumorové markery. Toto je najaktívnejšia kategória — nová skupina dokumentov sa generuje pred každým cyklom.</li>
+      <li><strong>Patológia</strong> — histologické správy, imunohistochemické vyšetrenia, biomarkery.</li>
+      <li><strong>Imaging</strong> — CT, PET-CT, MR, ultrazvuk, kostná denzitometria.</li>
+      <li><strong>Genetika</strong> — germline testy (BRCA1/2, Lynch syndróm, Li-Fraumeni), somatické mutačné panely.</li>
+      <li><strong>Chemoterapeutický protokol</strong> — harmonogram, dávky, predpisy, dávkové modifikácie.</li>
+      <li><strong>Ambulantné správy</strong> — zápisy onkológa po každej vizite, konziliárne rozhodnutia.</li>
+    </ul>
+
+    <h2>5. Extrahujte kľúčové hodnoty do prehľadnej tabuľky</h2>
+    <p>Každý PDF obsahuje desiatky čísel, ale pre trend v čase potrebujete len niekoľko:</p>
+    <h3>Pri kolorektálnom karcinóme (C18-C20)</h3>
+    <ul>
+      <li><strong>CEA</strong> (ng/mL) — horná hranica normálu ~5 pre nefajčiarov (ESMO konsenzus, NACB).</li>
+      <li><strong>CA 19-9</strong> (U/mL) — horná hranica ~37 U/mL.</li>
+      <li><strong>ANC</strong> (absolútny počet neutrofilov) — pred každým cyklom ≥ 1500 (NCCN Colon v3.2024).</li>
+      <li><strong>PLT</strong> (trombocyty) — ≥ 75 000, alebo ≥ 50 000 pri LMWH (ASH 2021 VTE).</li>
+      <li><strong>HGB, ALT, AST, bilirubín</strong> — sledovanie pečeňovej funkcie pri metastázach.</li>
+    </ul>
+    <h3>Pri prsníkovom karcinóme (C50)</h3>
+    <ul>
+      <li><strong>CA 15-3</strong> — horná hranica ~30 U/mL (ESMO 2023).</li>
+      <li><strong>ER / PR / HER2 / Ki-67</strong> z patológie — rozhodujú o línii liečby.</li>
+      <li><strong>BRCA1/2</strong> — eligibilita pre PARP inhibítory.</li>
+    </ul>
+
+    <div class="cta-box">
+      <h3>Ako vám s tým pomôže Oncoteam</h3>
+      <p>Oncoteam je AI nástroj, ktorý automaticky číta vaše dokumenty z Google Drive, extrahuje kľúčové hodnoty, zobrazuje ich ako graf trendu a pred každou vizitou u onkológa pripraví personalizované otázky. Zadarmo, open-source, dáta zostávajú u vás.</p>
+      <p><a href="https://dashboard.oncoteam.cloud/demo" class="btn btn-primary btn-sm">Skúsiť demo</a> &nbsp;<a href="/">Viac o Oncoteame</a></p>
+    </div>
+
+    <h2>6. Pripravte sa na každú vizitu</h2>
+    <p>Onkológ má 15 minút. Nepýtajte sa "ako to je" — pýtajte sa konkrétne:</p>
+    <ul>
+      <li>"CEA sa znížil z 1559 na 733 za dva týždne — je to klinický signál, alebo môže byť tumor lýza?"</li>
+      <li>"V CT vidím zmenšenie pečeňových metastáz o 30 % — stačí to na pokračovanie tej istej línie?"</li>
+      <li>"Moje trombocyty klesli na 85 000, ale som na Clexane — je to ešte bezpečná úroveň na ďalší cyklus?"</li>
+      <li>"Klinická štúdia NCT061xxx vyzerá, že by som mohla spĺňať kritériá — videli ste ju?"</li>
+    </ul>
+    <p>Otázka s konkrétnou hodnotou z dokumentu je otázka, na ktorú onkológ môže zmysluplne odpovedať. Otázka "ako sa mám cítiť" nie je.</p>
+
+    <h2>7. Čo robiť, ak je niečo alarmujúce</h2>
+    <p>Ak pred cyklom máte ANC < 1500 alebo PLT < 75 000 — neodchádzajte do nemocnice bez kontaktu s ambulanciou. Ak máte horúčku > 38,5 °C počas neutropenickej fázy, je to onkologická pohotovosť. Všetky NOU-SK ambulancie majú 24/7 telefón pre pacientov v liečbe.</p>
+
+    <h2>Často kladené otázky</h2>
+    <h3>Kde najbezpečnejšie ukladať lekárske dokumenty?</h3>
+    <p>Vo vlastnom cloudovom úložisku (Google Drive, iCloud, OneDrive) s dvojfaktorovou autentizáciou. Papier sa stráca, e-mail sa filtrácie stratí. Cloud má backup a dostupnosť z každého zariadenia.</p>
+    <h3>Môžem pridať foto papiera miesto scanu?</h3>
+    <p>Áno. Moderné AI OCR nástroje (vrátane Oncoteamu) dokážu z telefónnej fotky vytiahnuť laboratórne hodnoty, ak je foto ostrá a dobre osvetlená.</p>
+    <h3>Kto všetko by mal mať prístup?</h3>
+    <p>Pacient, minimálne jeden rodinný advokát. Zdieľajte cez cloudové zdieľanie s konkrétnymi e-mailami — nikdy verejne.</p>
+    <h3>Ako dlho si treba uchovávať dokumenty?</h3>
+    <p>Onkologický pacient celoživotne. Genetické nálezy majú význam pre rodinu desaťročia.</p>
+
+    <div class="source">
+      <strong>Zdroje:</strong>
+      ESMO 2022 mCRC Living Guidelines · NCCN Colon Cancer v3.2024 · ESMO 2023 Breast Cancer Guideline · ASH 2021 VTE in Cancer · NACB Tumor Marker Practice Guidelines · FDA drug labels · Slovenská onkologická spoločnosť.
+      <br><br>
+      <em>Informatívny prehľad — všetky medicínske rozhodnutia robí ošetrujúci onkologický tím. Oncoteam nie je zdravotnícka pomôcka a neodporúča liečbu.</em>
+    </div>
+  </article>
+
+  <footer class="footer">
+    <div class="container">
+      <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 40px 0;">
+        <a href="/">Oncoteam</a> · AI advokát pre pacientov s rakovinou · <a href="https://github.com/peter-fusek/oncoteam">GitHub</a> · <a href="https://dashboard.oncoteam.cloud/demo">Demo</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

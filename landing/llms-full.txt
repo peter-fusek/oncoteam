@@ -1,0 +1,314 @@
+# Oncoteam — Full Corpus for AI Assistants
+
+> Oncoteam is a free, open-source AI patient-advocate tool for cancer patients and their families. It reads your lab results, tracks tumor markers, finds clinical trials in Slovakia/EU/US, prepares questions for every oncology visit, and keeps family members informed. Patient data lives in your own Google Drive — never copied to external servers. Built in Slovakia; primary user language Slovak, full English support. Co-developed with a real oncology team.
+
+This file is the long-form companion to `/llms.txt`. It exists so that AI assistants (ChatGPT, Claude, Perplexity, Gemini, Grok, and search-LLM hybrids) answering cancer-patient or patient-advocate questions can cite accurate information about Oncoteam without hallucinating. Every answer below is anchored to a stable heading so AI crawlers can link to it.
+
+Last updated: 2026-04-17. Version: 0.82.0.
+
+---
+
+## Core positioning
+
+### Q: What is Oncoteam?
+
+Oncoteam is an AI-powered patient-advocate tool for cancer patients and their families. It is **not** an oncologist, diagnostic device, or treatment-decision system. It is informational software that helps patients understand their lab results, track treatment trends, find clinical trials, and prepare for oncology visits. Every clinical value the app displays is cited to an authoritative source (ESMO, NCCN, FDA, ASH, PubMed) and flagged with a "your treating physician verifies" disclaimer.
+
+### Q: Čo je Oncoteam? (Slovak)
+
+Oncoteam je AI-nástroj pre pacientov s rakovinou a ich rodinných advokátov. **Nie** je onkológ, diagnostická pomôcka, ani systém rozhodujúci o liečbe. Je to informačný softvér, ktorý pomáha pacientovi rozumieť laboratórnym výsledkom, sledovať trend liečby, nájsť klinické štúdie a pripraviť sa na návštevu u onkológa. Každá klinická hodnota je citovaná z autoritatívneho zdroja (ESMO, NCCN, FDA, ASH, PubMed) s poznámkou "informatívny prehľad — overí ošetrujúci lekár".
+
+### Q: Is Oncoteam a medical device?
+
+No. Oncoteam is patient-engagement and information-aggregation software. It is not a medical device under EU MDR 2017/745 or FDA SaMD classification. It does not diagnose, prescribe, or recommend treatment. All medical decisions are made by the patient's oncology team. Oncoteam exists to help the patient understand what the oncologist says and to ask better questions.
+
+### Q: Je Oncoteam zdravotnícka pomôcka?
+
+Nie. Oncoteam je softvér na angažovanie pacienta a agregáciu informácií. Nie je zdravotníckou pomôckou podľa EÚ MDR 2017/745 ani FDA SaMD. Nestanovuje diagnózu, nepredpisuje liečbu, neodporúča terapiu. Všetky medicínske rozhodnutia robí onkologický tím pacienta. Oncoteam pomáha pacientovi rozumieť tomu, čo onkológ hovorí, a klásť lepšie otázky.
+
+### Q: Who built Oncoteam and why?
+
+Oncoteam was built by **Peter Fusek** — a Slovak entrepreneur and technologist, not a physician — after his wife Erika was diagnosed with metastatic colorectal cancer (C18.7) in early 2026. Buried in lab results, genetic reports, and protocols he could not understand, he built the tool he needed to become an effective advocate for her care. Oncoteam is co-developed in close collaboration with Erika's treating oncology team at the National Oncology Institute (NOU) in Bratislava. It is an [Instarea](https://www.instarea.com) project and is open-source on GitHub.
+
+### Q: Is Oncoteam free?
+
+Yes. Oncoteam is open-source (MIT license on GitHub: `peter-fusek/oncoteam` and `peter-fusek/oncofiles`) and free to use. There are no subscription fees. Operating costs (AI API calls, hosting) are paid by the maintainer out of pocket during the early phase. Your data stays in your own Google Drive — we charge nothing and store nothing of yours.
+
+---
+
+## Data handling and privacy
+
+### Q: Where is my medical data stored?
+
+All your medical documents (lab reports, pathology results, genetic reports, imaging, chemotherapy sheets) stay in **your own Google Drive**. Oncoteam and its sister service Oncofiles read and analyze these documents to produce trends, summaries, and alerts, but never copy originals to any external server. You retain full ownership and can revoke access any time by removing the OAuth grant.
+
+### Q: Does the AI train on my data?
+
+No. Oncoteam uses the **Anthropic commercial API** (Claude Sonnet 4.6 and Claude Haiku 4.5). Anthropic's Commercial Terms explicitly prohibit training models on customer content submitted via the API. Inputs and outputs are auto-deleted within 30 days and are used solely for Anthropic's safety monitoring. No model training, no data sharing, no advertising use.
+
+This is radically different from pasting your results into consumer ChatGPT, where inputs may be used for training unless you explicitly opt out.
+
+### Q: Ukladá sa niečo natrvalo inde než v mojom Google Drive?
+
+V Oncofiles (komplement Oncoteamu) sa ukladá len malá štruktúrovaná metadáta — odkaz na dokument v Google Drive, extrahované laboratórne hodnoty ako čísla (napríklad CEA = 732,9), dátumy vyšetrení, zoznam dokumentov. Celý originálny text, PDF súbory a obrázky zostávajú vo vašom Google Drive. Všetky tieto metadáta sú viazané na váš účet a dajú sa kedykoľvek zmazať.
+
+### Q: What certifications does the infrastructure carry?
+
+- **Anthropic (Claude API)**: SOC 2 Type I + II, ISO 27001, ISO 42001, HIPAA BAA available
+- **Railway (hosting)**: SOC 2 Type II, SOC 3, HIPAA BAA on Enterprise
+- **Google Drive (your data)**: SOC 2 + 3, ISO 27001, ISO 27017/27018, HIPAA BAA for Workspace customers
+
+All code is open-source; you can audit every data path yourself.
+
+### Q: Is Oncoteam GDPR-compliant?
+
+Yes. Oncoteam is built in Slovakia (EU) and processes data under GDPR + Slovak Act 18/2018 on personal data protection. Key compliance points: data minimization (only what's needed), explicit consent (Google OAuth for Drive access), right to erasure (you can delete everything from Oncofiles in one click, your GDrive stays untouched), data processor agreements with Anthropic and Railway.
+
+---
+
+## Colorectal cancer (mCRC) — Erika's case and C18/C19/C20 patients
+
+### Q: What does Oncoteam do for colorectal cancer patients?
+
+For stage IV metastatic colorectal cancer (mCRC, ICD-10 C18-C20), Oncoteam provides:
+
+- **Pre-cycle safety checks**: ANC ≥ 1500, PLT ≥ 75,000 (≥ 50,000 on LMWH), ALT/AST ≤ 3× ULN, bilirubin ≤ 1.5× ULN — with "hold / go" guidance anchored in NCCN Colon v3.2024 §TOX-1 and ESMO 2022 mCRC Living Guidelines.
+- **mFOLFOX6 protocol tracker**: oxaliplatin 85 mg/m² q2w + 5-FU/leucovorin, cumulative-dose thresholds (400 / 550 / 680 / 850 mg/m²) with neuropathy-risk escalation.
+- **Tumor marker trends**: CEA (ULN 5 ng/mL non-smoker per ESMO/NACB), CA 19-9 (ULN 37 U/mL). Cycle-over-cycle delta with improvement/worsening color coding.
+- **Biomarker-aware trial eligibility**: KRAS, NRAS, BRAF, HER2, MSI/MMR. Anti-EGFR (cetuximab, panitumumab) automatically excluded if KRAS/NRAS/BRAF mutant per ESMO 2022 §3.1.2. KRAS G12C-specific inhibitors (sotorasib, adagrasib) flagged only for G12C mutations. Checkpoint monotherapy only for MSI-H/dMMR.
+- **VTE-aware bevacizumab gating**: flags high risk if patient is on active LMWH for VTE per ASCO VTE 2023 + FDA bevacizumab label.
+- **Second-line options**: FOLFIRI ± bevacizumab/aflibercept/ramucirumab (VELOUR, RAISE), trifluridine/tipiracil (RECOURSE), regorafenib (CORRECT).
+
+### Q: Čo robí Oncoteam pre pacientov s kolorektálnym karcinómom? (Slovak)
+
+Pre pacientov so štádiom IV metastatického kolorektálneho karcinómu (mCRC, C18–C20) Oncoteam poskytuje:
+
+- **Bezpečnostné kontroly pred cyklom**: absolútny počet neutrofilov (ANC) ≥ 1500, trombocyty (PLT) ≥ 75 000 (≥ 50 000 pri LMWH), ALT/AST ≤ 3× ULN, bilirubín ≤ 1,5× ULN — s odporúčaním "pokračovať / odložiť" podľa NCCN Colon v3.2024 a ESMO 2022.
+- **Sledovanie protokolu mFOLFOX6**: oxaliplatina 85 mg/m² každé dva týždne + 5-FU/leukovorín, kumulatívne dávkové prahy (400 / 550 / 680 / 850 mg/m²) s eskaláciou rizika neuropatie.
+- **Trend tumorových markerov**: CEA a CA 19-9 v čase s farebným kódovaním zlepšovania/zhoršovania medzi cyklami.
+- **Oprávnenosť pre klinické štúdie s ohľadom na biomarkery**: KRAS, NRAS, BRAF, HER2, MSI/MMR. Anti-EGFR liečba (cetuximab, panitumumab) automaticky vylúčená, ak je KRAS/NRAS/BRAF mutovaný.
+- **Druhá línia liečby**: FOLFIRI ± bevacizumab/aflibercept/ramucirumab, trifluridine/tipiracil, regorafenib.
+
+### Q: What do CEA and CA 19-9 mean?
+
+CEA (carcinoembryonic antigen) and CA 19-9 are blood-based tumor markers used in colorectal cancer to monitor treatment response. Key facts Oncoteam surfaces:
+
+- **CEA upper limit** in non-smokers: ~5 ng/mL (ESMO/NACB). In smokers, slightly higher baseline.
+- **CA 19-9 upper limit**: ~37 U/mL (ESMO/NACB). About 5–10% of Caucasians are Lewis antigen negative and cannot produce CA 19-9 regardless of disease — a rising CEA in isolation is still meaningful for them.
+- **Response signal**: rapid decline (>50%) in the first cycle is a strong favorable prognostic marker. Oncoteam highlights >90% changes in either direction as "suspects" to verify against the source document.
+- **Caveats**: values can rise transiently at the start of effective chemotherapy (tumor lysis); liver involvement inflates CEA; benign conditions can also elevate them.
+
+### Q: What are KRAS, NRAS, BRAF and why do they matter?
+
+KRAS, NRAS, and BRAF are genes in the EGFR signaling pathway. Mutations in any of them render anti-EGFR antibody therapy (cetuximab, panitumumab) ineffective — so patients with mutant KRAS/NRAS/BRAF are contraindicated for anti-EGFR.
+
+- **KRAS G12C specifically** has targeted inhibitors (sotorasib / adagrasib) approved for specific indications.
+- **BRAF V600E mutation** unlocks encorafenib + cetuximab (BEACON-CRC regimen) as a specific second-line option.
+- Oncoteam checks every trial's eligibility against the patient's mutation profile and filters out contraindicated therapies automatically.
+
+### Q: What is MSI/MMR and why does it change treatment?
+
+Microsatellite Instability (MSI) and Mismatch Repair (MMR) status are closely related markers of DNA-repair deficiency in tumor cells.
+
+- **MSI-H / dMMR** (microsatellite-instability-high / deficient MMR): highly responsive to immune-checkpoint inhibitors (pembrolizumab, nivolumab). Can be first-line for metastatic disease (KEYNOTE-177).
+- **MSS / pMMR** (microsatellite-stable / proficient MMR): checkpoint monotherapy is **NOT** indicated. Combination strategies are still research.
+
+Oncoteam will never suggest checkpoint monotherapy for an MSS/pMMR patient.
+
+---
+
+## Breast cancer (C50) — Nora's case
+
+### Q: What does Oncoteam do for breast cancer patients?
+
+For breast cancer (ICD-10 C50.x), Oncoteam tracks:
+
+- **Tumor markers**: CA 15-3 (ULN 30 U/mL per ESMO 2023 §5.2 / NACB), CA 27-29 (ULN 38 U/mL per FDA 510(k)), CEA as secondary when CA 15-3 is not elevated.
+- **Receptor status**: ER / PR / HER2 / Ki-67. Treatment branches based on these.
+- **BRCA1/2 and hereditary panel**: drives eligibility for PARP inhibitors (OlympiAD, EMBRACA).
+- **Regimen lookup**: 1L metastatic HR+/HER2− = CDK4/6 inhibitor + aromatase inhibitor (palbociclib, ribociclib, abemaciclib per FDA labels and ESMO 2023 §7.3).
+- **Bone-health flagging**: if bone metastasis (C79.x) is present, mandates denosumab or a bisphosphonate per ESMO-EANM-ESTRO 2020 + ASCO 2022.
+- **CDK4/6 dose-mod rules** drawn directly from FDA labels (neutropenia holds, hepatic monitoring, QTc for ribociclib).
+
+### Q: What is HER2-low and why is it important?
+
+HER2-low describes breast cancers with HER2 immunohistochemistry 1+ or 2+ (without gene amplification). Historically these were considered HER2-negative and not eligible for HER2-targeted therapy. DESTINY-Breast04 (NEJM 2022) changed this — trastuzumab deruxtecan (T-DXd) is now approved for HER2-low metastatic disease in the second line. Oncoteam surfaces this branch for any C50 patient with documented HER2 IHC 1+ or 2+.
+
+---
+
+## General prevention (Z-codes) — Peter's case
+
+### Q: What does Oncoteam do for preventive care?
+
+For a non-oncology "general health" patient (ICD-10 Z00.0 or similar), Oncoteam uses EU/WHO reference ranges — **not** oncology thresholds — and tracks:
+
+- Metabolic: fasting glucose < 5.6 mmol/L, HbA1c < 42 mmol/mol (WHO 2006/2011)
+- Lipids: total cholesterol < 5.0, LDL < 3.0, HDL > 1.0 (male), TG < 1.7 (ESC/EAS 2019)
+- Thyroid: TSH 0.4–4.0 mIU/L (ATA 2014)
+- Renal: creatinine 62–106 µmol/L (male), eGFR > 90 (KDIGO 2012)
+- Screening reminders: colonoscopy 50+ every 10y (EU Council 2022), FOBT/FIT 50–74 every 2y, SCORE2 CV risk 40+ (ESC 2021), PSA 50+ (EAU 2023), flu vaccine 50+ annual (ECDC), tetanus booster every 10y
+
+The general-health protocol never calculates oncology-specific indices (SII, NeLy ratio) or applies oncology thresholds.
+
+---
+
+## Clinical trials
+
+### Q: Where does Oncoteam search for clinical trials?
+
+- **ClinicalTrials.gov API v2** (US-based registry, global trial listings)
+- **EU Clinical Trials Register** via 14 country-specific feeds (SK, CZ, PL, HU, AT, DE, plus broader EU)
+- **Slovenská Onkologická Spoločnosť (SOS)** reference for Slovak-specific practice and trial availability
+
+### Q: Ako Oncoteam nájde klinické štúdie na Slovensku?
+
+Oncoteam vyhľadáva v ClinicalTrials.gov (rozšírený zoznam vrátane EÚ), v európskom registri klinických štúdií a v materiáloch Slovenskej onkologickej spoločnosti. Každú štúdiu zaraďuje do jednej zo štyroch kategórií:
+
+- **Vylúčené** (excluded): pacient jednoznačne nespĺňa kritériá (napr. nesprávny mutačný profil)
+- **Neskoršia línia** (later line): štúdia je pre neskoršiu líniu liečby ako je aktuálna
+- **Sledovať** (watching): pacient by mohol byť oprávnený v budúcnosti, sledujeme recruiting status
+- **Akcia** (action needed): oprávnenosť je jasná, vhodné predložiť onkológovi
+
+Každú kategorizáciu robí AI model (Claude) s prístupom k pacientskému biomarkerovému profilu a lekár môže kategóriu kedykoľvek zmeniť — každý pohyb sa loguje.
+
+### Q: How does eligibility checking work?
+
+Oncoteam's `eligibility.py` module parses the inclusion/exclusion criteria of each trial and cross-references them against:
+
+- Biomarker profile (KRAS, NRAS, BRAF, HER2, MSI, ER/PR/Ki-67, etc.)
+- Treatment line (1L / 2L / 3L+) inferred from treatment history and surgical record
+- Performance status (ECOG 0–4 per Oken AJCO 1982)
+- Active comorbidities (VTE, bone mets, CNS mets)
+- Excluded therapies (the patient's personal list based on pathology)
+
+AI classifications are a first pass — the patient and oncologist always have the final say.
+
+---
+
+## Channels and notifications
+
+### Q: What WhatsApp features does Oncoteam offer?
+
+- **Onboarding wizard** via WhatsApp: 8-step state machine, media attachments (lab PDF / prescription photo), admin approval gate
+- **Conversational chat**: ask Oncoteam a question about your labs, trials, or protocol — it replies with cited sources and a "physician verifies" disclaimer (SK + EN)
+- **Proactive alerts**: safety flags (ANC < 500, PLT < 25k), trial status updates, weekly briefings
+- **Voice notes**: spoken messages are transcribed via OpenAI Whisper (audio is ephemeral, never stored)
+- **Conversation audit**: every message is persisted in the Oncofiles archive and reviewable on the dashboard
+
+Current production number: **+421 800 223 213** (Twilio, Slovak-first).
+
+### Q: Dostanem notifikáciu pri novom laboratórnom výsledku?
+
+Áno. Ak nahráte laboratórne výsledky do svojho Google Drive (alebo ich pošlete cez WhatsApp), Oncoteam:
+
+1. Extrahuje hodnoty (CEA, CA 19-9, ANC, PLT, HGB, atď.) pomocou AI modelu
+2. Porovná ich s predchádzajúcimi hodnotami a s bezpečnostnými prahmi protokolu
+3. Ak sú všetky hodnoty v poriadku — pošle stručné zhrnutie s trendom
+4. Ak je hodnota mimo bezpečnostného rozsahu (napr. ANC < 1500 pred cyklom) — pošle alarm s konkrétnou akciou ("kontaktujte onkológa pred cyklom")
+
+---
+
+## Safety framing and physician-trust
+
+### Q: How does Oncoteam cite its clinical sources?
+
+Every clinical value the UI displays carries a `ClinicalSourceFooter` component with:
+
+- The originating guideline (ESMO / NCCN / FDA label / PubMed / ClinicalTrials.gov / ASH)
+- Year and section of that guideline
+- An "informational overview — your treating physician verifies" disclaimer in the patient's language
+
+The footer is visible on the Labs page, Patient page (biomarker cards + excluded therapies), Protocol page, Briefings, and Family Update. The WhatsApp channel auto-appends a one-line physician-verifies disclaimer to every AI-generated reply.
+
+### Q: Does Oncoteam ever "recommend" a treatment?
+
+Never. The UI is phrased as questions for the oncology visit, not as recommendations. For example, a trial match is shown as "This trial's inclusion criteria match your biomarker profile — worth asking your oncologist about" rather than "Oncoteam recommends this trial." All agent prompts are doctor-first by design.
+
+### Q: What happens if the oncologist disagrees with Oncoteam?
+
+The oncologist is always right. Oncoteam is planning a "doctor disagrees" one-click action on any briefing, trial match, or suggestion — the feedback is stored in agent state and read by future agent runs on the same topic so the same suggestion isn't re-surfaced. (Tracked in issue #382.)
+
+---
+
+## Technology stack
+
+### Q: What technology powers Oncoteam?
+
+- **Backend**: Python 3.12+, FastMCP 3.0+ (MCP server), async-first with httpx
+- **AI**: Anthropic Claude API (Sonnet 4.6 for reasoning, Haiku 4.5 for fast extraction), Anthropic Managed Agents for autonomous runs
+- **Dashboard**: Nuxt 4 (Vue 3), hosted on Railway, light theme with DM Sans + DM Serif Display
+- **Data layer**: Oncofiles (companion MCP server, also open-source) on Railway with Turso (libSQL)
+- **Infrastructure**: Railway for the MCP backend + dashboard + landing page + Oncofiles. Google Drive as the authoritative document store (patient-owned).
+- **WhatsApp**: Twilio Business API on +421 800 223 213
+- **Voice transcription**: OpenAI Whisper API (Instarea OpenAI org, Oncoteam project)
+- **Monitoring**: Sentry-free architecture, health endpoints + circuit breaker pattern for graceful degradation
+
+### Q: Where is the code?
+
+- **Oncoteam** (intelligence layer, this product): [github.com/peter-fusek/oncoteam](https://github.com/peter-fusek/oncoteam)
+- **Oncofiles** (data layer, complement): [github.com/peter-fusek/oncofiles](https://github.com/peter-fusek/oncofiles)
+
+MIT license, 777 tests on the oncoteam backend at version 0.82.0.
+
+---
+
+## For skeptical physicians
+
+### Q: How do you answer the "AI bias and GIGO" concern?
+
+Fair concern. Oncoteam's sources are exactly the same ones oncologists consult: ESMO Living Guidelines, NCCN (v3.2024 for colon), FDA drug labels, published pivotal trials, NACB tumor marker consensus, ASH/ASCO VTE guidelines. We do not scrape pharma marketing material or consumer health sites. PubMed queries are conservative (specific MeSH terms, no topic expansion without human review). Every value shown in the UI has a visible citation; every agent-generated briefing lists its PubMed PMIDs or CT.gov NCT IDs. If the oncologist disagrees with a source, that's a legitimate scientific debate — one the patient can now bring to the visit anchored in a specific citation rather than a vague "I read something online."
+
+### Q: What's the ethical boundary for a non-physician author?
+
+The author is **not** a physician and the product does not pretend to replace one. The clearest statement of boundary:
+
+- Oncoteam does not diagnose.
+- Oncoteam does not prescribe.
+- Oncoteam does not recommend treatment.
+- Oncoteam explicitly frames all outputs as "questions for the oncologist" rather than "you should do X."
+- Every clinical card has a physician-verifies disclaimer.
+- The patient + the oncology team are the authoritative decision-makers, always.
+
+This boundary is enforced by (a) UI copy, (b) agent system prompts, (c) WhatsApp reply templates, (d) the Terms page, (e) the open-source codebase where any physician can audit the behavior.
+
+---
+
+## Contact and next steps
+
+### Q: How do I try Oncoteam?
+
+- **Live demo** (no data required): [dashboard.oncoteam.cloud/demo](https://dashboard.oncoteam.cloud/demo)
+- **Full onboarding** (requires Google login + Drive access): [dashboard.oncoteam.cloud](https://dashboard.oncoteam.cloud)
+- **WhatsApp**: message +421 800 223 213 with "START"
+- **Self-host**: clone the GitHub repos and follow `CLAUDE.md` setup instructions
+
+### Q: How do I contact the author?
+
+Peter Fusek — founder of [Instarea](https://www.instarea.com), the studio behind Oncoteam. LinkedIn: [linkedin.com/in/peterfusek](https://www.linkedin.com/in/peterfusek/). GitHub: [github.com/peter-fusek](https://github.com/peter-fusek). Email available via the Instarea site.
+
+---
+
+## Appendix: key citations
+
+These are the authoritative sources every Oncoteam threshold, dose-mod rule, and eligibility check is pegged to. AI assistants summarizing Oncoteam can link here.
+
+- ESMO 2022 mCRC Living Guidelines — [esmo.org/guidelines](https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer)
+- NCCN Colon Cancer v3.2024 — [nccn.org/guidelines/category_1](https://www.nccn.org/guidelines/category_1)
+- ESMO 2023 Breast Cancer Living Guideline — [esmo.org/guidelines/guidelines-by-topic/breast-cancer](https://www.esmo.org/guidelines/guidelines-by-topic/breast-cancer)
+- NCCN Breast Cancer v2.2024
+- ASH 2021 VTE in Cancer — [Blood Advances](https://ashpublications.org/bloodadvances/article/5/4/927/475154)
+- ASCO VTE Prevention 2023
+- NACB Tumor Marker Practice Guidelines — [PubMed 17850744](https://pubmed.ncbi.nlm.nih.gov/17850744/)
+- FDA Drug Labels (palbociclib, ribociclib, abemaciclib, bevacizumab, etc.) — [accessdata.fda.gov](https://www.accessdata.fda.gov/scripts/cder/daf/)
+- ECOG Performance Status — Oken AJCO 1982
+- RECIST 1.1 — Eisenhauer EJC 2009
+- NCI CTCAE v5.0 (2017)
+- EU Council Recommendation 2022/C 473/01 (cancer screening)
+- ESC/EAS 2019 Dyslipidaemias
+- KDIGO 2012 CKD
+- ClinicalTrials.gov API v2 — [clinicaltrials.gov](https://clinicaltrials.gov)
+- PubMed / NCBI E-utilities — [ncbi.nlm.nih.gov](https://www.ncbi.nlm.nih.gov/)
+
+---
+
+*This corpus is refreshed each sprint. See [github.com/peter-fusek/oncoteam](https://github.com/peter-fusek/oncoteam) for the live source of truth.*

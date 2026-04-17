@@ -62,7 +62,47 @@
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "Oncoteam",
-    "url": "https://oncoteam.cloud"
+    "url": "https://oncoteam.cloud",
+    "inLanguage": ["sk", "en"],
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://oncoteam.cloud/?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Instarea",
+    "url": "https://www.instarea.com",
+    "logo": "https://oncoteam.cloud/og-image.png",
+    "sameAs": [
+      "https://www.linkedin.com/company/instarea/",
+      "https://github.com/peter-fusek"
+    ],
+    "founder": {"@type": "Person", "name": "Peter Fusek"},
+    "foundingLocation": {"@type": "Place", "address": {"@type": "PostalAddress", "addressCountry": "SK"}},
+    "description": "Instarea is a Slovak product studio building AI tools for cancer patient advocacy (Oncoteam + Oncofiles) and related health-tech projects."
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Peter Fusek",
+    "jobTitle": "Founder, Instarea; creator of Oncoteam",
+    "url": "https://www.linkedin.com/in/peterfusek/",
+    "sameAs": [
+      "https://github.com/peter-fusek",
+      "https://www.linkedin.com/in/peterfusek/"
+    ],
+    "worksFor": {"@type": "Organization", "name": "Instarea", "url": "https://www.instarea.com"},
+    "knowsAbout": [
+      "cancer patient advocacy",
+      "AI health-tech",
+      "clinical trial search",
+      "lab trend analysis",
+      "metastatic colorectal cancer",
+      "breast cancer"
+    ]
   },
   {
     "@context": "https://schema.org",
