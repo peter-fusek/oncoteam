@@ -377,7 +377,7 @@ body {
 
 /* ── Story ───────────────────────────────────── */
 .story {
-  padding: 90px 0;
+  padding: 56px 0;
   background: var(--bg);
 }
 
@@ -416,7 +416,7 @@ body {
 
 /* ── Testimonial ────────────────────────────── */
 .testimonial {
-  padding: 80px 0;
+  padding: 48px 0 24px;
   background: var(--bg-alt);
 }
 
@@ -431,11 +431,21 @@ body {
   position: relative;
 }
 
-.testimonial-mark {
-  position: absolute;
-  top: 24px;
-  left: 32px;
+.testimonial-quote {
+  position: relative;
+}
+
+.testimonial-quote::before {
+  content: '\201C';
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 3.5rem;
   color: var(--primary);
+  opacity: 0.18;
+  position: absolute;
+  top: -24px;
+  left: -8px;
+  font-style: normal;
+  line-height: 1;
 }
 
 .testimonial-quote p {
@@ -445,6 +455,7 @@ body {
   font-style: italic;
   margin-bottom: 24px;
   padding-left: 4px;
+  position: relative;
 }
 
 .testimonial-author {
@@ -481,7 +492,7 @@ body {
 
 /* ── Manifesto ───────────────────────────────── */
 .manifesto {
-  padding: 64px 0;
+  padding: 40px 0 64px;
   background: var(--bg-alt);
   border-top: 1px solid var(--border-light);
 }
@@ -2557,8 +2568,9 @@ html[lang="sk"] .hiw-num::before {
   .journey-phases { grid-template-columns: 1fr; gap: 14px; margin-top: 28px; }
   .journey-phase { flex-direction: row; gap: 14px; text-align: left; justify-content: flex-start; }
   .journey-label { max-width: none; font-size: 0.88rem; }
-  .manifesto { padding: 48px 0; }
-  .testimonial { padding: 60px 0; }
+  .story { padding: 40px 0; }
+  .manifesto { padding: 32px 0 48px; }
+  .testimonial { padding: 36px 0 16px; }
   .testimonial-card { padding: 28px 24px; }
   .hiw-steps { flex-direction: column; align-items: center; gap: 8px; }
   .hiw-arrow { transform: rotate(90deg); padding-top: 0; }
