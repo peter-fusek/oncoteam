@@ -117,6 +117,36 @@ export const MEDICAL_DICTIONARY: DictionaryEntry[] = [
     unit: 'U/mL',
     referenceRange: '0–37',
   },
+  {
+    abbr: 'CA 15-3',
+    fullName: { sk: 'Karbohydrátový antigén 15-3', en: 'Carbohydrate Antigen 15-3' },
+    proDesc: {
+      sk: 'Primárny nádorový marker pre karcinóm prsníka. Koreluje s nádorovou záťažou a odpoveďou na liečbu v metastatickom štádiu. Nie je vhodný pre skorú diagnostiku.',
+      en: 'Primary tumor marker for breast carcinoma. Correlates with tumor burden and treatment response in metastatic setting. Not suitable for early diagnosis.',
+    },
+    laikDesc: {
+      sk: 'Látka v krvi, ktorú často produkuje nádor prsníka. Sledovanie trendu pomáha odhaliť, či liečba funguje alebo či ochorenie progreduje.',
+      en: 'A blood substance often produced by breast tumors. Trend monitoring helps tell if treatment is working or the disease is progressing.',
+    },
+    category: 'tumor_marker',
+    unit: 'U/mL',
+    referenceRange: '0–30',
+  },
+  {
+    abbr: 'CA 27-29',
+    fullName: { sk: 'Karbohydrátový antigén 27-29', en: 'Carbohydrate Antigen 27-29' },
+    proDesc: {
+      sk: 'Alternatívny marker pre karcinóm prsníka (podobný CA 15-3). Používa sa na sledovanie metastatického ochorenia.',
+      en: 'Alternative marker for breast carcinoma (similar to CA 15-3). Used for monitoring metastatic disease.',
+    },
+    laikDesc: {
+      sk: 'Podobne ako CA 15-3 — marker prsníkového karcinómu, sleduje sa trend počas liečby.',
+      en: 'Like CA 15-3 — a breast cancer marker used to track treatment trends.',
+    },
+    category: 'tumor_marker',
+    unit: 'U/mL',
+    referenceRange: '0–38',
+  },
 
   // ── Liver / Kidney ──
   {

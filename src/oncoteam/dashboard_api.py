@@ -1346,6 +1346,7 @@ async def _deduplicated_fetch(cache_key: str, fetcher) -> any:
 
 async def api_protocol(request: Request) -> JSONResponse:
     """GET /api/protocol — clinical protocol data (thresholds, milestones, dose mods)."""
+    from .breast_protocol import is_breast_patient, resolve_breast_protocol
     from .clinical_protocol import resolve_protocol
     from .general_health_protocol import resolve_general_health_protocol
     from .patient_context import is_general_health_patient
@@ -1364,6 +1365,8 @@ async def api_protocol(request: Request) -> JSONResponse:
     patient = _get_patient_for_request(request)
     if is_general_health_patient(patient):
         data = resolve_general_health_protocol(lang)
+    elif is_breast_patient(patient.diagnosis_code):
+        data = resolve_breast_protocol(lang)
     else:
         data = resolve_protocol(lang)
 
@@ -2144,7 +2147,7 @@ async def api_labs(request: Request) -> JSONResponse:
 
         # Outlier detection: flag entries with >90% single-reading change
         # (e.g., CEA 1559→6 is medically impossible in 1 week)
-        outlier_params = {"CEA", "CA_19_9"}
+        outlier_params = {"CEA", "CA_19_9", "CA_15_3", "CA_27_29"}
         for i, entry in enumerate(entries):
             suspects: list[dict] = []
             prev = entries[i + 1] if i + 1 < len(entries) else None
@@ -3053,8 +3056,25 @@ async def api_weight(request: Request) -> JSONResponse:
         )
 
 
+def _find_cumulative_dose_drug(pt) -> str | None:
+    """Return the first drug in the patient's active_therapies that has
+    a cumulative-dose threshold defined. None if no such drug is active
+    (e.g. CDK4/6-based breast regimens — cumulative limits N/A)."""
+    known_drugs = {k.lower() for k in CUMULATIVE_DOSE_THRESHOLDS}
+    for therapy in pt.active_therapies:
+        for drug in therapy.get("drugs", []):
+            name = str(drug.get("name", "")).lower().split()[0] if drug.get("name") else ""
+            if name in known_drugs:
+                return name
+    return None
+
+
 async def api_cumulative_dose(request: Request) -> JSONResponse:
-    """GET /api/cumulative-dose — cumulative oxaliplatin dose tracking."""
+    """GET /api/cumulative-dose — cumulative dose tracking keyed on the
+    active regimen's primary drug. For regimens without cumulative-dose
+    limits (e.g. CDK4/6 + AI for HR+/HER2- metastatic breast), returns
+    applicable=false with a clear reason rather than hardcoding oxaliplatin.
+    """
     cb_resp = _circuit_breaker_503({"entries": [], "total": 0})
     if cb_resp:
         return cb_resp
@@ -3063,13 +3083,29 @@ async def api_cumulative_dose(request: Request) -> JSONResponse:
     patient_id = _get_patient_id(request)
     token = _get_token_for_patient(patient_id)
     cycle = pt.current_cycle or 2
-    oxa = resolve(CUMULATIVE_DOSE_THRESHOLDS["oxaliplatin"], lang)
+
+    drug_name = _find_cumulative_dose_drug(pt)
+    if drug_name is None:
+        return _cors_json(
+            {
+                "drug": None,
+                "applicable": False,
+                "reason": (
+                    "No cumulative-dose drug in active regimen "
+                    "(CDK4/6, endocrine, and monoclonal therapies have no cumulative thresholds)"
+                ),
+                "cycles_counted": cycle,
+                "data_source": "n/a",
+            }
+        )
+
+    drug_cfg = resolve(CUMULATIVE_DOSE_THRESHOLDS[drug_name], lang)
 
     # Resolve per-cycle dose from patient profile (fallback)
-    dose_per_cycle_fallback = oxa["dose_per_cycle"]
+    dose_per_cycle_fallback = drug_cfg["dose_per_cycle"]
     for therapy in pt.active_therapies:
         for drug in therapy.get("drugs", []):
-            if drug.get("name", "").lower() == "oxaliplatin":
+            if drug.get("name", "").lower().startswith(drug_name):
                 with contextlib.suppress(ValueError, IndexError, KeyError):
                     dose_per_cycle_fallback = float(drug["dose"].split()[0])
 
@@ -3092,14 +3128,14 @@ async def api_cumulative_dose(request: Request) -> JSONResponse:
             if not isinstance(raw_meta, dict):
                 continue
             for drug in raw_meta.get("drugs", []):
-                if str(drug.get("name", "")).lower() == "oxaliplatin":
-                    oxa_dose = drug.get("dose_mg_m2")
-                    if oxa_dose is not None:
+                if str(drug.get("name", "")).lower().startswith(drug_name):
+                    drug_dose = drug.get("dose_mg_m2")
+                    if drug_dose is not None:
                         with contextlib.suppress(ValueError, TypeError):
                             cycles_detail.append(
                                 {
                                     "cycle": raw_meta.get("cycle"),
-                                    "dose_mg_m2": float(oxa_dose),
+                                    "dose_mg_m2": float(drug_dose),
                                     "date": entry.get("event_date", ""),
                                     "reduction_pct": drug.get("dose_reduction_pct", 0),
                                 }
@@ -3120,15 +3156,16 @@ async def api_cumulative_dose(request: Request) -> JSONResponse:
     cycles_counted = len(cycles_detail) if cycles_detail else cycle
     data_source = "extracted" if cycles_detail else "calculated"
 
-    thresholds_reached = [t for t in oxa["thresholds"] if cumulative >= t["at"]]
-    thresholds_upcoming = [t for t in oxa["thresholds"] if cumulative < t["at"]]
+    thresholds_reached = [t for t in drug_cfg["thresholds"] if cumulative >= t["at"]]
+    thresholds_upcoming = [t for t in drug_cfg["thresholds"] if cumulative < t["at"]]
     next_threshold = thresholds_upcoming[0] if thresholds_upcoming else None
     pct_to_next = round((cumulative / next_threshold["at"]) * 100, 1) if next_threshold else 100.0
 
     return _cors_json(
         {
-            "drug": "oxaliplatin",
-            "unit": oxa["unit"],
+            "drug": drug_name,
+            "applicable": True,
+            "unit": drug_cfg["unit"],
             "dose_per_cycle": dose_per_cycle,
             "cycles_counted": cycles_counted,
             "cumulative_mg_m2": cumulative,
@@ -3137,8 +3174,8 @@ async def api_cumulative_dose(request: Request) -> JSONResponse:
             "thresholds_reached": thresholds_reached,
             "next_threshold": next_threshold,
             "pct_to_next": pct_to_next,
-            "all_thresholds": oxa["thresholds"],
-            "max_recommended": oxa["thresholds"][-1]["at"],
+            "all_thresholds": drug_cfg["thresholds"],
+            "max_recommended": drug_cfg["thresholds"][-1]["at"],
         }
     )
 

@@ -3,7 +3,7 @@ const { fetchApi } = useOncoteamApi()
 const { activeRole } = useUserRole()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
-const { isOncology, setDiagnosisCode } = usePatientType()
+const { isOncology, cancerType, setDiagnosisCode } = usePatientType()
 const { activePatientId } = useActivePatient()
 
 // Client-only fetches — server:false prevents SSR from attempting these calls,
@@ -126,12 +126,20 @@ const upcomingEvents = computed(() => {
     .slice(0, 5)
 })
 
-const ONCOLOGY_KEY_PARAMS = [
+const ONCOLOGY_BASE_PARAMS = [
   { key: 'ANC', label: 'ANC', unit: '/\u00b5L' },
   { key: 'PLT', label: 'PLT', unit: '/\u00b5L' },
   { key: 'hemoglobin', label: 'HGB', unit: 'g/dL' },
+]
+
+const COLORECTAL_TUMOR_PARAMS = [
   { key: 'CEA', label: 'CEA', unit: 'ng/mL' },
   { key: 'CA_19_9', label: 'CA 19-9', unit: 'U/mL' },
+]
+
+const BREAST_TUMOR_PARAMS = [
+  { key: 'CA_15_3', label: 'CA 15-3', unit: 'U/mL' },
+  { key: 'CEA', label: 'CEA', unit: 'ng/mL' },
 ]
 
 const GENERAL_KEY_PARAMS = [
@@ -142,7 +150,11 @@ const GENERAL_KEY_PARAMS = [
   { key: 'creatinine', label: 'Creat', unit: '\u00b5mol/L' },
 ]
 
-const KEY_PARAMS = computed(() => isOncology.value ? ONCOLOGY_KEY_PARAMS : GENERAL_KEY_PARAMS)
+const KEY_PARAMS = computed(() => {
+  if (!isOncology.value) return GENERAL_KEY_PARAMS
+  const tumor = cancerType.value === 'breast' ? BREAST_TUMOR_PARAMS : COLORECTAL_TUMOR_PARAMS
+  return [...ONCOLOGY_BASE_PARAMS, ...tumor]
+})
 
 // Update patient type cache when patient data arrives
 watch(patient, (p) => {

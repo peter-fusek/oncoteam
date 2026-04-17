@@ -2,7 +2,7 @@
 const { fetchApi, postApi } = useOncoteamApi()
 const { formatDate } = useFormatDate()
 const { t } = useI18n()
-const { isOncology } = usePatientType()
+const { isOncology, cancerType } = usePatientType()
 
 const { data: labs, status: labsStatus, error: labsError, refresh } = fetchApi<{
   entries: Array<{
@@ -61,16 +61,29 @@ interface LabCategory {
   params: LabParam[]
 }
 
-const oncologyCategories: LabCategory[] = [
+const colorectalTumorMarkers: LabParam[] = [
+  { key: 'CEA', label: 'CEA', color: '#d97706', unit: 'ng/mL', healthDirection: 'lower_is_better' },
+  { key: 'CA_19_9', label: 'CA 19-9', color: '#7c3aed', unit: 'U/mL', healthDirection: 'lower_is_better' },
+]
+
+const breastTumorMarkers: LabParam[] = [
+  { key: 'CA_15_3', label: 'CA 15-3', color: '#d97706', unit: 'U/mL', healthDirection: 'lower_is_better' },
+  { key: 'CA_27_29', label: 'CA 27-29', color: '#7c3aed', unit: 'U/mL', healthDirection: 'lower_is_better' },
+  { key: 'CEA', label: 'CEA', color: '#b45309', unit: 'ng/mL', healthDirection: 'lower_is_better' },
+]
+
+const tumorMarkersByCancer = (ct: string): LabParam[] => {
+  if (ct === 'breast') return breastTumorMarkers
+  return colorectalTumorMarkers
+}
+
+const oncologyCategories = computed<LabCategory[]>(() => [
   {
     id: 'tumor_markers',
     label: 'Tumor Markers',
     icon: 'i-lucide-target',
     color: 'text-amber-600',
-    params: [
-      { key: 'CEA', label: 'CEA', color: '#d97706', unit: 'ng/mL', healthDirection: 'lower_is_better' },
-      { key: 'CA_19_9', label: 'CA 19-9', color: '#7c3aed', unit: 'U/mL', healthDirection: 'lower_is_better' },
-    ],
+    params: tumorMarkersByCancer(cancerType.value),
   },
   {
     id: 'hematology',
@@ -107,7 +120,7 @@ const oncologyCategories: LabCategory[] = [
       { key: 'NE_LY_RATIO', label: 'Ne/Ly', color: '#57534e', unit: '', healthDirection: 'lower_is_better' },
     ],
   },
-]
+])
 
 const generalHealthCategories: LabCategory[] = [
   {
@@ -169,12 +182,16 @@ const generalHealthCategories: LabCategory[] = [
   },
 ]
 
-const categories = computed(() => isOncology.value ? oncologyCategories : generalHealthCategories)
+const categories = computed(() => isOncology.value ? oncologyCategories.value : generalHealthCategories)
 const allLabParams = computed(() => categories.value.flatMap(c => c.params))
-const rookieKeys = computed(() => isOncology.value
-  ? new Set(['CEA', 'CA_19_9', 'ANC', 'PLT', 'WBC', 'hemoglobin'])
-  : new Set(['glucose_fasting', 'cholesterol_total', 'TSH', 'hemoglobin', 'creatinine']),
-)
+const rookieKeys = computed(() => {
+  if (!isOncology.value) {
+    return new Set(['glucose_fasting', 'cholesterol_total', 'TSH', 'hemoglobin', 'creatinine'])
+  }
+  const hematology = ['ANC', 'PLT', 'WBC', 'hemoglobin']
+  if (cancerType.value === 'breast') return new Set(['CA_15_3', 'CEA', ...hematology])
+  return new Set(['CEA', 'CA_19_9', ...hematology])
+})
 
 const labParams = computed(() => {
   if (proMode.value) return allLabParams.value

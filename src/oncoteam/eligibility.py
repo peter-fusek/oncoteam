@@ -29,6 +29,29 @@ _CHEMO_NAMES = {
     "fluorouracil",
     "capecitabine",
 }
+# Breast-specific drug groups (ESMO 2023 / NCCN Breast v2.2024 / FDA labels)
+_PARP_INHIBITORS = {"olaparib", "talazoparib", "rucaparib", "niraparib"}
+_CDK46_INHIBITORS = {"palbociclib", "ribociclib", "abemaciclib"}
+_PI3K_INHIBITORS = {"alpelisib", "inavolisib"}
+_AKT_INHIBITORS = {"capivasertib"}
+_MTOR_INHIBITORS = {"everolimus"}
+_AROMATASE_INHIBITORS = {"letrozole", "anastrozole", "exemestane"}
+_SERD = {"fulvestrant", "elacestrant", "camizestrant"}
+_ADC_BREAST = {
+    "sacituzumab",
+    "trastuzumab deruxtecan",
+    "t-dxd",
+    "trastuzumab emtansine",
+    "t-dm1",
+}
+
+
+def _is_breast_patient(patient: PatientProfile | None) -> bool:
+    """True if patient's diagnosis code indicates breast primary (C50.*)."""
+    if patient is None or not patient.diagnosis_code:
+        return False
+    return patient.diagnosis_code.upper().startswith("C50")
+
 
 # --- Research relevance scoring ---
 
@@ -69,6 +92,38 @@ _MEDIUM_RELEVANCE_PATTERNS: list[re.Pattern[str]] = [
     ]
 ]
 
+# Breast-specific high/medium relevance patterns.
+# source: ESMO 2023 Breast Cancer Living Guideline §7; NCCN Breast v2.2024.
+_BREAST_HIGH_RELEVANCE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(p, re.IGNORECASE)
+    for p in [
+        r"breast\s*(?:cancer|carcinoma)",
+        r"mbc|metastatic\s*breast",
+        r"hr[+\s-]*(?:positive)?",
+        r"her2[-\s]*(?:low|negative|positive)",
+        r"\bcdk4/6\b|cdk4/?6",
+        r"aromatase\s*inhibitor",
+        r"fulvestrant|letrozole|anastrozole|exemestane",
+        r"palbociclib|ribociclib|abemaciclib",
+        r"pi?k?3ca\s*mutat",
+        r"brca1|brca2|gbrca",
+        r"tnbc|triple[- ]negative",
+    ]
+]
+
+_BREAST_MEDIUM_RELEVANCE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(p, re.IGNORECASE)
+    for p in [
+        r"bone\s*met",
+        r"bisphosphon|denosumab|zoledron",
+        r"hormone\s*(?:receptor|therapy)",
+        r"endocrine\s*therap",
+        r"antibody[- ]drug\s*conjugate|adc",
+        r"sacituzumab|trastuzumab\s*deruxtecan|t-dxd",
+        r"menopaus|goserelin",
+    ]
+]
+
 
 @dataclass
 class ResearchRelevance:
@@ -91,6 +146,9 @@ def assess_research_relevance(
     """
     text = (title + " " + (summary or "")).lower()
     words = set(re.findall(r"[a-z][a-z0-9-]+", text))
+
+    if _is_breast_patient(patient):
+        return _assess_breast_relevance(text, words, patient)
 
     kras_val = (patient.biomarkers.get("KRAS", "") if patient else "G12S") or "mutant"
     her2_val = (patient.biomarkers.get("HER2", "") if patient else "negative") or "negative"
@@ -179,7 +237,15 @@ def check_eligibility(
     trial: ClinicalTrial,
     patient: PatientProfile,
 ) -> EligibilityResult:
-    """Check trial eligibility against patient's molecular and clinical profile."""
+    """Check trial eligibility against patient's molecular and clinical profile.
+
+    Applies tumor-type-specific rules: breast (C50.*) uses the breast rule set
+    (ER/PR/HER2/BRCA/PIK3CA), colorectal/default uses the KRAS/NRAS/BRAF/MSI
+    rule set. Rules from `reference_clinical-protocol-sources.md`.
+    """
+    if _is_breast_patient(patient):
+        return _check_breast_eligibility(trial, patient)
+
     flags: list[EligibilityFlag] = []
     warnings: list[str] = []
     drugs = _drugs_in_trial(trial)
@@ -285,6 +351,212 @@ def check_eligibility(
     eligible = not excluded
 
     # Build summary
+    if not flags and not warnings:
+        summary = f"No biomarker contraindications found for {trial.nct_id}."
+    else:
+        parts = []
+        if excluded:
+            excl = [f for f in flags if f.status == "excluded"]
+            parts.append(f"{len(excl)} exclusion(s): " + "; ".join(f.reason for f in excl))
+        warn_flags = [f for f in flags if f.status == "warning"]
+        if warn_flags or warnings:
+            parts.append(f"{len(warn_flags) + len(warnings)} warning(s)")
+        summary = ". ".join(parts)
+
+    return EligibilityResult(
+        nct_id=trial.nct_id,
+        eligible=eligible,
+        flags=flags,
+        warnings=warnings,
+        summary=summary,
+    )
+
+
+# ── Breast-specific helpers (C50.*) ──────────────────────────────────
+# source: ESMO 2023 Breast Cancer Living Guideline §7; NCCN Breast v2.2024;
+# FDA drug labels for each targeted agent.
+
+
+def _assess_breast_relevance(
+    text: str,
+    words: set[str],
+    patient: PatientProfile | None,
+) -> ResearchRelevance:
+    """Relevance for breast-cancer patients. Flags false-hope cases based on
+    actual biomarker status (HER2, HR, BRCA, PIK3CA) rather than mCRC defaults.
+    """
+    biomarkers = patient.biomarkers if patient else {}
+    her2_val = (biomarkers.get("HER2", "") or "").lower()
+    hr_val = (biomarkers.get("HR", "") or "").lower()
+    er_val = (biomarkers.get("ER", "") or "").lower()
+    brca1 = (biomarkers.get("BRCA1", "") or "").lower()
+    brca2 = (biomarkers.get("BRCA2", "") or "").lower()
+    pik3ca = (biomarkers.get("PIK3CA", "") or "").lower()
+
+    her2_negative = "negative" in her2_val
+    hr_positive = "positive" in hr_val or "positive" in er_val
+    brca_mut = any(
+        v and v not in {"unknown", "wild-type", "wt", "negative"} for v in [brca1, brca2]
+    )
+    pik3ca_mut = bool(pik3ca and pik3ca not in {"unknown", "wild-type", "wt", "negative"})
+
+    # False-hope: trastuzumab-only trials for HER2-negative (T-DXd HER2-low allowed)
+    her2_matched = _HER2_TARGETED & words
+    if her2_matched and her2_negative:
+        her2_low_trial = "her2-low" in text or "her2 low" in text or "low her2" in text
+        if not her2_low_trial and not ({"trastuzumab deruxtecan", "t-dxd"} & her2_matched):
+            return ResearchRelevance(
+                score="not_applicable",
+                reason=f"HER2-targeted therapy — patient HER2 {her2_val or 'negative'}",
+            )
+
+    # PARP inhibitor: only relevant if BRCA-mutated
+    parp_matched = _PARP_INHIBITORS & words
+    if parp_matched and not brca_mut:
+        brca_status = brca1 or brca2 or "unknown"
+        return ResearchRelevance(
+            score="medium",
+            reason=f"PARP inhibitor — BRCA status {brca_status}, confirm before eligibility",
+        )
+
+    # Alpelisib / inavolisib: PIK3CA-mutant only
+    pi3k_matched = _PI3K_INHIBITORS & words
+    if pi3k_matched and not pik3ca_mut:
+        return ResearchRelevance(
+            score="medium",
+            reason="PI3K inhibitor — confirm PIK3CA mutation status before eligibility",
+        )
+
+    # High relevance: breast-specific patterns
+    for pattern in _BREAST_HIGH_RELEVANCE_PATTERNS:
+        if pattern.search(text):
+            return ResearchRelevance(
+                score="high",
+                reason=f"Matches breast profile: {pattern.pattern}",
+            )
+
+    # CDK4/6 is high relevance for HR+
+    if hr_positive and _CDK46_INHIBITORS & words:
+        return ResearchRelevance(
+            score="high",
+            reason="CDK4/6 inhibitor — HR+ breast cancer",
+        )
+
+    # Medium relevance: bone mets / endocrine / ADC
+    for pattern in _BREAST_MEDIUM_RELEVANCE_PATTERNS:
+        if pattern.search(text):
+            return ResearchRelevance(
+                score="medium",
+                reason=f"Related to breast-patient care: {pattern.pattern}",
+            )
+
+    return ResearchRelevance(
+        score="low",
+        reason="No specific match to breast-cancer biomarkers or treatment",
+    )
+
+
+def _check_breast_eligibility(
+    trial: ClinicalTrial,
+    patient: PatientProfile,
+) -> EligibilityResult:
+    """Breast-specific trial eligibility: HER2, HR, BRCA, PIK3CA."""
+    flags: list[EligibilityFlag] = []
+    warnings: list[str] = []
+    drugs = _drugs_in_trial(trial)
+    text = " ".join(trial.interventions) + " " + trial.eligibility_criteria
+
+    biomarkers = patient.biomarkers
+    her2_val = (biomarkers.get("HER2", "") or "").lower()
+    hr_val = (biomarkers.get("HR", "") or "").lower()
+    er_val = (biomarkers.get("ER", "") or "").lower()
+    brca1 = (biomarkers.get("BRCA1", "") or "").lower()
+    brca2 = (biomarkers.get("BRCA2", "") or "").lower()
+    pik3ca = (biomarkers.get("PIK3CA", "") or "").lower()
+
+    her2_negative = "negative" in her2_val
+    hr_positive = "positive" in hr_val or "positive" in er_val
+    brca_mut = any(
+        v and v not in {"unknown", "wild-type", "wt", "negative"} for v in [brca1, brca2]
+    )
+    pik3ca_mut = bool(pik3ca and pik3ca not in {"unknown", "wild-type", "wt", "negative"})
+
+    # Rule B1: HER2-targeted therapy requires HER2+ (or HER2-low for T-DXd)
+    matched = _HER2_TARGETED & drugs
+    if matched and her2_negative:
+        is_tdxd = bool(matched & {"trastuzumab deruxtecan", "t-dxd"})
+        her2_low_trial = "her2-low" in text.lower() or "her2 low" in text.lower()
+        if not (is_tdxd and her2_low_trial):
+            flags.append(
+                EligibilityFlag(
+                    rule="HER2_negative",
+                    status="excluded",
+                    reason=(
+                        f"HER2-targeted therapy ({_fmt(matched)}) not indicated — "
+                        f"HER2 {her2_val or 'negative'}"
+                    ),
+                )
+            )
+
+    # Rule B2: PARP inhibitors require BRCA mutation
+    matched = _PARP_INHIBITORS & drugs
+    if matched and not brca_mut:
+        brca_status = brca1 or brca2 or "unknown"
+        flags.append(
+            EligibilityFlag(
+                rule="BRCA_PARP",
+                status="warning" if brca_status == "unknown" else "excluded",
+                reason=(
+                    f"PARP inhibitor ({_fmt(matched)}) requires BRCA1/2 mutation — "
+                    f"patient BRCA status: {brca_status}"
+                ),
+            )
+        )
+
+    # Rule B3: PI3K inhibitors require PIK3CA mutation
+    matched = _PI3K_INHIBITORS & drugs
+    if matched and not pik3ca_mut:
+        pik3ca_status = pik3ca or "unknown"
+        flags.append(
+            EligibilityFlag(
+                rule="PIK3CA_PI3K",
+                status="warning" if pik3ca_status == "unknown" else "excluded",
+                reason=(
+                    f"PI3K inhibitor ({_fmt(matched)}) requires PIK3CA mutation — "
+                    f"status: {pik3ca_status}"
+                ),
+            )
+        )
+
+    # Rule B4: CDK4/6 — informational (ribociclib QTc warning per FDA label)
+    matched = _CDK46_INHIBITORS & drugs
+    if matched and "ribociclib" in matched:
+        warnings.append("Ribociclib: baseline + month 1 ECG required (FDA label §5.3)")
+
+    # Rule B5: Active VTE + any monoclonal antibody — caution
+    has_vte = any("thrombosis" in c.lower() or "vte" in c.lower() for c in patient.comorbidities)
+    if has_vte and (drugs & _BEVACIZUMAB):
+        flags.append(
+            EligibilityFlag(
+                rule="VTE_bevacizumab",
+                status="warning",
+                reason="Bevacizumab HIGH RISK — active VTE (rare in breast protocols)",
+            )
+        )
+
+    # Rule B6: HR-negative / triple-negative patient with endocrine therapy
+    if not hr_positive and (drugs & (_AROMATASE_INHIBITORS | _SERD | _CDK46_INHIBITORS)):
+        flags.append(
+            EligibilityFlag(
+                rule="HR_negative_endocrine",
+                status="excluded",
+                reason=(f"Endocrine therapy requires HR+ — patient HR {hr_val or 'negative'}"),
+            )
+        )
+
+    excluded = any(f.status == "excluded" for f in flags)
+    eligible = not excluded
+
     if not flags and not warnings:
         summary = f"No biomarker contraindications found for {trial.nct_id}."
     else:

@@ -47,7 +47,11 @@ DOSE_MODIFICATION_RULES: dict[str, dict] = {
     ),
 }
 
-# Pre-cycle lab safety thresholds
+# Pre-cycle lab safety thresholds.
+# source: NCCN Colon Cancer v3.2024 §TOX-1; ESMO 2022 mCRC Living Guidelines §4.3;
+# ASCO VTE 2023 (PLT threshold under LMWH); ASH 2021 VTE in Cancer.
+# Full per-value source metadata lives in memory/reference_clinical-protocol-sources.md.
+# See issue #382 for the inline-structured-sources roll-out.
 LAB_SAFETY_THRESHOLDS: dict[str, dict] = {
     "ANC": {"min": 1500, "unit": "/uL", "action": "hold_chemo"},
     "PLT": {"min": 75000, "unit": "/uL", "action": "hold_chemo"},
@@ -209,6 +213,8 @@ LAB_REFERENCE_RANGES: dict[str, dict] = {
     "bilirubin": {"min": 0.1, "max": 1.2, "unit": "mg/dL"},
     "CEA": {"min": 0, "max": 5.0, "unit": "ng/mL", "note": "non-smoker ULN"},
     "CA_19_9": {"min": 0, "max": 37.0, "unit": "U/mL"},
+    "CA_15_3": {"min": 0, "max": 30.0, "unit": "U/mL", "note": "breast — ESMO"},
+    "CA_27_29": {"min": 0, "max": 38.0, "unit": "U/mL", "note": "breast — ESMO alt"},
     "WBC": {"min": 4.5, "max": 11.0, "unit": "×10³/µL"},
     "ABS_LYMPH": {"min": 1000, "max": 4800, "unit": "/µL"},
     "SII": {"min": 0, "max": 1800, "unit": "", "note": "systemic immune-inflammation index"},
@@ -221,6 +227,8 @@ LAB_REFERENCE_RANGES: dict[str, dict] = {
 PARAMETER_HEALTH_DIRECTION: dict[str, str] = {
     "CEA": "lower_is_better",
     "CA_19_9": "lower_is_better",
+    "CA_15_3": "lower_is_better",
+    "CA_27_29": "lower_is_better",
     "ANC": "higher_is_better",
     "PLT": "in_range",  # both too high and too low are bad
     "hemoglobin": "higher_is_better",

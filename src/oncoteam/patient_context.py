@@ -235,7 +235,12 @@ PATIENT_SGU = PatientProfile(
     staging="Stage IIB (initial), currently metastatic (skeletal)",
     biomarkers={
         "HR": "positive",
+        "ER": "positive",
+        "PR": "positive",
         "HER2": "negative",
+        "Ki-67": "unknown — ask at next onco session",
+        "BRCA1": "unknown",
+        "BRCA2": "unknown",
     },
     excluded_therapies={
         "anti-HER2 (trastuzumab, pertuzumab)": "HER2 negative",
@@ -726,6 +731,9 @@ _BIOMARKER_PATTERNS: dict[str, list[re.Pattern]] = {
     "MSI": [re.compile(r"MSI[^:]*:\s*(MSI[\s-]*H|MSS|MSI[\s-]*L|stable|high|low)", re.I)],
     "MMR": [re.compile(r"MMR[^:]*:\s*(deficient|proficient|dMMR|pMMR)", re.I)],
     "TMB": [re.compile(r"TMB[^:]*:\s*(\d+\.?\d*\s*mut/Mb|high|low|intermediate)", re.I)],
+    "ER": [re.compile(r"\bER[^:]*:\s*(positive|negative|\d+\s*%)", re.I)],
+    "PR": [re.compile(r"\bPR[^:]*:\s*(positive|negative|\d+\s*%)", re.I)],
+    "Ki-67": [re.compile(r"Ki[\s-]*67[^:]*:\s*(\d+\s*%|high|low|intermediate)", re.I)],
 }
 
 

@@ -116,8 +116,14 @@ const biomarkerDisplay = computed(() => {
     KRAS: 'Treatment driver mutation',
     NRAS: '',
     BRAF_V600E: '',
-    HER2: '',
+    HER2: 'HER2-targeted therapy eligibility',
     MSI: 'Immunotherapy eligibility marker',
+    ER: 'Hormone therapy eligibility (estrogen receptor)',
+    PR: 'Hormone therapy eligibility (progesterone receptor)',
+    HR: 'Hormone receptor combined status',
+    'Ki-67': 'Proliferation index — higher = more aggressive',
+    BRCA1: 'PARP inhibitor eligibility (germline)',
+    BRCA2: 'PARP inhibitor eligibility (germline)',
   }
   return Object.entries(patient.value.biomarkers)
     .filter(([key]) => !key.startsWith('anti_') && !key.startsWith('KRAS_G12C'))
@@ -164,6 +170,30 @@ const activeTherapies = computed(() =>
 const plannedTherapies = computed(() =>
   (patient.value?.active_therapies ?? []).filter(t => t.status === 'planned' || t.status === 'plánovaná')
 )
+
+// Bone-health card: shown when the patient has skeletal/bone metastases (ICD-10 C79.5/C79.51
+// or free-text "skelet"/"bone"/"kost"). Source: ESMO-EANM-ESTRO Bone Health 2020; ASCO 2022.
+const hasBoneMets = computed(() => {
+  const text = [
+    patient.value?.diagnosis_code || '',
+    patient.value?.diagnosis_description || '',
+    ...(patient.value?.metastases || []),
+  ].join(' ').toLowerCase()
+  return /c79\.?5|skelet|\bbone\b|\bkost/i.test(text)
+})
+
+const boneHealthDrugs = computed(() => {
+  const drugs: Array<{ name: string; dose: string; lay: string }> = []
+  for (const therapy of (patient.value?.active_therapies || [])) {
+    for (const d of (therapy.drugs || [])) {
+      const n = (d.name || '').toLowerCase()
+      if (n.includes('denosumab') || n.includes('zoledron') || n.includes('pamidron') || n.includes('bisphosphon')) {
+        drugs.push({ name: d.name, dose: d.dose || '', lay: d.lay || '' })
+      }
+    }
+  }
+  return drugs
+})
 
 // Toggle between lay and medical explanations
 const showMedical = ref(false)
@@ -216,6 +246,13 @@ const abbreviations: Record<string, string> = {
   VTE: 'Venous thromboembolism',
   VEGF: 'Vascular endothelial growth factor',
   DPD: 'Dihydropyrimidine dehydrogenase',
+  ER: 'Estrogen receptor',
+  PR: 'Progesterone receptor',
+  HR: 'Hormone receptor (ER and/or PR)',
+  'Ki-67': 'Proliferation index (fraction of dividing tumor cells)',
+  BRCA1: 'Breast cancer type 1 susceptibility gene',
+  BRCA2: 'Breast cancer type 2 susceptibility gene',
+  CDK46: 'Cyclin-dependent kinase 4/6',
 }
 </script>
 
@@ -441,6 +478,54 @@ const abbreviations: Record<string, string> = {
           @click="drilldown.open({ type: 'protocol_section', id: `safety-${id}`, label: String(id).replace(/_/g, ' '), data: { flag: String(id), rule: flag.rule, source: flag.source, severity: flag.rule.includes('NEVER') ? 'critical' : 'warning' } })"
         >
           <SafetyFlag :id="String(id)" :rule="flag.rule" :source="flag.source" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Bone Health (conditional on C79.* / skeletal metastases) -->
+    <div v-if="isOncology && hasBoneMets">
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">
+        {{ $t('patient.boneHealth', 'Bone Health') }}
+      </h2>
+      <div class="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+        <div class="flex items-start gap-3">
+          <UIcon name="i-lucide-bone" class="w-5 h-5 text-amber-600 mt-0.5" />
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900">
+              {{ $t('patient.boneHealthTitle', 'Skeletal metastases — bone-protective therapy recommended') }}
+            </div>
+            <div class="text-xs text-gray-500 mt-1">
+              {{ $t('patient.boneHealthNote', 'ESMO-EANM-ESTRO 2020; ASCO 2022 — bisphosphonate/denosumab + calcium + vitamin D') }}
+            </div>
+          </div>
+        </div>
+        <div v-if="boneHealthDrugs.length" class="space-y-1">
+          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            {{ $t('patient.currentBoneTherapy', 'Current bone-protective therapy') }}
+          </div>
+          <div v-for="d in boneHealthDrugs" :key="d.name" class="flex items-center gap-2 text-sm text-gray-700">
+            <UIcon name="i-lucide-pill" class="w-4 h-4 text-emerald-600" />
+            <span class="font-medium">{{ d.name }}</span>
+            <span v-if="d.dose" class="text-gray-500">{{ d.dose }}</span>
+            <span v-if="d.lay" class="text-xs text-gray-400">— {{ d.lay }}</span>
+          </div>
+        </div>
+        <div v-else class="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 border border-amber-200">
+          <UIcon name="i-lucide-alert-triangle" class="w-4 h-4 inline mr-1" />
+          {{ $t('patient.boneHealthMissing', 'No bisphosphonate or denosumab found in active therapies — question for oncologist.') }}
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+          <div class="text-xs text-gray-500">
+            <div class="font-medium text-gray-700">{{ $t('patient.dexaCheck', 'DEXA baseline + annual') }}</div>
+            <div>{{ $t('patient.dexaNote', 'Track fracture risk') }}</div>
+          </div>
+          <div class="text-xs text-gray-500">
+            <div class="font-medium text-gray-700">{{ $t('patient.calciumVitD', 'Calcium + Vitamin D') }}</div>
+            <div>{{ $t('patient.calciumVitDNote', 'Daily supplementation with AI or denosumab') }}</div>
+          </div>
+        </div>
+        <div class="text-[11px] text-gray-400 pt-2 border-t border-gray-100">
+          {{ $t('common.informationalDisclaimer', 'Informational overview — to be verified by the treating physician.') }}
         </div>
       </div>
     </div>

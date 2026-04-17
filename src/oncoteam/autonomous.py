@@ -9,6 +9,15 @@ from datetime import UTC, datetime
 
 from . import clinicaltrials_client, oncofiles_client, pubmed_client
 from .activity_logger import log_to_diary, record_suppressed_error
+from .breast_protocol import (
+    BREAST_DOSE_MODIFICATION_RULES,
+    BREAST_LAB_SAFETY_THRESHOLDS,
+    BREAST_REGIMENS,
+    BREAST_SAFETY_FLAGS,
+    BREAST_SECOND_LINE_OPTIONS,
+    BREAST_TREATMENT_MILESTONES,
+    BREAST_WATCHED_TRIALS,
+)
 from .clinical_protocol import (
     DOSE_MODIFICATION_RULES,
     LAB_SAFETY_THRESHOLDS,
@@ -66,6 +75,9 @@ def build_system_prompt(patient_id: str = "q1b") -> str:
     if is_general_health_patient(patient):
         return _build_general_health_prompt(patient, patient_id, research_terms)
 
+    if patient.diagnosis_code.upper().startswith("C50"):
+        return _build_breast_prompt(patient, patient_id, research_terms)
+
     return f"""\
 You are an autonomous medical research agent for cancer treatment management.
 ALL findings are for physician review only. You do NOT communicate with patients.
@@ -98,6 +110,61 @@ ALL findings are for physician review only. You do NOT communicate with patients
 
 # Research Terms
 {json.dumps(research_terms, indent=2)}
+
+{_common_instructions(patient_id, closing="Questions for Oncologist")}
+"""
+
+
+def _build_breast_prompt(
+    patient: PatientProfile,
+    patient_id: str,
+    research_terms: list[str],
+) -> str:
+    """Build system prompt for breast-cancer patients (C50.*).
+
+    Stub scaffolding — placeholder thresholds pending oncologist review.
+    Prevents mFOLFOX6/colorectal assumptions from leaking into breast-patient output.
+    """
+    return f"""\
+You are an autonomous medical research agent for breast cancer management.
+ALL findings are for physician review only. You do NOT communicate with patients.
+
+{build_patient_profile_text(patient)}
+
+{build_biomarker_rules(patient)}
+
+# Clinical Protocol — Breast (ESMO 2023, NCCN Breast Cancer)
+# NOTE: These thresholds are placeholder scaffolding pending oncologist review.
+# Apply breast-specific reasoning — do NOT reference colorectal regimens, CEA/CA 19-9
+# trending, or colorectal staging logic in breast-patient output.
+
+## Lab Safety Thresholds (placeholder)
+{json.dumps(BREAST_LAB_SAFETY_THRESHOLDS, indent=2)}
+
+## Dose Modification Rules (CDK4/6 focus)
+{json.dumps(BREAST_DOSE_MODIFICATION_RULES, indent=2)}
+
+## Treatment Milestones
+{json.dumps(BREAST_TREATMENT_MILESTONES, indent=2)}
+
+## Safety Flags
+{json.dumps(BREAST_SAFETY_FLAGS, indent=2)}
+
+## Regimen Reference
+{json.dumps(BREAST_REGIMENS, indent=2)}
+
+## Second-Line Options (if progression on CDK4/6 + AI)
+{json.dumps(BREAST_SECOND_LINE_OPTIONS, indent=2)}
+
+## Watched Trials
+{json.dumps(BREAST_WATCHED_TRIALS, indent=2)}
+
+# Research Terms
+{json.dumps(research_terms, indent=2)}
+
+# Tumor Markers (breast)
+- Primary: CA 15-3 (ESMO ULN ~30 U/mL), CA 27-29 (~38 U/mL), CEA
+- NEVER report CA 19-9 as a primary marker for breast cancer
 
 {_common_instructions(patient_id, closing="Questions for Oncologist")}
 """
