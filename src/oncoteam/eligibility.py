@@ -5,12 +5,15 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+from datetime import date
 
 from .models import (
     ClinicalTrial,
     EligibilityFlag,
     EligibilityResult,
     EnrollmentPreference,
+    Oncopanel,
+    OncopanelVariant,
     PatientProfile,
     TrialSite,
 )
@@ -119,6 +122,57 @@ def geographic_score(sites: list[TrialSite], patient: PatientProfile) -> float:
 def is_geographically_accessible(sites: list[TrialSite], patient: PatientProfile) -> bool:
     """True when at least one site falls within the patient's enrollment envelope."""
     return geographic_score(sites, patient) > 0.0
+
+
+# ── Genomic profile helpers (#398) ──────────────────────────────────────
+# Variant-level queries over a patient's structured oncopanel history.
+# Cleanly handles absence — patients with no panel get empty results, not errors.
+
+_PATHOGENIC_SIGNIFICANCES = frozenset({"pathogenic", "likely_pathogenic"})
+
+# DDR-deficiency genes (biallelic loss triggers PARPi/ATRi eligibility).
+# ATM is the primary case for q1b. BRCA1/2 + PALB2 cover HRD-like contexts.
+_DDR_CORE_GENES = frozenset({"ATM", "BRCA1", "BRCA2", "PALB2"})
+
+
+def get_latest_oncopanel(patient: PatientProfile) -> Oncopanel | None:
+    """Most recent oncopanel by report_date; None when patient has no history."""
+    if not patient.oncopanel_history:
+        return None
+    return max(patient.oncopanel_history, key=lambda p: p.report_date or date.min)
+
+
+def get_variants_for_gene(patient: PatientProfile, gene: str) -> list[OncopanelVariant]:
+    """Variants affecting the given gene in the patient's latest oncopanel."""
+    latest = get_latest_oncopanel(patient)
+    if latest is None:
+        return []
+    target = gene.upper()
+    return [v for v in latest.variants if v.gene.upper() == target]
+
+
+def count_pathogenic_variants(patient: PatientProfile, gene: str) -> int:
+    """Number of distinct pathogenic / likely-pathogenic variants in a gene."""
+    return sum(
+        1
+        for v in get_variants_for_gene(patient, gene)
+        if v.significance in _PATHOGENIC_SIGNIFICANCES
+    )
+
+
+def is_biallelic_loss(patient: PatientProfile, gene: str) -> bool:
+    """Two or more pathogenic variants in one gene — proxy for biallelic loss."""
+    return count_pathogenic_variants(patient, gene) >= 2
+
+
+def is_ddr_deficient(patient: PatientProfile) -> bool:
+    """HRD-like phenotype driven by biallelic loss in any core DDR gene.
+
+    Triggers eligibility for PARPi (olaparib / rucaparib / niraparib / talazoparib)
+    and ATRi (ceralasertib) classes. Primary case for q1b is ATM biallelic loss
+    from the 2026-04-18 oncopanel.
+    """
+    return any(is_biallelic_loss(patient, gene) for gene in _DDR_CORE_GENES)
 
 
 # Drug names mapped to rules

@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+def _utcnow() -> datetime:
+    """Timezone-aware UTC now. `datetime.utcnow()` is deprecated in Python 3.12+."""
+    return datetime.now(UTC)
 
 
 class ResearchSource(StrEnum):
@@ -90,6 +96,73 @@ class TrialSite(BaseModel):
     contact: str = ""
 
 
+# ── Structured oncopanel (#398) ────────────────────────────────────────
+
+
+class OncopanelVariant(BaseModel):
+    """Single variant from a somatic oncopanel report.
+
+    Source traceability: every variant references the document + page it was
+    extracted from so clinicians can verify against the original report.
+    """
+
+    gene: str
+    ref_seq: str = ""
+    hgvs_cdna: str = ""
+    hgvs_protein: str = ""
+    protein_short: str = ""
+    vaf: float | None = None  # 0.0-1.0 (e.g. 0.1281 for 12.81%)
+    variant_type: Literal["SNV", "indel", "splice", "frameshift", "CNV", "fusion", "other"] = "SNV"
+    tier: str = ""  # "IA" | "IB" | "IIC" | "IID" | "III"
+    classification: Literal["somatic", "germline", "unknown"] = "somatic"
+    significance: Literal[
+        "pathogenic", "likely_pathogenic", "vus", "likely_benign", "benign", "unknown"
+    ] = "unknown"
+    source_document_id: str = ""
+    source_page: int | None = None
+    notes: str = ""
+    # Physician review state (populated via #395 audit path)
+    reviewed_by: str = ""
+    reviewed_at: datetime | None = None
+    reviewed_status: Literal["unreviewed", "accepted", "flagged", "dismissed"] = "unreviewed"
+    reviewed_rationale: str = ""
+
+
+class CopyNumberVariant(BaseModel):
+    gene: str
+    alteration: Literal["amplification", "deletion", "loss", "gain"]
+    copies: int | None = None
+    source_document_id: str = ""
+    source_page: int | None = None
+    notes: str = ""
+
+
+class Oncopanel(BaseModel):
+    """A single oncopanel report. Patients can have multiple over time (versioned)."""
+
+    panel_id: str
+    patient_id: str
+    sample_date: date | None = None
+    report_date: date | None = None
+    lab: str = ""
+    sample_type: Literal["tumor_tissue", "ctDNA", "germline", "mixed"] = "tumor_tissue"
+    methodology: str = ""
+    variants: list[OncopanelVariant] = Field(default_factory=list)
+    cnvs: list[CopyNumberVariant] = Field(default_factory=list)
+    msi_status: Literal["MSS", "MSI-L", "MSI-H", "unknown"] = "unknown"
+    mmr_status: Literal["pMMR", "dMMR", "unknown"] = "unknown"
+    tmb_score: float | None = None
+    tmb_category: Literal["low", "intermediate", "high", "unknown"] = "unknown"
+    quality_metrics: dict = Field(default_factory=dict)
+    source_document_id: str = ""
+    # Report-level physician verification
+    verified_by: str = ""
+    verified_at: datetime | None = None
+    verified_status: Literal["unreviewed", "approved", "queried", "superseded"] = "unreviewed"
+    verification_notes: str = ""
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
 class PatientProfile(BaseModel):
     patient_id: str = ""  # Unique ID (e.g. "q1b"). Empty = legacy single-patient.
     name: str
@@ -120,6 +193,8 @@ class PatientProfile(BaseModel):
     # Enrollment geography (#394)
     home_region: HomeRegion | None = None
     enrollment_preference: EnrollmentPreference | None = None
+    # Structured oncopanel history (#398) — newest last; append, never overwrite
+    oncopanel_history: list[Oncopanel] = Field(default_factory=list)
 
 
 class ResearchEntry(BaseModel):

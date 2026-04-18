@@ -9,7 +9,13 @@ from datetime import date
 from . import oncofiles_client
 from .activity_logger import record_suppressed_error
 from .locale import L, resolve
-from .models import EnrollmentPreference, HomeRegion, PatientProfile
+from .models import (
+    EnrollmentPreference,
+    HomeRegion,
+    Oncopanel,
+    OncopanelVariant,
+    PatientProfile,
+)
 
 # ── Default home region for SK patients ─────────────────────────────────
 # Most current patients (q1b, e5g, sgu) live in Bratislava. New patients
@@ -30,6 +36,77 @@ _BRATISLAVA_ENROLLMENT = EnrollmentPreference(
     language_preferences=["sk", "cs", "en"],
     excluded_countries=[],
     allow_unique_opportunity_global=False,
+)
+
+# Erika q1b oncopanel from 2026-04-18 somatic NGS (#398).
+# Source: NOÚ Bratislava genetics report. Four tier IA/IIC variants + MSS +
+# TMB-low. The ATM biallelic loss unlocks PARPi/ATRi eligibility (#392).
+# Physician verification fields will be populated when MUDr. Mináriková
+# reviews per #395/#396. Source document ID TBD — awaits document_pipeline
+# extraction per #398 scope item #8.
+_ERIKA_ONCOPANEL_2026_04_18 = Oncopanel(
+    panel_id="q1b_oncopanel_2026-04-18",
+    patient_id="q1b",
+    sample_date=None,  # TBC from document header
+    report_date=date(2026, 4, 18),
+    lab="",  # TBC — extract from document header
+    sample_type="tumor_tissue",
+    methodology="NGS",  # TBC — likely TruSight-500 or similar
+    variants=[
+        OncopanelVariant(
+            gene="KRAS",
+            ref_seq="NM_033360.4",
+            hgvs_cdna="c.34G>A",
+            hgvs_protein="p.(Gly12Ser)",
+            protein_short="G12S",
+            vaf=0.1281,
+            variant_type="SNV",
+            tier="IA",
+            classification="somatic",
+            significance="pathogenic",
+        ),
+        OncopanelVariant(
+            gene="ATM",
+            ref_seq="NM_000051.4",
+            hgvs_cdna="c.73-2A>G",
+            hgvs_protein="p.(?)",
+            protein_short="p.(?)",
+            vaf=0.1722,
+            variant_type="splice",
+            tier="IIC",
+            classification="somatic",
+            significance="likely_pathogenic",
+        ),
+        OncopanelVariant(
+            gene="ATM",
+            ref_seq="NM_000051.4",
+            hgvs_cdna="c.8278dup",
+            hgvs_protein="p.(Leu2760Profs*9)",
+            protein_short="L2760Pfs*9",
+            vaf=0.1542,
+            variant_type="frameshift",
+            tier="IIC",
+            classification="somatic",
+            significance="likely_pathogenic",
+        ),
+        OncopanelVariant(
+            gene="TP53",
+            ref_seq="NM_000546.6",
+            hgvs_cdna="c.559+1G>T",
+            hgvs_protein="p.(?)",
+            protein_short="p.(?)",
+            vaf=0.2573,
+            variant_type="splice",
+            tier="IIC",
+            classification="somatic",
+            significance="likely_pathogenic",
+        ),
+    ],
+    cnvs=[],
+    msi_status="MSS",
+    mmr_status="pMMR",
+    tmb_score=6.67,
+    tmb_category="low",
 )
 
 # ── Recipient Registry ────────────────────────────
@@ -231,6 +308,7 @@ PATIENT = PatientProfile(
     ],
     home_region=_BRATISLAVA_HOME,
     enrollment_preference=_BRATISLAVA_ENROLLMENT,
+    oncopanel_history=[_ERIKA_ONCOPANEL_2026_04_18],
 )
 
 # ── Second patient: general health management ──────────────────────────────
@@ -481,10 +559,10 @@ _PATIENT_L10N: dict = {
 def get_patient_localized(lang: str = "sk", patient_id: str = "q1b") -> dict:
     """Return patient profile dict with bilingual fields resolved to requested language."""
     patient = get_patient(patient_id)
-    data = patient.model_dump()
-    # Convert date to ISO string
-    if data.get("diagnosis_date"):
-        data["diagnosis_date"] = str(data["diagnosis_date"])
+    # mode="json" serializes all date/datetime fields (including nested
+    # oncopanel_history per #398) to ISO strings. Replaces the prior
+    # single-field diagnosis_date str() conversion.
+    data = patient.model_dump(mode="json")
 
     # Overlay bilingual fields (q1b has full l10n, others get raw data)
     l10n = _PATIENT_L10N if patient_id == "q1b" else {}

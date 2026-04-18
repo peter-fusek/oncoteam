@@ -2495,10 +2495,9 @@ async def api_detail(request: Request) -> JSONResponse:
                     data["metadata"] = json.loads(meta)
 
         elif detail_type == "patient":
-            patient_data = _get_patient_for_request(request).model_dump()
-            if patient_data.get("diagnosis_date"):
-                patient_data["diagnosis_date"] = str(patient_data["diagnosis_date"])
-            data = patient_data
+            # mode="json" auto-serializes all date/datetime fields (including
+            # nested oncopanel_history per #398) to ISO strings.
+            data = _get_patient_for_request(request).model_dump(mode="json")
 
         else:
             return _cors_json({"error": f"Unknown detail type: {detail_type}"}, status_code=400)
