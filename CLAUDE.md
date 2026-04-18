@@ -287,3 +287,16 @@ When reviewing uploaded documents:
 - `oncofiles_client.py` uses lazy import for `record_suppressed_error` to avoid circular import with `activity_logger.py`
 - `landing/i18n.js` uses `data-i18n-html` attribute (via `innerHTML`) for demo mockup strings containing HTML entities/tags — safe because all values are hardcoded static strings, no user input
 - Vue template Unicode: `\u2013` / `\u2193` in HTML template context renders as literal text. Use HTML entities (`&ndash;`, `&darr;`) or actual Unicode chars. Inside `{{ expression }}` (JS context), `\u` escapes work correctly.
+
+## Clinical-user architecture (Sprint 92-94 in progress)
+
+Target: MUDr. Mgr. Zuzana Mináriková, PhD. (klinický onkológ, NOÚ Bratislava) joining as physician user for q1b per #396. Triggered architectural changes across multiple surfaces:
+
+- **#395 Two-lane funnel + immutable audit**: agents never mutate clinical funnel state directly. They post to a proposals lane (TTL 30d, physician triages). Clinical lane is physician-writable only. Every state change requires rationale + generates append-only audit event stored in oncofiles + backed up hourly to GCS per #397.
+- **#397 DR/backup**: dedicated GCP project `oncoteam-prod-backups` (isolated from oncoteam-dashboard + oncofiles-490809), WORM hot bucket for audit (2y retention), versioned cold bucket for DB dumps (365d). CMEK encryption. Service account write-only. Script in `scripts/gcp_backup_setup.sh`.
+- **#398 Structured oncopanel**: `Oncopanel` + `OncopanelVariant` + `CopyNumberVariant` Pydantic models on `PatientProfile.oncopanel_history`. Replaces flat `biomarkers: dict` for patients with NGS data. Variant-level source traceability per #382 + physician review state per variant per #395.
+- **#399 /research as cockpit**: 8 sub-panels (Inbox / Clinical Funnel / Literature / News / Discussion / Audit / Watchlist / Re-Surfaced) as left-sidebar sub-nav. Server-persisted state (not localStorage). Physician lands on Inbox; advocate on Funnel. Spec in `docs/research_cockpit.md`.
+- **#394 Geographic enrollment** (backend ✅ landed c20bc89): every PatientProfile carries `home_region` + `enrollment_preference`. `geographic_score(sites, patient)` filters non-enrollable trials upstream. Bratislava patients (q1b/e5g/sgu) seeded with `preferred_countries=[SK,CZ,AT,HU,PL,DE,CH]`.
+- **#392 DDR pivot**: q1b oncopanel 2026-04-18 reveals ATM biallelic + TP53 splice → PARPi/ATRi/pan-RAS eligible. `is_ddr_deficient(patient)` structured helper (builds on #398). `ddr_monitor` agent posts to proposals lane with proximity scoring from #394.
+
+**Key principle** (feedback memory `feedback_never-lose-a-clinical-decision.md`): **AI proposes, humans dispose**. Agents cannot silently mutate clinical state. Every decision is logged, attributed, reversible via audit trail (not via silent overwrite). Cross-device consistency is non-negotiable.
