@@ -48,6 +48,48 @@ class ClinicalTrial(BaseModel):
     eligibility_criteria: str = ""
 
 
+class HomeRegion(BaseModel):
+    """Patient's home location — drives trial enrollment geography.
+
+    ISO alpha-2 country codes. Coords in decimal degrees (WGS84).
+    """
+
+    city: str
+    country: str
+    lat: float
+    lon: float
+    healthcare_system: str = ""
+
+
+class EnrollmentPreference(BaseModel):
+    """Patient preferences for clinical trial enrollment.
+
+    Agents filter + rank trials by proximity before biomarker match so we
+    never push non-enrollable trials. See issue #394 for policy details.
+    """
+
+    max_travel_km: int = 600
+    preferred_countries: list[str] = Field(default_factory=list)
+    language_preferences: list[str] = Field(default_factory=list)
+    excluded_countries: list[str] = Field(default_factory=list)
+    allow_unique_opportunity_global: bool = False
+
+
+class TrialSite(BaseModel):
+    """A single clinical trial site.
+
+    Distance-from-home is computed at ranking time, not stored.
+    """
+
+    country: str
+    city: str = ""
+    facility: str = ""
+    status: str = ""
+    lat: float | None = None
+    lon: float | None = None
+    contact: str = ""
+
+
 class PatientProfile(BaseModel):
     patient_id: str = ""  # Unique ID (e.g. "q1b"). Empty = legacy single-patient.
     name: str
@@ -75,6 +117,9 @@ class PatientProfile(BaseModel):
     patient_ids: dict[str, str] = Field(default_factory=dict)
     active_therapies: list[dict] = Field(default_factory=list)
     agent_whitelist: list[str] = Field(default_factory=list)  # empty = all agents
+    # Enrollment geography (#394)
+    home_region: HomeRegion | None = None
+    enrollment_preference: EnrollmentPreference | None = None
 
 
 class ResearchEntry(BaseModel):

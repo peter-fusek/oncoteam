@@ -2,10 +2,124 @@
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 
-from .models import ClinicalTrial, EligibilityFlag, EligibilityResult, PatientProfile
+from .models import (
+    ClinicalTrial,
+    EligibilityFlag,
+    EligibilityResult,
+    EnrollmentPreference,
+    PatientProfile,
+    TrialSite,
+)
+
+# ── Enrollment geography (#394) ─────────────────────────────────────────
+
+# Default neighbor ordering when auto-generating EnrollmentPreference.
+# Ordered by combination of shared border + linguistic proximity + healthcare
+# similarity. Non-exhaustive — add countries as patients onboard.
+_NEIGHBOR_COUNTRIES: dict[str, list[str]] = {
+    "SK": ["CZ", "AT", "HU", "PL", "DE", "CH"],
+    "CZ": ["SK", "AT", "PL", "DE", "HU"],
+    "AT": ["DE", "CH", "SK", "CZ", "HU", "IT", "SI"],
+    "HU": ["AT", "SK", "CZ", "RO", "HR", "SI"],
+    "PL": ["CZ", "SK", "DE", "LT"],
+    "DE": ["AT", "CH", "NL", "BE", "FR", "CZ", "PL", "DK"],
+    "CH": ["AT", "DE", "FR", "IT"],
+    "RO": ["HU", "BG", "AT", "CZ"],
+    "SI": ["AT", "HR", "HU", "IT"],
+    "HR": ["SI", "HU", "AT", "IT"],
+}
+
+# Statuses where the site is NOT enrolling new patients — filter out.
+_INACTIVE_SITE_STATUSES = frozenset({"completed", "terminated", "withdrawn", "suspended", "closed"})
+
+# Earth radius in km (mean — adequate for trial-distance filtering).
+_EARTH_RADIUS_KM = 6371.0
+
+
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance between two points in kilometers."""
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
+    return 2.0 * _EARTH_RADIUS_KM * math.asin(math.sqrt(a))
+
+
+def default_enrollment_preference(
+    home_country: str,
+    max_travel_km: int = 600,
+    language_preferences: list[str] | None = None,
+) -> EnrollmentPreference:
+    """Auto-generate sensible enrollment preference from home country.
+
+    preferred_countries = [home, *immediate_neighbors_ordered_by_proximity].
+    Caller should supply language_preferences; defaults to native + English
+    best-guess when omitted.
+    """
+    hc = home_country.upper()
+    neighbors = _NEIGHBOR_COUNTRIES.get(hc, [])
+    preferred = [hc] + [n for n in neighbors if n != hc]
+    langs = language_preferences if language_preferences is not None else ["en"]
+    return EnrollmentPreference(
+        max_travel_km=max_travel_km,
+        preferred_countries=preferred,
+        language_preferences=langs,
+        excluded_countries=[],
+        allow_unique_opportunity_global=False,
+    )
+
+
+def geographic_score(sites: list[TrialSite], patient: PatientProfile) -> float:
+    """Score 0-100 for trial proximity to patient. 0 = filter out.
+
+    100 = home country, short distance, actively recruiting.
+    Returns 50 (neutral) when patient has no home_region / enrollment_preference
+    — backwards-compatible: don't hard-filter trials for patients we haven't
+    geolocated yet.
+    """
+    if not sites:
+        return 0.0
+    if patient.home_region is None or patient.enrollment_preference is None:
+        return 50.0
+    home = patient.home_region
+    pref = patient.enrollment_preference
+    preferred = [c.upper() for c in pref.preferred_countries]
+    excluded = {c.upper() for c in pref.excluded_countries}
+    best = 0.0
+    for site in sites:
+        sc = (site.country or "").upper()
+        if not sc or sc in excluded:
+            continue
+        status = (site.status or "").lower()
+        if status in _INACTIVE_SITE_STATUSES:
+            continue
+        if sc in preferred:
+            tier = preferred.index(sc)
+        elif pref.allow_unique_opportunity_global:
+            tier = len(preferred)
+        else:
+            continue
+        if site.lat is not None and site.lon is not None:
+            km = haversine(home.lat, home.lon, site.lat, site.lon)
+            if km > pref.max_travel_km and tier > 1:
+                continue
+            distance_penalty = min(km / max(pref.max_travel_km, 1), 1.0) * 30.0
+        else:
+            distance_penalty = 0.0
+        tier_score = max(100.0 - tier * 12.0, 0.0)
+        score = max(tier_score - distance_penalty, 0.0)
+        best = max(best, score)
+    return best
+
+
+def is_geographically_accessible(sites: list[TrialSite], patient: PatientProfile) -> bool:
+    """True when at least one site falls within the patient's enrollment envelope."""
+    return geographic_score(sites, patient) > 0.0
+
 
 # Drug names mapped to rules
 _ANTI_EGFR = {"cetuximab", "panitumumab"}

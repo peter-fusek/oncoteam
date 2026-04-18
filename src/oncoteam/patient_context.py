@@ -9,7 +9,28 @@ from datetime import date
 from . import oncofiles_client
 from .activity_logger import record_suppressed_error
 from .locale import L, resolve
-from .models import PatientProfile
+from .models import EnrollmentPreference, HomeRegion, PatientProfile
+
+# ── Default home region for SK patients ─────────────────────────────────
+# Most current patients (q1b, e5g, sgu) live in Bratislava. New patients
+# should set their own HomeRegion; the default below is a convenience for
+# existing seeded patients. See issue #394.
+
+_BRATISLAVA_HOME = HomeRegion(
+    city="Bratislava",
+    country="SK",
+    lat=48.1486,
+    lon=17.1077,
+    healthcare_system="VšZP (Slovak national)",
+)
+
+_BRATISLAVA_ENROLLMENT = EnrollmentPreference(
+    max_travel_km=600,
+    preferred_countries=["SK", "CZ", "AT", "HU", "PL", "DE", "CH"],
+    language_preferences=["sk", "cs", "en"],
+    excluded_countries=[],
+    allow_unique_opportunity_global=False,
+)
 
 # ── Recipient Registry ────────────────────────────
 # WhatsApp message recipients with role-aware formatting.
@@ -206,6 +227,8 @@ PATIENT = PatientProfile(
             "warning": "HIGH RISK — requires explicit oncologist discussion due to active VTE",
         },
     ],
+    home_region=_BRATISLAVA_HOME,
+    enrollment_preference=_BRATISLAVA_ENROLLMENT,
 )
 
 # ── Second patient: general health management ──────────────────────────────
@@ -222,6 +245,8 @@ PATIENT_E5G = PatientProfile(
     biomarkers={},
     excluded_therapies={},
     agent_whitelist=["document_pipeline", "lab_sync", "keepalive_ping", "weekly_briefing"],
+    home_region=_BRATISLAVA_HOME,
+    enrollment_preference=_BRATISLAVA_ENROLLMENT,
 )
 
 # ── Third patient: oncology — breast cancer ──────────────────────────────
@@ -271,6 +296,8 @@ PATIENT_SGU = PatientProfile(
         "daily_research",
         "trial_monitor",
     ],
+    home_region=_BRATISLAVA_HOME,
+    enrollment_preference=_BRATISLAVA_ENROLLMENT,
 )
 
 
