@@ -152,8 +152,10 @@ PATIENT = PatientProfile(
             "result": "AdenoCa G3",
         }
     ],
-    treating_physician="MUDr. [Treating Physician], PhD., MPH — NOU Bratislava",
-    admitting_physician="MUDr. [Admitting Physician] — NOU Bratislava",
+    # Treating oncologist (reviewing/onboarding 2026-04-18) — confirmed via NOÚ
+    # stamp. Display-name used; ID codes live in secure context, not profile.
+    treating_physician="MUDr. Mgr. Zuzana Mináriková, PhD. — klinický onkológ, NOÚ Bratislava",
+    admitting_physician="NOÚ Bratislava (admitting clinician TBC)",
     baseline_weight_kg=72.0,
     current_cycle=3,
     ecog="unknown — ask at next onco session",
