@@ -1,0 +1,81 @@
+Vážená pani doktorka Mináriková,
+
+ďakujem, že ste súhlasili s odbornou spoluprácou pri klinickom manažmente pacientky Erika F. V tomto e-maile Vám posielam všetky prístupové údaje k platforme oncoteam, ktorú som vyvinul na podporu vyhľadávania klinických štúdií, sledovania laboratórnych trendov a správy dokumentácie pre Erikinu liečbu.
+
+
+Čo je oncoteam
+
+Oncoteam je asistenčná AI platforma pre onkológov a opatrovateľov. Mojim cieľom NIE JE nahradiť Vaše klinické rozhodnutia — platforma slúži ako Váš pomocník pre:
+
+• automatické vyhľadávanie relevantných klinických štúdií v EU (aktuálne zamerané na PARPi / ATRi / pan-RAS inhibítory zodpovedajúce Erikinmu onkopanelu)
+• sledovanie trendov onkomarkerov (CEA, CA 19-9) a CBC parametrov (Ne/Ly ratio, SII)
+• organizáciu klinickej dokumentácie (GDrive + oncofiles)
+• striktný „human-in-the-loop" audit log — každá zmena v klinickom funneli má dôvod, čas a autora
+
+
+Vaša rola: klinický konzultant pre pacientku q1b (Erika F.)
+
+Máte plný prístup k Erikiným dátam. Vaše klinické rozhodnutia majú prednosť pred AI odporúčaniami. Každá akcia je audit-logovaná a zálohovaná hodinovo. Nemôžete vidieť dáta iných pacientov — prísne patient-scoping je vynútené na úrovni tokenov.
+
+
+Prístupové údaje
+
+Dashboard (web):
+  URL: https://dashboard.oncoteam.cloud
+  Prihlasovanie: Google SSO Vašim e-mailom (tým, na ktorý prichádza tento mail)
+  Štartovacia stránka: /research/inbox (fronta na klinické posúdenie)
+
+MCP token pre oncoteam (pre Vaše ChatGPT alebo Claude.ai):
+  Server URL: https://api.oncoteam.cloud/mcp
+  Token: <ONCOTEAM_TOKEN>
+  Rozsah: len pacientka q1b, read + komentáre
+
+MCP token pre oncofiles (klinické dokumenty Eriky — laby, zobrazovania, patológie, onkopanely):
+  Server URL: https://oncofiles.com/mcp
+  Token: <ONCOFILES_TOKEN>
+  Rozsah: len dokumenty q1b, read + pridávanie komentárov
+
+
+Nastavenie vo Vašom AI nástroji
+
+V Claude.ai (najspoľahlivejšia MCP podpora) alebo ChatGPT (ak Váš plán podporuje MCP Connectors):
+
+  1. Otvorte Settings → Connectors / Integrations
+  2. Add custom connector → MCP
+  3. Vložte Server URL a Token (vyššie)
+  4. Uložte. Connector sa automaticky objaví pri ďalšom chat session.
+  5. Postup zopakujte aj pre druhý token (oncofiles).
+
+Ak ChatGPT na Vašom pláne aktuálne nepodporuje MCP Connectors, odporúčam Claude.ai (claude.ai) — podporuje MCP natívne a je funkčne ekvivalentný.
+
+
+Prvé kroky po prihlásení
+
+  1. Otvorte https://dashboard.oncoteam.cloud/research — nájdete pre-pripravené klinické štúdie (PARPi / ATRi / pan-RAS), ktoré zodpovedajú Erikinmu onkopanelu (KRAS G12S TIER IA + ATM biallelic strata TIER IIC + TP53 splice + MSS + TMB-low 6,67 Mut/Mb)
+  2. Sekcia Overview ukazuje aktuálne lab trendy a liečebné míľniky
+  3. Nastavte Vašu preferovanú klinickú smernicu (ESMO mCRC 2023 alebo NOÚ lokálna) — AI návrhy budú potom citovať správny zdroj
+  4. Prípadne doplňte Vašu osobnú watchlist (štúdie, ktoré chcete sledovať nad rámec systémovej watchlist)
+
+
+Bezpečnostné odporúčania
+
+• Tokeny si uložte do password manageru (1Password / KeePass / Bitwarden)
+• Tokeny NEZDIELAJTE — sú osobné a scoped len na Vašu rolu
+• Rotácia tokenov: každých 90 dní (pripomeniem sa)
+• Ak podozrievate kompromitáciu, kontaktujte ma OKAMŽITE — revokácia je < 5 minút
+• Dashboard používa HTTPS a prihlásenie len cez Google SSO
+
+
+Podpora
+
+Akékoľvek otázky, chyby, návrhy — napíšte mi kedykoľvek:
+
+  E-mail: peter.fusek@instarea.sk
+  WhatsApp: <YOUR_WHATSAPP_NUMBER>
+
+V platforme: dashboard je live, ale aktívne vyvíjaný — feedback je vítaný a realizovaný rýchlo.
+
+Teším sa na našu spoluprácu. Ak niečo nefunguje alebo potrebujete zmenu UX, som v režime „okamžitá reakcia" — oncoteam je tu, aby Vás podporil, nie naopak.
+
+S úctou,
+Peter Fusek
