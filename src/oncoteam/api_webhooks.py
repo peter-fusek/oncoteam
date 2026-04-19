@@ -11,8 +11,8 @@ from starlette.responses import JSONResponse
 
 from . import oncofiles_client
 from .activity_logger import record_suppressed_error
-from .config import FUP_AGENT_RUNS_PER_MONTH
-from .patient_context import DEFAULT_PATIENT_ID
+from .config import DOC_WEBHOOK_CEE_NIGHT_HOURS, FUP_AGENT_RUNS_PER_MONTH
+from .patient_context import DEFAULT_PATIENT_ID, get_patient
 from .request_context import get_token_for_patient as _get_token_for_patient
 
 _logger = logging.getLogger("oncoteam.api_webhooks")
@@ -115,7 +115,12 @@ async def api_document_webhook(request: Request) -> JSONResponse:
     Launches the document pipeline as a background task.
     """
 
-    from .autonomous_tasks import _extract_timestamp, _get_state, run_document_pipeline
+    from .autonomous_tasks import (
+        _extract_timestamp,
+        _get_state,
+        _set_state,
+        run_document_pipeline,
+    )
 
     if not _check_expensive_rate_limit():
         return _cors_json(
@@ -136,6 +141,28 @@ async def api_document_webhook(request: Request) -> JSONResponse:
         )
 
     patient_id = body.get("patient_id", DEFAULT_PATIENT_ID)
+
+    # Non-destructive pause gate: data stays in oncofiles, no Claude spend.
+    try:
+        patient = get_patient(patient_id)
+    except KeyError:
+        return _cors_json(
+            {"error": f"Unknown patient: {patient_id}"}, status_code=400, request=request
+        )
+    if patient.paused:
+        _logger.info(
+            "Document webhook skipped for paused patient %s (doc %d)", patient_id, document_id
+        )
+        return _cors_json(
+            {
+                "status": "skipped_patient_paused",
+                "document_id": document_id,
+                "patient_id": patient_id,
+            },
+            status_code=202,
+            request=request,
+        )
+
     token = _get_token_for_patient(patient_id)
 
     # Quick dedup check before launching background task
@@ -164,11 +191,76 @@ async def api_document_webhook(request: Request) -> JSONResponse:
         except Exception as exc:
             record_suppressed_error("api_document_webhook", "get_document_by_id", exc)
 
-    asyncio.create_task(run_document_pipeline(document_id, metadata, patient_id=patient_id))
-    _logger.info("Document pipeline started for doc %d (patient=%s)", document_id, patient_id)
+    # CEE-night window gate: inside window → immediate dispatch; outside →
+    # enqueue for the nightly drain agent. Keeps Claude spend concentrated in
+    # the cheap off-peak window.
+    from datetime import UTC
+    from datetime import datetime as _dt
 
+    hour_utc = _dt.now(UTC).hour
+    night_lo, night_hi = DOC_WEBHOOK_CEE_NIGHT_HOURS
+    in_cee_night = night_lo <= hour_utc < night_hi
+
+    if in_cee_night:
+        asyncio.create_task(run_document_pipeline(document_id, metadata, patient_id=patient_id))
+        _logger.info(
+            "Document pipeline dispatched immediately (CEE night) doc=%d patient=%s hour=%d",
+            document_id,
+            patient_id,
+            hour_utc,
+        )
+        return _cors_json(
+            {
+                "status": "pipeline_started",
+                "document_id": document_id,
+                "patient_id": patient_id,
+                "dispatch": "immediate",
+            },
+            request=request,
+        )
+
+    # Outside CEE night: enqueue for document_pipeline_drain (runs 02:00 UTC).
+    queue_state = await _get_state("pending_docs_queue", token=token)
+    docs_list: list[dict] = []
+    if isinstance(queue_state, dict):
+        if isinstance(queue_state.get("docs"), list):
+            docs_list = list(queue_state["docs"])
+        else:
+            raw = queue_state.get("value")
+            if isinstance(raw, str):
+                try:
+                    raw = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    raw = None
+            if isinstance(raw, dict) and isinstance(raw.get("docs"), list):
+                docs_list = list(raw["docs"])
+
+    if not any(d.get("doc_id") == document_id for d in docs_list if isinstance(d, dict)):
+        docs_list.append(
+            {
+                "doc_id": document_id,
+                "metadata": metadata,
+                "enqueued_at": _dt.now(UTC).isoformat(),
+            }
+        )
+        await _set_state("pending_docs_queue", {"docs": docs_list}, token=token)
+
+    _logger.info(
+        "Document queued for CEE-night drain doc=%d patient=%s hour=%d queue_len=%d",
+        document_id,
+        patient_id,
+        hour_utc,
+        len(docs_list),
+    )
     return _cors_json(
-        {"status": "pipeline_started", "document_id": document_id, "patient_id": patient_id},
+        {
+            "status": "queued_for_cee_night",
+            "document_id": document_id,
+            "patient_id": patient_id,
+            "dispatch": "queued",
+            "queue_len": len(docs_list),
+        },
+        status_code=202,
         request=request,
     )
 

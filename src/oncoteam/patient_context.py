@@ -325,6 +325,7 @@ PATIENT_E5G = PatientProfile(
     biomarkers={},
     excluded_therapies={},
     agent_whitelist=["document_pipeline", "lab_sync", "keepalive_ping", "weekly_briefing"],
+    paused=True,  # Non-oncology; paused for cost reduction (Sprint 92). Resume by flipping.
     home_region=_BRATISLAVA_HOME,
     enrollment_preference=_BRATISLAVA_ENROLLMENT,
 )
@@ -376,6 +377,7 @@ PATIENT_SGU = PatientProfile(
         "daily_research",
         "trial_monitor",
     ],
+    paused=True,  # Not under active treatment review; paused for cost reduction (Sprint 92).
     home_region=_BRATISLAVA_HOME,
     enrollment_preference=_BRATISLAVA_ENROLLMENT,
 )
@@ -664,6 +666,15 @@ _patient_registry: dict[str, PatientProfile] = {
     "e5g": PATIENT_E5G,
     "sgu": PATIENT_SGU,
 }
+
+# Infra-only override: PAUSED_PATIENTS env var toggles pause without a code push.
+# Additive (never un-pauses a code-paused patient).
+from .config import PAUSED_PATIENTS as _PAUSED_PATIENTS_ENV  # noqa: E402
+
+for _pid in _PAUSED_PATIENTS_ENV:
+    _p = _patient_registry.get(_pid)
+    if _p is not None:
+        _p.paused = True
 
 # Per-patient bearer tokens for oncofiles. Token scopes all data automatically.
 # Erika uses the default ONCOFILES_MCP_TOKEN from config.

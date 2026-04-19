@@ -281,13 +281,15 @@ async def test_webhook_rejects_invalid_body():
 
 @pytest.mark.anyio
 async def test_webhook_starts_pipeline():
-    """Valid webhook call should return pipeline_started."""
+    """Valid webhook call should return pipeline_started (CEE night window)."""
     from oncoteam.dashboard_api import api_document_webhook
 
     request = _make_request({"document_id": 42, "category": "lab"})
     with (
         patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
         patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"),
+        # Force always-in-CEE-night so this test is deterministic regardless of wall clock.
+        patch("oncoteam.api_webhooks.DOC_WEBHOOK_CEE_NIGHT_HOURS", (0, 24)),
         patch(
             "oncoteam.autonomous_tasks._get_state",
             AsyncMock(return_value={}),
@@ -305,6 +307,7 @@ async def test_webhook_starts_pipeline():
     data = json.loads(resp.body)
     assert data["status"] == "pipeline_started"
     assert data["document_id"] == 42
+    assert data["dispatch"] == "immediate"
 
 
 @pytest.mark.anyio
@@ -332,16 +335,19 @@ async def test_webhook_deduplication():
 
 @pytest.mark.anyio
 async def test_webhook_passes_patient_id():
-    """Webhook should pass patient_id to pipeline and use patient-specific token."""
+    """Webhook should pass patient_id to pipeline for active (non-paused) patients."""
     from oncoteam.dashboard_api import api_document_webhook
 
-    request = _make_request({"document_id": 99, "patient_id": "e5g", "category": "lab"})
+    # q1b is the only active patient in Sprint 92. e5g/sgu are paused
+    # (see test_webhook_paused_patient_skipped).
+    request = _make_request({"document_id": 99, "patient_id": "q1b", "category": "lab"})
     mock_pipeline = AsyncMock(return_value={"ok": True})
     mock_get_state = AsyncMock(return_value={})
 
     with (
         patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
         patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"),
+        patch("oncoteam.api_webhooks.DOC_WEBHOOK_CEE_NIGHT_HOURS", (0, 24)),
         patch("oncoteam.autonomous_tasks._get_state", mock_get_state),
         patch(
             "oncoteam.autonomous_tasks._extract_timestamp",
@@ -353,9 +359,69 @@ async def test_webhook_passes_patient_id():
 
     data = json.loads(resp.body)
     assert data["status"] == "pipeline_started"
-    assert data["patient_id"] == "e5g"
+    assert data["patient_id"] == "q1b"
 
     # Verify pipeline was called with patient_id
     mock_pipeline.assert_called_once()
     call_kwargs = mock_pipeline.call_args
-    assert call_kwargs[1]["patient_id"] == "e5g"
+    assert call_kwargs[1]["patient_id"] == "q1b"
+
+
+@pytest.mark.anyio
+async def test_webhook_paused_patient_skipped():
+    """Sprint 92 pause gate: paused patients get 202 skipped, no Claude spend."""
+    from oncoteam.dashboard_api import api_document_webhook
+
+    request = _make_request({"document_id": 200, "patient_id": "e5g", "category": "lab"})
+    mock_pipeline = AsyncMock(return_value={"ok": True})
+
+    with (
+        patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
+        patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"),
+        patch("oncoteam.autonomous_tasks.run_document_pipeline", mock_pipeline),
+    ):
+        resp = await api_document_webhook(request)
+
+    assert resp.status_code == 202
+    data = json.loads(resp.body)
+    assert data["status"] == "skipped_patient_paused"
+    assert data["patient_id"] == "e5g"
+    mock_pipeline.assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_webhook_outside_cee_night_enqueues():
+    """Uploads outside CEE night window are queued, not dispatched."""
+    from oncoteam.dashboard_api import api_document_webhook
+
+    request = _make_request({"document_id": 300, "patient_id": "q1b", "category": "lab"})
+    mock_pipeline = AsyncMock(return_value={"ok": True})
+    stored: dict = {}
+
+    async def fake_set_state(key, value, *, token=None):
+        stored[key] = value
+
+    with (
+        patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
+        patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"),
+        # Empty window → every real hour is "outside" → always enqueue.
+        patch("oncoteam.api_webhooks.DOC_WEBHOOK_CEE_NIGHT_HOURS", (99, 99)),
+        patch("oncoteam.autonomous_tasks._get_state", AsyncMock(return_value={})),
+        patch("oncoteam.autonomous_tasks._extract_timestamp", return_value=""),
+        patch("oncoteam.autonomous_tasks._set_state", AsyncMock(side_effect=fake_set_state)),
+        patch("oncoteam.autonomous_tasks.run_document_pipeline", mock_pipeline),
+    ):
+        resp = await api_document_webhook(request)
+
+    assert resp.status_code == 202
+    data = json.loads(resp.body)
+    assert data["status"] == "queued_for_cee_night"
+    assert data["dispatch"] == "queued"
+    assert data["queue_len"] == 1
+    # Pipeline is NOT called — document sits in queue until drain.
+    mock_pipeline.assert_not_called()
+    # Queue state was persisted.
+    assert "pending_docs_queue" in stored
+    queued = stored["pending_docs_queue"]["docs"]
+    assert len(queued) == 1
+    assert queued[0]["doc_id"] == 300

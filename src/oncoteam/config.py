@@ -47,7 +47,31 @@ AUTONOMOUS_ENABLED: bool = os.environ.get("AUTONOMOUS_ENABLED", "").lower() in (
 )
 AUTONOMOUS_MODEL: str = os.environ.get("AUTONOMOUS_MODEL", "claude-sonnet-4-6")
 AUTONOMOUS_MODEL_LIGHT: str = os.environ.get("AUTONOMOUS_MODEL_LIGHT", "claude-haiku-4-5-20251001")
-AUTONOMOUS_COST_LIMIT: float = float(os.environ.get("AUTONOMOUS_COST_LIMIT", "5.0"))
+AUTONOMOUS_COST_LIMIT: float = float(os.environ.get("AUTONOMOUS_COST_LIMIT", "3.0"))
+
+# Patients to pause non-destructively (comma-separated IDs, e.g. "e5g,sgu").
+# Scheduler + document webhook skip these; profile data preserved. Resume by
+# clearing this env var and restarting — no code change needed.
+PAUSED_PATIENTS: set[str] = {
+    p.strip() for p in os.environ.get("PAUSED_PATIENTS", "").split(",") if p.strip()
+}
+
+
+# CEE-night window for document pipeline (UTC hours, inclusive-exclusive).
+# Uploads inside this window process immediately; outside, they're enqueued
+# for the nightly drain agent. Default "0-4" covers 01:00-05:00 Bratislava
+# year-round (CET and CEST).
+def _parse_hour_range(raw: str, default: tuple[int, int]) -> tuple[int, int]:
+    try:
+        lo, hi = raw.split("-", 1)
+        return int(lo), int(hi)
+    except (ValueError, AttributeError):
+        return default
+
+
+DOC_WEBHOOK_CEE_NIGHT_HOURS: tuple[int, int] = _parse_hour_range(
+    os.environ.get("DOC_WEBHOOK_CEE_NIGHT_HOURS", "0-4"), (0, 4)
+)
 
 # Anthropic API credit balance (set in Railway env, updated manually or via billing API)
 ANTHROPIC_CREDIT_BALANCE: float = float(os.environ.get("ANTHROPIC_CREDIT_BALANCE", "0"))

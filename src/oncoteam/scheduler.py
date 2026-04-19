@@ -42,6 +42,7 @@ def _get_task_functions() -> dict:
     from .autonomous_tasks import (
         run_daily_cost_report,
         run_daily_research,
+        run_document_pipeline_drain,
         run_family_update,
         run_file_scan,
         run_funnel_assess,
@@ -80,6 +81,7 @@ def _get_task_functions() -> dict:
         "daily_cost_report": run_daily_cost_report,
         "self_improvement": run_self_improvement,
         "funnel_assess": run_funnel_assess,
+        "document_pipeline_drain": run_document_pipeline_drain,
     }
 
 
@@ -122,8 +124,11 @@ def _create_scheduler():
 
         # Create a job per patient to ensure all patients get agent coverage
         for i, pid in enumerate(patient_ids):
-            # Skip agents not in patient's whitelist (empty = all agents)
             patient = get_patient(pid)
+            # Paused patient: no scheduled agents. Profile data intact.
+            if patient.paused:
+                continue
+            # Skip agents not in patient's whitelist (empty = all agents)
             if patient.agent_whitelist and agent_id not in patient.agent_whitelist:
                 continue
 

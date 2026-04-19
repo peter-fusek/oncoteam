@@ -190,6 +190,9 @@ class PatientProfile(BaseModel):
     patient_ids: dict[str, str] = Field(default_factory=dict)
     active_therapies: list[dict] = Field(default_factory=list)
     agent_whitelist: list[str] = Field(default_factory=list)  # empty = all agents
+    # Non-destructive pause: scheduler + document webhook skip, data intact.
+    # Flip to False and restart to resume. Overridable via PAUSED_PATIENTS env.
+    paused: bool = False
     # Enrollment geography (#394)
     home_region: HomeRegion | None = None
     enrollment_preference: EnrollmentPreference | None = None

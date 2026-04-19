@@ -32,8 +32,9 @@ async def test_autonomous_returns_jobs():
     assert response.status_code == 200
     assert data["enabled"] is True
     assert "daily_cost" in data
-    assert len(data["jobs"]) == 17
-    assert data["job_count"] == 17
+    # Sprint 92: +1 document_pipeline_drain agent → 18 non-system jobs.
+    assert len(data["jobs"]) == 18
+    assert data["job_count"] == 18
 
 
 @pytest.mark.anyio
@@ -62,7 +63,8 @@ async def test_autonomous_lang_en():
     # Check first job is in English
     daily_research = next(j for j in data["jobs"] if j["id"] == "daily_research")
     assert daily_research["description"] == "PubMed research scan"
-    assert daily_research["schedule"] == "every 3 days 09:00"
+    # Sprint 92: moved to weekly CEE-night cadence.
+    assert daily_research["schedule"] == "Saturday 02:00 UTC (03:00 CET)"
 
 
 @pytest.mark.anyio

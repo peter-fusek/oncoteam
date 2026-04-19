@@ -1184,6 +1184,78 @@ async def run_document_pipeline(
     return combined
 
 
+async def run_document_pipeline_drain(patient_id: str = "q1b") -> dict:
+    """Drain doc uploads queued by api_document_webhook outside CEE-night window.
+
+    Runs once daily at 02:00 UTC. The webhook enqueues under agent_state key
+    `pending_docs_queue`; this task resets the queue then processes each entry
+    via run_document_pipeline (which has its own dedup guard).
+    """
+    patient = get_patient(patient_id)
+    if patient.paused:
+        return {"drained": 0, "patient_id": patient_id, "skipped": "patient_paused"}
+
+    token = get_patient_token(patient_id)
+    queue_key = "pending_docs_queue"
+    state = await _get_state(queue_key, token=token)
+    # State may arrive flat, nested under "value", or as a raw string.
+    docs: list[dict] = []
+    if isinstance(state, dict):
+        if isinstance(state.get("docs"), list):
+            docs = state["docs"]
+        else:
+            raw = state.get("value")
+            if isinstance(raw, str):
+                try:
+                    raw = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    raw = None
+            if isinstance(raw, dict) and isinstance(raw.get("docs"), list):
+                docs = raw["docs"]
+
+    if not docs:
+        return {"drained": 0, "patient_id": patient_id}
+
+    # Reset queue BEFORE processing so an error mid-drain doesn't re-trigger
+    # identical work next night (dedup keys still guard against reruns).
+    await _set_state(queue_key, {"docs": []}, token=token)
+
+    results: list[dict] = []
+    total_cost = 0.0
+    for entry in docs:
+        doc_id = entry.get("doc_id") if isinstance(entry, dict) else None
+        if not isinstance(doc_id, int) or doc_id <= 0:
+            continue
+        metadata = entry.get("metadata") if isinstance(entry, dict) else None
+        try:
+            r = await run_document_pipeline(doc_id, metadata, patient_id=patient_id)
+            cost = r.get("cost", 0) or 0
+            total_cost += cost
+            results.append({"doc_id": doc_id, "ok": True, "cost": cost})
+        except Exception as e:
+            record_suppressed_error("document_pipeline_drain", f"doc_{doc_id}", e)
+            results.append({"doc_id": doc_id, "ok": False, "error": str(e)})
+
+    await _log_task(
+        "document_pipeline_drain",
+        {
+            "cost": total_cost,
+            "tool_calls": [{"doc_id": r["doc_id"]} for r in results],
+            "response": json.dumps(results, ensure_ascii=False),
+            "model": AUTONOMOUS_MODEL_LIGHT,
+            "started_at": datetime.now(UTC).isoformat(),
+        },
+        token=token,
+    )
+    logger.info(
+        "document_pipeline_drain: patient=%s drained=%d cost=$%.4f",
+        patient_id,
+        len(results),
+        total_cost,
+    )
+    return {"drained": len(results), "patient_id": patient_id, "cost": total_cost}
+
+
 def _classify_doc_type(response_text: str, metadata: dict) -> str:
     """Classify document type from file_scan response and webhook metadata.
 
