@@ -230,7 +230,12 @@ Focus on: ANC, PLT (chemo + anticoag safety), liver enzymes, creatinine, neuropa
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            await _send_whatsapp(header + summary, recipient="caregiver", template_key="pre_cycle")
+            await _send_whatsapp(
+                header + summary,
+                recipient="caregiver",
+                template_key="pre_cycle",
+                patient_id=patient_id,
+            )
     except Exception as e:
         record_suppressed_error("pre_cycle_check", "whatsapp_notify", e)
 
@@ -452,7 +457,10 @@ Prioritize trials at centers within practical travel distance from Bratislava:
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
             await _send_whatsapp(
-                header + summary, recipient="caregiver", template_key="trial_match"
+                header + summary,
+                recipient="caregiver",
+                template_key="trial_match",
+                patient_id=patient_id,
             )
     except Exception as e:
         record_suppressed_error("trial_monitor", "whatsapp_notify", e)
@@ -721,7 +729,12 @@ Structure the briefing with clear sections:
             summary = response_text[:1400]
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
-            await _send_whatsapp(header + summary, recipient="caregiver", template_key="briefing")
+            await _send_whatsapp(
+                header + summary,
+                recipient="caregiver",
+                template_key="briefing",
+                patient_id=patient_id,
+            )
     except Exception as e:
         record_suppressed_error("weekly_briefing", "whatsapp_notify", e)
 
@@ -816,7 +829,10 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
                         )
                         body = "\n".join(f"- {a}" for a in alerts)
                         await _send_whatsapp(
-                            header + body, recipient="caregiver", template_key="lab_alert"
+                            header + body,
+                            recipient="caregiver",
+                            template_key="lab_alert",
+                            patient_id=patient_id,
                         )
     except Exception as e:
         record_suppressed_error("lab_sync", "whatsapp_safety_alert", e)
@@ -1312,6 +1328,7 @@ async def run_document_pipeline(
                     f"Pozrite dashboard pre detaily.",
                     recipient="caregiver",
                     template_key="lab_alert",
+                    patient_id=patient_id,
                 )
         except Exception as e:
             record_suppressed_error("document_pipeline", "whatsapp_notify", e)
@@ -1497,7 +1514,10 @@ Vyhni sa zbytočným odborným detailom.
             if len(response_text) > 1400:
                 summary += "\n\n... (plná správa na dashboarde)"
             await _send_whatsapp(
-                header + summary, recipient="caregiver", template_key="family_update"
+                header + summary,
+                recipient="caregiver",
+                template_key="family_update",
+                patient_id=patient_id,
             )
     except Exception as e:
         record_suppressed_error("family_update", "whatsapp_notify", e)
@@ -1555,7 +1575,10 @@ This is a safety check: non-compliance with critical medications is dangerous.
                 "Kontrola liekov", date_str=today, patient_name=_patient_display_name(patient_id)
             )
             await _send_whatsapp(
-                header + response_text[:1400], recipient="caregiver", template_key="briefing"
+                header + response_text[:1400],
+                recipient="caregiver",
+                template_key="briefing",
+                patient_id=patient_id,
             )
     except Exception as e:
         record_suppressed_error("medication_adherence_check", "whatsapp_notify", e)
@@ -1615,6 +1638,8 @@ async def _send_whatsapp(
     recipient: str | None = None,
     template_key: str | None = None,
     template_vars: dict[str, str] | None = None,
+    *,
+    patient_id: str | None = None,
 ) -> dict:
     """Send a WhatsApp message via dashboard internal endpoint.
 
@@ -1623,7 +1648,34 @@ async def _send_whatsapp(
         recipient: Optional recipient key (logged for audit).
         template_key: Template name for out-of-window messages (e.g. 'lab_alert').
         template_vars: Variables to substitute into the template.
+        patient_id: When set, the patient's `notification_policy` gates delivery.
+            `silent` policy → skip send, log reason. `admin` or `patient+admin` →
+            proceed. None = system-level alert (health_monitor, daily_cost) which
+            always reaches admin. Default for newly-onboarded patients is
+            `silent` so parity/read-only patients don't spam the admin inbox
+            with agent-run push (#391).
     """
+    # #391 gate — suppress push for patients whose notification policy says so.
+    # The agent run itself still executes and its data still persists to
+    # oncofiles; only the push is suppressed. Log the skip so it's visible in
+    # the dashboard agent-runs view.
+    if patient_id:
+        try:
+            patient = get_patient(patient_id)
+            policy = getattr(patient, "notification_policy", "silent")
+            if policy == "silent":
+                logger.info(
+                    "WA push suppressed for patient=%s (policy=silent, recipient=%s)",
+                    patient_id,
+                    recipient,
+                )
+                return {"ok": True, "sent": 0, "suppressed": "policy:silent"}
+        except KeyError:
+            logger.warning(
+                "WA push proceeding for unknown patient_id=%s (no policy lookup)",
+                patient_id,
+            )
+
     import httpx
 
     from .config import DASHBOARD_API_KEY

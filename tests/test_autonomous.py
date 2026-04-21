@@ -634,3 +634,60 @@ class TestRunAutonomousTask:
             assert len(result["citations"]) == 1
             assert "FOLFOX" in result["citations"][0]["cited_text"]
             assert result["citations"][0]["source"] == "search_pubmed result"
+
+
+class TestNotificationPolicyGate:
+    """#391 — _send_whatsapp suppresses push for patients with policy=silent.
+
+    Default policy for newly-onboarded patients is "silent" so parity /
+    read-only patients don't spam the admin inbox. Explicit opt-in via
+    PatientProfile.notification_policy = "admin" is required.
+    """
+
+    @pytest.mark.anyio
+    async def test_send_whatsapp_suppresses_silent_patient(self):
+        from oncoteam.autonomous_tasks import _send_whatsapp
+
+        with patch("httpx.AsyncClient") as mock_http:
+            # sgu defaults to silent
+            result = await _send_whatsapp("test msg", recipient="caregiver", patient_id="sgu")
+
+        assert result.get("suppressed") == "policy:silent"
+        mock_http.assert_not_called()
+
+    @pytest.mark.anyio
+    async def test_send_whatsapp_delivers_admin_patient(self):
+        from oncoteam.autonomous_tasks import _send_whatsapp
+
+        with patch("httpx.AsyncClient") as mock_http:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = {"ok": True, "sent": 1}
+            mock_resp.raise_for_status = MagicMock()
+            client = AsyncMock()
+            client.post = AsyncMock(return_value=mock_resp)
+            mock_http.return_value.__aenter__.return_value = client
+
+            # q1b has policy="admin"
+            result = await _send_whatsapp("test msg", recipient="caregiver", patient_id="q1b")
+
+        assert "suppressed" not in result
+        client.post.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_send_whatsapp_system_alert_bypasses_policy(self):
+        """No patient_id → system-wide alert (health_monitor, daily_cost) —
+        must always reach admin regardless of policy."""
+        from oncoteam.autonomous_tasks import _send_whatsapp
+
+        with patch("httpx.AsyncClient") as mock_http:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = {"ok": True, "sent": 1}
+            mock_resp.raise_for_status = MagicMock()
+            client = AsyncMock()
+            client.post = AsyncMock(return_value=mock_resp)
+            mock_http.return_value.__aenter__.return_value = client
+
+            result = await _send_whatsapp("circuit breaker open", recipient="caregiver")
+
+        assert "suppressed" not in result
+        client.post.assert_called_once()

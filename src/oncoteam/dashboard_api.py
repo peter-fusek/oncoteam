@@ -66,7 +66,7 @@ from .request_context import (
     set_correlation_id as _set_correlation_id,
 )
 
-VERSION = "0.87.0"
+VERSION = "0.88.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -1435,6 +1435,26 @@ async def api_sessions(request: Request) -> JSONResponse:
         if type_filter in ("clinical", "technical"):
             classified = [(e, st) for e, st in classified if st == type_filter]
 
+        # #380 staleness signal — surface when summarize_session last fired.
+        # The /wrapup skill is the expected writer; if it stopped calling the
+        # MCP tool (as it did between 2026-03-27 and 2026-04-19), the Sessions
+        # page silently shows ancient entries. Emitting days_since here lets
+        # the UI flag the drift explicitly instead of looking deceptively fresh.
+        from datetime import UTC, datetime
+
+        last_session_at: str | None = None
+        days_since: int | None = None
+        for e, _st in classified:
+            created = e.get("created_at") or ""
+            if created and (last_session_at is None or created > last_session_at):
+                last_session_at = created
+        if last_session_at:
+            try:
+                last_dt = datetime.fromisoformat(last_session_at.replace("Z", "+00:00"))
+                days_since = (datetime.now(UTC) - last_dt).days
+            except (ValueError, TypeError):
+                days_since = None
+
         return _cors_json(
             {
                 "sessions": [
@@ -1451,6 +1471,9 @@ async def api_sessions(request: Request) -> JSONResponse:
                 ],
                 "total": len(classified),
                 "type_counts": type_counts,
+                "last_session_at": last_session_at,
+                "days_since_last_session": days_since,
+                "stale": days_since is not None and days_since > 3,
             }
         )
     except Exception as e:

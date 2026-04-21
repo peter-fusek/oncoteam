@@ -648,6 +648,65 @@ async def test_api_sessions_handles_error(mock_search):
     assert response.status_code == 502
 
 
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_flags_stale_when_older_than_3_days(mock_search):
+    """#380 — surface when summarize_session hasn't fired recently.
+
+    Classic UX trap: the Sessions page looked fresh because it returned a full
+    list, but every entry was 3+ weeks old because the /wrapup skill had
+    stopped calling summarize_session. Backend now emits `stale: true` and
+    `days_since_last_session` so the UI can warn explicitly.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    old_date = (datetime.now(UTC) - timedelta(days=10)).isoformat()
+    mock_search.return_value = {
+        "entries": [
+            {
+                "id": 1,
+                "title": "Session: Clinical review C3",
+                "content": "...",
+                "created_at": old_date,
+                "tags": ["sys:session", "clin:pre-cycle"],
+            }
+        ]
+    }
+    request = _make_request("/api/sessions")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["stale"] is True
+    assert data["days_since_last_session"] >= 9  # allow 1d slop
+    assert data["last_session_at"] == old_date
+
+
+@pytest.mark.anyio
+@patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
+async def test_api_sessions_not_stale_when_recent(mock_search):
+    from datetime import UTC, datetime, timedelta
+
+    recent = (datetime.now(UTC) - timedelta(hours=4)).isoformat()
+    mock_search.return_value = {
+        "entries": [
+            {
+                "id": 1,
+                "title": "Session: Today's sprint",
+                "content": "...",
+                "created_at": recent,
+                "tags": ["sys:session"],
+            }
+        ]
+    }
+    request = _make_request("/api/sessions")
+    response = await api_sessions(request)
+    data = json.loads(response.body)
+
+    assert data["stale"] is False
+    assert data["days_since_last_session"] == 0
+
+
 # ── CORS preflight ────────────────────────────────
 
 

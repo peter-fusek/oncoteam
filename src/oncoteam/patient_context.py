@@ -310,6 +310,10 @@ PATIENT = PatientProfile(
     home_region=_BRATISLAVA_HOME,
     enrollment_preference=_BRATISLAVA_ENROLLMENT,
     oncopanel_history=[_ERIKA_ONCOPANEL_2026_04_18],
+    # #391 — q1b is the only actively-treated patient; admin (Peter) receives
+    # WhatsApp notifications for her scheduled agent runs. e5g / sgu stay on
+    # the default "silent" policy until explicitly flipped.
+    notification_policy="admin",
 )
 
 # ── Second patient: general health management ──────────────────────────────

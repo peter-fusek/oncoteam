@@ -193,6 +193,14 @@ class PatientProfile(BaseModel):
     # Non-destructive pause: scheduler + document webhook skip, data intact.
     # Flip to False and restart to resume. Overridable via PAUSED_PATIENTS env.
     paused: bool = False
+    # Notification policy (#391) — gates WhatsApp admin push. "silent" is the
+    # default so parity-onboarded / read-only patients don't spam Peter's
+    # inbox with agent-run notifications they aren't acting on. Agents still
+    # run + persist data to oncofiles; only the push is suppressed.
+    #   silent         — no WhatsApp push (dashboard surfaces only)
+    #   admin          — push to admin role (caregiver/advocate) — no patient
+    #   patient+admin  — push to both admin and the patient's own phone
+    notification_policy: Literal["silent", "admin", "patient+admin"] = "silent"
     # Enrollment geography (#394)
     home_region: HomeRegion | None = None
     enrollment_preference: EnrollmentPreference | None = None

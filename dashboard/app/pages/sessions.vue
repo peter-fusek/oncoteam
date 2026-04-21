@@ -15,6 +15,9 @@ const { data: sessionsData, status: sessionsStatus, error: sessionsError, refres
   }>
   total: number
   type_counts: { clinical: number; technical: number }
+  last_session_at?: string | null
+  days_since_last_session?: number | null
+  stale?: boolean
   error?: string
 }>(() => `/sessions?limit=50&type=${typeFilter.value}`, { lazy: true, server: false, watch: [typeFilter] })
 
@@ -67,6 +70,27 @@ const totalAll = computed(() => {
     </div>
 
     <ApiErrorBanner :error="sessionsData?.error || sessionsError?.message" />
+
+    <!-- #380 staleness banner — session log hasn't been updated in >3 days.
+         Root cause is the /wrapup skill no longer calling summarize_session. -->
+    <div
+      v-if="sessionsData?.stale && sessionsData?.days_since_last_session"
+      class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 flex items-start gap-2"
+    >
+      <UIcon name="i-lucide-clock" class="shrink-0 mt-0.5" />
+      <div>
+        <div class="font-medium">
+          {{ $t('sessions.staleTitle', 'Session log is stale') }}
+        </div>
+        <div class="text-xs mt-0.5">
+          {{ $t('sessions.staleDetail', 'Last session logged {days} days ago on {date}. The /wrapup skill may have stopped calling summarize_session — verify ~/.claude/commands/wrapup.md.', {
+            days: sessionsData.days_since_last_session,
+            date: formatDate(sessionsData.last_session_at ?? ''),
+          }) }}
+        </div>
+      </div>
+    </div>
+
     <SkeletonLoader v-if="!sessionsData && sessionsStatus === 'pending'" variant="cards" />
     <EmptyState v-else-if="sessionsError || sessionsData?.error || sessionsStatus === 'error'" offline :message="$t('common.dataUnavailable')" />
 
