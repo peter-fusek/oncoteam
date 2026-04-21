@@ -29,10 +29,16 @@ SA_NAME="oncoteam-backup-writer"
 
 # ── Step 1: create project under instarea.sk org ───────────────────────
 # Free. Reversible (can delete within 30 days). Project ID globally burned.
+# Idempotent: skip if the project already exists (Sprint 93 S5 re-run after
+# billing-quota block on first attempt).
 echo "Step 1: creating project ${PROJECT_ID} under org ${ORG_ID}"
-gcloud projects create "${PROJECT_ID}" \
-  --name="${PROJECT_NAME}" \
-  --organization="${ORG_ID}"
+if gcloud projects describe "${PROJECT_ID}" >/dev/null 2>&1; then
+  echo "  project ${PROJECT_ID} already exists — skipping create"
+else
+  gcloud projects create "${PROJECT_ID}" \
+    --name="${PROJECT_NAME}" \
+    --organization="${ORG_ID}"
+fi
 
 # ── Step 2: link billing (required for KMS + GCS) ──────────────────────
 # Activates billable resource creation. Reversible: unlink to stop charges.
