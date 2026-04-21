@@ -34,9 +34,11 @@ from .funnel_audit import (
     list_cards,
     list_events_for_card,
     list_events_for_patient,
+    make_card_id,
     proposal_ttl_expiry,
     record_event,
     upsert_card,
+    upsert_cards,
     validate_stage,
 )
 from .models import (
@@ -184,7 +186,7 @@ async def api_funnel_proposals_post(request: Request) -> JSONResponse:
         )
 
     card = FunnelCard(
-        card_id=f"{patient_id}_{nct_id}_proposal",
+        card_id=make_card_id(patient_id, nct_id, FunnelLane.PROPOSAL),
         patient_id=patient_id,
         nct_id=nct_id,
         lane=FunnelLane.PROPOSAL,
@@ -297,17 +299,16 @@ async def api_funnel_cards_post(request: Request) -> JSONResponse:
         except ValueError as e:
             return _cors_json({"error": str(e)}, status_code=400, request=request)
 
-        # Create a NEW clinical-lane card; original proposal is archived so
-        # the proposal-lane listing stays clean but the audit trail survives.
         new_card = card.model_copy(
             update={
-                "card_id": f"{patient_id}_{card.nct_id}",
+                "card_id": make_card_id(patient_id, card.nct_id, FunnelLane.CLINICAL),
                 "lane": FunnelLane.CLINICAL,
                 "current_stage": to_stage,
                 "proposal_ttl_expires_at": None,
             }
         )
-        await upsert_card(new_card, token=token)
+        archived = card.model_copy(update={"current_stage": "dismissed"})
+        await upsert_cards(patient_id, [new_card, archived], token=token)
         await record_event(
             card_id=new_card.card_id,
             patient_id=patient_id,
@@ -322,9 +323,6 @@ async def api_funnel_cards_post(request: Request) -> JSONResponse:
             metadata={"from_card_id": card.card_id},
             token=token,
         )
-        # Archive the original proposal (rationale required — same as move).
-        archived = card.model_copy(update={"current_stage": "dismissed"})
-        await upsert_card(archived, token=token)
         await record_event(
             card_id=card.card_id,
             patient_id=patient_id,

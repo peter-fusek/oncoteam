@@ -49,6 +49,7 @@ if str(_REPO) not in sys.path:
 
 from oncoteam import oncofiles_client  # noqa: E402
 from oncoteam.funnel_audit import (  # noqa: E402
+    make_card_id,
     record_event,
     upsert_card,
 )
@@ -131,7 +132,7 @@ async def _migrate_one_nct(
     if mapped is None:
         return False, f"no mapping for legacy stage {legacy_stage!r}"
     new_stage, extra_rationale = mapped
-    card_id = f"{patient_id}_{nct_id}"
+    card_id = make_card_id(patient_id, nct_id, FunnelLane.CLINICAL)
 
     rationale_parts = [f"automated migration to two-lane; legacy stage={legacy_stage!r}"]
     if extra_rationale:

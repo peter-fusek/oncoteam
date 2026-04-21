@@ -17,6 +17,7 @@ audit log.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -54,7 +55,10 @@ def _new_event_id() -> str:
     return str(uuid.uuid4())
 
 
-def _new_card_id(patient_id: str, nct_id: str, lane: FunnelLane) -> str:
+def make_card_id(patient_id: str, nct_id: str, lane: FunnelLane) -> str:
+    """Canonical card_id format. Callers outside this module must use this
+    helper so promote→clinical transitions resolve the same ID deterministically.
+    """
     suffix = "_proposal" if lane == FunnelLane.PROPOSAL else ""
     return f"{patient_id}_{nct_id}{suffix}"
 
@@ -189,9 +193,12 @@ async def list_events_for_patient(
     events per patient lifetime) that a server-side query isn't worth it.
     """
     cards = await _load_cards(patient_id, token=token)
-    all_events: list[dict] = []
-    for card_id in cards:
-        all_events.extend(await _load_events(patient_id, card_id, token=token))
+    # Parallel fan-out bounded by the oncofiles 3-slot semaphore. Serial
+    # awaits here were the hottest path for the /audit/patient endpoint.
+    card_event_lists = await asyncio.gather(
+        *(_load_events(patient_id, card_id, token=token) for card_id in cards)
+    )
+    all_events: list[dict] = [e for lst in card_event_lists for e in lst]
     if actor_type is not None:
         all_events = [e for e in all_events if e.get("actor_type") == actor_type.value]
     if event_type is not None:
@@ -229,6 +236,26 @@ async def upsert_card(card: FunnelCard, *, token: str | None = None) -> FunnelCa
     cards[card.card_id] = card.model_dump(mode="json")
     await _save_cards(card.patient_id, cards, token=token)
     return card
+
+
+async def upsert_cards(
+    patient_id: str, cards_to_save: list[FunnelCard], *, token: str | None = None
+) -> list[FunnelCard]:
+    """Batch variant of upsert_card — one load/save roundtrip for N cards.
+
+    Used by promote (create clinical + archive proposal in one write) so we
+    don't pay two oncofiles roundtrips for what's a single logical transition.
+    Every input card must share the patient_id argument.
+    """
+    if not cards_to_save:
+        return []
+    cards = await _load_cards(patient_id, token=token)
+    now = datetime.now(UTC)
+    for c in cards_to_save:
+        c.updated_at = now
+        cards[c.card_id] = c.model_dump(mode="json")
+    await _save_cards(patient_id, cards, token=token)
+    return cards_to_save
 
 
 async def get_card(patient_id: str, card_id: str, *, token: str | None = None) -> FunnelCard | None:
