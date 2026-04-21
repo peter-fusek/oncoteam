@@ -178,14 +178,21 @@ if ! gcloud iam service-accounts describe "${SA_EMAIL}" >/dev/null 2>&1; then
   done
 fi
 
-# Grant write-only access to both buckets (Object Creator — cannot read or delete existing objects).
+# Grant object-level access to both buckets. `roles/storage.objectUser` covers
+# create + read + overwrite + delete of the SA's own objects. Overwrite is
+# REQUIRED because hourly / daily re-runs land at the same wall-clock path
+# (funnel_audit/YYYY/MM/DD/HH/snapshot.json, oncofiles_db/YYYY/MM/DD/full.json.gz)
+# — and we want latest-wins semantics within that window. Versioning on the
+# buckets preserves prior revisions as non-current objects.
+# Original script used `roles/storage.objectCreator`, which is create-only and
+# 403'd on the second run within the same day. Sprint 93 S5 real-run fix.
 gcloud storage buckets add-iam-policy-binding "${HOT_BUCKET}" \
   --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/storage.objectCreator"
+  --role="roles/storage.objectUser"
 
 gcloud storage buckets add-iam-policy-binding "${COLD_BUCKET}" \
   --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/storage.objectCreator"
+  --role="roles/storage.objectUser"
 
 # KMS encrypter role — needed to upload objects that are CMEK-encrypted.
 gcloud kms keys add-iam-policy-binding "${KMS_KEY}" \
