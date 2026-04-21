@@ -129,10 +129,36 @@ async def dump_patient(patient_id: str) -> dict:
     }
 
 
+def _has_own_token(patient_id: str) -> bool:
+    """Return True iff this patient has a dedicated bearer token.
+
+    q1b uses the default ONCOFILES_MCP_TOKEN; every other patient requires
+    an explicit ONCOFILES_MCP_TOKEN_<ID>. Without it, the wrapper falls
+    back to the default token — which would silently dump q1b's data under
+    the other patient's label, producing a garbage backup that looks fine
+    at row-count level. So we skip those patients entirely.
+    """
+    from oncoteam.patient_context import _patient_tokens
+
+    if patient_id == "q1b":
+        return bool(os.environ.get("ONCOFILES_MCP_TOKEN"))
+    return patient_id in _patient_tokens
+
+
 async def build_dump() -> dict:
     now = datetime.now(UTC)
     patients = []
+    skipped: list[str] = []
     for pid in list_patient_ids():
+        if not _has_own_token(pid):
+            logger.warning(
+                "skipping patient=%s — no dedicated ONCOFILES_MCP_TOKEN_%s env var "
+                "(dumping under the default token would mislabel q1b's data)",
+                pid,
+                pid.upper(),
+            )
+            skipped.append(pid)
+            continue
         logger.info("dumping patient=%s", pid)
         patients.append(await dump_patient(pid))
 
@@ -142,6 +168,7 @@ async def build_dump() -> dict:
         "snapshot_at": now.isoformat(),
         "conversations_lookback_days": CONVERSATIONS_LOOKBACK_DAYS,
         "patient_count": len(patients),
+        "skipped_patients": skipped,
         "patients": patients,
     }
 
