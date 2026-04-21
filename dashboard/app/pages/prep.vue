@@ -115,6 +115,47 @@ function printPrep() {
       </div>
     </div>
 
+    <!-- Oncopanel summary (#415 — physician visibility, print-friendly) -->
+    <div v-if="patient?.oncopanel" class="rounded-xl border border-gray-200 bg-white p-4 print:border-gray-300 print:bg-white">
+      <h2 class="text-sm font-semibold text-gray-900 mb-2 print:text-black">
+        {{ $t('prep.sectionOncopanel', 'Oncopanel — NGS') }}
+      </h2>
+      <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500 print:text-gray-700 mb-2">
+        <span v-if="patient.oncopanel.lab">{{ patient.oncopanel.lab }}</span>
+        <span v-if="patient.oncopanel.report_date">{{ patient.oncopanel.report_date }}</span>
+        <span v-if="patient.oncopanel.methodology">{{ patient.oncopanel.methodology }}</span>
+        <span v-if="patient.oncopanel.msi_status">MSI: {{ patient.oncopanel.msi_status }}</span>
+        <span v-if="patient.oncopanel.mmr_status">MMR: {{ patient.oncopanel.mmr_status }}</span>
+        <span v-if="patient.oncopanel.tmb_score !== null">
+          TMB: {{ patient.oncopanel.tmb_score }} ({{ patient.oncopanel.tmb_category }})
+        </span>
+      </div>
+      <div v-if="patient.oncopanel.variants?.length" class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead class="text-gray-500 border-b border-gray-200">
+            <tr>
+              <th class="text-left font-medium py-1 pr-2">Gene</th>
+              <th class="text-left font-medium py-1 pr-2">Variant</th>
+              <th class="text-left font-medium py-1 pr-2">Origin</th>
+              <th class="text-left font-medium py-1 pr-2">VAF</th>
+              <th class="text-left font-medium py-1 pr-2">Tier</th>
+              <th class="text-left font-medium py-1">Significance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(v, i) in patient.oncopanel.variants" :key="i" class="border-b border-gray-100 last:border-0">
+              <td class="py-1 pr-2 font-mono font-medium">{{ v.gene }}</td>
+              <td class="py-1 pr-2 font-mono">{{ v.protein || v.hgvs_cdna }}</td>
+              <td class="py-1 pr-2">{{ v.classification }}</td>
+              <td class="py-1 pr-2">{{ v.vaf !== null ? (v.vaf * 100).toFixed(1) + '%' : '—' }}</td>
+              <td class="py-1 pr-2">{{ v.tier || '—' }}</td>
+              <td class="py-1">{{ v.significance.replace(/_/g, ' ') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Critical Safety Flags -->
     <div v-if="criticalFlags.length" class="rounded-xl border border-red-500/30 bg-red-500/5 p-4 print:border-red-300 print:bg-red-50">
       <h2 class="text-sm font-semibold text-gray-900 mb-2 print:text-black">{{ $t('prep.criticalSafetyFlags') }}</h2>

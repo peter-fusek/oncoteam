@@ -450,6 +450,32 @@ async def test_api_patient_therapy_categories_sk():
     assert data["therapy_categories"]["chemo"]["label"] == "Chemoterapia"
 
 
+@pytest.mark.anyio
+async def test_api_patient_exposes_oncopanel_summary():
+    """#415 — physician UI needs every variant + test metadata surfaced from
+    the structured oncopanel (not only the DDR subset)."""
+    request = _make_request("/api/patient", query_string="lang=en")
+    response = await api_patient(request)
+    data = json.loads(response.body)
+
+    panel = data.get("oncopanel")
+    assert panel is not None, "q1b has a 2026-04-18 oncopanel, must be surfaced"
+    assert panel["lab"]  # lab institution filled in (#415 — Ústav sv. Alžbety)
+    assert panel["methodology"]
+    assert panel["msi_status"] == "MSS"
+    assert panel["mmr_status"] == "pMMR"
+
+    genes = {v["gene"] for v in panel["variants"]}
+    # Every pathogenic call must be visible — not only the DDR ones.
+    assert "KRAS" in genes
+    assert "ATM" in genes
+    assert "TP53" in genes
+
+    # #374 — somatic vs germline is disambiguated on every variant.
+    for v in panel["variants"]:
+        assert v["classification"] in {"somatic", "germline", "unknown"}
+
+
 # ── /api/research ─────────────────────────────────
 
 
@@ -1212,3 +1238,42 @@ async def test_api_briefings_passes_patient_token(mock_get_token, mock_search):
     assert mock_search.call_count == 2
     for call in mock_search.call_args_list:
         assert call.kwargs.get("token") == "tok_jan_123"
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.search_conversations",
+    new_callable=AsyncMock,
+)
+@patch("oncoteam.request_context.get_patient_token", return_value="tok_123")
+async def test_api_briefings_returns_partial_on_slow_second_call(mock_token, mock_search):
+    """#416 — don't wrap asyncio.gather(return_exceptions=True) with wait_for.
+
+    Before the fix, api_briefings wrapped the gather() in asyncio.wait_for(18s).
+    When the cost_alert query timed out (oncofiles agent lane serializes heavy
+    queries so two concurrent search_conversations can take 30s+), wait_for
+    cancelled BOTH branches and the briefings panel returned empty.
+    Now a single slow/failing branch must not starve the healthy one.
+    """
+    briefings_entries = [
+        {"id": 1, "title": "Weekly briefing", "content": "x", "entry_type": "autonomous_briefing"},
+    ]
+
+    async def side_effect(**kwargs):
+        if kwargs.get("entry_type") == "autonomous_briefing":
+            return {"entries": briefings_entries}
+        # cost_alert call raises — simulates timeout / semaphore rejection
+        raise TimeoutError("cost_alert branch failed")
+
+    mock_search.side_effect = side_effect
+    import oncoteam.dashboard_api as mod
+
+    mod._briefings_cache.clear()
+    request = _make_request("/api/briefings", "patient_id=q1b&nocache=1")
+    response = await api_briefings(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200, "partial failure must not bubble up as error"
+    # The good branch must survive the bad branch's failure (#416 fix).
+    assert data["total"] == 1
+    assert data["briefings"][0]["title"] == "Weekly briefing"

@@ -1,9 +1,17 @@
-import { broadcastWhatsApp } from '../../utils/twilio-send'
+import { broadcastWhatsApp, type BroadcastOptions } from '../../utils/twilio-send'
 
 /**
  * Internal WhatsApp notify endpoint for server-to-server calls.
  * Uses DASHBOARD_API_KEY auth instead of session auth.
- * Sends a message to all configured phone numbers in NUXT_ROLE_MAP.
+ *
+ * Routing via `recipient`:
+ *   - 'caregiver' / 'advocate' / 'admin' / 'physician' — include that role,
+ *     exclude 'patient'.
+ *   - 'patient' — target only role_map entries with role:patient.
+ *   - undefined — broadcast to all roles EXCEPT 'patient' (safe default).
+ *
+ * The patient must never receive infra/operational alerts unless the caller
+ * explicitly opts in (#420 — circuit-breaker alerts were reaching Erika).
  */
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
@@ -28,12 +36,24 @@ export default defineEventHandler(async (event) => {
 
   const templateKey = body.template_key as string | undefined
   const templateVars = body.template_vars as Record<string, string> | undefined
+  const recipient = (body.recipient as string | undefined)?.trim().toLowerCase()
 
-  const results = await broadcastWhatsApp(sanitized, templateKey, templateVars)
+  const options: BroadcastOptions = {}
+  if (recipient === 'patient') {
+    options.includeRoles = ['patient']
+    options.excludeRoles = []
+  }
+  else if (recipient) {
+    options.includeRoles = [recipient]
+    options.excludeRoles = ['patient']
+  }
+  // else: safe default — broadcast to all non-patient roles.
+
+  const results = await broadcastWhatsApp(sanitized, templateKey, templateVars, options)
 
   if (results.length === 0) {
-    return { ok: false, error: 'No phone numbers configured in NUXT_ROLE_MAP' }
+    return { ok: false, error: 'No matching phones for recipient filter', recipient: recipient ?? 'non-patient' }
   }
 
-  return { ok: true, sent: results.length, results }
+  return { ok: true, sent: results.length, recipient: recipient ?? 'non-patient', results }
 })

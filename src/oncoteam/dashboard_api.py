@@ -66,7 +66,7 @@ from .request_context import (
     set_correlation_id as _set_correlation_id,
 )
 
-VERSION = "0.83.0"
+VERSION = "0.84.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -1329,6 +1329,58 @@ async def api_patient(request: Request) -> JSONResponse:
         record_suppressed_error("api_patient", "ddr_summary", e)
         data["ddr"] = {"deficient": False, "variants": []}
 
+    # Surface the latest oncopanel explicitly for the patient UI (#415, #398).
+    # model_dump already includes oncopanel_history, but the frontend needs a
+    # cleaner, flattened view — full variant list + test metadata — so MUDr.
+    # Mináriková sees every pathogenic call, not only the DDR subset.
+    try:
+        profile = get_patient(patient_id)
+        latest = get_latest_oncopanel(profile)
+        if latest is not None:
+            data["oncopanel"] = {
+                "panel_id": latest.panel_id,
+                "lab": latest.lab,
+                "methodology": latest.methodology,
+                "sample_type": latest.sample_type,
+                "sample_date": latest.sample_date.isoformat() if latest.sample_date else None,
+                "report_date": latest.report_date.isoformat() if latest.report_date else None,
+                "msi_status": latest.msi_status,
+                "mmr_status": latest.mmr_status,
+                "tmb_score": latest.tmb_score,
+                "tmb_category": latest.tmb_category,
+                "verified_status": latest.verified_status,
+                "source_document_id": latest.source_document_id,
+                "variants": [
+                    {
+                        "gene": v.gene,
+                        "protein": v.protein_short or v.hgvs_protein or v.hgvs_cdna,
+                        "hgvs_cdna": v.hgvs_cdna,
+                        "hgvs_protein": v.hgvs_protein,
+                        "vaf": v.vaf,
+                        "tier": v.tier,
+                        "variant_type": v.variant_type,
+                        "classification": v.classification,
+                        "significance": v.significance,
+                        "reviewed_status": v.reviewed_status,
+                        "source_document_id": v.source_document_id,
+                    }
+                    for v in latest.variants
+                ],
+                "cnvs": [
+                    {
+                        "gene": c.gene,
+                        "alteration": c.alteration,
+                        "copies": c.copies,
+                    }
+                    for c in latest.cnvs
+                ],
+            }
+        else:
+            data["oncopanel"] = None
+    except Exception as e:
+        record_suppressed_error("api_patient", "oncopanel_summary", e)
+        data["oncopanel"] = None
+
     return _cors_json(data)
 
 
@@ -1857,19 +1909,22 @@ async def api_briefings(request: Request) -> JSONResponse:
         if time.time() - cached_time < _BRIEFINGS_CACHE_TTL:
             return cached_response
     try:
+        # Don't wrap asyncio.gather(return_exceptions=True) with asyncio.wait_for —
+        # the outer timeout cancels ALL tasks, defeating partial results. Two heavy
+        # search_conversations calls serialize through the 1-slot agent lane in
+        # oncofiles_client (~15s each = 30s total), which was tripping the 18s
+        # wait_for and cancelling both, producing an empty briefings panel (#416).
+        # Per-call 20s timeouts in oncofiles_client are sufficient.
         briefings_res, alerts_res = await _deduplicated_fetch(
             cache_key,
-            lambda: asyncio.wait_for(
-                asyncio.gather(
-                    oncofiles_client.search_conversations(
-                        entry_type="autonomous_briefing", limit=limit, token=token
-                    ),
-                    oncofiles_client.search_conversations(
-                        entry_type="cost_alert", limit=5, token=token
-                    ),
-                    return_exceptions=True,
+            lambda: asyncio.gather(
+                oncofiles_client.search_conversations(
+                    entry_type="autonomous_briefing", limit=limit, token=token
                 ),
-                timeout=18.0,
+                oncofiles_client.search_conversations(
+                    entry_type="cost_alert", limit=5, token=token
+                ),
+                return_exceptions=True,
             ),
         )
         briefings = (
@@ -2327,11 +2382,17 @@ async def api_labs(request: Request) -> JSONResponse:
                             )
             entry["suspects"] = suspects
 
+        # Freshness signal for the UI (#414). `last_updated` = when this
+        # response was built (auto-injected by _cors_json); `lab_data_last_updated`
+        # = date of the newest lab sample. Peter's #410 case: if the API says
+        # "fresh" but the newest sample is weeks old, the data layer is stale.
+        newest_event_date = max((e.get("date") for e in entries if e.get("date")), default=None)
         response = _cors_json(
             {
                 "entries": entries,
                 "total": len(entries),
                 "reference_ranges": LAB_REFERENCE_RANGES,
+                "lab_data_last_updated": newest_event_date,
             }
         )
         _labs_cache[cache_key] = (time.time(), response)

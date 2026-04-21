@@ -49,9 +49,10 @@ _ERIKA_ONCOPANEL_2026_04_18 = Oncopanel(
     patient_id="q1b",
     sample_date=None,  # TBC from document header
     report_date=date(2026, 4, 18),
-    lab="",  # TBC — extract from document header
+    lab="OUSA — Ústav sv. Alžbety",
     sample_type="tumor_tissue",
     methodology="NGS",  # TBC — likely TruSight-500 or similar
+    source_document_id="278",
     variants=[
         OncopanelVariant(
             gene="KRAS",

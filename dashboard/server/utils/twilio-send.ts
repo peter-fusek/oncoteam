@@ -127,19 +127,48 @@ export async function sendWhatsApp(options: SendWhatsAppOptions): Promise<SendRe
   }
 }
 
+export interface BroadcastOptions {
+  /** Only send to phones whose role_map entry has at least one of these roles. */
+  includeRoles?: string[]
+  /** Never send to phones whose role_map entry has any of these roles.
+   *  Applied AFTER includeRoles — takes precedence. Default: ['patient']
+   *  so infra/alert messages never reach the patient unless explicitly opted in. */
+  excludeRoles?: string[]
+}
+
 /**
- * Send a WhatsApp message to all phones in NUXT_ROLE_MAP.
+ * Send a WhatsApp message to phones in NUXT_ROLE_MAP, filtered by role.
+ *
+ * Default excludes `patient` role — infra/alert messages must never reach
+ * the patient by accident (#420: circuit-breaker alerts were being broadcast
+ * to Erika). Callers that legitimately target the patient must pass
+ * `{ excludeRoles: [] }` and an explicit `includeRoles: ['patient']`.
  */
 export async function broadcastWhatsApp(
   body: string,
   templateKey?: string,
   templateVars?: Record<string, string>,
+  options: BroadcastOptions = {},
 ): Promise<SendResult[]> {
   const roleMap = getRoleMapSync()
+  const includeRoles = options.includeRoles
+  const excludeRoles = options.excludeRoles ?? ['patient']
 
   const phones = new Set<string>()
   for (const entry of Object.values(roleMap)) {
-    if (entry.phone) phones.add(entry.phone)
+    if (!entry.phone) continue
+    const roles = entry.roles ?? []
+
+    // If includeRoles set, require overlap.
+    if (includeRoles && includeRoles.length > 0) {
+      const hasIncluded = roles.some(r => includeRoles.includes(r))
+      if (!hasIncluded) continue
+    }
+
+    // Always enforce excludeRoles.
+    if (excludeRoles.length > 0 && roles.some(r => excludeRoles.includes(r))) continue
+
+    phones.add(entry.phone)
   }
 
   const results: SendResult[] = []

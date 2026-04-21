@@ -43,6 +43,34 @@ const { data: patient, status: patientStatus, error: patientError } = fetchApi<{
     }>
     eligible_classes?: string[]
   }
+  oncopanel?: {
+    panel_id: string
+    lab: string
+    methodology: string
+    sample_type: string
+    sample_date: string | null
+    report_date: string | null
+    msi_status: string
+    mmr_status: string
+    tmb_score: number | null
+    tmb_category: string
+    verified_status: string
+    source_document_id: string
+    variants: Array<{
+      gene: string
+      protein: string
+      hgvs_cdna: string
+      hgvs_protein: string
+      vaf: number | null
+      tier: string
+      variant_type: string
+      classification: 'somatic' | 'germline' | 'unknown'
+      significance: string
+      reviewed_status: string
+      source_document_id: string
+    }>
+    cnvs: Array<{ gene: string; alteration: string; copies: number | null }>
+  } | null
 }>('/patient', { lazy: true, server: false })
 
 const { data: protocol } = fetchApi<{
@@ -451,6 +479,116 @@ const abbreviations: Record<string, string> = {
         ]"
         compact
       />
+    </div>
+
+    <!-- Full Oncopanel (NGS report — #415 / #398). Rendered for physician +
+         advocate; hidden from patient role because it carries raw variant
+         classifications that need clinician framing. -->
+    <div v-if="isOncology && patient?.oncopanel && activeRole !== 'patient'">
+      <h2 class="text-lg font-semibold text-gray-900 mb-3">
+        {{ $t('patient.oncopanelTitle', 'Oncopanel — NGS') }}
+      </h2>
+      <div class="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+        <!-- Panel metadata -->
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+          <span v-if="patient.oncopanel.lab">
+            <UIcon name="i-lucide-building-2" class="w-3.5 h-3.5 inline mr-0.5" />
+            {{ patient.oncopanel.lab }}
+          </span>
+          <span v-if="patient.oncopanel.report_date">
+            <UIcon name="i-lucide-calendar" class="w-3.5 h-3.5 inline mr-0.5" />
+            {{ patient.oncopanel.report_date }}
+          </span>
+          <span v-if="patient.oncopanel.methodology">
+            {{ patient.oncopanel.methodology }}
+          </span>
+          <span v-if="patient.oncopanel.sample_type">
+            {{ $t(`patient.sampleType.${patient.oncopanel.sample_type}`, patient.oncopanel.sample_type) }}
+          </span>
+          <span v-if="patient.oncopanel.msi_status">MSI: {{ patient.oncopanel.msi_status }}</span>
+          <span v-if="patient.oncopanel.mmr_status">MMR: {{ patient.oncopanel.mmr_status }}</span>
+          <span v-if="patient.oncopanel.tmb_score !== null">
+            TMB: {{ patient.oncopanel.tmb_score }} ({{ patient.oncopanel.tmb_category }})
+          </span>
+        </div>
+
+        <!-- Variant table -->
+        <div v-if="patient.oncopanel.variants.length" class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="text-gray-500 border-b border-gray-200">
+              <tr>
+                <th class="text-left font-medium py-1.5 pr-2">{{ $t('patient.oncoGene', 'Gene') }}</th>
+                <th class="text-left font-medium py-1.5 pr-2">{{ $t('patient.oncoVariant', 'Variant') }}</th>
+                <th class="text-left font-medium py-1.5 pr-2">{{ $t('patient.oncoClassification', 'Origin') }}</th>
+                <th class="text-left font-medium py-1.5 pr-2">VAF</th>
+                <th class="text-left font-medium py-1.5 pr-2">{{ $t('patient.oncoTier', 'Tier') }}</th>
+                <th class="text-left font-medium py-1.5">{{ $t('patient.oncoSignificance', 'Significance') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(v, i) in patient.oncopanel.variants"
+                :key="`${v.gene}-${v.hgvs_cdna}-${i}`"
+                class="border-b border-gray-100 last:border-0"
+              >
+                <td class="py-1.5 pr-2 font-mono font-medium text-gray-900">{{ v.gene }}</td>
+                <td class="py-1.5 pr-2 font-mono text-gray-700">
+                  {{ v.protein || v.hgvs_cdna }}
+                  <span v-if="v.variant_type !== 'SNV'" class="text-[10px] text-gray-400 ml-1">{{ v.variant_type }}</span>
+                </td>
+                <td class="py-1.5 pr-2">
+                  <UBadge
+                    :color="v.classification === 'germline' ? 'warning' : 'info'"
+                    variant="subtle"
+                    size="xs"
+                  >
+                    {{ v.classification === 'germline'
+                      ? $t('patient.germline', 'Germline')
+                      : v.classification === 'somatic'
+                        ? $t('patient.somatic', 'Somatic')
+                        : $t('patient.unknown', 'Unknown') }}
+                  </UBadge>
+                </td>
+                <td class="py-1.5 pr-2 text-gray-700">
+                  <span v-if="v.vaf !== null">{{ (v.vaf * 100).toFixed(1) }}%</span>
+                  <span v-else class="text-gray-400">—</span>
+                </td>
+                <td class="py-1.5 pr-2 text-gray-700">
+                  <UBadge v-if="v.tier" variant="subtle" size="xs" color="neutral">{{ v.tier }}</UBadge>
+                </td>
+                <td class="py-1.5">
+                  <UBadge
+                    :color="v.significance === 'pathogenic' || v.significance === 'likely_pathogenic' ? 'error'
+                      : v.significance === 'vus' ? 'warning' : 'neutral'"
+                    variant="subtle"
+                    size="xs"
+                  >
+                    {{ v.significance.replace(/_/g, ' ') }}
+                  </UBadge>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- CNVs -->
+        <div v-if="patient.oncopanel.cnvs.length" class="pt-2 border-t border-gray-100">
+          <div class="text-xs font-medium text-gray-500 mb-1">{{ $t('patient.oncoCnvs', 'Copy number variants') }}</div>
+          <div class="flex flex-wrap gap-1.5">
+            <UBadge v-for="c in patient.oncopanel.cnvs" :key="c.gene" variant="subtle" size="xs">
+              {{ c.gene }} {{ c.alteration }}<span v-if="c.copies !== null"> ({{ c.copies }}n)</span>
+            </UBadge>
+          </div>
+        </div>
+
+        <ClinicalSourceFooter
+          :sources="[
+            { label: $t('patient.oncoFooterPrimary', 'Oncopanel report — NGS source document'), url: '' },
+            { label: 'AMP/ASCO/CAP 2017 (tier I–IV)', url: 'https://pubmed.ncbi.nlm.nih.gov/27993330/' },
+          ]"
+          compact
+        />
+      </div>
     </div>
 
     <!-- Genomic Profile Cards (hidden for patient role) -->
