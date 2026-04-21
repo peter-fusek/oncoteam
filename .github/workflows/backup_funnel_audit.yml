@@ -1,0 +1,31 @@
+name: Backup — funnel audit
+
+# Hourly snapshot of the two-lane clinical funnel (#397 / #395).
+# Only uses secrets.* — never consumes untrusted PR/issue body text, so
+# no command-injection surface.
+on:
+  schedule:
+    - cron: '5 * * * *'  # 5 past every hour — off the top-of-hour crush
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv pip install google-cloud-storage
+      - name: Run funnel-audit backup
+        env:
+          GCP_BACKUP_SA_KEY: ${{ secrets.GCP_BACKUP_SA_KEY }}
+          ONCOFILES_MCP_URL: ${{ secrets.ONCOFILES_MCP_URL }}
+          ONCOFILES_MCP_TOKEN: ${{ secrets.ONCOFILES_MCP_TOKEN }}
+          ONCOFILES_MCP_TOKEN_Q1B: ${{ secrets.ONCOFILES_MCP_TOKEN_Q1B }}
+          ONCOFILES_MCP_TOKEN_E5G: ${{ secrets.ONCOFILES_MCP_TOKEN_E5G }}
+          ONCOFILES_MCP_TOKEN_SGU: ${{ secrets.ONCOFILES_MCP_TOKEN_SGU }}
+        run: uv run python scripts/backup_funnel_audit.py

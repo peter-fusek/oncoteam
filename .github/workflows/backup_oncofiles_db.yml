@@ -1,0 +1,30 @@
+name: Backup — oncofiles daily dump
+
+# Daily full-state dump of oncofiles into the cold bucket (#397).
+# Only uses secrets.* — no untrusted PR/issue input is consumed.
+on:
+  schedule:
+    - cron: '0 3 * * *'  # 03:00 UTC — low-traffic window for heavy queries
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv pip install google-cloud-storage
+      - name: Run oncofiles daily dump
+        env:
+          GCP_BACKUP_SA_KEY: ${{ secrets.GCP_BACKUP_SA_KEY }}
+          ONCOFILES_MCP_URL: ${{ secrets.ONCOFILES_MCP_URL }}
+          ONCOFILES_MCP_TOKEN: ${{ secrets.ONCOFILES_MCP_TOKEN }}
+          ONCOFILES_MCP_TOKEN_Q1B: ${{ secrets.ONCOFILES_MCP_TOKEN_Q1B }}
+          ONCOFILES_MCP_TOKEN_E5G: ${{ secrets.ONCOFILES_MCP_TOKEN_E5G }}
+          ONCOFILES_MCP_TOKEN_SGU: ${{ secrets.ONCOFILES_MCP_TOKEN_SGU }}
+        run: uv run python scripts/backup_oncofiles_db.py
