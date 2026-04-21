@@ -1229,6 +1229,31 @@ mcp.custom_route("/api/bug-report", methods=["POST"])(_auth_wrap(api_bug_report)
 mcp.custom_route("/api/bug-report", methods=["OPTIONS"])(api_cors_preflight)
 mcp.custom_route("/api/research/assess-funnel", methods=["POST"])(_auth_wrap(api_assess_funnel))
 mcp.custom_route("/api/research/assess-funnel", methods=["OPTIONS"])(api_cors_preflight)
+# Clinical funnel two-lane API (#395)
+from .api_funnel import (  # noqa: E402
+    api_funnel_audit_for_card,
+    api_funnel_audit_for_patient,
+    api_funnel_cards_get,
+    api_funnel_cards_post,
+    api_funnel_proposals_get,
+    api_funnel_proposals_post,
+)
+
+mcp.custom_route("/api/funnel/proposals", methods=["GET"])(_auth_wrap(api_funnel_proposals_get))
+mcp.custom_route("/api/funnel/proposals", methods=["POST"])(_auth_wrap(api_funnel_proposals_post))
+mcp.custom_route("/api/funnel/proposals", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/funnel/cards", methods=["GET"])(_auth_wrap(api_funnel_cards_get))
+mcp.custom_route("/api/funnel/cards", methods=["POST"])(_auth_wrap(api_funnel_cards_post))
+mcp.custom_route("/api/funnel/cards", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/funnel/audit/patient", methods=["GET"])(
+    _auth_wrap(api_funnel_audit_for_patient)
+)
+mcp.custom_route("/api/funnel/audit/patient", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/funnel/audit/{card_id}", methods=["GET"])(
+    _auth_wrap(api_funnel_audit_for_card)
+)
+mcp.custom_route("/api/funnel/audit/{card_id}", methods=["OPTIONS"])(api_cors_preflight)
+
 mcp.custom_route("/api/research/funnel-stages", methods=["GET"])(_auth_wrap(api_funnel_stages_get))
 mcp.custom_route("/api/research/funnel-stages", methods=["POST"])(
     _auth_wrap(api_funnel_stages_save)

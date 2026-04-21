@@ -292,7 +292,7 @@ When reviewing uploaded documents:
 
 Target: MUDr. Mgr. Zuzana Mináriková, PhD. (klinický onkológ, NOÚ Bratislava) joining as physician user for q1b per #396. Triggered architectural changes across multiple surfaces:
 
-- **#395 Two-lane funnel + immutable audit**: agents never mutate clinical funnel state directly. They post to a proposals lane (TTL 30d, physician triages). Clinical lane is physician-writable only. Every state change requires rationale + generates append-only audit event stored in oncofiles + backed up hourly to GCS per #397.
+- **#395 Two-lane funnel + immutable audit** (backend ✅ Sprint 93 S1): agents never mutate clinical funnel state directly. They post to a proposals lane (TTL 30d, physician triages). Clinical lane is physician-writable only. Every state change requires rationale + generates append-only audit event stored in oncofiles + backed up hourly to GCS per #397.
 - **#397 DR/backup**: dedicated GCP project `oncoteam-prod-backups` (isolated from oncoteam-dashboard + oncofiles-490809), WORM hot bucket for audit (2y retention), versioned cold bucket for DB dumps (365d). CMEK encryption. Service account write-only. Script in `scripts/gcp_backup_setup.sh`.
 - **#398 Structured oncopanel**: `Oncopanel` + `OncopanelVariant` + `CopyNumberVariant` Pydantic models on `PatientProfile.oncopanel_history`. Replaces flat `biomarkers: dict` for patients with NGS data. Variant-level source traceability per #382 + physician review state per variant per #395.
 - **#399 /research as cockpit**: 8 sub-panels (Inbox / Clinical Funnel / Literature / News / Discussion / Audit / Watchlist / Re-Surfaced) as left-sidebar sub-nav. Server-persisted state (not localStorage). Physician lands on Inbox; advocate on Funnel. Spec in `docs/research_cockpit.md`.
@@ -300,3 +300,18 @@ Target: MUDr. Mgr. Zuzana Mináriková, PhD. (klinický onkológ, NOÚ Bratislav
 - **#392 DDR pivot**: q1b oncopanel 2026-04-18 reveals ATM biallelic + TP53 splice → PARPi/ATRi/pan-RAS eligible. `is_ddr_deficient(patient)` structured helper (builds on #398). `ddr_monitor` agent posts to proposals lane with proximity scoring from #394.
 
 **Key principle** (feedback memory `feedback_never-lose-a-clinical-decision.md`): **AI proposes, humans dispose**. Agents cannot silently mutate clinical state. Every decision is logged, attributed, reversible via audit trail (not via silent overwrite). Cross-device consistency is non-negotiable.
+
+### Two-lane funnel API (#395 backend, Sprint 93)
+
+- `src/oncoteam/models.py` — `FunnelCard`, `FunnelAuditEvent` (frozen), `FunnelLane`, `FunnelEventType`, `FunnelActorType`. `FUNNEL_STATE_CHANGING_EVENTS` and `FUNNEL_AGENT_ALLOWED_EVENTS` frozensets drive model-level invariants.
+- `src/oncoteam/funnel_audit.py` — the only module that writes `funnel_audit:*` and `funnel_cards:*` agent_state keys. `record_event()` enforces invariants via Pydantic; `find_existing_card_for_nct()` powers re-surfacing protection.
+- `src/oncoteam/api_funnel.py` — REST handlers:
+  - **Agent-writable (proposal lane only)**: `POST /api/funnel/proposals` — re-surfacing check collapses duplicate NCTs into a `re_surfaced` event on the existing card.
+  - **Physician-writable (clinical lane)**: `POST /api/funnel/cards` with action ∈ {promote, move, archive, comment}. Rejects `actor_type=agent` with HTTP 403.
+  - **Read-only audit**: `GET /api/funnel/audit/{card_id}` and `GET /api/funnel/audit/patient` (filter by actor_type / event_type / limit).
+- Actor identity: headers `X-Actor-Type` / `X-Actor-Id` / `X-Actor-Display-Name` set by Nuxt session proxy OR trusted agent body fields. Defaults to `human` to avoid accidental agent escalation.
+- Stage vocabularies: `PROPOSAL_STAGES = ("new", "dismissed", "expired")`, `CLINICAL_STAGES = ("Watching", "Candidate", "Qualified", "Contacted", "Active", "Archived")`. Disjoint on purpose — `validate_stage(lane, stage)` enforces.
+- Migration: `scripts/migrate_funnel_to_two_lane.py --patient q1b --commit` reads legacy `funnel_stages:{patient_id}`, writes a dated snapshot, and creates one clinical-lane card per legacy NCT with a `migrated_from_v1` audit event. Legacy state is NEVER deleted. `--dry-run` is the default.
+- Invariants tested in `tests/test_funnel_audit.py` (immutability + rationale + agent restrictions + append-only persistence) and `tests/test_api_funnel.py` (HTTP contract + re-surfacing + lane isolation).
+
+**Next sessions**: frontend two-lane UI (Nuxt `pages/research.vue` + `FunnelAuditLog` component), agent prompt updates to enforce "propose not mutate", snapshot-and-reset migration for q1b before MUDr. Mináriková's first login.

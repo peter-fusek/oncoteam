@@ -229,3 +229,150 @@ class TreatmentEvent(BaseModel):
     title: str
     notes: str = ""
     metadata: dict | None = None
+
+
+# ── Clinical funnel two-lane architecture (#395) ────────────────────────
+#
+# Trust model: agents write to the PROPOSAL lane; physicians write to the
+# CLINICAL lane. The audit log is append-only — every state change produces
+# an immutable FunnelAuditEvent. Corrections never delete events; they
+# append a new event with event_type="correction". See docs/clinical_decision_audit.md.
+
+
+class FunnelLane(StrEnum):
+    PROPOSAL = "proposal"
+    CLINICAL = "clinical"
+
+
+class FunnelActorType(StrEnum):
+    HUMAN = "human"
+    AGENT = "agent"
+
+
+class FunnelEventType(StrEnum):
+    CREATED = "created"
+    VIEWED = "viewed"
+    MOVED = "moved"
+    COMMENTED = "commented"
+    ARCHIVED = "archived"
+    SUGGESTED = "suggested"
+    PROMOTED_FROM_PROPOSAL = "promoted_from_proposal"
+    RE_SURFACED = "re_surfaced"
+    CORRECTION = "correction"
+    MIGRATED_FROM_V1 = "migrated_from_v1"
+    KANBAN_RESET = "kanban_reset"
+
+
+# Events that change card state — rationale is required for these.
+FUNNEL_STATE_CHANGING_EVENTS: frozenset[FunnelEventType] = frozenset(
+    {
+        FunnelEventType.MOVED,
+        FunnelEventType.ARCHIVED,
+        FunnelEventType.PROMOTED_FROM_PROPOSAL,
+        FunnelEventType.KANBAN_RESET,
+    }
+)
+
+# Events that agents are ALLOWED to produce. All others require a human actor.
+FUNNEL_AGENT_ALLOWED_EVENTS: frozenset[FunnelEventType] = frozenset(
+    {
+        FunnelEventType.CREATED,  # proposals only — enforced at API layer
+        FunnelEventType.SUGGESTED,
+        FunnelEventType.RE_SURFACED,
+    }
+)
+
+
+class FunnelAuditEvent(BaseModel):
+    """Append-only audit event for a funnel card.
+
+    `frozen=True` makes the instance immutable after construction — a defense-
+    in-depth guarantee on top of the API-level "never delete" invariant.
+    Validators enforce: state-changing events require rationale; agents cannot
+    produce state-changing events.
+    """
+
+    model_config = {"frozen": True}
+
+    event_id: str  # UUID4
+    card_id: str
+    nct_id: str
+    patient_id: str
+    actor_type: FunnelActorType
+    actor_id: str
+    actor_display_name: str
+    event_type: FunnelEventType
+    from_stage: str | None = None
+    to_stage: str | None = None
+    rationale: str = ""
+    metadata: dict = Field(default_factory=dict)
+    timestamp: datetime = Field(default_factory=_utcnow)
+    session_id: str = ""
+
+    def model_post_init(self, __context) -> None:
+        """Enforce the two invariants from #395 at construction time."""
+        # Invariant 1: state-changing events require rationale.
+        if self.event_type in FUNNEL_STATE_CHANGING_EVENTS and not self.rationale.strip():
+            raise ValueError(
+                f"event_type={self.event_type} is state-changing; rationale is required"
+            )
+        # Invariant 2: agents can only produce the allow-listed event types.
+        if (
+            self.actor_type == FunnelActorType.AGENT
+            and self.event_type not in FUNNEL_AGENT_ALLOWED_EVENTS
+        ):
+            raise ValueError(
+                f"actor_type=agent cannot produce event_type={self.event_type};"
+                " agents may only CREATE proposals, SUGGEST, or flag RE_SURFACED"
+            )
+
+
+class FunnelClinicalVerification(BaseModel):
+    """Physician sign-off metadata attached to a clinical-lane card."""
+
+    reviewed_by: str = ""
+    reviewed_at: datetime | None = None
+    approved: bool = False
+    notes: str = ""
+
+
+class FunnelCard(BaseModel):
+    """A single card in the two-lane funnel.
+
+    `lane` drives write permissions: proposal-lane cards are agent-writable,
+    clinical-lane cards are physician-writable. A card's lane never silently
+    changes — the only transition is `promoted_from_proposal`, which creates
+    a NEW clinical-lane card and archives the proposal with an audit event.
+    """
+
+    card_id: str  # e.g. "q1b_NCT04657068_proposal" or "q1b_NCT04657068"
+    patient_id: str
+    nct_id: str
+    lane: FunnelLane
+    current_stage: str  # lane-specific vocabulary; validated at API layer
+    title: str = ""
+    biomarker_match: dict = Field(default_factory=dict)
+    geographic_score: float | None = None  # from #394; None when not scored
+    sites_in_scope: list[TrialSite] = Field(default_factory=list)
+    ai_suggestions: list[dict] = Field(default_factory=list)
+    source_agent: str = ""  # which agent first created the proposal
+    source_run_id: str = ""
+    proposal_ttl_expires_at: datetime | None = None  # None in clinical lane
+    duplicate_of_card_id: str | None = None  # re-surfacing flag
+    clinical_verification: FunnelClinicalVerification | None = None
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+# Stage vocabularies per lane. Keep PROPOSAL_STAGES minimal — agents only
+# create cards in "new"; physician promotion bumps them out of the proposal
+# lane entirely. CLINICAL_STAGES is the full 5-stage kanban.
+PROPOSAL_STAGES: tuple[str, ...] = ("new", "dismissed", "expired")
+CLINICAL_STAGES: tuple[str, ...] = (
+    "Watching",
+    "Candidate",
+    "Qualified",
+    "Contacted",
+    "Active",
+    "Archived",
+)
