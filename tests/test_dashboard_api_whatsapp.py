@@ -408,9 +408,7 @@ async def test_whatsapp_status_degraded(_mock_conv, _mock_cb):
 @patch("oncoteam.api_whatsapp._approved_phones_loaded", True)
 @patch("oncoteam.api_whatsapp._approved_phones", set())
 @patch("oncoteam.api_whatsapp._phone_patient_map", {})
-async def test_whatsapp_status_counts_role_map_phones(
-    _mock_load_rm, _mock_conv, _mock_cb
-):
+async def test_whatsapp_status_counts_role_map_phones(_mock_load_rm, _mock_conv, _mock_cb):
     """#379 — role-map configured phones must show up in the approved count
     even when they never went through the explicit admin-approval flow.
     """

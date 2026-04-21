@@ -99,6 +99,7 @@ async def test_api_protocol_computes_milestone_expected_dates(_trends, mock_even
     """#375 — /api/protocol returns cycle_1_date, cycle_interval_days, and
     every milestone carries an expected_date computed from the regimen cadence.
     """
+
     # list_treatment_events is called twice (limit=1 for labs + limit=20 for
     # all events). The fallback side_effect handles both shapes.
     async def _events(**kwargs):
