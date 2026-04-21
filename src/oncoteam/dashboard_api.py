@@ -66,7 +66,7 @@ from .request_context import (
     set_correlation_id as _set_correlation_id,
 )
 
-VERSION = "0.85.0"
+VERSION = "0.86.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -1715,6 +1715,49 @@ async def api_protocol(request: Request) -> JSONResponse:
         record_suppressed_error("api_protocol", "fetch_real_values", events_result)
 
     data["real_values"] = real_values
+
+    # #375 — Timeline milestone target dates. Derive cycle_1_date from the
+    # earliest chemotherapy treatment event, expose cycle_interval_days per
+    # regimen (mFOLFOX6 / FOLFOX / FOLFIRI q2w = 14; paclitaxel / AC q3w = 21).
+    # Frontend MilestoneTracker uses these to compute `expected YYYY-MM-DD`
+    # chips for future cycles that have no historical date yet.
+    regimen_lc = (patient.treatment_regimen or "").lower()
+    if any(r in regimen_lc for r in ("folfox", "folfiri", "xelox", "capox")):
+        cycle_interval_days = 14
+    elif any(r in regimen_lc for r in ("paclitaxel", "docetaxel", "ac-t", "ac ", "tac")):
+        cycle_interval_days = 21
+    else:
+        cycle_interval_days = 14
+    data["cycle_interval_days"] = cycle_interval_days
+
+    cycle_1_date: str | None = None
+    if not isinstance(events_result, BaseException):
+        all_events_for_c1 = _extract_list(events_result, "events")
+        chemo_events = [
+            e
+            for e in all_events_for_c1
+            if e.get("event_type") in ("chemotherapy", "chemo_cycle", "chemo")
+            and e.get("event_date")
+        ]
+        if chemo_events:
+            cycle_1_date = min(e["event_date"] for e in chemo_events)
+    data["cycle_1_date"] = cycle_1_date
+
+    # Attach expected_date to each milestone so the UI renders the chip without
+    # re-computing. Only when we have cycle_1_date — otherwise leave blank.
+    if cycle_1_date and isinstance(data.get("milestones"), list):
+        try:
+            from datetime import date as _date
+            from datetime import timedelta as _td
+
+            c1 = _date.fromisoformat(cycle_1_date[:10])
+            for m in data["milestones"]:
+                cyc = m.get("cycle") if isinstance(m, dict) else None
+                if isinstance(cyc, int) and cyc > 0:
+                    offset = _td(days=cycle_interval_days * (cyc - 1))
+                    m["expected_date"] = (c1 + offset).isoformat()
+        except Exception as e:
+            record_suppressed_error("api_protocol", "milestone_expected_dates", e)
 
     # Enrich safety flags with activation status from patient data (#230)
     if not is_general_health_patient(patient) and isinstance(data.get("safety_flags"), dict):

@@ -86,6 +86,69 @@ async def test_api_protocol_includes_cycle_delay_rules():
 
 
 @pytest.mark.anyio
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.list_treatment_events",
+    new_callable=AsyncMock,
+)
+@patch(
+    "oncoteam.dashboard_api.oncofiles_client.get_lab_trends_data",
+    new_callable=AsyncMock,
+    return_value={"values": []},
+)
+async def test_api_protocol_computes_milestone_expected_dates(_trends, mock_events):
+    """#375 — /api/protocol returns cycle_1_date, cycle_interval_days, and
+    every milestone carries an expected_date computed from the regimen cadence.
+    """
+    # list_treatment_events is called twice (limit=1 for labs + limit=20 for
+    # all events). The fallback side_effect handles both shapes.
+    async def _events(**kwargs):
+        if kwargs.get("event_type") == "lab_result":
+            return {"events": []}
+        return {
+            "events": [
+                {
+                    "id": 1,
+                    "event_type": "chemotherapy",
+                    "event_date": "2026-02-13",
+                    "title": "Cycle 1 mFOLFOX6",
+                },
+                {
+                    "id": 2,
+                    "event_type": "chemotherapy",
+                    "event_date": "2026-02-27",
+                    "title": "Cycle 2 mFOLFOX6",
+                },
+            ]
+        }
+
+    mock_events.side_effect = _events
+
+    import oncoteam.dashboard_api as mod
+
+    mod._protocol_cache.clear()
+
+    request = _make_request()
+    response = await api_protocol(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["cycle_1_date"] == "2026-02-13"
+    # q1b on mFOLFOX6 → q2w → 14 day cycle
+    assert data["cycle_interval_days"] == 14
+
+    # Every milestone with a numeric cycle gets an expected_date.
+    milestones = data["milestones"]
+    assert len(milestones) > 0
+    with_dates = [m for m in milestones if m.get("expected_date")]
+    assert len(with_dates) == sum(1 for m in milestones if isinstance(m.get("cycle"), int))
+
+    # Sanity check: a C3 milestone should land at 2026-02-13 + 2 * 14d = 2026-03-13
+    c3 = next((m for m in milestones if m.get("cycle") == 3), None)
+    if c3:
+        assert c3["expected_date"] == "2026-03-13"
+
+
+@pytest.mark.anyio
 async def test_api_protocol_safety_flags_structure():
     request = _make_request()
     response = await api_protocol(request)

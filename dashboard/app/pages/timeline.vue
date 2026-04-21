@@ -17,8 +17,10 @@ const { data: timeline, status: timelineStatus, error: timelineError, refresh } 
 
 const { data: protocol } = isOncology.value
   ? fetchApi<{
-      milestones: Array<{ cycle: number; action: string; description: string }>
+      milestones: Array<{ cycle: number; action: string; description: string; expected_date?: string }>
       current_cycle: number
+      cycle_1_date?: string | null
+      cycle_interval_days?: number
     }>('/protocol', { lazy: true, server: false })
   : { data: ref(null) }
 
@@ -104,6 +106,9 @@ const drilldown = useDrilldown()
           @click="drilldown.open({ type: 'protocol_section', id: `milestone-${m.action}`, label: m.description, data: { cycle: m.cycle, action: m.action, description: m.description, source: 'mFOLFOX6 treatment milestones' } })"
         >
           <div class="font-medium">C{{ m.cycle }}</div>
+          <div v-if="m.expected_date" class="text-[10px] text-gray-400 font-mono mt-0.5">
+            {{ m.cycle < (protocol?.current_cycle ?? 0) ? '' : '≈ ' }}{{ formatDate(m.expected_date) }}
+          </div>
           <div class="text-[10px] mt-0.5 max-w-32 truncate">{{ m.description }}</div>
         </div>
       </div>

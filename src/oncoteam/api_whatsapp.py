@@ -752,16 +752,41 @@ async def api_whatsapp_status(request: Request) -> JSONResponse:
     Returns: approved phones count, active onboarding sessions,
     recent message stats, and circuit breaker state.
     """
-    # Approved phones
+    # Approved phones — union of:
+    #  (1) explicit admin-approved phones (_approved_phones, loaded from
+    #      oncofiles agent_state["phones"] under agent_id=approved_phones)
+    #  (2) phones configured in the ROLE_MAP (advocates + physicians + family
+    #      whose access is granted at env/DB layer, never went through the
+    #      explicit admin-approval flow)
+    # Before #379, only (1) was counted — so a live advocate phone showed 0.
     if not _approved_phones_loaded:
         await load_approved_phones()
 
-    # Recent WhatsApp conversations (last 24h)
+    role_map_phones: set[str] = set()
+    try:
+        from .api_admin import _load_access_rights
+
+        role_map = await _load_access_rights()
+        if isinstance(role_map, dict):
+            for entry in role_map.values():
+                if isinstance(entry, dict):
+                    phone = entry.get("phone")
+                    if isinstance(phone, str) and phone.strip():
+                        role_map_phones.add(phone.strip())
+    except Exception as exc:
+        record_suppressed_error("api_whatsapp_status", "role_map_phones", exc)
+
+    all_phones = _approved_phones | role_map_phones
+
+    # Recent WhatsApp conversations — filter by entry_type="whatsapp".
+    # Bug before #419: passed query="sys:whatsapp", which is not a valid
+    # search_conversations kwarg. The call raised TypeError, was silently
+    # suppressed, and the counter sat at 0 while WhatsApp was actively in use.
     recent_count = 0
     try:
         result = await asyncio.wait_for(
             oncofiles_client.search_conversations(
-                query="sys:whatsapp",
+                entry_type="whatsapp",
                 limit=100,
             ),
             timeout=8,
@@ -776,7 +801,7 @@ async def api_whatsapp_status(request: Request) -> JSONResponse:
     return _cors_json(
         {
             "status": "ok" if cb_status["state"] == "closed" else "degraded",
-            "approved_phones": len(_approved_phones),
+            "approved_phones": len(all_phones),
             "phone_patient_map": {p: pid for p, pid in _phone_patient_map.items()},
             "recent_conversations": recent_count,
             "circuit_breaker_state": cb_status["state"],

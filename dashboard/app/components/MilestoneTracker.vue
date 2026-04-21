@@ -2,7 +2,7 @@
 const { formatDate } = useFormatDate()
 
 const props = defineProps<{
-  milestones: Array<{ cycle: number; action: string; description: string }>
+  milestones: Array<{ cycle: number; action: string; description: string; expected_date?: string }>
   currentCycle: number
   cycleHistory?: Array<{ cycle_number: number; date: string }> | null
 }>()
@@ -56,6 +56,9 @@ function statusColor(status: string) {
           </UBadge>
           <span v-if="cycleDates[m.cycle]" class="text-xs text-gray-400 ml-1">
             {{ formatDate(cycleDates[m.cycle]) }}
+          </span>
+          <span v-else-if="m.expected_date" class="text-xs text-gray-400 ml-1 font-mono">
+            ≈ {{ formatDate(m.expected_date) }}
           </span>
         </div>
         <div class="text-xs text-gray-500 mt-0.5">{{ m.description }}</div>

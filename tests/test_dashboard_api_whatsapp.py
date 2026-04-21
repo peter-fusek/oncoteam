@@ -384,3 +384,47 @@ async def test_whatsapp_status_degraded(_mock_conv, _mock_cb):
     assert data["status"] == "degraded"
     assert data["approved_phones"] == 0
     assert data["recent_conversations"] == 0
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.api_whatsapp.oncofiles_client.get_circuit_breaker_status",
+    return_value={"state": "closed"},
+)
+@patch(
+    "oncoteam.api_whatsapp.oncofiles_client.search_conversations",
+    new_callable=AsyncMock,
+    return_value={"entries": [{"id": 1}, {"id": 2}]},
+)
+@patch(
+    "oncoteam.api_admin._load_access_rights",
+    new_callable=AsyncMock,
+    return_value={
+        "peter": {"phone": "+421903124356", "roles": ["advocate", "admin"]},
+        "physician_zm": {"phone": "+421905000000", "roles": ["physician"]},
+        "noop_entry_without_phone": {"roles": ["viewer"]},
+    },
+)
+@patch("oncoteam.api_whatsapp._approved_phones_loaded", True)
+@patch("oncoteam.api_whatsapp._approved_phones", set())
+@patch("oncoteam.api_whatsapp._phone_patient_map", {})
+async def test_whatsapp_status_counts_role_map_phones(
+    _mock_load_rm, _mock_conv, _mock_cb
+):
+    """#379 — role-map configured phones must show up in the approved count
+    even when they never went through the explicit admin-approval flow.
+    """
+    request = FakeRequest(method="GET")
+    response = await api_whatsapp_status(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    # Union of empty _approved_phones + 2 role_map phones (third entry has no phone)
+    assert data["approved_phones"] == 2
+    assert data["recent_conversations"] == 2
+
+    # #419 — must pass entry_type="whatsapp", not the old query= typo
+    _mock_conv.assert_called_once()
+    call_kwargs = _mock_conv.call_args.kwargs
+    assert call_kwargs.get("entry_type") == "whatsapp"
+    assert "query" not in call_kwargs

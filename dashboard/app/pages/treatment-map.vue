@@ -31,13 +31,21 @@ const { data: protocol } = fetchApi<{
 }>('/protocol', { lazy: true, server: false })
 
 // ── Time axis computation ──────────────────────────────
+// #411 — previously derived solely from timeline events. If /timeline happens
+// to return empty for a transient reason (circuit breaker, patient switch
+// race, empty category in oncofiles) the entire map collapsed to "No data yet"
+// even when labs were fully populated. Fold lab dates into the axis source so
+// tumor-marker sparklines render even without chemo events.
 const timeRange = computed(() => {
-  if (!timeline.value?.events?.length) return null
-  const dates = timeline.value.events
-    .map(e => e.event_date)
-    .filter(Boolean)
-    .sort()
+  const dates: string[] = []
+  for (const e of timeline.value?.events ?? []) {
+    if (e.event_date) dates.push(e.event_date)
+  }
+  for (const l of labs.value?.entries ?? []) {
+    if (l.date) dates.push(l.date)
+  }
   if (!dates.length) return null
+  dates.sort()
   const first = new Date(dates[0] + 'T00:00:00')
   const last = new Date(dates[dates.length - 1] + 'T00:00:00')
   // Pad: 1 month before first, 1 month after last
@@ -45,6 +53,13 @@ const timeRange = computed(() => {
   const end = new Date(last.getFullYear(), last.getMonth() + 2, 0)
   return { start, end }
 })
+
+// #411 — self-heal: silent transient empty responses (CB blip, cold start)
+// should not leave the page stuck on "No data yet". Mirror labs.vue polling.
+if (import.meta.client) {
+  const pollId = setInterval(() => { refresh() }, 60_000)
+  onBeforeUnmount(() => clearInterval(pollId))
+}
 
 const months = computed(() => {
   if (!timeRange.value) return []
