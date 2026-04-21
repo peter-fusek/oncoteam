@@ -433,6 +433,21 @@ async def search_documents(
     return await call_oncofiles("search_documents", args, token=token)
 
 
+async def list_documents(
+    limit: int = 50,
+    offset: int = 0,
+    *,
+    token: str | None = None,
+) -> dict:
+    """List all stored medical documents for the token's patient.
+
+    Used by the backup pipeline (`scripts/backup_oncofiles_db.py`) which needs
+    every document for a patient without filtering — search_documents requires
+    a text term and would leave gaps.
+    """
+    return await call_oncofiles("list_documents", {"limit": limit, "offset": offset}, token=token)
+
+
 def _validate_id(value: str | int, name: str = "id") -> str:
     """Validate document/file IDs at the boundary before sending to oncofiles."""
     s = str(value).strip()
