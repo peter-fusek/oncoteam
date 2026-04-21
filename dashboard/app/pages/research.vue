@@ -258,8 +258,11 @@ const drilldown = useDrilldown()
       </button>
     </div>
 
-    <!-- Funnel board -->
-    <TrialFunnelBoard v-if="activeTab === 'funnel'" :trials="trialEntries" :watched-trials="protocol?.watched_trials || []" />
+    <!-- Funnel: proposals lane (agent-writable, server-backed) + kanban (legacy) -->
+    <template v-if="activeTab === 'funnel'">
+      <FunnelProposalsPanel />
+      <TrialFunnelBoard :trials="trialEntries" :watched-trials="protocol?.watched_trials || []" />
+    </template>
 
     <!-- Entries list -->
     <div v-if="activeTab !== 'funnel' && displayEntries.length" class="space-y-3">

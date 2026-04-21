@@ -822,6 +822,58 @@ async def log_research_decision(
 
 
 @mcp.tool()
+async def funnel_propose_trial(
+    nct_id: str,
+    title: str = "",
+    rationale: str = "",
+    biomarker_match: dict | None = None,
+    geographic_score: float | None = None,
+    sites_in_scope: list[dict] | None = None,
+    source_agent: str = "",
+    source_run_id: str = "",
+) -> str:
+    """Post a trial to the clinical funnel PROPOSALS lane (agent-writable).
+
+    Agents must use this tool (not log_research_decision) for every new NCT
+    they discover. The proposals lane is reviewed by a physician before any
+    trial enters the clinical funnel — AI proposes, humans dispose (#395).
+
+    Re-surfacing: if the NCT is already on the board (any lane, any stage,
+    even archived), this tool records a `re_surfaced` audit event on the
+    existing card instead of creating a duplicate. Physicians see a
+    "previously seen" warning so nothing slips through.
+
+    Args:
+        nct_id: ClinicalTrials.gov identifier (required).
+        title: Short trial title.
+        rationale: Why this trial matches the patient — biomarker / geography / line fit.
+        biomarker_match: Dict of marker→match status (e.g. {"ATM": "biallelic", "KRAS": "G12S"}).
+        geographic_score: 0.0–1.0 proximity score from the enrollment geography pass (#394).
+        sites_in_scope: List of enrollable sites with facility/city/country/status.
+        source_agent: Name of the scanning agent (e.g. "ddr_monitor", "trial_monitor").
+        source_run_id: Unique run identifier for audit traceability.
+    """
+    from .funnel_audit import create_agent_proposal
+
+    _pid, _tok = _get_mcp_patient_token()
+    result = await create_agent_proposal(
+        patient_id=_pid,
+        nct_id=nct_id.strip().upper(),
+        title=title,
+        source_agent=source_agent or "mcp_agent",
+        source_run_id=source_run_id,
+        biomarker_match=biomarker_match,
+        geographic_score=geographic_score,
+        sites_in_scope=sites_in_scope,
+        rationale=rationale,
+        actor_id=source_agent or "mcp_agent",
+        actor_display_name=source_agent or "mcp_agent",
+        token=_tok,
+    )
+    return json.dumps(result)
+
+
+@mcp.tool()
 async def log_session_note(note: str, tags: list[str] | None = None) -> str:
     """Record an observation, context note, or diary entry.
 

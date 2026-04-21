@@ -559,11 +559,17 @@ Instructions:
 4. For each NEW trial, call check_trial_eligibility to confirm no biomarker
    contraindications (anti-EGFR still excluded; checkpoint mono still excluded
    for MSS).
-5. For each trial that passes checks, call log_research_decision with
-   action="proposal", stage_target="Watching" (NOT "Eligible Now" — physician
-   promotes), and include DDR rationale in the decision notes.
-6. Store a briefing summarizing what went to the proposals lane. Be brief.
-7. Use set_agent_state to save "ddr_monitor_seen_ncts" with all current NCT IDs.
+5. For each trial that passes checks, call funnel_propose_trial with:
+     nct_id (required), title, rationale (cite DDR variant + geography fit),
+     source_agent="ddr_monitor", biomarker_match (e.g. "ATM"->"biallelic"),
+     geographic_score (0.0-1.0 from the proximity pass). This is the ONLY
+     agent-writable path into the clinical funnel (#395). It handles
+     re-surfacing of previously-seen NCTs automatically. Never call
+     log_research_decision for trial proposals.
+6. Use log_research_decision ONLY for meta decisions (e.g., "skipping N trials
+   because pre-seen") — not for individual proposals.
+7. Store a briefing summarizing what went to the proposals lane. Be brief.
+8. Use set_agent_state to save "ddr_monitor_seen_ncts" with all current NCT IDs.
 
 Output format:
 - Proposed (N trials): list with NCT | title | rationale | tier.

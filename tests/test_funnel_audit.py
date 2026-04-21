@@ -358,6 +358,96 @@ class TestCardHelpers:
         assert 29.9 < delta_days < 30.01
 
 
+class TestCreateAgentProposalHelper:
+    """Process-internal helper used by the MCP tool funnel_propose_trial."""
+
+    @pytest.mark.asyncio
+    async def test_creates_new_card_and_audit_event(self):
+        from oncoteam.funnel_audit import create_agent_proposal
+
+        stored: dict[str, dict] = {}
+
+        async def fake_get(key, token=None):
+            return stored.get(key, {})
+
+        async def fake_set(key, value, token=None):
+            stored[key] = {"result": value}
+
+        with (
+            patch(
+                "oncoteam.funnel_audit.oncofiles_client.get_agent_state",
+                side_effect=fake_get,
+            ),
+            patch(
+                "oncoteam.funnel_audit.oncofiles_client.set_agent_state",
+                side_effect=fake_set,
+            ),
+        ):
+            result = await create_agent_proposal(
+                patient_id="q1b",
+                nct_id="NCT12345",
+                title="Example PARPi trial",
+                source_agent="ddr_monitor",
+                rationale="ATM biallelic loss",
+            )
+
+        assert result["status"] == "created"
+        assert result["card_id"] == "q1b_NCT12345_proposal"
+        assert result["lane"] == "proposal"
+
+        # Card + audit event both persisted
+        assert "funnel_cards:q1b" in stored
+        assert any(k.startswith("funnel_audit:q1b:") for k in stored)
+
+    @pytest.mark.asyncio
+    async def test_resurfaces_existing_clinical_card_instead_of_duplicating(self):
+        """If the NCT is already on the clinical lane, helper must NOT create
+        a duplicate — it records a re_surfaced event on the existing card."""
+        from oncoteam.funnel_audit import create_agent_proposal
+
+        existing = FunnelCard(
+            card_id="q1b_NCT9",
+            patient_id="q1b",
+            nct_id="NCT9",
+            lane=FunnelLane.CLINICAL,
+            current_stage="Watching",
+        )
+        cards_state = {"result": {"cards": {existing.card_id: existing.model_dump(mode="json")}}}
+        audit_state: dict[str, dict] = {}
+
+        async def fake_get(key, token=None):
+            if key == "funnel_cards:q1b":
+                return cards_state
+            return audit_state.get(key, {})
+
+        async def fake_set(key, value, token=None):
+            audit_state[key] = {"result": value}
+
+        with (
+            patch(
+                "oncoteam.funnel_audit.oncofiles_client.get_agent_state",
+                side_effect=fake_get,
+            ),
+            patch(
+                "oncoteam.funnel_audit.oncofiles_client.set_agent_state",
+                side_effect=fake_set,
+            ),
+        ):
+            result = await create_agent_proposal(
+                patient_id="q1b",
+                nct_id="NCT9",
+                source_agent="ddr_monitor",
+            )
+
+        assert result["status"] == "re_surfaced"
+        assert result["card_id"] == existing.card_id
+        assert result["lane"] == "clinical"
+
+        # Audit event recorded on the existing card
+        audit_key = f"funnel_audit:q1b:{existing.card_id}"
+        assert audit_key in audit_state
+
+
 # ── Patient-wide event listing ─────────────────────────────────────────
 
 

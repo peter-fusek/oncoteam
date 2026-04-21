@@ -299,3 +299,98 @@ def validate_stage(lane: FunnelLane, stage: str) -> None:
 def proposal_ttl_expiry(days: int = DEFAULT_PROPOSAL_TTL_DAYS) -> datetime:
     """Return a timezone-aware expiry timestamp N days from now."""
     return datetime.now(UTC) + timedelta(days=days)
+
+
+async def create_agent_proposal(
+    *,
+    patient_id: str,
+    nct_id: str,
+    title: str = "",
+    source_agent: str = "",
+    source_run_id: str = "",
+    biomarker_match: dict | None = None,
+    geographic_score: float | None = None,
+    sites_in_scope: list[dict] | None = None,
+    ai_suggestions: list[dict] | None = None,
+    actor_id: str = "agent",
+    actor_display_name: str = "",
+    rationale: str = "",
+    token: str | None = None,
+) -> dict:
+    """Process-internal helper mirroring POST /api/funnel/proposals.
+
+    Safe for MCP tools and in-process autonomous tasks to call directly —
+    enforces the same re-surfacing rule as the HTTP path. Returns a small
+    status dict: {"status": "created" | "re_surfaced", "card_id": ..., "nct_id": ...}.
+    """
+    existing = await find_existing_card_for_nct(patient_id, nct_id, token=token)
+    if existing is not None:
+        try:
+            await record_event(
+                card_id=existing.card_id,
+                patient_id=patient_id,
+                nct_id=nct_id,
+                actor_type=FunnelActorType.AGENT,
+                actor_id=actor_id,
+                actor_display_name=actor_display_name or source_agent or actor_id,
+                event_type=FunnelEventType.RE_SURFACED,
+                rationale=rationale or "agent re-surfaced previously seen NCT",
+                metadata={
+                    "existing_lane": existing.lane.value,
+                    "existing_stage": existing.current_stage,
+                    "source_agent": source_agent,
+                    "source_run_id": source_run_id,
+                },
+                token=token,
+            )
+        except Exception as e:
+            record_suppressed_error("funnel_audit", "re_surface_audit", e)
+        return {
+            "status": "re_surfaced",
+            "card_id": existing.card_id,
+            "nct_id": nct_id,
+            "lane": existing.lane.value,
+            "stage": existing.current_stage,
+        }
+
+    card = FunnelCard(
+        card_id=make_card_id(patient_id, nct_id, FunnelLane.PROPOSAL),
+        patient_id=patient_id,
+        nct_id=nct_id,
+        lane=FunnelLane.PROPOSAL,
+        current_stage="new",
+        title=title,
+        biomarker_match=biomarker_match or {},
+        geographic_score=geographic_score,
+        sites_in_scope=sites_in_scope or [],
+        ai_suggestions=ai_suggestions or [],
+        source_agent=source_agent,
+        source_run_id=source_run_id,
+        proposal_ttl_expires_at=proposal_ttl_expiry(DEFAULT_PROPOSAL_TTL_DAYS),
+    )
+    await upsert_card(card, token=token)
+    await record_event(
+        card_id=card.card_id,
+        patient_id=patient_id,
+        nct_id=nct_id,
+        actor_type=FunnelActorType.AGENT,
+        actor_id=actor_id,
+        actor_display_name=actor_display_name or source_agent or actor_id,
+        event_type=FunnelEventType.CREATED,
+        rationale=rationale,
+        metadata={
+            "lane": FunnelLane.PROPOSAL.value,
+            "source_agent": source_agent,
+            "source_run_id": source_run_id,
+            "biomarker_match": card.biomarker_match,
+            "geographic_score": card.geographic_score,
+        },
+        token=token,
+    )
+    return {
+        "status": "created",
+        "card_id": card.card_id,
+        "nct_id": nct_id,
+        "lane": FunnelLane.PROPOSAL.value,
+        "stage": card.current_stage,
+    }

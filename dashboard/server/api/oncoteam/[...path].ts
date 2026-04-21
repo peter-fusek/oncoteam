@@ -28,6 +28,24 @@ export default defineEventHandler(async (event) => {
     headers['Authorization'] = `Bearer ${config.oncoteamApiKey}`
   }
 
+  // Forward session-derived actor identity so backend api_funnel can distinguish
+  // physician / advocate / agent actions without trusting the JSON body (#395).
+  // Any caller that could impersonate an agent MUST set its own bearer — the
+  // proxy only ever declares `human` actors, so agent escalation through the
+  // browser is impossible.
+  const sessionUser = session.user as {
+    email?: string
+    name?: string
+    roles?: string[]
+  } | undefined
+  const actorId = sessionUser?.email || sessionUser?.name || 'advocate'
+  const actorDisplay = sessionUser?.name || actorId
+  headers['X-Actor-Type'] = 'human'
+  headers['X-Actor-Id'] = actorId
+  headers['X-Actor-Display-Name'] = actorDisplay
+  const roles = sessionUser?.roles ?? []
+  if (roles.length) headers['X-Actor-Roles'] = roles.join(',')
+
   const method = event.method
   const fetchOpts: RequestInit = { method, headers, signal: AbortSignal.timeout(25_000) }
 
