@@ -66,7 +66,7 @@ from .request_context import (
     set_correlation_id as _set_correlation_id,
 )
 
-VERSION = "0.86.0"
+VERSION = "0.87.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 

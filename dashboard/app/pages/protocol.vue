@@ -50,6 +50,24 @@ const { data: cycleHistory } = fetchApi<{
   current_cycle: number
 }>('/protocol/cycles', { lazy: true, server: false })
 
+// #377 — live funnel cards in the "Watching" stage. Rendered alongside the
+// static protocol watchlist so the two sources stay distinguishable.
+interface FunnelCard {
+  card_id: string
+  nct_id: string
+  title: string
+  current_stage: string
+  source_agent?: string
+}
+const { data: funnelCards, refresh: refreshFunnelWatching } = fetchApi<{
+  cards: FunnelCard[]
+  count: number
+}>('/funnel/cards?lane=clinical', { lazy: true, server: false })
+
+const funnelWatching = computed(() =>
+  (funnelCards.value?.cards ?? []).filter(c => c.current_stage === 'Watching')
+)
+
 const { t } = useI18n()
 const { formatDate } = useFormatDate()
 
@@ -338,20 +356,78 @@ const tabs = computed(() => [
         </div>
       </div>
 
-      <!-- Watched Trials -->
-      <div v-if="activeTab === 'trials'" class="space-y-2">
-        <div
-          v-for="trial in protocol.watched_trials"
-          :key="trial"
-          class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
-          @click="drilldown.open({ type: 'protocol_section', id: `trial-${trial}`, label: trial, data: { trial, status: 'Watched', relevance: 'KRAS G12S mCRC', source: 'ClinicalTrials.gov' } })"
-        >
-          <UIcon name="i-lucide-eye" class="text-teal-500 shrink-0" />
-          <span class="text-sm text-gray-700 flex-1">{{ trial }}</span>
-          <UIcon name="i-lucide-chevron-right" class="w-3 h-3 text-gray-700 shrink-0" />
+      <!-- Watched Trials: two sources — static protocol list + live clinical funnel (#377) -->
+      <div v-if="activeTab === 'trials'" class="space-y-4">
+        <!-- A. Curated protocol watchlist (static, advocate-maintained) -->
+        <div>
+          <div class="flex items-baseline gap-2 mb-1.5">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              {{ $t('protocol.trialsProtocolHeader', 'Curated by protocol') }}
+            </h3>
+            <span class="text-[10px] text-gray-400">
+              {{ $t('protocol.trialsProtocolHint', 'Edited by advocate — stable reference list') }}
+            </span>
+          </div>
+          <div class="space-y-1.5">
+            <div
+              v-for="trial in protocol.watched_trials"
+              :key="trial"
+              class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2.5 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition-all"
+              @click="drilldown.open({ type: 'protocol_section', id: `trial-${trial}`, label: trial, data: { trial, status: 'Watched', source: 'Protocol watchlist' } })"
+            >
+              <UIcon name="i-lucide-eye" class="text-teal-500 shrink-0" />
+              <span class="text-sm text-gray-700 flex-1">{{ trial }}</span>
+              <UBadge variant="subtle" size="xs" color="neutral">{{ $t('protocol.static', 'static') }}</UBadge>
+            </div>
+          </div>
         </div>
-        <!-- Link to full research page + funnel -->
-        <div class="flex items-center gap-3 pt-2">
+
+        <!-- B. Live clinical funnel — cards physician has promoted to "Watching" -->
+        <div>
+          <div class="flex items-baseline gap-2 mb-1.5">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              {{ $t('protocol.trialsFunnelHeader', 'Clinical funnel — Watching') }}
+            </h3>
+            <span class="text-[10px] text-gray-400">
+              {{ $t('protocol.trialsFunnelHint', 'Physician-promoted trials from the proposals lane') }}
+            </span>
+            <UButton
+              icon="i-lucide-refresh-cw"
+              variant="ghost"
+              size="xs"
+              color="neutral"
+              class="ml-auto"
+              @click="refreshFunnelWatching"
+            />
+          </div>
+          <div v-if="funnelWatching.length" class="space-y-1.5">
+            <div
+              v-for="card in funnelWatching"
+              :key="card.card_id"
+              class="flex items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50/40 px-4 py-2.5"
+            >
+              <UIcon name="i-lucide-kanban" class="text-indigo-600 shrink-0" />
+              <a
+                :href="`https://clinicaltrials.gov/study/${card.nct_id}`"
+                target="_blank"
+                rel="noopener"
+                class="font-mono text-xs text-indigo-800 hover:underline"
+              >
+                {{ card.nct_id }}
+              </a>
+              <span class="text-sm text-gray-700 flex-1 truncate">{{ card.title }}</span>
+              <UBadge v-if="card.source_agent" variant="subtle" size="xs" color="neutral">
+                {{ card.source_agent }}
+              </UBadge>
+            </div>
+          </div>
+          <div v-else class="text-xs text-gray-400 italic px-1">
+            {{ $t('protocol.trialsFunnelEmpty', 'No trials promoted to Watching yet. Agents propose in /research → Proposals; physician promotes with rationale.') }}
+          </div>
+        </div>
+
+        <!-- Navigation to full research + funnel -->
+        <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
           <NuxtLink to="/research" class="inline-flex items-center gap-1.5 text-sm font-medium text-teal-700 hover:text-teal-900 transition-colors">
             <UIcon name="i-lucide-flask-conical" class="w-4 h-4" />
             {{ $t('protocol.allResearch') }}
