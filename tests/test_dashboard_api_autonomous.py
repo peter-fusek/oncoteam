@@ -32,9 +32,9 @@ async def test_autonomous_returns_jobs():
     assert response.status_code == 200
     assert data["enabled"] is True
     assert "daily_cost" in data
-    # Sprint 92: +1 document_pipeline_drain agent → 18 non-system jobs.
-    assert len(data["jobs"]) == 18
-    assert data["job_count"] == 18
+    # Sprint 92: +document_pipeline_drain (S1) + ddr_monitor (S2) → 19 non-system jobs.
+    assert len(data["jobs"]) == 19
+    assert data["job_count"] == 19
 
 
 @pytest.mark.anyio

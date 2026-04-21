@@ -317,6 +317,31 @@ Focus on creating structured weight history from existing medical documents.\
             "previously seen NCT IDs, and EU center list]"
         ),
     ),
+    # #392: DDR-deficient patients (ATM/BRCA1/2/PALB2 biallelic loss) need
+    # dedicated scanning for PARPi / ATRi / pan-RAS combo trials. Posts to
+    # proposals lane only — no WhatsApp push per #395 "AI proposes, humans dispose".
+    AgentConfig(
+        id="ddr_monitor",
+        name=L("DDR monitor (PARPi/ATRi)", "DDR monitor (PARPi/ATRi)"),
+        description=L(
+            "Pre DDR-deficientných pacientov skenuje PARPi/ATRi štúdie",
+            "Scans PARPi/ATRi trials for DDR-deficient patients",
+        ),
+        schedule_display=L("sobota 02:15 UTC (03:15 CET)", "Saturday 02:15 UTC (03:15 CET)"),
+        category=AgentCategory.RESEARCH,
+        schedule_type=ScheduleType.CRON,
+        schedule_params={"day_of_week": "sat", "hour": 2, "minute": 15},
+        misfire_grace_time=86400,
+        cooldown_hours=20,
+        max_turns=10,
+        whatsapp_enabled=False,  # proposals-only; physician reviews via dashboard
+        assigned_tool="search_clinical_trials",
+        prompt_template=(
+            "[Dynamic -- built at runtime from patient's DDR variants "
+            "(ATM/BRCA1/2/PALB2) + seeded NCT watchlist. No-op for "
+            "non-DDR-deficient patients.]"
+        ),
+    ),
     # === Clinical (Sonnet) ===
     AgentConfig(
         id="pre_cycle_check",

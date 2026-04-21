@@ -42,6 +42,7 @@ def _get_task_functions() -> dict:
     from .autonomous_tasks import (
         run_daily_cost_report,
         run_daily_research,
+        run_ddr_monitor,
         run_document_pipeline_drain,
         run_family_update,
         run_file_scan,
@@ -70,6 +71,7 @@ def _get_task_functions() -> dict:
         "weight_extraction": run_weight_extraction,
         "daily_research": run_daily_research,
         "trial_monitor": run_trial_monitor,
+        "ddr_monitor": run_ddr_monitor,
         "pre_cycle_check": run_pre_cycle_check,
         "tumor_marker_review": run_tumor_marker_review,
         "response_assessment": run_response_assessment,

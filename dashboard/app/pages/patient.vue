@@ -31,6 +31,18 @@ const { data: patient, status: patientStatus, error: patientError } = fetchApi<{
     indication?: string
     cycle?: number
   }>
+  ddr?: {
+    deficient: boolean
+    variants: Array<{
+      gene: string
+      protein: string
+      vaf: number
+      tier: string
+      variant_type: string
+      significance: string
+    }>
+    eligible_classes?: string[]
+  }
 }>('/patient', { lazy: true, server: false })
 
 const { data: protocol } = fetchApi<{
@@ -394,6 +406,51 @@ const abbreviations: Record<string, string> = {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- DDR-deficient banner (#392) — PARPi/ATRi eligibility from oncopanel -->
+    <div v-if="patient?.ddr?.deficient && activeRole !== 'patient'" class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+      <div class="flex items-start gap-3">
+        <UIcon name="i-lucide-dna" class="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-sm font-semibold text-indigo-900">
+              {{ $t('patient.ddrDeficient', 'DDR-deficient') }}
+            </span>
+            <UBadge
+              v-for="cls in (patient?.ddr?.eligible_classes ?? [])"
+              :key="cls"
+              variant="solid"
+              size="xs"
+              color="primary"
+              class="bg-indigo-600"
+            >
+              {{ cls }} {{ $t('patient.eligible', 'eligible') }}
+            </UBadge>
+          </div>
+          <p class="text-xs text-indigo-800 mt-1">
+            {{ $t('patient.ddrRationale', 'Biallelic loss in a DDR gene unlocks PARPi / ATRi class eligibility and platinum synergy. Physician confirms before any therapy decision.') }}
+          </p>
+          <div v-if="patient?.ddr?.variants?.length" class="mt-2 flex flex-wrap gap-1.5">
+            <UBadge
+              v-for="v in patient.ddr.variants"
+              :key="`${v.gene}-${v.protein}`"
+              variant="subtle"
+              size="xs"
+              color="primary"
+            >
+              {{ v.gene }} {{ v.protein }} · VAF {{ (v.vaf * 100).toFixed(1) }}% · {{ v.tier }}
+            </UBadge>
+          </div>
+        </div>
+      </div>
+      <ClinicalSourceFooter
+        :sources="[
+          { label: 'NCCN Colon v3.2024 §MS-26 (PARPi DDR-deficient)', url: 'https://www.nccn.org/guidelines/category_1' },
+          { label: 'ESMO 2022 mCRC §5.2 (HRD biomarkers)', url: 'https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer' },
+        ]"
+        compact
+      />
     </div>
 
     <!-- Genomic Profile Cards (hidden for patient role) -->

@@ -32,12 +32,13 @@ class TestSchedulerStandalone:
 
             assert _standalone_scheduler is not None
             jobs = _standalone_scheduler.get_jobs()
-            # Sprint 92: e5g and sgu paused. Registry has 22 agents but
+            # Sprint 92: e5g and sgu paused. Registry has 23 agents but
             # document_pipeline and dose_extraction are event-driven only
-            # (no scheduler function registered → skipped). Remaining 20
-            # agents − 2 system (keepalive_ping, health_monitor) = 18
-            # per-patient × 1 patient (q1b) + 2 system = 20 jobs.
-            assert len(jobs) == 20
+            # (no scheduler function registered → skipped). Remaining 21
+            # agents − 2 system (keepalive_ping, health_monitor) = 19
+            # per-patient × 1 patient (q1b) + 2 system = 21 jobs.
+            # (ddr_monitor added Sprint 92 Session 2 per #392.)
+            assert len(jobs) == 21
 
             job_ids = {j.id for j in jobs}
             # System-level agents are not per-patient.
@@ -47,6 +48,7 @@ class TestSchedulerStandalone:
             assert "pre_cycle_check:q1b" in job_ids
             assert "daily_research:q1b" in job_ids
             assert "trial_monitor:q1b" in job_ids
+            assert "ddr_monitor:q1b" in job_ids
             assert "weekly_briefing:q1b" in job_ids
             assert "lab_sync:q1b" in job_ids
             assert "document_pipeline_drain:q1b" in job_ids

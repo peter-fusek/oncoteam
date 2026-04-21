@@ -40,7 +40,12 @@ from .config import (
     GIT_COMMIT,
     MCP_TRANSPORT,
 )
-from .eligibility import assess_research_relevance
+from .eligibility import (
+    assess_research_relevance,
+    get_latest_oncopanel,
+    get_variants_for_gene,
+    is_ddr_deficient,
+)
 from .locale import get_lang, resolve
 from .patient_context import (
     DEFAULT_PATIENT_ID,
@@ -1295,6 +1300,35 @@ async def api_patient(request: Request) -> JSONResponse:
         k: {"label": v["label_en"] if lang == "en" else v["label"], "color": v["color"]}
         for k, v in THERAPY_CATEGORIES.items()
     }
+
+    # DDR-deficient summary (#392). Backend-derived so frontend doesn't need
+    # to re-implement the biallelic-loss logic. Empty object when the patient
+    # has no oncopanel or is not DDR-deficient.
+    try:
+        profile = get_patient(patient_id)
+        ddr = {"deficient": bool(is_ddr_deficient(profile)), "variants": []}
+        if ddr["deficient"]:
+            latest = get_latest_oncopanel(profile)
+            if latest is not None:
+                for gene in ("ATM", "BRCA1", "BRCA2", "PALB2"):
+                    for v in get_variants_for_gene(profile, gene):
+                        if v.significance in ("pathogenic", "likely_pathogenic"):
+                            ddr["variants"].append(
+                                {
+                                    "gene": v.gene,
+                                    "protein": v.protein_short or v.hgvs_protein or v.hgvs_cdna,
+                                    "vaf": v.vaf,
+                                    "tier": v.tier,
+                                    "variant_type": v.variant_type,
+                                    "significance": v.significance,
+                                }
+                            )
+            ddr["eligible_classes"] = ["PARPi", "ATRi"]
+        data["ddr"] = ddr
+    except Exception as e:
+        record_suppressed_error("api_patient", "ddr_summary", e)
+        data["ddr"] = {"deficient": False, "variants": []}
+
     return _cors_json(data)
 
 

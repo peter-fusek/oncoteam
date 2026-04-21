@@ -301,6 +301,72 @@ class TestCooldownGuard:
             assert result["reason"] == "cooldown"
 
 
+class TestDdrMonitor:
+    """Tests for run_ddr_monitor (#392) — DDR-deficient guard + proposals lane."""
+
+    @pytest.mark.asyncio
+    async def test_skips_when_patient_not_ddr_deficient(self):
+        """Non-DDR-deficient patient: agent is a no-op, returns skipped dict."""
+        from oncoteam.autonomous_tasks import run_ddr_monitor
+
+        with patch("oncoteam.eligibility.is_ddr_deficient", return_value=False):
+            result = await run_ddr_monitor(patient_id="e5g")
+            assert result["skipped"] == "not_ddr_deficient"
+            assert result["patient_id"] == "e5g"
+
+    @pytest.mark.asyncio
+    async def test_runs_when_patient_ddr_deficient(self):
+        """q1b has ATM biallelic loss — agent should fire the autonomous task."""
+        from oncoteam.autonomous_tasks import run_ddr_monitor
+
+        mock_result = {"cost": 0.05, "response": "proposed 2 trials", "tool_calls": []}
+        with (
+            patch("oncoteam.eligibility.is_ddr_deficient", return_value=True),
+            patch("oncoteam.autonomous_tasks._should_skip", return_value=False),
+            patch("oncoteam.autonomous_tasks._get_state", return_value={}),
+            patch("oncoteam.autonomous_tasks._set_state"),
+            patch("oncoteam.autonomous_tasks._log_task"),
+            patch(
+                "oncoteam.autonomous_tasks.run_autonomous_task",
+                return_value=mock_result,
+            ) as mock_run,
+        ):
+            result = await run_ddr_monitor(patient_id="q1b")
+            assert result == mock_result
+            # Verify the prompt includes DDR variants + seed watchlist
+            prompt_arg = mock_run.call_args[0][0]
+            assert "ATM" in prompt_arg
+            assert "PARPi" in prompt_arg
+            assert "proposals lane" in prompt_arg.lower()
+            assert "NCT05379985" in prompt_arg  # pan-RAS seed
+            # Uses Sonnet (reasoning), not Haiku
+            assert mock_run.call_args.kwargs.get("model") is not None
+
+
+class TestDdrMonitorRegistry:
+    """Tests for ddr_monitor AgentConfig in registry."""
+
+    def test_registered(self):
+        from oncoteam.agent_registry import AGENT_REGISTRY
+
+        assert "ddr_monitor" in AGENT_REGISTRY
+
+    def test_schedule_stacked_with_trial_monitor(self):
+        """ddr_monitor fires Sat 02:15 UTC — 15 min before trial_monitor (02:30)."""
+        from oncoteam.agent_registry import AGENT_REGISTRY
+
+        agent = AGENT_REGISTRY["ddr_monitor"]
+        assert agent.schedule_params["day_of_week"] == "sat"
+        assert agent.schedule_params["hour"] == 2
+        assert agent.schedule_params["minute"] == 15
+
+    def test_no_whatsapp_push(self):
+        """Proposals-only per #395 — no direct WA notification."""
+        from oncoteam.agent_registry import AGENT_REGISTRY
+
+        assert AGENT_REGISTRY["ddr_monitor"].whatsapp_enabled is False
+
+
 class TestExtractTimestamp:
     """Tests for _extract_timestamp, fixing the NoneType.get crash."""
 

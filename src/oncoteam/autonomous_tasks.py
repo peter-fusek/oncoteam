@@ -460,6 +460,142 @@ Prioritize trials at centers within practical travel distance from Bratislava:
     return result
 
 
+# Seeded NCT watchlist for DDR-deficient mCRC patients (#392).
+# Combines ATM-biallelic-responsive trials (PARPi/ATRi) with pan-RAS inhibitors
+# that are class-agnostic to the underlying KRAS allele. Refreshed quarterly;
+# update when new trials open or existing ones close.
+_DDR_SEED_WATCHLIST = [
+    # Pan-RAS / RMC family (valid for KRAS G12S, not just G12C)
+    "NCT05379985",  # Daraxonrasib / RMC-6236 (Revolution Medicines)
+    # PARPi + bevacizumab / chemo maintenance in DDR-deficient CRC
+    "NCT04456699",  # Olaparib + bevacizumab maintenance (Lancet Oncol)
+    # ATRi + PARPi combinations targeting DDR-deficient solid tumors
+    "NCT03188965",  # Ceralasertib + olaparib (AstraZeneca)
+    "NCT04170153",  # Rucaparib maintenance in BRCA/PALB2/ATM mCRC
+    "NCT04673448",  # Niraparib + atezolizumab in DDR-deficient GI
+    "NCT04589845",  # Talazoparib + TAS-102 (AstraZeneca / Taiho)
+    "NCT04657068",  # BAY 1895344 (elimusertib, ATR inhibitor, DDR defects)
+    "NCT04497116",  # Camonsertib / RP-3500 (Repare Therapeutics)
+]
+
+
+async def run_ddr_monitor(patient_id: str = "q1b") -> dict:
+    """Scan for DDR-targeted trials (PARPi/ATRi/pan-RAS) relevant to the patient.
+
+    Guarded by is_ddr_deficient(patient) — returns {"skipped": "not_ddr"}
+    for non-DDR-deficient patients so the scheduler stays cheap. Posts
+    findings to the research funnel proposals lane only; no WhatsApp push
+    per #395 "AI proposes, humans dispose". Physicians review via /research
+    cockpit (#399) before anything enters the clinical funnel.
+    """
+    from .eligibility import get_latest_oncopanel, is_ddr_deficient
+
+    patient = get_patient(patient_id)
+    token = get_patient_token(patient_id)
+
+    if not is_ddr_deficient(patient):
+        return {"skipped": "not_ddr_deficient", "patient_id": patient_id}
+    if await _should_skip("ddr_monitor", patient_id, token=token):
+        return {"skipped": True, "reason": "cooldown"}
+    logger.info(">>> Starting task: ddr_monitor (patient=%s)", patient_id)
+
+    # Summarize the DDR findings so the prompt is concrete, not boilerplate.
+    latest = get_latest_oncopanel(patient)
+    ddr_summary_lines = []
+    if latest is not None:
+        for v in latest.variants:
+            if v.gene.upper() in {"ATM", "BRCA1", "BRCA2", "PALB2"} and v.significance in {
+                "pathogenic",
+                "likely_pathogenic",
+            }:
+                ddr_summary_lines.append(
+                    f"- {v.gene} {v.protein_short or v.hgvs_protein or v.hgvs_cdna}"
+                    f" ({v.variant_type}, VAF {v.vaf:.2%}, tier {v.tier})"
+                )
+    ddr_summary = "\n".join(ddr_summary_lines) or "- (no variants extracted — check oncopanel)"
+    seed_list = "\n".join(f"- {nct}" for nct in _DDR_SEED_WATCHLIST)
+
+    prev_state = await _get_state("ddr_monitor_seen_ncts", token=token)
+    prev_ncts_raw = prev_state.get("value", prev_state) if isinstance(prev_state, dict) else {}
+    if isinstance(prev_ncts_raw, str):
+        try:
+            prev_ncts_raw = json.loads(prev_ncts_raw)
+        except (json.JSONDecodeError, TypeError):
+            prev_ncts_raw = {}
+    prev_ncts = prev_ncts_raw.get("nct_ids", []) if isinstance(prev_ncts_raw, dict) else []
+    first_run = not prev_ncts
+
+    prompt = f"""\
+Scan PubMed + ClinicalTrials for PARPi, ATRi, and pan-RAS combinations relevant
+to this DDR-deficient patient. Findings go to the research funnel PROPOSALS
+lane — NEVER post directly to the clinical lane. Physician triages.
+
+DDR variants detected in the most recent oncopanel:
+{ddr_summary}
+
+Eligibility implications:
+- PARPi (olaparib, rucaparib, niraparib, talazoparib) — ATM biallelic → eligible
+- ATRi (ceralasertib, elimusertib, camonsertib) — DDR pathway synergy
+- Platinum synergy (FOLFOX alignment) from ATM/BRCA deficiency
+- Pan-RAS (RMC-6236 / daraxonrasib) — class-agnostic to KRAS allele (valid
+  for G12S; G12C-specific sotorasib/adagrasib are NOT applicable)
+
+Seeded NCT watchlist (first run — include all; later runs — status refresh
+only, skip those in previously seen list unless status changed):
+{seed_list}
+
+Previously seen NCT IDs (skip these unless status changed):
+{json.dumps(prev_ncts[:50]) if prev_ncts else "None — first scan, include every seeded NCT"}
+
+First run: {first_run}
+
+Instructions:
+1. {"SEED" if first_run else "SCAN"}: call fetch_trial_details for each seeded NCT
+   {"on first run" if first_run else "only when refreshing"}; skip already-seen NCTs.
+2. Use search_clinical_trials with intervention="olaparib" / "rucaparib" / "ATR
+   inhibitor" / "PARP" / "daraxonrasib" to catch new postings.
+3. Use search_pubmed for "ATM biallelic colorectal" / "PARPi MSS CRC" /
+   "pan-RAS inhibitor colorectal" to surface recent evidence.
+4. For each NEW trial, call check_trial_eligibility to confirm no biomarker
+   contraindications (anti-EGFR still excluded; checkpoint mono still excluded
+   for MSS).
+5. For each trial that passes checks, call log_research_decision with
+   action="proposal", stage_target="Watching" (NOT "Eligible Now" — physician
+   promotes), and include DDR rationale in the decision notes.
+6. Store a briefing summarizing what went to the proposals lane. Be brief.
+7. Use set_agent_state to save "ddr_monitor_seen_ncts" with all current NCT IDs.
+
+Output format:
+- Proposed (N trials): list with NCT | title | rationale | tier.
+- Already-known status changes (if any).
+- PubMed highlights (max 3).
+- End with "Questions for Oncologist" section.
+"""
+    try:
+        result = await run_autonomous_task(
+            prompt,
+            max_turns=10,
+            task_name="ddr_monitor",
+            model=AUTONOMOUS_MODEL,  # Sonnet for reasoning-heavy eligibility decisions
+            patient_id=patient_id,
+        )
+    except Exception as e:
+        logger.error("!!! Failed task: ddr_monitor — %s", e)
+        raise
+    logger.info(
+        "<<< Completed task: ddr_monitor (cost=$%.4f, tools=%d)",
+        result.get("cost", 0),
+        len(result.get("tool_calls", [])),
+    )
+    await _log_task("ddr_monitor", result, token=token)
+    await _set_state(
+        f"last_ddr_monitor:{patient_id}",
+        {"timestamp": datetime.now(UTC).isoformat(), "cost": result.get("cost", 0)},
+        token=token,
+    )
+    return result
+
+
 async def run_file_scan(patient_id: str = "q1b") -> dict:
     """Scan oncofiles for new document uploads."""
     token = get_patient_token(patient_id)
