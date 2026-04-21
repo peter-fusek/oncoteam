@@ -257,3 +257,114 @@ class TestSeededPatientsHaveBratislavaHome:
         assert PATIENT_SGU.home_region is not None
         assert PATIENT_SGU.home_region.city == "Bratislava"
         assert PATIENT_SGU.enrollment_preference is not None
+
+
+class TestResearchRelevanceGeography:
+    """Tests for geography downgrade inside assess_research_relevance (#394)."""
+
+    def test_no_downgrade_when_trial_countries_omitted(self):
+        from oncoteam.eligibility import assess_research_relevance
+
+        patient = _bratislava_patient()
+        rel = assess_research_relevance("FOLFOX in mCRC", summary="Phase 3", patient=patient)
+        assert rel.score == "high"
+
+    def test_downgrade_when_sites_outside_preferred(self):
+        from oncoteam.eligibility import assess_research_relevance
+
+        patient = _bratislava_patient()
+        rel = assess_research_relevance(
+            "FOLFOX in mCRC",
+            summary="Phase 3",
+            patient=patient,
+            trial_countries=["US", "CA"],
+        )
+        assert rel.score == "low"
+        assert "not enrollable" in rel.reason.lower()
+
+    def test_not_applicable_when_all_sites_excluded(self):
+        from oncoteam.eligibility import assess_research_relevance
+
+        patient = _bratislava_patient(excluded=["US"])
+        rel = assess_research_relevance(
+            "FOLFOX in mCRC",
+            summary="Phase 3",
+            patient=patient,
+            trial_countries=["US"],
+        )
+        assert rel.score == "not_applicable"
+        assert "excluded" in rel.reason.lower()
+
+    def test_preferred_country_keeps_high(self):
+        from oncoteam.eligibility import assess_research_relevance
+
+        patient = _bratislava_patient()
+        rel = assess_research_relevance(
+            "FOLFOX in mCRC",
+            summary="Phase 3",
+            patient=patient,
+            trial_countries=["SK", "AT"],
+        )
+        assert rel.score == "high"
+
+    def test_global_opt_in_keeps_high(self):
+        from oncoteam.eligibility import assess_research_relevance
+
+        patient = _bratislava_patient(allow_global=True)
+        rel = assess_research_relevance(
+            "FOLFOX in mCRC",
+            summary="Phase 3",
+            patient=patient,
+            trial_countries=["US"],
+        )
+        assert rel.score == "high"
+
+    def test_contraindication_still_wins_over_geography(self):
+        """Anti-EGFR for KRAS-mutant patient stays not_applicable regardless."""
+        from oncoteam.eligibility import assess_research_relevance
+
+        patient = _bratislava_patient()
+        patient.biomarkers["KRAS"] = "G12S"
+        rel = assess_research_relevance(
+            "Cetuximab in mCRC",
+            summary="",
+            patient=patient,
+            trial_countries=["US"],
+        )
+        assert rel.score == "not_applicable"
+        # Contraindication reason takes precedence over geography.
+        assert "EGFR" in rel.reason or "KRAS" in rel.reason
+
+
+class TestGeographicSystemPrompt:
+    """Tests for build_geographic_rules() injection into agent prompts (#394)."""
+
+    def test_empty_without_home_region(self):
+        from oncoteam.patient_context import build_geographic_rules
+
+        patient = PatientProfile(
+            patient_id="t",
+            name="t",
+            diagnosis_code="C18.7",
+            diagnosis_description="t",
+            tumor_site="t",
+            treatment_regimen="FOLFOX",
+        )
+        assert build_geographic_rules(patient) == ""
+
+    def test_includes_preferred_and_home(self):
+        from oncoteam.patient_context import build_geographic_rules
+
+        patient = _bratislava_patient()
+        rules = build_geographic_rules(patient)
+        assert "Bratislava" in rules
+        assert "SK" in rules
+        assert "NEVER violate" in rules
+        assert "Do NOT suggest trials outside" in rules
+
+    def test_global_opt_in_changes_policy_line(self):
+        from oncoteam.patient_context import build_geographic_rules
+
+        patient = _bratislava_patient(allow_global=True)
+        rules = build_geographic_rules(patient)
+        assert "Globally unique" in rules

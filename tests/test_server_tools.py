@@ -161,7 +161,19 @@ class TestSearchClinicalTrialsTool:
         assert result["intervention"] == "FOLFOX"
         assert result["count"] == 1
         assert result["trials"][0]["nct_id"] == "NCT00001234"
-        mock_search.assert_called_once_with("colorectal cancer", "FOLFOX", 10, None)
+        # #394: when caller omits country, tool auto-fills from patient home_region.
+        # Default MCP patient is q1b (Bratislava, SK).
+        mock_search.assert_called_once_with("colorectal cancer", "FOLFOX", 10, "SK")
+
+    @pytest.mark.asyncio
+    @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)
+    @patch("oncoteam.clinicaltrials_client.search_trials", new_callable=AsyncMock)
+    async def test_explicit_country_overrides_home_region(self, mock_search, mock_store):
+        """Explicit country arg takes precedence over auto-resolved home country (#394)."""
+        mock_search.return_value = MOCK_TRIALS
+
+        await search_clinical_trials("colorectal cancer", "FOLFOX", 10, country="Czech Republic")
+        mock_search.assert_called_once_with("colorectal cancer", "FOLFOX", 10, "Czech Republic")
 
     @pytest.mark.asyncio
     @patch("oncoteam.oncofiles_client.add_research_entry", new_callable=AsyncMock)

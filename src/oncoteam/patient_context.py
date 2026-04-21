@@ -790,6 +790,26 @@ def build_patient_profile_text(patient: PatientProfile) -> str:
     metastases = ", ".join(patient.metastases) if patient.metastases else "none"
     comorbidities = ", ".join(patient.comorbidities) if patient.comorbidities else "none"
     excluded = "\n".join(f"  - {k}: {v}" for k, v in patient.excluded_therapies.items())
+
+    geography_block = ""
+    if patient.home_region is not None:
+        hr = patient.home_region
+        geography_block = f"- **Home region**: {hr.city}, {hr.country}" + (
+            f" (lat={hr.lat:.3f}, lon={hr.lon:.3f})" if hr.lat and hr.lon else ""
+        )
+    enrollment_block = ""
+    if patient.enrollment_preference is not None:
+        pref = patient.enrollment_preference
+        pref_str = ", ".join(pref.preferred_countries) or "none"
+        lang_str = ", ".join(pref.language_preferences) or "none"
+        enrollment_block = (
+            "- **Enrollment geography** (trial-site gating):\n"
+            f"  - Preferred countries (tier order): {pref_str}\n"
+            f"  - Max travel: {pref.max_travel_km} km\n"
+            f"  - Languages: {lang_str}\n"
+            f"  - Global opt-in: {pref.allow_unique_opportunity_global}"
+        )
+
     parts = [
         "# Patient Profile\n",
         f"- **Patient ID**: {patient.patient_id}",
@@ -805,6 +825,8 @@ def build_patient_profile_text(patient: PatientProfile) -> str:
         f"- **Metastases**: {metastases}",
         f"- **Comorbidities**: {comorbidities}",
         f"- **Hospitals**: {hospitals}",
+        geography_block,
+        enrollment_block,
         f"- **Treating physician**: {patient.treating_physician}"
         if patient.treating_physician
         else "",
@@ -832,6 +854,38 @@ def build_biomarker_rules(patient: PatientProfile) -> str:
         for c in patient.comorbidities:
             rules.append(f"- {c}")
     return "\n".join(rules)
+
+
+def build_geographic_rules(patient: PatientProfile) -> str:
+    """Generate geographic enrollment rules for agent system prompts (#394).
+
+    Agents that search for trials should prefer sites in `preferred_countries`
+    and skip reasoning about trials in excluded countries. Emitted as a
+    dedicated section so agents treat it as a hard constraint, not advice.
+    """
+    if patient.home_region is None or patient.enrollment_preference is None:
+        return ""
+    hr = patient.home_region
+    pref = patient.enrollment_preference
+    preferred = ", ".join(pref.preferred_countries) or "none"
+    excluded = ", ".join(pref.excluded_countries) or "none"
+    global_note = (
+        "Globally unique opportunities are acceptable (flag for physician)."
+        if pref.allow_unique_opportunity_global
+        else "Do NOT suggest trials outside preferred_countries — not enrollable."
+    )
+    return f"""\
+# Enrollment Geography Rules (NEVER violate)
+- Patient home: {hr.city}, {hr.country}
+- Preferred countries (tier order): {preferred}
+- Excluded countries: {excluded}
+- Max travel: {pref.max_travel_km} km
+- Global policy: {global_note}
+- When calling search_trials / search_trials_eu / search_clinical_trials,
+  pass country from preferred_countries first (home country tier 0).
+- When ranking PubMed / trial results, down-rank entries whose sites are
+  not in preferred_countries. Geography filter runs BEFORE biomarker match.
+"""
 
 
 def is_general_health_patient(patient: PatientProfile) -> bool:

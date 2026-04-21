@@ -306,12 +306,42 @@ def assess_research_relevance(
     summary: str | None = None,
     *,
     patient: PatientProfile | None = None,
+    trial_countries: list[str] | None = None,
 ) -> ResearchRelevance:
     """Assess how relevant a research entry is to the patient's profile.
 
     Checks for contraindicated therapies (false hope), then scores
-    by biomarker/treatment/disease match.
+    by biomarker/treatment/disease match. When `trial_countries` is supplied
+    AND the patient has an enrollment_preference, geographically inaccessible
+    trials are down-ranked to "low" with a geography-specific reason (#394).
     """
+    # Geography pre-filter (#394) — runs before biomarker rules so an anti-EGFR
+    # trial in Houston still gets "not_applicable" for contraindication (the
+    # more useful signal for the physician), but an otherwise-relevant trial
+    # in an excluded country is correctly downgraded to "low".
+    geography_downgrade: ResearchRelevance | None = None
+    if trial_countries and patient is not None and patient.enrollment_preference is not None:
+        pref = patient.enrollment_preference
+        preferred = {c.upper() for c in pref.preferred_countries}
+        excluded = {c.upper() for c in pref.excluded_countries}
+        tc = {(c or "").upper() for c in trial_countries if c}
+        if tc:
+            has_preferred = bool(tc & preferred)
+            all_excluded = bool(tc) and tc.issubset(excluded)
+            if all_excluded:
+                geography_downgrade = ResearchRelevance(
+                    score="not_applicable",
+                    reason="Trial sites in excluded countries — not enrollable",
+                )
+            elif not has_preferred and not pref.allow_unique_opportunity_global:
+                geography_downgrade = ResearchRelevance(
+                    score="low",
+                    reason=(
+                        f"Trial sites ({', '.join(sorted(tc))}) outside"
+                        f" preferred countries — not enrollable"
+                    ),
+                )
+
     text = (title + " " + (summary or "")).lower()
     words = set(re.findall(r"[a-z][a-z0-9-]+", text))
 
@@ -371,6 +401,11 @@ def assess_research_relevance(
     # Rule 2: High relevance — specific profile match
     for pattern in _HIGH_RELEVANCE_PATTERNS:
         if pattern.search(text):
+            # Geography gate (#394): even a high profile match gets downgraded
+            # if the trial is not enrollable. Physician still sees it, just
+            # sorted lower so WA/briefing pushes focus on actionable trials.
+            if geography_downgrade is not None:
+                return geography_downgrade
             return ResearchRelevance(
                 score="high",
                 reason=f"Matches patient profile: {pattern.pattern}",
@@ -379,12 +414,16 @@ def assess_research_relevance(
     # Rule 3: Medium relevance — broadly related
     for pattern in _MEDIUM_RELEVANCE_PATTERNS:
         if pattern.search(text):
+            if geography_downgrade is not None:
+                return geography_downgrade
             return ResearchRelevance(
                 score="medium",
                 reason=f"Related to patient's condition: {pattern.pattern}",
             )
 
     # Rule 4: Low relevance — no specific match
+    if geography_downgrade is not None:
+        return geography_downgrade
     return ResearchRelevance(
         score="low",
         reason="No specific match to patient's biomarkers or treatment",

@@ -33,6 +33,7 @@ from .general_health_protocol import GENERAL_HEALTH_SYSTEM_PROMPT
 from .models import PatientProfile
 from .patient_context import (
     build_biomarker_rules,
+    build_geographic_rules,
     build_patient_profile_text,
     get_patient,
     get_patient_research_terms,
@@ -86,6 +87,8 @@ ALL findings are for physician review only. You do NOT communicate with patients
 
 {build_biomarker_rules(patient)}
 
+{build_geographic_rules(patient)}
+
 # Clinical Protocol (ESMO 2022, NCCN, ASCO)
 ## Lab Safety Thresholds
 {json.dumps(LAB_SAFETY_THRESHOLDS, indent=2)}
@@ -132,6 +135,8 @@ ALL findings are for physician review only. You do NOT communicate with patients
 {build_patient_profile_text(patient)}
 
 {build_biomarker_rules(patient)}
+
+{build_geographic_rules(patient)}
 
 # Clinical Protocol — Breast (ESMO 2023, NCCN Breast Cancer)
 # NOTE: These thresholds are placeholder scaffolding pending oncologist review.

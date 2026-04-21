@@ -318,12 +318,24 @@ async def search_clinical_trials(
         condition: Medical condition to search for
         intervention: Optional intervention/treatment filter
         max_results: Maximum number of trials to return (default 10)
-        country: Optional country filter (e.g. "Slovakia", "Czech Republic")
+        country: Optional country filter (e.g. "Slovakia", "Czech Republic").
+            When omitted, falls back to patient.home_region.country_code so
+            agents default to enrollable trials instead of global sweeps (#394).
 
     Returns:
         JSON with list of matching clinical trials.
     """
     _pid, _tok = _get_mcp_patient_token()
+    # #394: if the caller didn't specify a country, use the patient's home
+    # country. Agents rarely remember to pass country when they should, and
+    # a Houston-based trial for a Bratislava patient wastes tokens + signal.
+    if country is None:
+        try:
+            _patient = get_patient(_pid)
+            if _patient.home_region is not None:
+                country = _patient.home_region.country
+        except Exception as e:  # patient registry lookup should not break tool
+            record_suppressed_error("search_clinical_trials", "home_country_resolve", e)
     trials = await clinicaltrials_client.search_trials(
         condition,
         intervention,
