@@ -20,7 +20,8 @@ ORG_ID="4876110950"                      # instarea.sk
 BILLING_ACCOUNT="014C04-71B29C-CEE57C"   # "My Billing Account"
 PROJECT_ID="oncoteam-prod-backups"        # globally unique; may need suffix if taken
 PROJECT_NAME="Oncoteam Production Backups"
-LOCATION="europe"                         # multi-region EU
+KMS_LOCATION="europe"                     # KMS multi-region (lower-case)
+BUCKET_LOCATION="EU"                      # GCS multi-region (upper-case — different vocab!)
 KEYRING="oncoteam-backups"
 KMS_KEY="backup-encryption-key"
 HOT_BUCKET="gs://oncoteam-backups-hot-eu"
@@ -62,33 +63,58 @@ gcloud services enable \
 
 # ── Step 5: create KMS keyring + key for CMEK ──────────────────────────
 # Cost: $0.06/month per key + $0.03 per 10k operations.
+# Idempotent: keyring/key creation is a no-op if they already exist.
 echo "Step 5: creating KMS keyring + key"
-gcloud kms keyrings create "${KEYRING}" --location="${LOCATION}"
-gcloud kms keys create "${KMS_KEY}" \
-  --keyring="${KEYRING}" \
-  --location="${LOCATION}" \
-  --purpose=encryption
+if ! gcloud kms keyrings describe "${KEYRING}" --location="${KMS_LOCATION}" >/dev/null 2>&1; then
+  gcloud kms keyrings create "${KEYRING}" --location="${KMS_LOCATION}"
+fi
+if ! gcloud kms keys describe "${KMS_KEY}" --keyring="${KEYRING}" --location="${KMS_LOCATION}" >/dev/null 2>&1; then
+  gcloud kms keys create "${KMS_KEY}" \
+    --keyring="${KEYRING}" \
+    --location="${KMS_LOCATION}" \
+    --purpose=encryption
+fi
 
 # Grant the GCS service agent permission to use this key (required for CMEK).
-GCS_SERVICE_AGENT="service-$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')@gs-project-accounts.iam.gserviceaccount.com"
+# GOTCHA: after enabling storage.googleapis.com, the service agent takes up to
+# ~120s to materialize. Calling add-iam-policy-binding before it exists fails
+# with "Service account ... does not exist". Force-provision it with
+# `gcloud storage service-agent` which is the documented way to trigger agent
+# creation, and retry until it resolves.
+echo "  provisioning GCS service agent (can take ~1 min after API enable)"
+for i in 1 2 3 4 5 6; do
+  GCS_SERVICE_AGENT="$(gcloud storage service-agent --project="${PROJECT_ID}" 2>/dev/null || true)"
+  if [ -n "${GCS_SERVICE_AGENT}" ]; then
+    break
+  fi
+  echo "  retry ${i}/6 — waiting 10s for service agent"
+  sleep 10
+done
+if [ -z "${GCS_SERVICE_AGENT}" ]; then
+  echo "ERROR: GCS service agent not provisioned after 60s. Try again later."
+  exit 1
+fi
 gcloud kms keys add-iam-policy-binding "${KMS_KEY}" \
   --keyring="${KEYRING}" \
-  --location="${LOCATION}" \
+  --location="${KMS_LOCATION}" \
   --member="serviceAccount:${GCS_SERVICE_AGENT}" \
   --role="roles/cloudkms.cryptoKeyEncrypterDecrypter"
 
 # ── Step 6: create buckets ─────────────────────────────────────────────
-# EU multi-region. CMEK from step 5. Versioning on both.
-# Hot bucket: retention lock for WORM (immutable). 2-year retention initial.
-# Cold bucket: versioning on, 365-day lifecycle.
-KMS_KEY_NAME="projects/${PROJECT_ID}/locations/${LOCATION}/keyRings/${KEYRING}/cryptoKeys/${KMS_KEY}"
+# EU multi-region. CMEK from step 5. Versioning on both. Idempotent.
+# GCS multi-region uses UPPERCASE "EU" — different vocabulary from KMS's
+# "europe". Using the wrong one returns HTTPError 400 "location constraint
+# is not valid".
+KMS_KEY_NAME="projects/${PROJECT_ID}/locations/${KMS_LOCATION}/keyRings/${KEYRING}/cryptoKeys/${KMS_KEY}"
 
 echo "Step 6a: creating hot bucket (audit log, versioned — WORM added later)"
-gcloud storage buckets create "${HOT_BUCKET}" \
-  --project="${PROJECT_ID}" \
-  --location="${LOCATION}" \
-  --uniform-bucket-level-access \
-  --default-encryption-key="${KMS_KEY_NAME}"
+if ! gcloud storage buckets describe "${HOT_BUCKET}" >/dev/null 2>&1; then
+  gcloud storage buckets create "${HOT_BUCKET}" \
+    --project="${PROJECT_ID}" \
+    --location="${BUCKET_LOCATION}" \
+    --uniform-bucket-level-access \
+    --default-encryption-key="${KMS_KEY_NAME}"
+fi
 
 # NOTE (Sprint 93 S5 soften): the original config applied a 2-year retention
 # lock via `--retention-period=63072000s`. Retention LOCKS are irreversible —
@@ -106,11 +132,13 @@ gcloud storage buckets create "${HOT_BUCKET}" \
 gcloud storage buckets update "${HOT_BUCKET}" --versioning
 
 echo "Step 6b: creating cold bucket (daily DB dump, 365d versioning)"
-gcloud storage buckets create "${COLD_BUCKET}" \
-  --project="${PROJECT_ID}" \
-  --location="${LOCATION}" \
-  --uniform-bucket-level-access \
-  --default-encryption-key="${KMS_KEY_NAME}"
+if ! gcloud storage buckets describe "${COLD_BUCKET}" >/dev/null 2>&1; then
+  gcloud storage buckets create "${COLD_BUCKET}" \
+    --project="${PROJECT_ID}" \
+    --location="${BUCKET_LOCATION}" \
+    --uniform-bucket-level-access \
+    --default-encryption-key="${KMS_KEY_NAME}"
+fi
 
 gcloud storage buckets update "${COLD_BUCKET}" --versioning
 
@@ -132,12 +160,23 @@ gcloud storage buckets update "${COLD_BUCKET}" \
   --lifecycle-file=/tmp/oncoteam-cold-lifecycle.json
 
 # ── Step 7: create backup service account with minimum-scope IAM ───────
-echo "Step 7: creating service account ${SA_NAME}"
-gcloud iam service-accounts create "${SA_NAME}" \
-  --display-name="Oncoteam backup writer" \
-  --description="Writes hourly audit + daily DB backups. No read of prod data."
-
+# Idempotent: skip create if the SA already exists.
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+echo "Step 7: creating service account ${SA_NAME}"
+if ! gcloud iam service-accounts describe "${SA_EMAIL}" >/dev/null 2>&1; then
+  gcloud iam service-accounts create "${SA_NAME}" \
+    --display-name="Oncoteam backup writer" \
+    --description="Writes hourly audit + daily DB backups. No read of prod data."
+  # SA visibility is eventually consistent — wait until describe succeeds
+  # before we start binding IAM roles that depend on the SA existing.
+  for i in 1 2 3 4 5 6; do
+    if gcloud iam service-accounts describe "${SA_EMAIL}" >/dev/null 2>&1; then
+      break
+    fi
+    echo "  waiting ${i}/6 for SA to propagate"
+    sleep 5
+  done
+fi
 
 # Grant write-only access to both buckets (Object Creator — cannot read or delete existing objects).
 gcloud storage buckets add-iam-policy-binding "${HOT_BUCKET}" \
@@ -151,7 +190,7 @@ gcloud storage buckets add-iam-policy-binding "${COLD_BUCKET}" \
 # KMS encrypter role — needed to upload objects that are CMEK-encrypted.
 gcloud kms keys add-iam-policy-binding "${KMS_KEY}" \
   --keyring="${KEYRING}" \
-  --location="${LOCATION}" \
+  --location="${KMS_LOCATION}" \
   --member="serviceAccount:${SA_EMAIL}" \
   --role="roles/cloudkms.cryptoKeyEncrypter"
 
