@@ -534,6 +534,8 @@
   },
   "components": {
     "apiError": "Nepodarilo sa načítať údaje. Backend môže byť dočasne nedostupný.",
+    "apiDegraded": "Dashboard beží v degradovanom režime — oncofiles je pod záťažou. Niektoré údaje môžu byť neaktuálne.",
+    "apiDegradedRetry": "Skúšame znova o {seconds} s",
     "clinicalSource": {
       "disclaimer": "Informatívny prehľad — overí ošetrujúci lekár.",
       "source": "Zdroj",

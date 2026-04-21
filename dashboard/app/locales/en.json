@@ -534,6 +534,8 @@
   },
   "components": {
     "apiError": "Unable to load data. The backend may be temporarily unavailable.",
+    "apiDegraded": "Dashboard is running in degraded mode — oncofiles is under stress. Some data may be stale.",
+    "apiDegradedRetry": "Retrying in {seconds}s",
     "clinicalSource": {
       "disclaimer": "Informational overview — your treating physician verifies.",
       "source": "Source",

@@ -8,6 +8,12 @@ const { activePatientId, activePatient, patients, hasMultiplePatients, canSwitch
 const { waNumber, waLink, track: trackWa } = useWhatsAppOnboarding()
 const { isOncology } = usePatientType()
 
+// Global health-banner subscription — polls /api/diagnostics every 30s so
+// every page surface reflects circuit-breaker state without redundant fetches.
+const circuitBreaker = useCircuitBreakerStatus()
+onMounted(() => circuitBreaker.start(30000))
+onBeforeUnmount(() => circuitBreaker.stop())
+
 // Pages only shown for oncology patients
 const ONCOLOGY_ONLY_PAGES = new Set(['/protocol', '/toxicity', '/prep', '/treatment-map'])
 
@@ -389,6 +395,7 @@ async function logout() {
 
     <!-- Main content -->
     <main class="flex-1 overflow-auto p-4 md:p-6 pt-14 md:pt-6">
+      <ApiErrorBanner v-if="circuitBreaker.degraded.value" class="mb-3" />
       <slot />
       <DrilldownPanel />
       <BugReportButton />
