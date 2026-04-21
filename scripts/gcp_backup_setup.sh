@@ -77,17 +77,26 @@ gcloud kms keys add-iam-policy-binding "${KMS_KEY}" \
 # Cold bucket: versioning on, 365-day lifecycle.
 KMS_KEY_NAME="projects/${PROJECT_ID}/locations/${LOCATION}/keyRings/${KEYRING}/cryptoKeys/${KMS_KEY}"
 
-echo "Step 6a: creating hot bucket (WORM audit log, 2y retention)"
+echo "Step 6a: creating hot bucket (audit log, versioned — WORM added later)"
 gcloud storage buckets create "${HOT_BUCKET}" \
   --project="${PROJECT_ID}" \
   --location="${LOCATION}" \
   --uniform-bucket-level-access \
   --default-encryption-key="${KMS_KEY_NAME}"
 
-gcloud storage buckets update "${HOT_BUCKET}" \
-  --retention-period=63072000s  # 2 years in seconds
-
-# Enable versioning on hot as defense-in-depth even though WORM retention blocks deletes.
+# NOTE (Sprint 93 S5 soften): the original config applied a 2-year retention
+# lock via `--retention-period=63072000s`. Retention LOCKS are irreversible —
+# once applied, GCS refuses any object delete for the full retention period,
+# even by the project owner. We defer that commitment until the backup
+# pipeline proves itself (scripts/backup_funnel_audit.py + restore drill).
+# Versioning below gives defense-in-depth that stays fully reversible: any
+# accidental delete becomes a non-current version, recoverable within the
+# 365d lifecycle.
+#
+# To re-introduce WORM once we're comfortable (typically after the first
+# successful restore drill, late Sprint 93 / early Sprint 94):
+#   gcloud storage buckets update "${HOT_BUCKET}" --retention-period=63072000s
+#   gcloud storage buckets update "${HOT_BUCKET}" --lock-retention-period
 gcloud storage buckets update "${HOT_BUCKET}" --versioning
 
 echo "Step 6b: creating cold bucket (daily DB dump, 365d versioning)"
