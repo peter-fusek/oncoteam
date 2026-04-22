@@ -1,0 +1,9 @@
+[deploy]
+# Landing is a static nginx image with no /health endpoint, so inheriting the
+# root railway.toml healthcheckPath=/health made deploys flap whenever Railway
+# strictly checked the 404. Point the check at `/` (index.html) instead.
+overlapSeconds = 15
+healthcheckPath = "/"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
