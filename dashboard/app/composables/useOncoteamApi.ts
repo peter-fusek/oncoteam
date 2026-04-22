@@ -53,8 +53,17 @@ export function useOncoteamApi() {
     const cacheAgeMs = ref<number>(0)
 
     async function doFetch(): Promise<T> {
-      const qs = new URLSearchParams(query.value).toString()
-      const url = `/api/oncoteam${resolvedPath}${qs ? `?${qs}` : ''}`
+      // Merge any ?query already on the caller's path with the reactive
+      // query (lang/patient_id/show_test/nocache). Without this, a path
+      // like `/labs?limit=10` produced `/labs?limit=10?lang=sk&...` — a
+      // malformed URL where `limit` parsed as `10?lang=sk`, the backend
+      // returned 500, and apiFetch amplified each click into 4 retries.
+      const qIdx = resolvedPath.indexOf('?')
+      const basePath = qIdx === -1 ? resolvedPath : resolvedPath.slice(0, qIdx)
+      const params = new URLSearchParams(qIdx === -1 ? '' : resolvedPath.slice(qIdx + 1))
+      for (const [k, v] of Object.entries(query.value)) params.set(k, v)
+      const qs = params.toString()
+      const url = `/api/oncoteam${basePath}${qs ? `?${qs}` : ''}`
 
       // Breaker-aware short-circuit: when oncofiles has declared its own
       // breaker open, skip the upstream call until within 2s of cooldown

@@ -90,27 +90,27 @@ const {
   }>
 }>('/timeline?limit=10', { lazy: true, server: false })
 
-// Preventive care screenings (general health patients only)
-const { data: preventiveCare } = fetchApi<{
+// Preventive care screenings (general health patients only).
+// Gate the fetch on isOncology: for oncology patients this endpoint is
+// irrelevant and only adds load + surface area for failures (#417).
+interface PreventiveCareData {
   screenings: Array<{ id: string; name: string; interval_label: string; last_date: string | null; next_due: string | null; status: string }>
   summary: { up_to_date: number; due: number; overdue: number; unknown: number }
-}>('/preventive-care', { lazy: true, server: false })
+}
+const preventiveCare = isOncology.value
+  ? ref<PreventiveCareData | null>(null)
+  : fetchApi<PreventiveCareData>('/preventive-care', { lazy: true, server: false }).data
 
 const screeningAlerts = computed(() => {
   if (!preventiveCare.value?.screenings) return []
   return preventiveCare.value.screenings.filter(s => s.status === 'overdue' || s.status === 'due').slice(0, 5)
 })
 
-// System health for degradation banner (#238)
-const { data: sysHealth } = fetchApi<{
-  circuit_breaker?: { state: string; oncofiles_rss_mb?: number }
-}>('/diagnostics', { lazy: true, server: false })
-
-const systemDegraded = computed(() => {
-  if (!sysHealth.value) return false
-  return sysHealth.value.circuit_breaker?.state === 'open'
-    || (sysHealth.value.circuit_breaker?.oncofiles_rss_mb ?? 0) >= 400
-})
+// System health for degradation banner (#238). Since #424 the breaker state
+// comes from `/readiness` (polled centrally by useCircuitBreakerStatus),
+// so /diagnostics on every home mount is redundant — dropping it cuts one
+// fetch per visit and removes a retry target when the backend is flapping.
+const { degraded: systemDegraded } = useCircuitBreakerStatus()
 
 // Computed helpers
 // Merge most recent value for each key parameter across all entries
