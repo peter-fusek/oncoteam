@@ -704,6 +704,7 @@
     "subtitle": "{count} zobrazovacích dokumentov",
     "selectHint": "Vyberte až 2 dokumenty na porovnanie vedľa seba",
     "selectSecond": "Vyberte druhý dokument na porovnanie",
+    "timelineHint": "Kliknutím na bod pridáte alebo odoberiete vyšetrenie z porovnania",
     "previewUnavailable": "Náhľad nedostupný — otvorte v Google Drive",
     "noDocuments": "Žiadne zobrazovacie dokumenty",
     "clearSelection": "Zrušiť výber"

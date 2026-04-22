@@ -93,6 +93,17 @@ const timelineDots = computed(() => {
       count: imagingDocs.value.filter(x => x.document_date === d.document_date).length,
     }))
 })
+
+// A dot is "active" when any selected doc shares its date — gives the timeline
+// a visual read of which dates are currently loaded in the comparison pane.
+function isDotActive(date: string): boolean {
+  return selectedDocs.value.some(d => d.document_date === date)
+}
+
+function onDotClick(date: string) {
+  const doc = imagingDocs.value.find(d => d.document_date === date)
+  if (doc) toggleSelect(doc)
+}
 </script>
 
 <template>
@@ -122,18 +133,26 @@ const timelineDots = computed(() => {
     <SkeletonLoader v-if="!docsData && status === 'pending'" variant="cards" />
 
     <template v-else-if="imagingDocs.length">
-      <!-- Timeline bar -->
-      <div v-if="timeRange" class="relative h-10 rounded-lg border border-gray-200 bg-white px-6 flex items-center">
-        <div class="absolute left-6 right-6 h-px bg-gray-200" />
-        <button
-          v-for="dot in timelineDots"
-          :key="dot.date"
-          class="absolute w-3 h-3 rounded-full border-2 border-white bg-teal-500 hover:scale-150 transition-transform -translate-x-1.5 z-10"
-          :style="{ left: `calc(24px + ${dot.left}% * (100% - 48px) / 100)` }"
-          :title="`${formatDate(dot.date)} (${dot.count} docs)`"
-        />
-        <span class="absolute left-2 text-[8px] text-gray-400">{{ timeRange.start }}</span>
-        <span class="absolute right-2 text-[8px] text-gray-400">{{ timeRange.end }}</span>
+      <!-- Timeline bar — click a dot to add/remove that date's scan from the comparison -->
+      <div v-if="timeRange" class="space-y-1">
+        <p class="text-[11px] text-gray-500 px-1">{{ $t('imaging.timelineHint') }}</p>
+        <div class="relative h-10 rounded-lg border border-gray-200 bg-white px-6 flex items-center">
+          <div class="absolute left-6 right-6 h-px bg-gray-200" />
+          <button
+            v-for="dot in timelineDots"
+            :key="dot.date"
+            type="button"
+            class="absolute w-3 h-3 rounded-full border-2 transition-transform -translate-x-1.5 z-10 cursor-pointer hover:scale-150 focus:scale-150 focus:outline-none"
+            :class="isDotActive(dot.date) ? 'bg-teal-600 border-teal-200 ring-2 ring-teal-300 scale-125' : 'bg-teal-500 border-white'"
+            :style="{ left: `calc(24px + ${dot.left}% * (100% - 48px) / 100)` }"
+            :title="`${formatDate(dot.date)} (${dot.count})`"
+            :aria-label="`${formatDate(dot.date)} — ${dot.count} ${dot.count === 1 ? 'doc' : 'docs'}`"
+            :aria-pressed="isDotActive(dot.date)"
+            @click="onDotClick(dot.date)"
+          />
+          <span class="absolute left-2 text-[8px] text-gray-400">{{ timeRange.start }}</span>
+          <span class="absolute right-2 text-[8px] text-gray-400">{{ timeRange.end }}</span>
+        </div>
       </div>
 
       <!-- Comparison panes -->

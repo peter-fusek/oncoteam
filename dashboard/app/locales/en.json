@@ -730,6 +730,7 @@
     "subtitle": "{count} imaging documents",
     "selectHint": "Select up to 2 documents to compare side-by-side",
     "selectSecond": "Select a second document to compare",
+    "timelineHint": "Click a dot to add or remove that scan from the comparison",
     "previewUnavailable": "Preview unavailable — open in Google Drive",
     "noDocuments": "No imaging documents found",
     "clearSelection": "Clear selection"
