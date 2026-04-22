@@ -91,3 +91,49 @@ def test_proxy_forwards_retry_after_header():
     assert "'Retry-After'" in src
     # The header must actually be set on the event, not just read
     assert "setHeader(event, 'Retry-After'" in src
+
+
+# ── Task 3: /readiness.circuit_breaker as source of truth ─────────────
+
+
+def test_readiness_proxy_endpoint_exists():
+    """A dedicated server route proxies oncofiles /readiness to the browser."""
+    src = _read("api/oncofiles-readiness.get.ts", base=SERVER_ROOT)
+    assert "oncofilesReadinessUrl" in src
+    assert "getUserSession" in src
+    # Must be served as JSON passthrough — we rely on the upstream shape
+    assert "circuit_breaker" in src
+
+
+def test_nuxt_runtime_config_has_readiness_url():
+    """Readiness URL is configurable via runtimeConfig with a sane default."""
+    src = (DASHBOARD_ROOT.parent / "nuxt.config.ts").read_text()
+    assert "oncofilesReadinessUrl" in src
+    assert "oncofiles.com/readiness" in src
+
+
+def test_breaker_composable_reads_readiness_directly():
+    """useCircuitBreakerStatus no longer infers state from /api/diagnostics."""
+    src = _read("composables/useCircuitBreakerStatus.ts")
+    # New source of truth
+    assert "/api/oncofiles-readiness" in src
+    # Old inference path must be gone
+    assert "/api/oncoteam/diagnostics" not in src
+    # The full oncofiles breaker shape is modeled, including the new fields
+    assert "cooldown_remaining_s" in src
+    assert "trip_count_total" in src
+
+
+def test_breaker_composable_supports_half_open_state():
+    """Half-open is a real state in the oncofiles contract — don't collapse it."""
+    src = _read("composables/useCircuitBreakerStatus.ts")
+    assert "half_open" in src
+    # degraded is true whenever state !== 'closed' (covers open + half_open)
+    assert "'closed'" in src
+
+
+def test_breaker_composable_animates_countdown_locally():
+    """Local 1s decrement between polls keeps the countdown banner smooth."""
+    src = _read("composables/useCircuitBreakerStatus.ts")
+    assert "localRemaining" in src
+    assert "setInterval" in src

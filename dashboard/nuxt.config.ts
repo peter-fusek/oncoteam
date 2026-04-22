@@ -33,6 +33,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     oncoteamApiUrl: process.env.NUXT_ONCOTEAM_API_URL || process.env.NUXT_PUBLIC_ONCOTEAM_API_URL || 'https://api.oncoteam.cloud',
     oncoteamApiKey: process.env.NUXT_ONCOTEAM_API_KEY || process.env.NUXT_PUBLIC_ONCOTEAM_API_KEY || '',
+    oncofilesReadinessUrl: process.env.NUXT_ONCOFILES_READINESS_URL || 'https://oncofiles.com/readiness',
     public: {},
     session: {
       maxAge: 60 * 60 * 24 * 7, // 7 days
