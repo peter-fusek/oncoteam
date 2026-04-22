@@ -85,7 +85,8 @@
     "googleDrive": "Google Drive",
     "errorPrefix": "Chyba: {msg}",
     "minSafe": "Min bezpečné ({param})",
-    "retry": "Skúsiť znova"
+    "retry": "Skúsiť znova",
+    "showingCached": "Zobrazujem uložené údaje ({minutes} min staré) — obnovujem spojenie"
   },
   "agents": {
     "title": "Prehľad agentov",

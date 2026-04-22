@@ -23,8 +23,15 @@ const route = useRoute()
 const drilldown = useDrilldown()
 
 // Version info from API
-const { fetchApi } = useOncoteamApi()
+const { fetchApi, swrClearAll, swrClearPatient } = useOncoteamApi()
 const { data: versionInfo } = fetchApi<{ version: string; commit: string }>('/status', { lazy: true })
+
+// Drop SWR cache on patient switch so the next patient never sees a
+// stale hit from the previous one. Per-patient keys make cross-leak
+// impossible even without this, but clearing keeps sessionStorage small.
+watch(activePatientId, (newId, oldId) => {
+  if (oldId && newId && newId !== oldId) swrClearPatient(oldId)
+})
 
 // Close mobile menu and drilldown on navigation
 watch(() => route.path, () => {
@@ -135,6 +142,7 @@ async function toggleLocale() {
 
 async function logout() {
   await $fetch('/auth/logout', { method: 'POST' })
+  swrClearAll()
   clear()
   navigateTo('/login')
 }

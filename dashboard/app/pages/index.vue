@@ -35,7 +35,13 @@ const { data: patient, status: patientStatus } = fetchApi<{
   active_therapies?: Array<{ name: string; status: string; warning?: string }>
 }>('/patient', { lazy: true, server: false })
 
-const { data: labs, status: labsStatus, error: labsError } = fetchApi<{
+const {
+  data: labs,
+  status: labsStatus,
+  error: labsError,
+  stale: labsStale,
+  cacheAgeMs: labsCacheAgeMs,
+} = fetchApi<{
   entries: Array<{
     date: string
     values: Record<string, number>
@@ -49,7 +55,12 @@ const { data: labs, status: labsStatus, error: labsError } = fetchApi<{
   unavailable?: boolean
 }>('/labs?limit=10', { lazy: true, server: false })
 
-const { data: briefings, status: briefingsStatus } = fetchApi<{
+const {
+  data: briefings,
+  status: briefingsStatus,
+  stale: briefingsStale,
+  cacheAgeMs: briefingsCacheAgeMs,
+} = fetchApi<{
   briefings: Array<{
     id: number
     title: string
@@ -64,7 +75,12 @@ const { data: briefings, status: briefingsStatus } = fetchApi<{
   total: number
 }>('/briefings?limit=1', { lazy: true, server: false })
 
-const { data: timeline, status: timelineStatus } = fetchApi<{
+const {
+  data: timeline,
+  status: timelineStatus,
+  stale: timelineStale,
+  cacheAgeMs: timelineCacheAgeMs,
+} = fetchApi<{
   events: Array<{
     id: number
     event_date: string
@@ -268,6 +284,10 @@ const EVENT_ICONS: Record<string, string> = {
           <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.recentLabs') }}</h2>
           <NuxtLink to="/labs" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
         </div>
+        <div v-if="labsStale" class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-2 flex items-center gap-1.5">
+          <UIcon name="i-lucide-clock-alert" class="h-3.5 w-3.5 shrink-0" />
+          {{ $t('common.showingCached', { minutes: Math.max(1, Math.round(labsCacheAgeMs / 60000)) }) }}
+        </div>
         <div v-if="mergedLabSnapshot" class="space-y-2">
           <div class="text-xs text-gray-500 mb-2">{{ formatDate(mergedLabSnapshot.date) }}</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -303,6 +323,10 @@ const EVENT_ICONS: Record<string, string> = {
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.latestBriefing') }}</h2>
         <NuxtLink to="/briefings" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
+      </div>
+      <div v-if="briefingsStale" class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-2 flex items-center gap-1.5">
+        <UIcon name="i-lucide-clock-alert" class="h-3.5 w-3.5 shrink-0" />
+        {{ $t('common.showingCached', { minutes: Math.max(1, Math.round(briefingsCacheAgeMs / 60000)) }) }}
       </div>
       <SkeletonLoader v-if="briefingsStatus === 'pending'" variant="lines" />
       <template v-else-if="latestBriefing">
@@ -362,6 +386,10 @@ const EVENT_ICONS: Record<string, string> = {
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400">{{ $t('home.upcoming') }}</h2>
           <NuxtLink to="/timeline" class="text-xs text-[var(--clinical-primary)] hover:underline">{{ $t('home.viewAll') }}</NuxtLink>
+        </div>
+        <div v-if="timelineStale" class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-2 flex items-center gap-1.5">
+          <UIcon name="i-lucide-clock-alert" class="h-3.5 w-3.5 shrink-0" />
+          {{ $t('common.showingCached', { minutes: Math.max(1, Math.round(timelineCacheAgeMs / 60000)) }) }}
         </div>
         <div v-if="upcomingEvents.length" class="space-y-2">
           <div

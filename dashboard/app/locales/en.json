@@ -85,7 +85,8 @@
     "googleDrive": "Google Drive",
     "errorPrefix": "Error: {msg}",
     "minSafe": "Min safe ({param})",
-    "retry": "Try again"
+    "retry": "Try again",
+    "showingCached": "Showing cached data ({minutes} min old) — reconnecting"
   },
   "agents": {
     "title": "Agent Dashboard",

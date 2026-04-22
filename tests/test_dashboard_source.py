@@ -137,3 +137,83 @@ def test_breaker_composable_animates_countdown_locally():
     src = _read("composables/useCircuitBreakerStatus.ts")
     assert "localRemaining" in src
     assert "setInterval" in src
+
+
+# ── Task 4: stale-while-revalidate labs/briefings/timeline ────────────
+
+
+def test_swr_cache_helpers_exist():
+    src = _read("composables/useSwrCache.ts")
+    assert "export function swrGet" in src
+    assert "export function swrSet" in src
+    assert "export function swrClearAll" in src
+    assert "export function swrClearPatient" in src
+    assert "SWR_PREFIX" in src
+
+
+def test_swr_cache_has_10min_max_age():
+    """Entries older than 10 min are evicted, not deceptively served."""
+    src = _read("composables/useSwrCache.ts")
+    assert "10 * 60 * 1000" in src
+    assert "SWR_MAX_AGE_MS" in src
+
+
+def test_swr_cache_is_per_patient():
+    """The cache key includes the patient id so cross-patient leak is impossible."""
+    src = _read("composables/useSwrCache.ts")
+    assert "patientId" in src
+    assert "default" in src  # fallback for missing patient id
+
+
+def test_swr_cache_opt_in_paths_include_target_three():
+    """Labs / briefings / timeline — the three cards called out in #424."""
+    src = _read("composables/useSwrCache.ts")
+    assert "'/labs'" in src
+    assert "'/briefings'" in src
+    assert "'/timeline'" in src
+
+
+def test_use_oncoteam_api_writes_cache_on_success():
+    src = _read("composables/useOncoteamApi.ts")
+    assert "swrSet" in src
+    assert "isSwrPath" in src
+
+
+def test_use_oncoteam_api_falls_back_to_cache_on_failure():
+    """On fetch failure, fetchApi returns cached data with stale=true."""
+    src = _read("composables/useOncoteamApi.ts")
+    assert "swrGet" in src
+    # stale / cacheAgeMs must be surfaced so the UI can render the notice
+    assert "stale.value = true" in src
+    assert "cacheAgeMs.value" in src
+
+
+def test_layout_invalidates_swr_on_logout():
+    """Logout MUST clear all SWR cache so a new user can't see prior data."""
+    src = _read("layouts/default.vue")
+    assert "swrClearAll" in src
+
+
+def test_layout_invalidates_swr_on_patient_switch():
+    """Switching patients clears the previous patient's cache."""
+    src = _read("layouts/default.vue")
+    assert "swrClearPatient" in src
+
+
+def test_home_page_renders_stale_notice_for_three_cards():
+    """Home renders the stale notice for labs, briefings, and timeline."""
+    src = _read("pages/index.vue")
+    assert "labsStale" in src
+    assert "briefingsStale" in src
+    assert "timelineStale" in src
+    assert "showingCached" in src
+
+
+def test_showing_cached_locale_keys_match_oncofiles_phrasing():
+    """Copy mirrors oncofiles#469 phrasing for consistency across surfaces."""
+    en = _read("locales/en.json")
+    sk = _read("locales/sk.json")
+    assert "Showing cached data" in en
+    assert "reconnecting" in en
+    assert "Zobrazujem uložené údaje" in sk
+    assert "obnovujem spojenie" in sk

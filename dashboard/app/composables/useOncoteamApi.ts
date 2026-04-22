@@ -1,4 +1,5 @@
 import { apiFetch, parseRetryAfter, type ApiFetchError } from './useApiFetch'
+import { isSwrPath, swrGet, swrSet, swrClearAll, swrClearPatient } from './useSwrCache'
 
 export function useOncoteamApi() {
   const { showTestData } = useTestDataToggle()
@@ -37,6 +38,10 @@ export function useOncoteamApi() {
     // Retry-After surfaced for the active fetch — callers (banner) read this
     // to size the countdown. Null/0 when the last fetch succeeded.
     const retryAfterMs = ref<number>(0)
+    // SWR: true when the data ref is populated from sessionStorage cache
+    // because the live fetch failed. ageMs is the cache age in ms.
+    const stale = ref<boolean>(false)
+    const cacheAgeMs = ref<number>(0)
 
     async function doFetch(): Promise<T> {
       const qs = new URLSearchParams(query.value).toString()
@@ -44,11 +49,26 @@ export function useOncoteamApi() {
       try {
         const data = await apiFetch<T>(url, { perRequestTimeoutMs: 28000 })
         retryAfterMs.value = 0
+        stale.value = false
+        cacheAgeMs.value = 0
+        if (isSwrPath(resolvedPath)) {
+          swrSet<T>(effectivePatientId.value, resolvedPath, data)
+        }
         return data
       } catch (e) {
         const err = e as ApiFetchError
         if (err?.status === 503 && err.retryAfterMs) {
           retryAfterMs.value = err.retryAfterMs
+        }
+        // Fall back to cached data for SWR-eligible paths so the UI
+        // stays populated instead of collapsing to the empty state.
+        if (isSwrPath(resolvedPath)) {
+          const hit = swrGet<T>(effectivePatientId.value, resolvedPath)
+          if (hit) {
+            stale.value = true
+            cacheAgeMs.value = hit.ageMs
+            return hit.data
+          }
         }
         throw err
       }
@@ -66,7 +86,7 @@ export function useOncoteamApi() {
       await fetched.refresh()
     }
 
-    return { ...fetched, forceRefresh, retryAfterMs }
+    return { ...fetched, forceRefresh, retryAfterMs, stale, cacheAgeMs }
   }
 
   async function postApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -77,5 +97,11 @@ export function useOncoteamApi() {
     return apiFetch<T>(`/api/oncoteam${path}?${qs}`, { method: 'POST', body })
   }
 
-  return { fetchApi, postApi, parseRetryAfter }
+  return {
+    fetchApi,
+    postApi,
+    parseRetryAfter,
+    swrClearAll,
+    swrClearPatient,
+  }
 }
