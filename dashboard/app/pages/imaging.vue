@@ -130,13 +130,16 @@ function onDotClick(date: string) {
     </div>
 
     <ApiErrorBanner :error="docsData?.error || fetchError?.message" />
-    <!-- Gate on `docsData`, not `status === 'pending'`: SSR with server:false
-         leaves status='idle', which used to fall through to the empty-state
-         branch and then refused to re-render once the client fetch filled in. -->
-    <SkeletonLoader v-if="!docsData && !fetchError" variant="cards" />
+    <!-- Data-dependent body is client-only: the fetch is `server: false`
+         (Railway 17s edge timeout), so SSR has nothing to render. Without
+         this wrapper SSR picks a v-if branch against null/idle refs and
+         Vue's hydration refuses to swap to the populated branch once the
+         client fetch lands, leaving the body blank. -->
+    <ClientOnly>
+      <SkeletonLoader v-if="!docsData && !fetchError" variant="cards" />
 
-    <template v-else-if="imagingDocs.length">
-      <!-- Timeline bar — click a dot to add/remove that date's scan from the comparison -->
+      <template v-else-if="imagingDocs.length">
+        <!-- Timeline bar — click a dot to add/remove that date's scan from the comparison -->
       <div v-if="timeRange" class="space-y-1">
         <p class="text-[11px] text-gray-500 px-1">{{ $t('imaging.timelineHint') }}</p>
         <div class="relative h-10 rounded-lg border border-gray-200 bg-white px-6 flex items-center">
@@ -218,10 +221,15 @@ function onDotClick(date: string) {
       </div>
     </template>
 
-    <!-- Empty state — reached only when data loaded but no docs matched. -->
-    <div v-else-if="!fetchError" class="text-center py-16">
-      <UIcon name="i-lucide-scan-line" class="w-10 h-10 text-gray-300 mx-auto mb-3" />
-      <p class="text-sm text-gray-500">{{ $t('imaging.noDocuments') }}</p>
-    </div>
+      <!-- Empty state — reached only when data loaded but no docs matched. -->
+      <div v-else-if="!fetchError" class="text-center py-16">
+        <UIcon name="i-lucide-scan-line" class="w-10 h-10 text-gray-300 mx-auto mb-3" />
+        <p class="text-sm text-gray-500">{{ $t('imaging.noDocuments') }}</p>
+      </div>
+
+      <template #fallback>
+        <SkeletonLoader variant="cards" />
+      </template>
+    </ClientOnly>
   </div>
 </template>
