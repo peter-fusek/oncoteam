@@ -1,6 +1,11 @@
 /**
  * Catch-all proxy: forwards /api/oncoteam/<path> to the Python backend.
  * Session-gated — requires authenticated user. API key stays server-side.
+ *
+ * Passes through upstream status codes verbatim. When the backend returns
+ * 503 with Retry-After (oncoteam#424 / oncofiles#469 contract), the header
+ * is forwarded so the client apiFetch can size its countdown banner off
+ * the server's authoritative cooldown.
  */
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -8,7 +13,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Not authenticated' })
   }
 
-  // Validate patient_id against user's authorized patients
   const query = getQuery(event)
   const requestedPatientId = query.patient_id as string | undefined
   const allowedPatientIds = (session.user as { patientIds?: string[] }).patientIds || []
@@ -57,6 +61,10 @@ export default defineEventHandler(async (event) => {
 
   try {
     const response = await fetch(url, fetchOpts)
+    // Forward Retry-After verbatim so the client countdown matches the
+    // backend's declared cooldown (oncoteam#424 Task 1).
+    const retryAfter = response.headers.get('Retry-After')
+    if (retryAfter) setHeader(event, 'Retry-After', retryAfter)
     const data = await response.json()
     setResponseStatus(event, response.status)
     return data

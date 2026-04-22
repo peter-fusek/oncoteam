@@ -1,3 +1,5 @@
+import { apiFetch, parseRetryAfter, type ApiFetchError } from './useApiFetch'
+
 export function useOncoteamApi() {
   const { showTestData } = useTestDataToggle()
   const { locale } = useI18n()
@@ -32,15 +34,31 @@ export function useOncoteamApi() {
       return q
     })
 
-    const fetched = useFetch<T>(`/api/oncoteam${resolvedPath}`, {
-      key,
-      query,
-      timeout: 28000,
+    // Retry-After surfaced for the active fetch — callers (banner) read this
+    // to size the countdown. Null/0 when the last fetch succeeded.
+    const retryAfterMs = ref<number>(0)
+
+    async function doFetch(): Promise<T> {
+      const qs = new URLSearchParams(query.value).toString()
+      const url = `/api/oncoteam${resolvedPath}${qs ? `?${qs}` : ''}`
+      try {
+        const data = await apiFetch<T>(url, { perRequestTimeoutMs: 28000 })
+        retryAfterMs.value = 0
+        return data
+      } catch (e) {
+        const err = e as ApiFetchError
+        if (err?.status === 503 && err.retryAfterMs) {
+          retryAfterMs.value = err.retryAfterMs
+        }
+        throw err
+      }
+    }
+
+    const fetched = useAsyncData<T>(key, doFetch, {
+      lazy: true,
       server: false,
-      retry: 1,
-      retryDelay: 2000,
-      retryStatusCodes: [502, 503],
-      ...opts,
+      watch: [query],
+      ...(opts as Record<string, unknown>),
     })
 
     async function forceRefresh() {
@@ -48,7 +66,7 @@ export function useOncoteamApi() {
       await fetched.refresh()
     }
 
-    return { ...fetched, forceRefresh }
+    return { ...fetched, forceRefresh, retryAfterMs }
   }
 
   async function postApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -56,8 +74,8 @@ export function useOncoteamApi() {
     if (showTestData.value) q.show_test = 'true'
     q.patient_id = effectivePatientId.value
     const qs = new URLSearchParams(q).toString()
-    return $fetch<T>(`/api/oncoteam${path}?${qs}`, { method: 'POST', body })
+    return apiFetch<T>(`/api/oncoteam${path}?${qs}`, { method: 'POST', body })
   }
 
-  return { fetchApi, postApi }
+  return { fetchApi, postApi, parseRetryAfter }
 }
