@@ -130,7 +130,10 @@ function onDotClick(date: string) {
     </div>
 
     <ApiErrorBanner :error="docsData?.error || fetchError?.message" />
-    <SkeletonLoader v-if="!docsData && status === 'pending'" variant="cards" />
+    <!-- Gate on `docsData`, not `status === 'pending'`: SSR with server:false
+         leaves status='idle', which used to fall through to the empty-state
+         branch and then refused to re-render once the client fetch filled in. -->
+    <SkeletonLoader v-if="!docsData && !fetchError" variant="cards" />
 
     <template v-else-if="imagingDocs.length">
       <!-- Timeline bar — click a dot to add/remove that date's scan from the comparison -->
@@ -215,8 +218,8 @@ function onDotClick(date: string) {
       </div>
     </template>
 
-    <!-- Empty state -->
-    <div v-else-if="status !== 'pending' && !fetchError" class="text-center py-16">
+    <!-- Empty state — reached only when data loaded but no docs matched. -->
+    <div v-else-if="!fetchError" class="text-center py-16">
       <UIcon name="i-lucide-scan-line" class="w-10 h-10 text-gray-300 mx-auto mb-3" />
       <p class="text-sm text-gray-500">{{ $t('imaging.noDocuments') }}</p>
     </div>
