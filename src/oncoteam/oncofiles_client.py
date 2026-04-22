@@ -4,6 +4,7 @@ import asyncio
 import collections
 import json
 import logging
+import re
 import time
 
 import httpx
@@ -282,6 +283,40 @@ def _parse_result(result: object) -> dict | list | str:
 _MAX_RETRIES = 2  # 2 attempts total (initial + 1 retry)
 _RETRY_BACKOFF = [0.5]  # seconds between retries
 
+# Upstream-breaker signal: oncofiles raises RuntimeError("Circuit breaker
+# open — DB unavailable, retry in {N}s") when its own Turso breaker is
+# tripped. That RuntimeError propagates through MCP as the tool-call error
+# string. Match the canonical phrase so transient timeouts / network blips
+# do NOT trip our local breaker — only explicit upstream-open signals do.
+# See oncofiles#469 + oncoteam#424 Task 2.
+_UPSTREAM_BREAKER_MARKERS = (
+    "Circuit breaker open",
+    "Database briefly unavailable",
+    "Database temporarily unavailable",
+)
+_UPSTREAM_COOLDOWN_RE = re.compile(r"retry in[ ~]*(\d+)\s*s", re.IGNORECASE)
+
+
+def _parse_upstream_breaker_signal(exc: BaseException) -> tuple[bool, float | None]:
+    """Detect an upstream-breaker-open error and its declared cooldown.
+
+    Returns (is_breaker_open, cooldown_seconds). When the upstream supplied
+    a retry hint like ``retry in 30s`` we use it verbatim for our local
+    cooldown, otherwise we fall back to CIRCUIT_BREAKER_COOLDOWN. Any other
+    exception returns (False, None) and MUST NOT trip the local breaker —
+    double-breaker amplification (oncoteam#424) is the explicit bug here.
+    """
+    msg = str(exc) if exc else ""
+    if not any(marker in msg for marker in _UPSTREAM_BREAKER_MARKERS):
+        return False, None
+    m = _UPSTREAM_COOLDOWN_RE.search(msg)
+    if m:
+        try:
+            return True, float(m.group(1))
+        except ValueError:
+            pass
+    return True, None
+
 
 async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -> dict | list | str:
     """Execute an MCP call with retries and exponential backoff.
@@ -290,6 +325,14 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
     transient 502s during oncofiles restarts (memory leak recovery).
     Total worst-case: 10s + 0.5s + 10s = 20.5s (normal) or 20s + 0.5s + 20s = 40.5s (heavy).
     Heavy tools only retry once but get longer per-call timeout.
+
+    Breaker semantics (oncoteam#424): a terminal failure increments local
+    failure counters ONLY when the upstream exception is an explicit
+    breaker-open signal from oncofiles. Plain timeouts / transient 5xx are
+    retried within the attempt budget but never trip the local breaker —
+    oncofiles now surfaces its own breaker via 503 + Retry-After and has
+    internal recovery for the rest. Counting every generic error here was
+    the root cause of the false-alarm "Database under load" banner.
     """
     global _circuit_failures, _circuit_open_until, _total_errors, _total_circuit_trips
     circuit = _get_circuit(token)
@@ -322,17 +365,23 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
                 await asyncio.sleep(backoff)
                 continue
             _total_errors += 1
-            _circuit_failures += 1
-            circuit["failures"] += 1
-            if circuit["failures"] >= CIRCUIT_BREAKER_THRESHOLD:
-                circuit["open_until"] = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
-            if _circuit_failures >= CIRCUIT_BREAKER_THRESHOLD:
-                _circuit_open_until = time.monotonic() + CIRCUIT_BREAKER_COOLDOWN
+            upstream_open, upstream_cooldown = _parse_upstream_breaker_signal(exc)
+            if upstream_open:
+                cooldown = upstream_cooldown or CIRCUIT_BREAKER_COOLDOWN
+                _circuit_failures += 1
+                circuit["failures"] += 1
+                circuit["open_until"] = time.monotonic() + cooldown
+                _circuit_open_until = time.monotonic() + cooldown
                 _total_circuit_trips += 1
-                _logger.error(
-                    "oncofiles circuit breaker OPEN after %d failures — blocking calls for %ds",
-                    _circuit_failures,
-                    CIRCUIT_BREAKER_COOLDOWN,
+                _logger.warning(
+                    "oncofiles circuit breaker OPEN (upstream signal) — blocking calls for %.0fs",
+                    cooldown,
+                )
+            else:
+                _logger.debug(
+                    "oncofiles %s failed transiently (no breaker trip): %s",
+                    tool_name,
+                    exc,
                 )
             raise
     raise last_exc or RuntimeError("_call_with_retry: unreachable")
