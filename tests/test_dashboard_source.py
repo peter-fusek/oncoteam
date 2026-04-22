@@ -250,3 +250,37 @@ def test_banner_component_reads_breaker_state_for_copy():
     assert "breakerState" in src
     assert "half_open" in src
     assert "apiDegradedHalfOpen" in src
+
+
+# ── Task 6: throttle polling during breaker open ──────────────────────
+
+
+def test_fetch_api_short_circuits_when_breaker_open():
+    """fetchApi skips the upstream call when cooldown_remaining_s > 2."""
+    src = _read("composables/useOncoteamApi.ts")
+    assert "useCircuitBreakerStatus" in src
+    assert "BREAKER_POLL_SKIP_THRESHOLD_S" in src
+    assert "cooldown_remaining_s" in src
+    # Must check state === 'open' (not just degraded), because half_open means
+    # oncofiles is already probing — let that call through.
+    assert "'open'" in src
+
+
+def test_fetch_api_returns_cached_during_skip():
+    """During the skip window, SWR paths return cached data — not empty state."""
+    src = _read("composables/useOncoteamApi.ts")
+    # Anchor on the usage site inside doFetch (the `> BREAKER...` comparison),
+    # not the top-level constant declaration.
+    skip_block_start = src.index("> BREAKER_POLL_SKIP_THRESHOLD_S")
+    skip_slice = src[skip_block_start : skip_block_start + 800]
+    assert "swrGet" in skip_slice
+    assert "stale.value = true" in skip_slice
+
+
+def test_fetch_api_auto_refreshes_when_breaker_closes():
+    """Transition open → closed triggers an automatic refresh of mounted fetches."""
+    src = _read("composables/useOncoteamApi.ts")
+    # Watch on breaker state is the mechanism
+    assert "watch(" in src
+    assert "'closed'" in src
+    assert "fetched.refresh()" in src
