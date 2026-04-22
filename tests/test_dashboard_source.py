@@ -217,3 +217,36 @@ def test_showing_cached_locale_keys_match_oncofiles_phrasing():
     assert "reconnecting" in en
     assert "Zobrazujem uložené údaje" in sk
     assert "obnovujem spojenie" in sk
+
+
+# ── Task 5: banner copy consistency ───────────────────────────────────
+
+
+def test_banner_copy_matches_oncofiles_phrasing():
+    """The degraded-mode banner matches oncofiles#469's cross-surface wording."""
+    en = _read("locales/en.json")
+    sk = _read("locales/sk.json")
+    # EN short-form + countdown
+    assert "Database briefly unavailable." in en
+    assert "Refreshing in {seconds}s" in en
+    # SK
+    assert "Databáza je krátko nedostupná." in sk
+    assert "Obnovujem za {seconds} s" in sk
+
+
+def test_banner_covers_half_open_state():
+    """Half-open has its own user-facing copy ("Reconnecting…")."""
+    en = _read("locales/en.json")
+    sk = _read("locales/sk.json")
+    assert "apiDegradedHalfOpen" in en
+    assert "Reconnecting" in en
+    assert "apiDegradedHalfOpen" in sk
+    assert "Obnovujem spojenie" in sk
+
+
+def test_banner_component_reads_breaker_state_for_copy():
+    """ApiErrorBanner picks copy based on state, not just on cooldownSeconds."""
+    src = _read("components/ApiErrorBanner.vue")
+    assert "breakerState" in src
+    assert "half_open" in src
+    assert "apiDegradedHalfOpen" in src

@@ -15,10 +15,17 @@
     <span class="flex-1">
       <template v-if="error">{{ $t('components.apiError') }}</template>
       <template v-else>
-        {{ $t('components.apiDegraded') }}
-        <span v-if="cooldownSeconds > 0" class="opacity-70 ml-1">
-          · {{ $t('components.apiDegradedRetry', { seconds: Math.ceil(cooldownSeconds) }) }}
-        </span>
+        <!-- Half-open state: "Reconnecting…" only. Countdown is irrelevant while
+             the upstream is probing, and showing both reads noisy. -->
+        <template v-if="breakerState === 'half_open'">
+          {{ $t('components.apiDegradedHalfOpen') }}
+        </template>
+        <template v-else>
+          {{ $t('components.apiDegraded') }}
+          <span v-if="cooldownSeconds > 0" class="ml-1">
+            {{ $t('components.apiDegradedRetry', { seconds: Math.ceil(cooldownSeconds) }) }}
+          </span>
+        </template>
       </template>
     </span>
   </div>
@@ -41,4 +48,5 @@ const degradedActive = computed(() =>
 const cooldownSeconds = computed(() =>
   props.cooldownSeconds !== undefined ? props.cooldownSeconds : cb.cooldownSeconds.value
 )
+const breakerState = computed(() => cb.state.value?.state ?? 'closed')
 </script>
