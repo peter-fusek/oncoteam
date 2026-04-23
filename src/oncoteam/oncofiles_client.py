@@ -237,17 +237,46 @@ def _make_transport(token: str | None = None) -> StreamableHttpTransport:
     return StreamableHttpTransport(ONCOFILES_MCP_URL, auth=auth)
 
 
+# #432: bound how long we'll wait for an MCP session handshake. When
+# oncofiles restarts, its side drops the SSE/streamable-HTTP session but
+# fastmcp.Client holds the dead reference indefinitely — `ready_event.wait()`
+# inside `__aenter__` hangs forever. Without this timeout, every subsequent
+# call queues on the persistent-client lock, saturates the oncofiles
+# semaphores, and /imaging etc. return 502 until oncoteam itself is
+# restarted. See docs/incidents/2026-04-23-stale-mcp-client.md.
+CONNECT_TIMEOUT = 5.0
+
+
 async def _get_client(token: str | None = None) -> Client:
     """Return a persistent client for the given token, creating if necessary.
 
     Each unique token gets its own MCP connection (different patient data).
     Default token (None) uses ONCOFILES_MCP_TOKEN → Erika's data.
+
+    Handshake is bounded by CONNECT_TIMEOUT. When the handshake times out
+    (oncofiles peer is dead, SSE stream never became ready) we raise so
+    the caller can treat this as a transient failure — no more indefinite
+    hangs that saturate the semaphores. The caller's existing retry path
+    in `_call_with_retry` will reconnect on the next attempt via the
+    `_invalidate_client` hook.
     """
     key = token or ""
     async with _get_lock():
         if key not in _persistent_clients:
             c = Client(_make_transport(token))
-            await c.__aenter__()
+            try:
+                await asyncio.wait_for(c.__aenter__(), timeout=CONNECT_TIMEOUT)
+            except TimeoutError:
+                # Best-effort cleanup: if the transport is in a half-open
+                # state, try to close it so we don't leak a background task.
+                import contextlib as _cl
+
+                with _cl.suppress(TimeoutError, Exception):
+                    await asyncio.wait_for(c.__aexit__(None, None, None), timeout=1.0)
+                raise TimeoutError(
+                    f"oncofiles MCP handshake timed out after {CONNECT_TIMEOUT}s — "
+                    "peer likely down or just restarted"
+                ) from None
             _persistent_clients[key] = c
             tok_label = key[:8] if key else "default"
             _logger.debug("Opened oncofiles connection (token=%s...)", tok_label)
@@ -255,13 +284,26 @@ async def _get_client(token: str | None = None) -> Client:
 
 
 async def _invalidate_client(token: str | None = None) -> None:
-    """Close and discard a persistent client so the next call reconnects."""
+    """Close and discard a persistent client so the next call reconnects.
+
+    Idempotent. Safe to call even when the client is mid-handshake or
+    already closed — we wrap the __aexit__ in a 1s timeout so cleanup
+    never blocks the caller.
+    """
     key = token or ""
     async with _get_lock():
         client = _persistent_clients.pop(key, None)
         if client is not None:
             try:
-                await client.__aexit__(None, None, None)
+                await asyncio.wait_for(client.__aexit__(None, None, None), timeout=1.0)
+            except TimeoutError:
+                from .activity_logger import record_suppressed_error
+
+                record_suppressed_error(
+                    "oncofiles_client",
+                    "close_connection_timeout",
+                    TimeoutError("__aexit__ > 1s, abandoning"),
+                )
             except Exception as e:
                 from .activity_logger import record_suppressed_error
 
@@ -337,10 +379,18 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
     global _circuit_failures, _circuit_open_until, _total_errors, _total_circuit_trips
     circuit = _get_circuit(token)
     timeout = CALL_TIMEOUT_HEAVY if tool_name in _HEAVY_TOOLS else CALL_TIMEOUT
-    # Heavy tools: no retry (single 20s attempt stays within 25s proxy)
+    # Heavy tools: no retry (single 20s attempt stays within 25s proxy).
+    # One exception added for #432: a handshake-timeout failure (5s fast-fail
+    # from _get_client against a dead peer) gets ONE extra attempt regardless
+    # of tool class, because without it /imaging returns 502 every time
+    # oncofiles restarts. Worst-case budget: 5s handshake timeout + 0.5s
+    # backoff + 20s heavy call = 25.5s, right at Railway's 25s proxy edge —
+    # acceptable given the alternative is indefinite 502s.
     max_attempts = 1 if tool_name in _HEAVY_TOOLS else _MAX_RETRIES
+    handshake_retry_granted = False
     last_exc: Exception | None = None
-    for attempt in range(max_attempts):
+    attempt = 0
+    while attempt < max_attempts:
         try:
             client = await _get_client(token)
             result = await asyncio.wait_for(
@@ -352,7 +402,23 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
             return _parse_result(result)
         except Exception as exc:
             last_exc = exc
-            if attempt < max_attempts - 1:
+            # #432: handshake timeout from _get_client means the persistent
+            # MCP client is dead (peer restarted). Grant ONE extra attempt
+            # regardless of tool class, because without it /imaging returns
+            # 502 every time oncofiles restarts until oncoteam itself reboots.
+            is_handshake_timeout = isinstance(exc, TimeoutError) and "handshake timed out" in str(
+                exc
+            )
+            has_budget = attempt < max_attempts - 1
+            extend_for_handshake = (
+                is_handshake_timeout and not has_budget and not handshake_retry_granted
+            )
+            if extend_for_handshake:
+                handshake_retry_granted = True
+                max_attempts += 1
+                has_budget = True
+
+            if has_budget:
                 await _invalidate_client(token)
                 backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
                 _logger.debug(
@@ -363,6 +429,7 @@ async def _call_with_retry(tool_name: str, arguments: dict, token: str | None) -
                     exc,
                 )
                 await asyncio.sleep(backoff)
+                attempt += 1
                 continue
             _total_errors += 1
             upstream_open, upstream_cooldown = _parse_upstream_breaker_signal(exc)
