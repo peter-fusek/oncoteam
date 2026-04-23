@@ -7,7 +7,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from oncoteam.dashboard_api import api_log_whatsapp, api_whatsapp_chat, api_whatsapp_status
+from oncoteam.dashboard_api import (
+    api_log_whatsapp,
+    api_whatsapp_chat,
+    api_whatsapp_history,
+    api_whatsapp_status,
+)
 
 
 class FakeRequest:
@@ -426,3 +431,69 @@ async def test_whatsapp_status_counts_role_map_phones(_mock_load_rm, _mock_conv,
     call_kwargs = _mock_conv.call_args.kwargs
     assert call_kwargs.get("entry_type") == "whatsapp"
     assert "query" not in call_kwargs
+
+
+# ── /api/whatsapp/history — #427 status-callback pollution filter ──
+
+
+@pytest.mark.anyio
+@patch(
+    "oncoteam.api_whatsapp.oncofiles_client.search_conversations",
+    new_callable=AsyncMock,
+)
+async def test_whatsapp_history_filters_status_callbacks(mock_search):
+    """#427 — pre-fix, dashboard/server/api/webhook/whatsapp-status.post.ts
+    persisted every Twilio delivery-status callback into oncofiles as a fake
+    conversation with user_message="[status:sent]" and bot_response=MessageSID.
+    The history endpoint must filter these out so existing polluted entries
+    don't render on /whatsapp-history.
+    """
+    mock_search.return_value = {
+        "entries": [
+            {
+                "id": 1,
+                "created_at": "2026-04-22T10:00:00Z",
+                "title": "WhatsApp: Ako su labky?",
+                "tags": ["sys:whatsapp", "src:twilio"],
+                "content": (
+                    "**From**: +421900111222\n"
+                    "**Message**: Ako su labky?\n\n"
+                    "**Response**:\nLab values look normal."
+                ),
+            },
+            {
+                "id": 2,
+                "created_at": "2026-04-22T10:00:05Z",
+                "title": "WhatsApp: [status:sent]",
+                "tags": ["sys:whatsapp", "src:twilio"],
+                "content": (
+                    "**From**: +421900111222\n"
+                    "**Message**: [status:sent]\n\n"
+                    "**Response**:\nSMb4778e11da3e214cdc270828e810d70d"
+                ),
+            },
+            {
+                "id": 3,
+                "created_at": "2026-04-22T10:00:10Z",
+                "title": "WhatsApp: delivered",
+                # Tag-based detection (belt-and-suspenders with prefix check)
+                "tags": "sys:whatsapp,sys:status_callback,status:delivered",
+                "content": (
+                    "**From**: +421900111222\n"
+                    "**Message**: delivery confirmation\n\n"
+                    "**Response**:\nSMabcdef"
+                ),
+            },
+        ]
+    }
+
+    request = FakeRequest(method="GET")
+    response = await api_whatsapp_history(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    # Only the real conversation survives the filter
+    assert data["total"] == 1
+    assert len(data["messages"]) == 1
+    assert data["messages"][0]["id"] == 1
+    assert data["messages"][0]["user_message"] == "Ako su labky?"

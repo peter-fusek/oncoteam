@@ -66,36 +66,17 @@ export default defineEventHandler(async (event) => {
     logEntry.errorMessage = errorMessage
   }
 
-  // Log failures at warn level, others at info
+  // Log failures at warn level, others at info.
+  // We intentionally DO NOT persist status callbacks to oncofiles conversations
+  // anymore — every outbound message yields 3-4 callbacks (queued/sent/delivered
+  // /read), which polluted /whatsapp-history with rows whose "body" was a raw
+  // MessageSID and whose "message" was `[status:sent]`. Twilio console is the
+  // source of truth for delivery state; this handler only exists to keep the
+  // Railway logs observable for debugging.
   if (messageStatus === 'failed' || messageStatus === 'undelivered') {
     console.warn('[whatsapp-status]', JSON.stringify(logEntry))
   } else {
     console.info('[whatsapp-status]', JSON.stringify(logEntry))
-  }
-
-  // Forward to backend for persistence (fire-and-forget)
-  if (config.oncoteamApiUrl && config.oncoteamApiKey) {
-    try {
-      const apiUrl = config.oncoteamApiUrl.replace(/\/+$/, '')
-      $fetch(`${apiUrl}/api/internal/log-whatsapp`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${config.oncoteamApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: {
-          phone: to,
-          user_message: `[status:${messageStatus}]`,
-          bot_response: errorMessage || messageSid,
-          tags: `sys:whatsapp,sys:status_callback,status:${messageStatus}`,
-        },
-        timeout: 5000,
-      }).catch((err: Error) => {
-        console.warn('[whatsapp-status] Failed to log to backend:', err.message)
-      })
-    } catch {
-      // Fire-and-forget — don't block Twilio response
-    }
   }
 
   // Twilio expects 200 OK

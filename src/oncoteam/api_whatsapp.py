@@ -722,6 +722,20 @@ async def api_whatsapp_history(request: Request) -> JSONResponse:
                     bot_response = content[idx + len("**Response**:") :].strip()
                     break
 
+            # Drop Twilio delivery-status callbacks that were (pre-#427) logged
+            # as fake conversations — user_message = "[status:sent]" and
+            # bot_response = MessageSID. Detect by the unambiguous "[status:"
+            # prefix OR by the sys:status_callback tag. See
+            # dashboard/server/api/webhook/whatsapp-status.post.ts.
+            tags_raw = e.get("tags", [])
+            tags_list = (
+                tags_raw
+                if isinstance(tags_raw, list)
+                else [t.strip() for t in str(tags_raw).split(",") if t.strip()]
+            )
+            if user_msg.startswith("[status:") or "sys:status_callback" in tags_list:
+                continue
+
             msg = {
                 "id": e.get("id"),
                 "date": e.get("created_at", ""),
@@ -729,7 +743,7 @@ async def api_whatsapp_history(request: Request) -> JSONResponse:
                 "user_message": user_msg,
                 "bot_response": bot_response,
                 "title": e.get("title", ""),
-                "tags": e.get("tags", []),
+                "tags": tags_list,
             }
             # Fulltext search filter
             if (

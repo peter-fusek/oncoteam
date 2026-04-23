@@ -60,6 +60,24 @@ function formatTime(dateStr: string): string {
   }
   catch { return dateStr }
 }
+
+// Render WhatsApp-style markdown (*bold*, _italic_, ~strike~, `code`) to HTML.
+// HTML-escape first so user content can't inject tags, THEN apply conversions —
+// the conversion regexes only use `*`, `_`, `~`, `` ` `` which are not HTML-special,
+// so the output stays XSS-safe.
+function renderWaMarkdown(text: string): string {
+  if (!text) return ''
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return escaped
+    .replace(/```([^`]+)```/g, '<code>$1</code>')
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
+    .replace(/_([^_\n]+)_/g, '<em>$1</em>')
+    .replace(/~([^~\n]+)~/g, '<s>$1</s>')
+}
 </script>
 
 <template>
@@ -110,19 +128,22 @@ function formatTime(dateStr: string): string {
           </UBadge>
         </div>
 
-        <!-- Chat bubbles -->
+        <!-- Chat bubbles. v-html is safe: renderWaMarkdown HTML-escapes input
+             before converting WhatsApp-style markers to tags. -->
         <div class="space-y-2">
           <!-- User message -->
           <div class="flex justify-end">
-            <div class="max-w-[80%] rounded-xl rounded-br-sm bg-[var(--clinical-primary)] px-3 py-2 text-sm text-white">
-              {{ msg.user_message }}
-            </div>
+            <div
+              class="wa-bubble max-w-[80%] rounded-xl rounded-br-sm bg-[var(--clinical-primary)] px-3 py-2 text-sm text-white"
+              v-html="renderWaMarkdown(msg.user_message)"
+            />
           </div>
           <!-- Bot response -->
           <div v-if="msg.bot_response" class="flex justify-start">
-            <div class="max-w-[80%] rounded-xl rounded-bl-sm bg-gray-100 px-3 py-2 text-sm text-gray-900 whitespace-pre-line">
-              {{ msg.bot_response }}
-            </div>
+            <div
+              class="wa-bubble max-w-[80%] rounded-xl rounded-bl-sm bg-gray-100 px-3 py-2 text-sm text-gray-900 whitespace-pre-line"
+              v-html="renderWaMarkdown(msg.bot_response)"
+            />
           </div>
         </div>
       </div>
