@@ -739,6 +739,31 @@ async def run_autonomous_task(
             "cost": 0.0,
         }
 
+    # #431 Step 5 — oncofiles-down gate. When the oncofiles circuit breaker
+    # is open, almost every useful agent tool call will time out and fail.
+    # Running Claude regardless burns API budget on guaranteed-failing
+    # sessions and adds noise to agent-run logs. Skip gracefully instead.
+    # keepalive_ping is exempt because it bypasses this path entirely —
+    # it's a direct HTTP GET in scheduler.py:28 that IS the canary.
+    from . import oncofiles_client
+
+    cb = oncofiles_client.get_circuit_breaker_status()
+    if cb.get("state") == "open":
+        cooldown = cb.get("cooldown_remaining_s", 0)
+        return {
+            "skipped": True,
+            "reason": "oncofiles_unavailable",
+            "task_name": task_name,
+            "model": model or AUTONOMOUS_MODEL,
+            "cost": 0.0,
+            "cooldown_remaining_s": cooldown,
+            "thinking": [],
+            "tool_calls": [],
+            "response": (f"Skipped — oncofiles circuit breaker open (retry after {cooldown}s)."),
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+
     effective_model = model or AUTONOMOUS_MODEL
     # Auto-detect thinking support: Haiku doesn't support extended thinking
     use_thinking = thinking_budget != 0 and "haiku" not in effective_model

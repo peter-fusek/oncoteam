@@ -244,11 +244,18 @@ def test_banner_covers_half_open_state():
     assert "Obnovujem spojenie" in sk
 
 
-def test_banner_component_reads_breaker_state_for_copy():
-    """ApiErrorBanner picks copy based on state, not just on cooldownSeconds."""
+def test_banner_component_reads_outage_kind_for_copy():
+    """#431 Step 4: ApiErrorBanner picks copy based on outageKind which
+    differentiates 'unreachable' (full outage), 'half_open' (recovering),
+    'breaker_open' (cooldown). Pre-#431, the banner only handled the
+    breaker-open path and silently showed nothing during full outage."""
     src = _read("components/ApiErrorBanner.vue")
-    assert "breakerState" in src
+    assert "outageKind" in src
+    # All three states must be addressable, and each must route to the
+    # correct locale string.
+    assert "unreachable" in src
     assert "half_open" in src
+    assert "apiUnreachable" in src
     assert "apiDegradedHalfOpen" in src
 
 

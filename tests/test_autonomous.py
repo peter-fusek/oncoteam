@@ -536,6 +536,65 @@ class TestRunAutonomousTask:
         mod._daily_cost = {}
 
     @pytest.mark.asyncio
+    async def test_skip_when_oncofiles_breaker_open(self):
+        """#431 Step 5 — when oncofiles circuit breaker is open, the agent
+        skips immediately with no Claude API call. Saves budget + avoids
+        noise during outage windows.
+        """
+        import oncoteam.autonomous as mod
+
+        mod._daily_cost = {}
+        mod._daily_cost_reset_date = ""
+
+        with patch(
+            "oncoteam.oncofiles_client.get_circuit_breaker_status",
+            return_value={"state": "open", "cooldown_remaining_s": 27.5},
+        ):
+            # Do NOT mock the Claude client — if the gate fails the test
+            # will immediately fail on a real API call (no key in test env).
+            result = await run_autonomous_task("test prompt", task_name="test")
+
+        assert result.get("skipped") is True
+        assert result["reason"] == "oncofiles_unavailable"
+        assert result["cost"] == 0.0
+        assert result["input_tokens"] == 0
+        assert result["output_tokens"] == 0
+        assert result.get("cooldown_remaining_s") == 27.5
+        assert "oncofiles" in result["response"].lower()
+
+    @pytest.mark.asyncio
+    async def test_no_skip_when_oncofiles_breaker_closed(self):
+        """Closed breaker means oncofiles is reachable — don't skip."""
+        import oncoteam.autonomous as mod
+
+        mod._daily_cost = {}
+        mod._daily_cost_reset_date = ""
+
+        mock_response = MagicMock()
+        mock_response.usage.input_tokens = 10
+        mock_response.usage.output_tokens = 20
+        mock_response.stop_reason = "end_turn"
+        text_block = MagicMock()
+        text_block.type = "text"
+        text_block.text = "hi"
+        mock_response.content = [text_block]
+
+        with (
+            patch(
+                "oncoteam.oncofiles_client.get_circuit_breaker_status",
+                return_value={"state": "closed", "cooldown_remaining_s": 0},
+            ),
+            patch("oncoteam.autonomous._get_client") as mock_client,
+        ):
+            client = AsyncMock()
+            client.messages.create = AsyncMock(return_value=mock_response)
+            mock_client.return_value = client
+            result = await run_autonomous_task("test prompt", task_name="test")
+
+        assert result.get("skipped") is not True
+        assert result["response"] == "hi"
+
+    @pytest.mark.asyncio
     async def test_basic_run_no_tools(self):
         """Test a simple run where Claude responds without using tools."""
         import oncoteam.autonomous as mod

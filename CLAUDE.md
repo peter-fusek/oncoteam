@@ -49,6 +49,10 @@ uv run oncoteam-mcp    # stdio mode
 - ruff for linting/formatting
 - All suppressed exceptions must call `record_suppressed_error()` for QA visibility
 
+### Architectural invariant — oncoteam boots independently of oncofiles
+
+**Critical invariant** (established after #431 / 2026-04-23 cascade incident): oncoteam MUST boot + serve `/health` 200 within 10 seconds of process start, regardless of oncofiles state. `server._run_http` MUST NOT `await` any oncofiles-touching coroutine before `mcp.run_async()`. Use `asyncio.create_task(_safe_bg(...))` for background loads (see commit b083479 for the pattern). CI chaos drill in `.github/workflows/ci.yml` `chaos-oncofiles-down` asserts this invariant — any PR that re-introduces a startup coupling fails there. Full postmortem: `docs/incidents/2026-04-23-oncofiles-cascade.md`.
+
 ### Gotchas (from real incidents)
 
 - Protocol cache (`_protocol_cache` dict in `dashboard_api.py`) must be cleared in tests: add `@pytest.fixture(autouse=True) def _clear_protocol_cache()` to any test module touching `/api/protocol`

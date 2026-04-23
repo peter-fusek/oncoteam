@@ -28,6 +28,70 @@ jobs:
       - run: uv sync --extra dev
       - run: uv run pytest
 
+  chaos-oncofiles-down:
+    # #431 Step 7: prove the architectural invariant that oncoteam boots
+    # + serves /health 200 even when oncofiles is completely unreachable.
+    # Regression gate for the 2026-04-23 cascade — any PR that re-
+    # introduces a startup-time await on oncofiles will fail here.
+    # No untrusted input is interpolated into run: blocks, only literal
+    # env vars set from this file.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Point at a black-hole URL. TEST-NET-1 (RFC5737 192.0.2.0/24) is
+      # guaranteed unroutable so the TCP stack hangs until timeout —
+      # exactly the pathological oncofiles-down case.
+      ONCOFILES_MCP_URL: "http://192.0.2.1:9999/mcp"
+      ONCOFILES_MCP_TOKEN: "chaos-drill-dummy-token"
+      MCP_TRANSPORT: "streamable-http"
+      MCP_HOST: "127.0.0.1"
+      MCP_PORT: "9100"
+      MCP_BEARER_TOKEN: "chaos-drill-dummy"
+      DASHBOARD_API_KEY: "chaos-drill-dummy"
+      DASHBOARD_ALLOWED_ORIGINS: "http://localhost"
+      AUTONOMOUS_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --extra dev
+
+      - name: Boot oncoteam against unreachable oncofiles
+        run: |
+          # Start oncoteam in the background. It should bind the port
+          # within a few seconds regardless of oncofiles being unreachable.
+          uv run oncoteam-mcp &
+          ONCOTEAM_PID=$!
+          echo "Started oncoteam pid=$ONCOTEAM_PID"
+
+          # Poll /health for up to 10 seconds. The invariant: oncoteam
+          # MUST be responsive within this window even with oncofiles
+          # black-holed. If it takes longer, Railway's healthcheck would
+          # have given up and we'd be in the 2026-04-23 failure mode.
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 http://127.0.0.1:9100/health || true)
+            if [ "$STATUS" = "200" ]; then
+              ELAPSED=$(awk "BEGIN {print $i * 0.5}")
+              echo "✓ /health returned 200 after ${ELAPSED}s"
+              BODY=$(curl -s --max-time 2 http://127.0.0.1:9100/health)
+              echo "Body: $BODY"
+              STATUS_FIELD=$(echo "$BODY" | jq -r '.status // empty')
+              if [ "$STATUS_FIELD" != "ok" ]; then
+                echo "✗ /health status field not 'ok': $STATUS_FIELD"
+                kill $ONCOTEAM_PID 2>/dev/null || true
+                exit 1
+              fi
+              echo "✓ Invariant holds: oncoteam boots independently of oncofiles"
+              kill $ONCOTEAM_PID 2>/dev/null || true
+              exit 0
+            fi
+            sleep 0.5
+          done
+
+          echo "✗ oncoteam failed to serve /health 200 within 10 seconds while oncofiles unreachable"
+          echo "This is the 2026-04-23 cascade regression. See docs/incidents/2026-04-23-oncofiles-cascade.md"
+          kill $ONCOTEAM_PID 2>/dev/null || true
+          exit 1
+
   dashboard-build:
     runs-on: ubuntu-latest
     steps:
