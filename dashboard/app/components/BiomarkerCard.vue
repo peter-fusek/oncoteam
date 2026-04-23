@@ -3,6 +3,13 @@ const props = defineProps<{
   name: string
   value: string
   implication?: string
+  // #398 Phase 3a — source traceability derived from oncopanel.
+  // Present when this biomarker is backed by a structured variant/CNV entry;
+  // absent for flat-dict-only data (legacy patients, IHC-only reports, etc.).
+  source?: string                // e.g. "oncopanel · 2026-04-18"
+  sourceLab?: string             // e.g. "OUSA — Ústav sv. Alžbety"
+  sourceDocId?: string           // oncofiles document ID for drill-through
+  variantDetail?: string         // e.g. "G12S · VAF 12.8% · IA"
 }>()
 
 defineEmits<{ drilldown: [] }>()
@@ -36,5 +43,14 @@ const colors = computed(() => {
     </div>
     <div class="text-xs text-gray-700">{{ value }}</div>
     <div v-if="implication" class="text-xs text-gray-500 mt-1 italic">{{ implication }}</div>
+    <!-- #398 Phase 3a source chip — shown only when oncopanel-backed. Click
+         stops propagation so the user drills into the source doc instead of
+         the biomarker panel. -->
+    <div v-if="source" class="mt-2 pt-2 border-t border-gray-200/60 flex items-center gap-1.5 text-[10px] text-gray-500">
+      <UIcon name="i-lucide-dna" class="w-3 h-3 text-gray-400 shrink-0" />
+      <span class="italic">{{ source }}</span>
+      <span v-if="variantDetail" class="text-gray-400">· {{ variantDetail }}</span>
+      <span v-if="sourceLab" class="text-gray-400 truncate">· {{ sourceLab }}</span>
+    </div>
   </div>
 </template>

@@ -165,13 +165,91 @@ const biomarkerDisplay = computed(() => {
     BRCA1: 'PARP inhibitor eligibility (germline)',
     BRCA2: 'PARP inhibitor eligibility (germline)',
   }
+
+  // #398 Phase 3a: cross-reference each flat biomarker against the structured
+  // oncopanel to derive source traceability (panel date, lab, VAF, source doc).
+  // Handles 4 gene-name aliases: HER2↔ERBB2, BRAF_V600E↔BRAF, MSI↔msi_status,
+  // MMR↔mmr_status. Falls back to "biomarkers_dict" when no oncopanel or no
+  // matching variant — matches the Python BiomarkerStatus.source semantics.
+  const panel = patient.value.oncopanel as
+    | { report_date?: string | null; lab?: string; variants?: Array<{ gene: string; protein?: string; vaf?: number | null; tier?: string; significance?: string; source_document_id?: string }>; cnvs?: Array<{ gene: string; alteration: string }>; msi_status?: string; mmr_status?: string }
+    | null
+    | undefined
+
+  function sourceFor(key: string): { source: string; sourceDate: string | null; sourceLab: string; sourceDocId: string; variantDetail: string } | null {
+    if (!panel) return null
+    const reportDate = panel.report_date || null
+    const lab = panel.lab || ''
+
+    // Gene-based lookup: KRAS, BRAF, BRAF_V600E, NRAS, BRCA1/2, TP53, ATM, etc.
+    const geneKey = key.replace('_V600E', '').toUpperCase()
+    const her2Keys = ['HER2', 'ERBB2']
+    const matchesHer2 = her2Keys.includes(geneKey)
+
+    for (const v of panel.variants || []) {
+      const vg = v.gene.toUpperCase()
+      if (vg === geneKey || (matchesHer2 && her2Keys.includes(vg))) {
+        return {
+          source: reportDate ? `oncopanel · ${reportDate}` : 'oncopanel',
+          sourceDate: reportDate,
+          sourceLab: lab,
+          sourceDocId: v.source_document_id || '',
+          variantDetail: `${v.protein || v.gene}${v.vaf ? ` · VAF ${(v.vaf * 100).toFixed(1)}%` : ''}${v.tier ? ` · ${v.tier}` : ''}`,
+        }
+      }
+    }
+
+    // CNV-based lookup (HER2/ERBB2 amplification, etc.)
+    for (const c of panel.cnvs || []) {
+      const cg = c.gene.toUpperCase()
+      if (cg === geneKey || (matchesHer2 && her2Keys.includes(cg))) {
+        return {
+          source: reportDate ? `oncopanel · ${reportDate}` : 'oncopanel',
+          sourceDate: reportDate,
+          sourceLab: lab,
+          sourceDocId: '',
+          variantDetail: `${c.gene} ${c.alteration}`,
+        }
+      }
+    }
+
+    // MSI / MMR panel-level status
+    if (geneKey === 'MSI' && panel.msi_status) {
+      return {
+        source: reportDate ? `oncopanel · ${reportDate}` : 'oncopanel',
+        sourceDate: reportDate,
+        sourceLab: lab,
+        sourceDocId: '',
+        variantDetail: panel.msi_status,
+      }
+    }
+    if (geneKey === 'MMR' && panel.mmr_status) {
+      return {
+        source: reportDate ? `oncopanel · ${reportDate}` : 'oncopanel',
+        sourceDate: reportDate,
+        sourceLab: lab,
+        sourceDocId: '',
+        variantDetail: panel.mmr_status,
+      }
+    }
+
+    return null  // no oncopanel match → falls back to dict-only
+  }
+
   return Object.entries(patient.value.biomarkers)
     .filter(([key]) => !key.startsWith('anti_') && !key.startsWith('KRAS_G12C'))
-    .map(([key, val]) => ({
-      name: key.replace(/_/g, ' '),
-      value: String(val),
-      implication: map[key] || undefined,
-    }))
+    .map(([key, val]) => {
+      const src = sourceFor(key)
+      return {
+        name: key.replace(/_/g, ' '),
+        value: String(val),
+        implication: map[key] || undefined,
+        source: src?.source,
+        sourceLab: src?.sourceLab,
+        sourceDocId: src?.sourceDocId,
+        variantDetail: src?.variantDetail,
+      }
+    })
 })
 
 const metastasisIcons: Record<string, string> = {
@@ -601,6 +679,10 @@ const abbreviations: Record<string, string> = {
           :name="b.name"
           :value="b.value"
           :implication="b.implication"
+          :source="b.source"
+          :source-lab="b.sourceLab"
+          :source-doc-id="b.sourceDocId"
+          :variant-detail="b.variantDetail"
           @drilldown="drilldown.open({ type: 'biomarker', id: b.name, label: b.name })"
         />
       </div>
