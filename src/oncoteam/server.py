@@ -1358,15 +1358,33 @@ def main() -> None:
             # FastMCP 3.x lifespan is broken in HTTP transport (double-wrap bug).
             # Start the autonomous scheduler explicitly within the event loop.
             start_scheduler()
-            # Load persisted approved phones from oncofiles (non-critical)
-            try:
-                await load_approved_phones()
-            except Exception as e:
-                logging.warning("Failed to load approved phones at startup: %s", e)
-            try:
-                await load_patient_tokens()
-            except Exception as e:
-                logging.warning("Failed to load patient tokens at startup: %s", e)
+
+            # Non-critical startup I/O: loading persisted state from oncofiles.
+            # MUST NOT block server startup — when oncofiles is down, waiting
+            # for these would delay port-binding past Railway's healthcheck
+            # window, Railway marks the deploy FAILED, and oncoteam goes down
+            # even though nothing's wrong with its own code. Treat oncofiles
+            # as a peer service: we notify the user via degraded-state banners
+            # (#424 circuit-breaker UI), but we BOOT regardless.
+            #
+            # Fire-and-forget: each task has its own short timeout + try/except
+            # inside; the top-level create_task ensures the await in this
+            # function returns immediately so mcp.run_async binds the port.
+            async def _safe_bg(coro, label):
+                try:
+                    await asyncio.wait_for(coro, timeout=8.0)
+                except TimeoutError:
+                    logging.warning(
+                        "%s timed out at startup — proceeding with empty state. "
+                        "Will retry on first live request.",
+                        label,
+                    )
+                except Exception as e:
+                    logging.warning("%s failed at startup: %s", label, e)
+
+            asyncio.create_task(_safe_bg(load_approved_phones(), "load_approved_phones"))
+            asyncio.create_task(_safe_bg(load_patient_tokens(), "load_patient_tokens"))
+
             await mcp.run_async(
                 transport=MCP_TRANSPORT,
                 host=MCP_HOST,
