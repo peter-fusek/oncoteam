@@ -477,24 +477,40 @@ def assess_research_relevance(
     if _is_breast_patient(patient):
         return _assess_breast_relevance(text, words, patient)
 
-    kras_val = (patient.biomarkers.get("KRAS", "") if patient else "G12S") or "mutant"
+    # #398: read biomarker values through the structured helpers so research
+    # relevance reasoning sees the precise allele (e.g. q1b's KRAS G12S) via
+    # oncopanel rather than stale / string-level dict data.
+    if patient is not None:
+        kras_val = get_kras_status(patient).value
+        if kras_val == "unknown":
+            kras_val = "mutant"
+    else:
+        kras_val = "G12S"
     her2_val = (patient.biomarkers.get("HER2", "") if patient else "negative") or "negative"
 
     # Rule 1: Contraindicated — false hope detection
     matched_contra = _CONTRAINDICATED_KEYWORDS & words
     if matched_contra:
-        # Check if it's specifically about KRAS G12C (not general KRAS)
-        if matched_contra & _KRAS_G12C:
+        # Check if it's specifically about KRAS G12C — only contraindicated for
+        # non-G12C patients. A G12C-carrying patient stays eligible.
+        if matched_contra & _KRAS_G12C and (patient is None or not has_kras_g12c(patient)):
             return ResearchRelevance(
                 score="not_applicable",
                 reason=f"KRAS G12C inhibitor — patient has {kras_val}, not G12C",
             )
         if matched_contra & (_ANTI_EGFR | {"anti-egfr", "anti egfr", "egfr inhibit"}):
-            return ResearchRelevance(
-                score="not_applicable",
-                reason=f"Anti-EGFR therapy — contraindicated (KRAS {kras_val})",
+            # KRAS WT patients can receive anti-EGFR — only contraindicated when mutant.
+            kras_wt = (
+                patient is not None
+                and get_kras_status(patient).value.upper() == "WT"
+                and get_kras_status(patient).source.startswith("oncopanel")
             )
-        if matched_contra & _HER2_TARGETED:
+            if not kras_wt:
+                return ResearchRelevance(
+                    score="not_applicable",
+                    reason=f"Anti-EGFR therapy — contraindicated (KRAS {kras_val})",
+                )
+        if matched_contra & _HER2_TARGETED and (patient is None or not is_her2_positive(patient)):
             return ResearchRelevance(
                 score="not_applicable",
                 reason=f"HER2-targeted therapy — patient is HER2 {her2_val}",
@@ -586,14 +602,22 @@ def check_eligibility(
     warnings: list[str] = []
     drugs = _drugs_in_trial(trial)
 
-    kras_val = patient.biomarkers.get("KRAS", "mutant") or "mutant"
+    # #398: read biomarker status through the structured helpers so any patient
+    # with a current oncopanel gets the precise allele/status (e.g. q1b KRAS G12S
+    # not just "mutant"). Falls back to the flat biomarkers dict for patients
+    # without structured panel data — existing single-patient flows unaffected.
+    kras_status = get_kras_status(patient)
+    kras_val = kras_status.value if kras_status.value != "unknown" else "mutant"
     her2_val = patient.biomarkers.get("HER2", "negative") or "negative"
     braf_val = patient.biomarkers.get("BRAF_V600E", "wild-type") or "wild-type"
     msi_val = patient.biomarkers.get("MSI", "pMMR/MSS") or "pMMR/MSS"
 
-    # Rule 1: KRAS mutant -> no anti-EGFR
+    # Rule 1: KRAS mutant -> no anti-EGFR. Skip the exclusion for KRAS WT
+    # patients (oncopanel-confirmed) since they may actually benefit from
+    # anti-EGFR therapy. q1b is KRAS G12S mutant so behavior unchanged.
     matched = _ANTI_EGFR & drugs
-    if matched:
+    kras_is_wt = kras_status.source.startswith("oncopanel") and kras_val.upper() == "WT"
+    if matched and not kras_is_wt:
         flags.append(
             EligibilityFlag(
                 rule="KRAS_anti_EGFR",
@@ -602,9 +626,10 @@ def check_eligibility(
             )
         )
 
-    # Rule 2: KRAS G12C-specific drugs only for G12C
+    # Rule 2: KRAS G12C-specific drugs only for G12C. Now actually respects
+    # the patient's allele — G12C patients are NOT excluded from G12C drugs.
     matched = _KRAS_G12C & drugs
-    if matched:
+    if matched and not has_kras_g12c(patient):
         flags.append(
             EligibilityFlag(
                 rule="KRAS_not_G12C",
@@ -616,9 +641,10 @@ def check_eligibility(
             )
         )
 
-    # Rule 3: pMMR/MSS -> checkpoint monotherapy not indicated
+    # Rule 3: pMMR/MSS -> checkpoint monotherapy not indicated. Now respects
+    # MSI-H/dMMR patients who SHOULD receive checkpoint monotherapy.
     checkpoint_found = _CHECKPOINT_MONO & drugs
-    if checkpoint_found:
+    if checkpoint_found and not is_msi_high(patient):
         has_chemo = bool(drugs & _CHEMO_NAMES)
         if not has_chemo and len(trial.interventions) <= 2:
             flags.append(
@@ -638,9 +664,10 @@ def check_eligibility(
                 " monitor response"
             )
 
-    # Rule 4: HER2 negative -> no HER2-targeted therapy
+    # Rule 4: HER2 negative -> no HER2-targeted therapy. HER2-positive
+    # patients (oncopanel CNV amplification or IHC 3+) stay eligible.
     matched = _HER2_TARGETED & drugs
-    if matched:
+    if matched and not is_her2_positive(patient):
         flags.append(
             EligibilityFlag(
                 rule="HER2_negative",
@@ -649,9 +676,10 @@ def check_eligibility(
             )
         )
 
-    # Rule 5: BRAF wild-type -> no BRAF inhibitors alone
+    # Rule 5: BRAF wild-type -> no BRAF inhibitors alone. V600E-positive
+    # patients stay eligible for BRAF-targeted therapy.
     matched = _BRAF_INHIBITORS & drugs
-    if matched:
+    if matched and not is_braf_v600e(patient):
         flags.append(
             EligibilityFlag(
                 rule="BRAF_wildtype",

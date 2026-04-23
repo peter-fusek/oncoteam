@@ -186,3 +186,107 @@ class TestResearchRelevance:
         """Checkpoint + chemo combination should not be not_applicable."""
         rel = assess_research_relevance("Pembrolizumab plus FOLFOX in colorectal cancer")
         assert rel.score != "not_applicable"
+
+
+class TestOncopanelAwareEligibility:
+    """#398 — eligibility rules now respect patient biomarker specifics via
+    structured oncopanel helpers (with flat-dict fallback). Regression tests
+    pinning behavior for patients whose biomarker status diverges from q1b.
+    """
+
+    def _patient_with_oncopanel(self, **panel_kw):
+        """Build a test patient carrying an oncopanel with given panel fields."""
+        from datetime import date
+
+        from oncoteam.models import Oncopanel
+
+        default_panel = {
+            "panel_id": "test_panel",
+            "patient_id": "test",
+            "report_date": date(2026, 1, 1),
+            "variants": [],
+            "cnvs": [],
+            "msi_status": "MSS",
+        }
+        default_panel.update(panel_kw)
+        return PatientProfile(
+            patient_id="test",
+            name="Test",
+            diagnosis_code="C18.9",
+            diagnosis_description="mCRC",
+            tumor_site="colon",
+            treatment_regimen="FOLFOX",
+            oncopanel_history=[Oncopanel(**default_panel)],
+        )
+
+    def test_g12c_patient_eligible_for_sotorasib(self):
+        """A KRAS G12C patient must NOT be excluded from G12C inhibitors —
+        before #398 migration, the rule fired for everyone. Now it respects
+        the patient's allele."""
+        from oncoteam.models import OncopanelVariant
+
+        g12c_patient = self._patient_with_oncopanel(
+            variants=[
+                OncopanelVariant(
+                    gene="KRAS",
+                    protein_short="G12C",
+                    significance="pathogenic",
+                )
+            ],
+        )
+        result = check_eligibility(_trial(["Sotorasib"]), g12c_patient)
+        # No KRAS_not_G12C exclusion for a G12C patient
+        assert not any(f.rule == "KRAS_not_G12C" for f in result.flags)
+
+    def test_kras_wt_patient_eligible_for_anti_egfr(self):
+        """KRAS wild-type patient (oncopanel-confirmed) must NOT be excluded
+        from anti-EGFR therapy — pre-#398, the rule fired for all patients
+        regardless of KRAS status."""
+        # KRAS WT = oncopanel with no pathogenic KRAS variant
+        wt_patient = self._patient_with_oncopanel(variants=[])
+        result = check_eligibility(_trial(["Cetuximab", "FOLFIRI"]), wt_patient)
+        assert not any(f.rule == "KRAS_anti_EGFR" for f in result.flags)
+
+    def test_msi_high_patient_eligible_for_checkpoint_mono(self):
+        """MSI-H/dMMR patient must NOT be excluded from checkpoint monotherapy
+        — this is exactly the class they're indicated for."""
+        msi_h_patient = self._patient_with_oncopanel(msi_status="MSI-H", mmr_status="dMMR")
+        result = check_eligibility(_trial(["Pembrolizumab"]), msi_h_patient)
+        assert not any(f.rule == "pMMR_MSS_checkpoint_mono" for f in result.flags)
+
+    def test_her2_positive_patient_eligible_for_trastuzumab(self):
+        """HER2-positive patient (via CNV amplification) must NOT be excluded
+        from HER2-targeted therapy."""
+        from oncoteam.models import CopyNumberVariant
+
+        her2_pos = self._patient_with_oncopanel(
+            cnvs=[CopyNumberVariant(gene="ERBB2", alteration="amplification", copies=12)],
+        )
+        result = check_eligibility(_trial(["Trastuzumab"]), her2_pos)
+        assert not any(f.rule == "HER2_negative" for f in result.flags)
+
+    def test_braf_v600e_patient_eligible_for_encorafenib(self):
+        """BRAF V600E patient must NOT be excluded from BRAF inhibitor — this
+        is their indicated targeted therapy."""
+        from oncoteam.models import OncopanelVariant
+
+        v600e = self._patient_with_oncopanel(
+            variants=[
+                OncopanelVariant(
+                    gene="BRAF",
+                    protein_short="V600E",
+                    significance="pathogenic",
+                )
+            ],
+        )
+        result = check_eligibility(_trial(["Encorafenib"]), v600e)
+        assert not any(f.rule == "BRAF_wildtype" for f in result.flags)
+
+    def test_q1b_behavior_unchanged(self):
+        """Regression pin: for q1b (KRAS G12S / MSS / BRAF WT / HER2-neg) every
+        existing exclusion still fires — migration didn't silently drop rules."""
+        assert not check_eligibility(_trial(["Cetuximab"]), PATIENT).eligible  # KRAS mutant
+        assert not check_eligibility(_trial(["Sotorasib"]), PATIENT).eligible  # not G12C
+        assert not check_eligibility(_trial(["Pembrolizumab"]), PATIENT).eligible  # MSS
+        assert not check_eligibility(_trial(["Trastuzumab"]), PATIENT).eligible  # HER2-neg
+        assert not check_eligibility(_trial(["Encorafenib"]), PATIENT).eligible  # BRAF WT
