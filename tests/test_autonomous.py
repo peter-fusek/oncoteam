@@ -646,11 +646,31 @@ class TestNotificationPolicyGate:
 
     @pytest.mark.anyio
     async def test_send_whatsapp_suppresses_silent_patient(self):
+        """Silent-policy gate fires on a non-paused patient. Mocking the
+        profile keeps this test independent of the global PAUSED_PATIENTS
+        env var + codebase defaults (sgu is BOTH paused and silent, so
+        using it would not prove the silent branch fires)."""
         from oncoteam.autonomous_tasks import _send_whatsapp
+        from oncoteam.models import PatientProfile
 
-        with patch("httpx.AsyncClient") as mock_http:
-            # sgu defaults to silent
-            result = await _send_whatsapp("test msg", recipient="caregiver", patient_id="sgu")
+        silent_active = PatientProfile(
+            patient_id="slt",
+            patient_type="oncology",
+            name="Silent Active Patient",
+            age_years=55,
+            sex="female",
+            diagnosis_code="C18.9",
+            diagnosis_description="mCRC",
+            tumor_site="colon",
+            treatment_regimen="mFOLFOX6",
+            notification_policy="silent",
+            paused=False,
+        )
+        with (
+            patch("oncoteam.autonomous_tasks.get_patient", return_value=silent_active),
+            patch("httpx.AsyncClient") as mock_http,
+        ):
+            result = await _send_whatsapp("test msg", recipient="caregiver", patient_id="slt")
 
         assert result.get("suppressed") == "policy:silent"
         mock_http.assert_not_called()
@@ -691,3 +711,95 @@ class TestNotificationPolicyGate:
 
         assert "suppressed" not in result
         client.post.assert_called_once()
+
+
+class TestNotificationHygiene:
+    """#403 — WhatsApp push hygiene: paused-patient defense-in-depth,
+    stale-event suppression, and same-signature dedup within TTL.
+
+    Covers the two concrete regressions reported in the issue body:
+      1. 35-day-old ANC alert re-emitting as "New" on every lab_sync run
+      2. Paused patient (sgu) push still landing on admin when a non-
+         scheduler code path (trigger, direct call) ran the agent
+    """
+
+    @pytest.mark.anyio
+    async def test_send_whatsapp_suppresses_paused_patient(self):
+        """Even if policy would allow delivery, paused=True kills the push."""
+        from oncoteam.autonomous_tasks import _send_whatsapp
+        from oncoteam.models import PatientProfile
+
+        paused = PatientProfile(
+            patient_id="pzd",
+            patient_type="oncology",
+            name="Paused Patient",
+            age_years=50,
+            sex="female",
+            diagnosis_code="C18.9",
+            diagnosis_description="mCRC (paused)",
+            tumor_site="colon",
+            treatment_regimen="mFOLFOX6",
+            notification_policy="admin",  # would normally deliver
+            paused=True,
+        )
+        with (
+            patch("oncoteam.autonomous_tasks.get_patient", return_value=paused),
+            patch("httpx.AsyncClient") as mock_http,
+        ):
+            result = await _send_whatsapp("test msg", recipient="caregiver", patient_id="pzd")
+
+        assert result.get("suppressed") == "patient:paused"
+        mock_http.assert_not_called()
+
+    def test_event_is_stale_flags_old_dates(self):
+        from datetime import UTC, datetime, timedelta
+
+        from oncoteam.autonomous_tasks import _event_is_stale
+
+        # 35-day-old event — the exact regression from the issue body
+        old_date = (datetime.now(UTC) - timedelta(days=35)).strftime("%Y-%m-%d")
+        assert _event_is_stale(old_date, freshness_days=7) is True
+
+        # 3-day-old event within the window
+        recent = (datetime.now(UTC) - timedelta(days=3)).strftime("%Y-%m-%d")
+        assert _event_is_stale(recent, freshness_days=7) is False
+
+        # Empty / garbage — fail-open (don't suppress real alerts)
+        assert _event_is_stale("", freshness_days=7) is False
+        assert _event_is_stale("not-a-date", freshness_days=7) is False
+
+    @pytest.mark.anyio
+    async def test_signature_dedup_roundtrip(self):
+        """mark → already_notified returns True; different signature returns False."""
+        from datetime import UTC, datetime
+
+        from oncoteam.autonomous_tasks import _already_notified, _mark_notified
+
+        stored: dict[str, dict] = {}
+
+        async def fake_get(key, *, token=None):
+            return stored.get(key, {})
+
+        async def fake_set(key, value, *, token=None):
+            stored[key] = value
+
+        with (
+            patch("oncoteam.autonomous_tasks._get_state", side_effect=fake_get),
+            patch("oncoteam.autonomous_tasks._set_state", side_effect=fake_set),
+        ):
+            sig = "lab_alert:2026-04-22:ANC=1150:PLT=75000"
+            assert await _already_notified("q1b", sig) is False
+            await _mark_notified("q1b", sig)
+            assert await _already_notified("q1b", sig) is True
+
+            # Different signature = different event, must not dedup
+            sig2 = "lab_alert:2026-04-22:ANC=1200:PLT=75000"
+            assert await _already_notified("q1b", sig2) is False
+
+            # Entry older than TTL no longer dedups
+            key = f"notif_dedup:q1b:{sig}"
+            stored[key] = {
+                "timestamp": (datetime.now(UTC).replace(year=2020)).isoformat(),
+                "signature": sig,
+            }
+            assert await _already_notified("q1b", sig) is False

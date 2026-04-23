@@ -96,6 +96,74 @@ async def _set_state(key: str, value: dict, *, token: str | None = None) -> None
         record_suppressed_error("autonomous_tasks", f"set_state:{key}", e)
 
 
+# ── #403 notification hygiene ───────────────────
+# Idempotency + freshness helpers for WhatsApp push. Keep the implementation
+# surgical — the full NotificationGate redesign in #403 Phase 2 is a separate
+# multi-session arc; right now we just kill the two reported regressions:
+# stale ANC alerts re-emitted on every lab_sync run, and paused-patient bleed.
+
+# Window during which an identical notification signature will not re-fire.
+_NOTIF_DEDUP_TTL_HOURS = 24
+
+
+async def _already_notified(patient_id: str, signature: str, *, token: str | None = None) -> bool:
+    """Return True if the same signature was already pushed within the TTL.
+
+    `signature` should encode the event uniquely — e.g. for a lab safety
+    alert: `lab_alert:2026-04-22:ANC=1150:PLT=75000`. If the same signature
+    fired inside `_NOTIF_DEDUP_TTL_HOURS`, we skip the re-push. The agent
+    run itself still executes and still logs to oncofiles; only the
+    user-facing WhatsApp push is suppressed.
+    """
+    key = f"notif_dedup:{patient_id}:{signature}"
+    state = await _get_state(key, token=token)
+    ts = _extract_timestamp(state)
+    if not ts:
+        return False
+    try:
+        last = datetime.fromisoformat(ts)
+        elapsed_h = (datetime.now(UTC) - last).total_seconds() / 3600
+        return elapsed_h < _NOTIF_DEDUP_TTL_HOURS
+    except (ValueError, TypeError):
+        return False
+
+
+async def _mark_notified(patient_id: str, signature: str, *, token: str | None = None) -> None:
+    """Record that a signature was pushed so future runs within TTL skip it."""
+    key = f"notif_dedup:{patient_id}:{signature}"
+    await _set_state(
+        key,
+        {"timestamp": datetime.now(UTC).isoformat(), "signature": signature},
+        token=token,
+    )
+
+
+def _event_is_stale(event_date_str: str, *, freshness_days: int = 7) -> bool:
+    """Return True if the event is older than `freshness_days`.
+
+    Used to gate "new alert" pushes — an alert for ANC <1500 on a lab taken
+    35 days ago is not news, it's a re-emission. The alerts the user
+    actually wants are threshold-crossing events discovered in fresh data.
+    Parse is tolerant: if the string doesn't parse we assume fresh
+    (fail-open), since suppressing on parse failure would silently eat real
+    alerts.
+    """
+    if not event_date_str:
+        return False
+    try:
+        event_date = datetime.fromisoformat(event_date_str.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        try:
+            # Fallback for bare YYYY-MM-DD strings
+            event_date = datetime.strptime(event_date_str[:10], "%Y-%m-%d").replace(tzinfo=UTC)
+        except (ValueError, TypeError):
+            return False
+    if event_date.tzinfo is None:
+        event_date = event_date.replace(tzinfo=UTC)
+    age_days = (datetime.now(UTC) - event_date).total_seconds() / 86400
+    return age_days > freshness_days
+
+
 async def _log_task(task_name: str, result: dict, *, token: str | None = None) -> None:
     """Log task completion to activity log, diary, and store full run trace."""
     try:
@@ -822,18 +890,58 @@ creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
                     if plt is not None and plt < 75000:
                         alerts.append(f"PLT = {plt:.0f} (< 75000) — hold chemo")
                     if alerts:
-                        header = format_whatsapp_header(
-                            f"Lab Safety Alert ({latest_date})",
-                            date_str=latest_date,
-                            patient_name=_patient_display_name(patient_id),
-                        )
-                        body = "\n".join(f"- {a}" for a in alerts)
-                        await _send_whatsapp(
-                            header + body,
-                            recipient="caregiver",
-                            template_key="lab_alert",
-                            patient_id=patient_id,
-                        )
+                        # #403 freshness gate — don't fire "lab safety alert"
+                        # push for a lab date that is already >7 days old.
+                        # The original bug report flagged a 35-day-old ANC
+                        # alert re-emitting as "New" on every lab_sync run
+                        # because this branch fired purely on latest_date
+                        # having ANC<1500, with no age check. The data still
+                        # persists and renders on the dashboard; only the
+                        # user-facing push is suppressed.
+                        if _event_is_stale(latest_date, freshness_days=7):
+                            logger.info(
+                                "Lab safety alert suppressed for %s (lab_date=%s is stale, %s)",
+                                patient_id,
+                                latest_date,
+                                ", ".join(alerts),
+                            )
+                        else:
+                            # #403 signature dedup — even within the fresh
+                            # window, the same (date, ANC, PLT) combo should
+                            # only push once per 24h to absorb multiple
+                            # scheduled runs of lab_sync landing on the same
+                            # data.
+                            anc_sig = round(anc) if isinstance(anc, (int, float)) else "na"
+                            plt_sig = round(plt) if isinstance(plt, (int, float)) else "na"
+                            signature = f"lab_alert:{latest_date}:ANC={anc_sig}:PLT={plt_sig}"
+                            if await _already_notified(patient_id, signature, token=token):
+                                logger.info(
+                                    "Lab safety alert suppressed for %s "
+                                    "(signature %s already notified within TTL)",
+                                    patient_id,
+                                    signature,
+                                )
+                            else:
+                                header = format_whatsapp_header(
+                                    f"Lab Safety Alert ({latest_date})",
+                                    date_str=latest_date,
+                                    patient_name=_patient_display_name(patient_id),
+                                )
+                                body = "\n".join(f"- {a}" for a in alerts)
+                                push_result = await _send_whatsapp(
+                                    header + body,
+                                    recipient="caregiver",
+                                    template_key="lab_alert",
+                                    patient_id=patient_id,
+                                )
+                                # Only mark the signature notified if the push
+                                # actually went out — policy/paused suppressions
+                                # shouldn't block a later legitimate push once
+                                # the patient becomes active again.
+                                if isinstance(push_result, dict) and not push_result.get(
+                                    "suppressed"
+                                ):
+                                    await _mark_notified(patient_id, signature, token=token)
     except Exception as e:
         record_suppressed_error("lab_sync", "whatsapp_safety_alert", e)
 
@@ -1655,6 +1763,25 @@ async def _send_whatsapp(
             `silent` so parity/read-only patients don't spam the admin inbox
             with agent-run push (#391).
     """
+    # #403 defense-in-depth paused gate. The scheduler (#389) and webhook
+    # (#404) already skip agent runs for paused patients, but manual triggers
+    # (/api/trigger-agent, direct run_* calls from tests or one-offs) bypass
+    # those gates. Checking `patient.paused` here guarantees NO push lands on
+    # the admin inbox for a paused patient regardless of call path. The agent
+    # run itself can still execute — only the push is suppressed.
+    if patient_id:
+        try:
+            patient = get_patient(patient_id)
+            if getattr(patient, "paused", False):
+                logger.info(
+                    "WA push suppressed for patient=%s (paused=True, recipient=%s)",
+                    patient_id,
+                    recipient,
+                )
+                return {"ok": True, "sent": 0, "suppressed": "patient:paused"}
+        except KeyError:
+            pass  # unknown patient_id — fall through to policy check
+
     # #391 gate — suppress push for patients whose notification policy says so.
     # The agent run itself still executes and its data still persists to
     # oncofiles; only the push is suppressed. Log the skip so it's visible in
