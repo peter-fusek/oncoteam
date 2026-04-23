@@ -1116,28 +1116,51 @@ This is a single-document scan triggered by a new upload webhook.
 async def run_lab_sync_single(
     document_id: int, *, patient_id: str = "q1b", file_id: str | None = None
 ) -> dict:
-    """Extract lab values from a single document by ID."""
+    """Extract lab values from a single document by ID.
+
+    Triggered by document_pipeline for lab_report PLUS visit_note /
+    discharge_summary / chemo_sheet documents (#426) — Slovak oncology
+    practice routinely quotes pre-visit bloods inline on consultation
+    notes and chemo administration forms rather than as standalone lab
+    sheets. The prompt tolerates the zero-labs case cleanly so we don't
+    hallucinate values when a document has no lab content.
+    """
     view_arg = file_id or str(document_id)
     return await _run_single_doc_task(
         "lab_sync_single",
         document_id,
         f"""\
-Extract structured lab data from this document (oncofiles ID {document_id}).
+Scan this document (oncofiles ID {document_id}) for any structured lab values.
 
 IMPORTANT: The view_document tool parameter is called "file_id" (a string).
 Call it exactly as: view_document(file_id="{view_arg}")
 
-Instructions:
-1. Call view_document(file_id="{view_arg}") to read the document
-2. Extract numeric lab values: WBC, ANC, PLT, hemoglobin, creatinine,
-   ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH
-3. Use get_treatment_timeline to check if data already exists for that date
-4. For NEW data only, use store_lab_values with the document_id, lab_date, and extracted values
-5. Also create a lab_result treatment event via add_treatment_event with the values in metadata
-6. Report what was extracted and stored
+Context: this document may be a standalone lab report, OR a consultation
+note / chemo administration form / discharge summary that quotes lab
+values inline. Your job is to find any numeric lab values present,
+regardless of the document's primary category.
 
-IMPORTANT: Use store_lab_values for structured persistence (enables trends/charts).
-Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
+Instructions:
+1. Call view_document(file_id="{view_arg}") to read the document.
+2. Scan for numeric lab values: WBC, ANC, PLT, hemoglobin, creatinine,
+   ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH. Slovak labels to watch
+   for: "neutrofily" (ANC), "leukocyty" (WBC), "trombocyty" (PLT),
+   "hemoglobin" (HGB), "kreatinín" (creatinine), "bilirubín" (bilirubin).
+3. **Zero-labs exit**: if the document contains no numeric lab values,
+   report "no lab values found" and EXIT — do not fabricate, do not guess.
+4. If values found, extract the measurement date. The measurement date
+   may differ from the document date (a consultation dated 2026-04-17
+   may quote bloods drawn 2026-04-16) — pull the measurement date
+   explicitly if shown; else use the document date with a note.
+5. Use get_treatment_timeline to check if data already exists for that date.
+6. For NEW data only, call store_lab_values(document_id={document_id},
+   lab_date="YYYY-MM-DD", values={{...}}) AND add_treatment_event
+   (event_type="lab_result", event_date="YYYY-MM-DD", metadata with the
+   same numeric values).
+7. Report what was extracted, the source document category, and whether
+   values were stored or skipped as duplicate.
+
+IMPORTANT: Parameter names must match exactly: WBC, ANC, PLT, hemoglobin,
 creatinine, ALT, AST, bilirubin, CEA, CA_19_9, ABS_LYMPH.
 """,
         patient_id=patient_id,
@@ -1321,17 +1344,28 @@ async def run_document_pipeline(
     # Resolve file_id for downstream agents (view_document MCP tool needs file_id, not doc int)
     file_id = await _resolve_file_id(document_id, patient_id)
 
-    # Step 3: Dispatch downstream agents based on classification
+    # Step 3: Dispatch downstream agents based on classification. #426:
+    # lab_sync_single also runs for visit_note / discharge_summary /
+    # chemo_sheet because Slovak oncology docs routinely quote inline
+    # bloods (e.g. "WBC 12.11, neutr. 77.9%") on consultation + chemo
+    # administration forms rather than as standalone lab sheets. The
+    # prompt tolerates zero-lab documents without hallucinating.
     if not pipeline_error:
         downstream_tasks = []
-        if doc_type == "lab_report":
+        lab_extraction_doc_types = (
+            "lab_report",
+            "visit_note",
+            "discharge_summary",
+            "chemo_sheet",
+        )
+        if doc_type in lab_extraction_doc_types:
             downstream_tasks.append(
                 (
                     "lab_sync",
                     lambda did: run_lab_sync_single(did, patient_id=patient_id, file_id=file_id),
                 )
             )
-        elif doc_type in ("visit_note", "discharge_summary"):
+        if doc_type in ("visit_note", "discharge_summary"):
             downstream_tasks.append(
                 (
                     "toxicity_extraction",
@@ -1348,7 +1382,7 @@ async def run_document_pipeline(
                     ),
                 )
             )
-        elif doc_type == "chemo_sheet":
+        if doc_type == "chemo_sheet":
             downstream_tasks.append(
                 (
                     "dose_extraction",

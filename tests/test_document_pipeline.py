@@ -114,7 +114,9 @@ async def test_pipeline_dispatches_lab():
 
 @pytest.mark.anyio
 async def test_pipeline_dispatches_visit_note():
-    """Visit note triggers both toxicity_extraction and weight_extraction."""
+    """Visit note triggers lab_sync (#426 inline-labs scan) + toxicity +
+    weight extraction. Slovak oncology visit notes routinely quote
+    pre-visit bloods inline."""
     mock_scan = AsyncMock(
         return_value={
             "response": "Konzultacia u onkológa, vizita note",
@@ -123,6 +125,14 @@ async def test_pipeline_dispatches_visit_note():
             "error": None,
             "model": "haiku",
             "duration_ms": 500,
+        }
+    )
+    mock_lab = AsyncMock(
+        return_value={
+            "response": "Extracted inline WBC=12.11, ANC=1150",
+            "cost": 0.002,
+            "tool_calls": [],
+            "error": None,
         }
     )
     mock_tox = AsyncMock(
@@ -147,15 +157,16 @@ async def test_pipeline_dispatches_visit_note():
         patch("oncoteam.autonomous_tasks._set_state", AsyncMock()),
         patch("oncoteam.autonomous_tasks._log_task", AsyncMock()),
         patch("oncoteam.autonomous_tasks.run_file_scan_single", mock_scan),
+        patch("oncoteam.autonomous_tasks.run_lab_sync_single", mock_lab),
         patch("oncoteam.autonomous_tasks.run_toxicity_extraction_single", mock_tox),
         patch("oncoteam.autonomous_tasks.run_weight_extraction_single", mock_weight),
     ):
         result = await run_document_pipeline(200)
 
     assert result["doc_type"] == "visit_note"
-    assert len(result["steps"]) == 3
+    assert len(result["steps"]) == 4
     step_names = [s["step"] for s in result["steps"]]
-    assert step_names == ["file_scan", "toxicity_extraction", "weight_extraction"]
+    assert step_names == ["file_scan", "lab_sync", "toxicity_extraction", "weight_extraction"]
 
 
 @pytest.mark.anyio
@@ -201,12 +212,22 @@ async def test_pipeline_dispatches_chemo_sheet():
             "duration_ms": 400,
         }
     )
+    # #426: chemo sheets also get lab_sync (inline pre-chemo bloods)
+    mock_lab = AsyncMock(
+        return_value={
+            "response": "Extracted pre-chemo WBC=4.2, ANC=2100",
+            "cost": 0.002,
+            "tool_calls": [],
+            "error": None,
+        }
+    )
 
     with (
         patch("oncoteam.autonomous_tasks._get_state", AsyncMock(return_value={})),
         patch("oncoteam.autonomous_tasks._set_state", AsyncMock()),
         patch("oncoteam.autonomous_tasks._log_task", AsyncMock()),
         patch("oncoteam.autonomous_tasks.run_file_scan_single", mock_scan),
+        patch("oncoteam.autonomous_tasks.run_lab_sync_single", mock_lab),
         patch("oncoteam.autonomous_tasks.run_dose_extraction_single", mock_dose),
         patch("oncoteam.autonomous_tasks._send_whatsapp", AsyncMock()),
     ):
@@ -214,10 +235,53 @@ async def test_pipeline_dispatches_chemo_sheet():
 
     assert result["doc_type"] == "chemo_sheet"
     assert result["document_id"] == 400
-    assert len(result["steps"]) == 2
-    assert result["steps"][0]["step"] == "file_scan"
-    assert result["steps"][1]["step"] == "dose_extraction"
-    assert result["cost"] == pytest.approx(0.015)
+    assert len(result["steps"]) == 3
+    step_names = [s["step"] for s in result["steps"]]
+    assert step_names == ["file_scan", "lab_sync", "dose_extraction"]
+    assert result["cost"] == pytest.approx(0.017)
+
+
+@pytest.mark.anyio
+async def test_pipeline_dispatches_discharge_summary_to_lab_sync():
+    """#426 — discharge summaries routinely carry inline pre/post-admission
+    bloods; pipeline must dispatch lab_sync_single even though the primary
+    downstream is toxicity + weight extraction."""
+    mock_scan = AsyncMock(
+        return_value={
+            "response": "Prepustaci suhrn, discharge summary — hospitalizacia",
+            "cost": 0.01,
+            "tool_calls": [],
+            "error": None,
+            "model": "haiku",
+            "duration_ms": 500,
+        }
+    )
+    mock_lab = AsyncMock(
+        return_value={
+            "response": "Extracted inline HGB=108, PLT=195000",
+            "cost": 0.002,
+            "tool_calls": [],
+            "error": None,
+        }
+    )
+    mock_tox = AsyncMock(return_value={"response": "", "cost": 0.001, "error": None})
+    mock_weight = AsyncMock(return_value={"response": "", "cost": 0.001, "error": None})
+
+    with (
+        patch("oncoteam.autonomous_tasks._get_state", AsyncMock(return_value={})),
+        patch("oncoteam.autonomous_tasks._set_state", AsyncMock()),
+        patch("oncoteam.autonomous_tasks._log_task", AsyncMock()),
+        patch("oncoteam.autonomous_tasks.run_file_scan_single", mock_scan),
+        patch("oncoteam.autonomous_tasks.run_lab_sync_single", mock_lab),
+        patch("oncoteam.autonomous_tasks.run_toxicity_extraction_single", mock_tox),
+        patch("oncoteam.autonomous_tasks.run_weight_extraction_single", mock_weight),
+    ):
+        result = await run_document_pipeline(500)
+
+    assert result["doc_type"] == "discharge_summary"
+    step_names = [s["step"] for s in result["steps"]]
+    assert "lab_sync" in step_names
+    mock_lab.assert_called_once()
 
 
 # ── Webhook endpoint ───────────────────────────
