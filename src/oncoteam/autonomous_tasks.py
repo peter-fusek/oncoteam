@@ -1289,6 +1289,124 @@ Handwritten document handling:
     )
 
 
+async def run_oncopanel_extraction_single(
+    document_id: int, *, patient_id: str = "q1b", file_id: str | None = None
+) -> dict:
+    """Extract structured oncopanel (variants + CNVs + MSI/MMR/TMB) from a
+    pathology or genetics document (#398 Phase 3b).
+
+    Honors the "AI proposes, humans dispose" principle from #395: extracted
+    panel is persisted as a PENDING proposal under
+    `pending_oncopanel:{patient_id}:{document_id}` in oncofiles agent_state.
+    It is NOT auto-merged into `PatientProfile.oncopanel_history` — that
+    requires physician verification. The dashboard's MUDr. Mináriková review
+    surface (#395 + #399) picks up these pending entries.
+
+    Skipped for non-oncology patients (general-health Z00.0 etc.) since they
+    don't have an oncopanel clinical context.
+
+    Uses Sonnet (not Haiku) — structured variant extraction from handwritten
+    OR OCR-ambiguous Slovak pathology reports benefits from stronger
+    reasoning. Cost per run is bounded by AUTONOMOUS_COST_LIMIT.
+    """
+    from .patient_context import get_patient, is_general_health_patient
+
+    pt = get_patient(patient_id)
+    if is_general_health_patient(pt):
+        return {"skipped": True, "reason": "non_oncology_patient"}
+
+    view_arg = file_id or str(document_id)
+    result = await _run_single_doc_task(
+        "oncopanel_extraction_single",
+        document_id,
+        f"""\
+Extract a structured oncopanel (somatic NGS report) from this pathology or
+genetics document (oncofiles ID {document_id}).
+
+IMPORTANT: The view_document tool parameter is called "file_id" (a string).
+Call it exactly as: view_document(file_id="{view_arg}")
+
+Instructions:
+1. Call view_document(file_id="{view_arg}") to read the document
+2. Determine whether this is a somatic oncopanel / NGS / molecular pathology
+   report. If it is NOT (e.g. it's a routine H&E histology without any
+   variant table), report "not an oncopanel report" and EXIT — do not
+   fabricate variants.
+3. If it IS an oncopanel, extract structured data. Return a JSON block with
+   these top-level fields:
+   - panel_id: lab+date identifier (e.g. "q1b_oncopanel_2026-04-18")
+   - sample_date: YYYY-MM-DD or null
+   - report_date: YYYY-MM-DD (required)
+   - lab: laboratory name (e.g. "OUSA — Ústav sv. Alžbety")
+   - methodology: NGS panel name (e.g. "TruSight-500", "OncoDNA OncoDEEP")
+   - sample_type: one of "tumor_tissue", "ctDNA", "germline", "mixed"
+   - variants: array of variant objects
+   - cnvs: array of copy-number variant objects
+   - msi_status: one of "MSS", "MSI-L", "MSI-H", "unknown"
+   - mmr_status: one of "pMMR", "dMMR", "unknown"
+   - tmb_score: numeric Mut/Mb or null
+   - tmb_category: one of "low", "intermediate", "high", "unknown"
+   - source_document_id: "{document_id}"
+
+4. For each variant, extract:
+   - gene: HUGO symbol uppercase (e.g. "KRAS", "ATM", "TP53")
+   - ref_seq: RefSeq transcript (e.g. "NM_033360.4")
+   - hgvs_cdna: coding change (e.g. "c.34G>A")
+   - hgvs_protein: protein change with parens (e.g. "p.(Gly12Ser)")
+   - protein_short: short form (e.g. "G12S", "L2760Pfs*9")
+   - vaf: variant allele frequency 0.0-1.0 (e.g. 0.1281 for 12.81%)
+   - variant_type: one of "SNV", "indel", "splice", "frameshift", "CNV",
+     "fusion", "other"
+   - tier: AMP/ASCO/CAP tier like "IA", "IB", "IIC", "IID", "III"
+   - classification: "somatic", "germline", or "unknown"
+   - significance: "pathogenic", "likely_pathogenic", "vus",
+     "likely_benign", "benign", or "unknown"
+   - source_document_id: "{document_id}"
+   - source_page: page number if shown, else null
+   - notes: any relevant annotation from the report
+5. For each CNV, extract gene, alteration (amplification/deletion/loss/
+   gain), copies (int or null).
+6. Slovak terms: "patogénna" → "pathogenic"; "pravdepodobne patogénna" →
+   "likely_pathogenic"; "VUS" stays "vus"; "nejasný význam" → "vus".
+7. Tier mapping from Slovak: "I.A/I.B/II.C/II.D/III" → "IA/IB/IIC/IID/III"
+
+Output format: wrap the structured JSON in a ```json fenced code block so
+the agent runner can parse it cleanly. If the report is unreadable or
+partial, include a "extraction_quality" field ("high"/"medium"/"low") and
+a "notes" field explaining gaps.
+
+This is a PROPOSAL only. It will NOT be auto-merged into the patient
+profile. A physician reviews it before it becomes clinical truth.
+""",
+        patient_id=patient_id,
+        model=AUTONOMOUS_MODEL,  # Sonnet — handwritten OCR / tier reasoning
+    )
+
+    # Persist the extracted panel as a pending proposal. Physician review via
+    # #395 audit path promotes it into PatientProfile.oncopanel_history.
+    response_text = result.get("response", "")
+    if response_text and not result.get("error"):
+        token = get_patient_token(patient_id)
+        try:
+            await _set_state(
+                f"pending_oncopanel:{patient_id}:{document_id}",
+                {
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "document_id": document_id,
+                    "patient_id": patient_id,
+                    "raw_response": response_text[:50_000],  # truncate paranoia
+                    "status": "pending_physician_review",
+                    "extraction_cost_usd": result.get("cost", 0),
+                    "extraction_model": result.get("model", "sonnet"),
+                },
+                token=token,
+            )
+        except Exception as e:
+            record_suppressed_error("oncopanel_extraction_single", "persist_pending", e)
+
+    return result
+
+
 async def run_document_pipeline(
     document_id: int, metadata: dict | None = None, *, patient_id: str = "q1b"
 ) -> dict:
@@ -1391,7 +1509,20 @@ async def run_document_pipeline(
                     ),
                 )
             )
-        # pathology/genetics: file_scan already handles biomarker check
+        # #398 Phase 3b: pathology / genetics docs → structured oncopanel
+        # extraction → pending_oncopanel:* agent_state for physician review.
+        # file_scan does a coarse biomarker sanity-check; this step pulls the
+        # full variant / CNV / MSI / MMR / TMB structure for the research
+        # cockpit (#399) and eligibility helpers (#398 Phase 1+2).
+        if doc_type in ("pathology", "genetics"):
+            downstream_tasks.append(
+                (
+                    "oncopanel_extraction",
+                    lambda did: run_oncopanel_extraction_single(
+                        did, patient_id=patient_id, file_id=file_id
+                    ),
+                )
+            )
         # imaging/other: no downstream processing needed
 
         for step_name, step_fn in downstream_tasks:
