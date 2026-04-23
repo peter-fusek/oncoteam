@@ -257,6 +257,15 @@ function printPrep() {
         <span class="text-red-600 print:text-red-600">{{ et.therapy }}</span> — {{ et.reason }}
       </div>
     </div>
+
+    <!-- #381: pre-cycle checklist + thresholds + excluded therapies are clinical interpretations — cite source + disclaimer -->
+    <ClinicalSourceFooter
+      :sources="[
+        { label: 'NCCN Colon Cancer Guidelines v3.2025', url: 'https://www.nccn.org/guidelines' },
+        { label: 'ESMO Clinical Practice Guidelines', url: 'https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers' },
+      ]"
+      compact
+    />
     </template>
   </div>
 </template>

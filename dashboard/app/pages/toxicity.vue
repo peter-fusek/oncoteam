@@ -343,6 +343,12 @@ function getMaxGrade(entry: { metadata: Record<string, number> }): number {
           </div>
         </div>
       </div>
+
+      <!-- #381: toxicity grades + nutrition escalation are clinical interpretations — cite source + disclaimer -->
+      <ClinicalSourceFooter
+        :sources="[{ label: 'NCI CTCAE v5.0', url: 'https://ctep.cancer.gov/protocoldevelopment/electronic_applications/ctc.htm' }]"
+        compact
+      />
     </div>
   </div>
 </template>

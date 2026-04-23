@@ -307,6 +307,9 @@ const drilldown = useDrilldown()
       {{ $t('medications.noEntries') }}
     </div>
 
+    <!-- #381: every clinical surface must carry the source + "physician verifies" framing -->
+    <ClinicalSourceFooter v-if="meds?.medications?.length" compact />
+
     </template>
   </div>
 </template>
