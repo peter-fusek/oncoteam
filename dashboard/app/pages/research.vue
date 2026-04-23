@@ -343,5 +343,15 @@ const drilldown = useDrilldown()
     </div>
 
     <EmptyState v-else-if="!research?.error && !researchError" icon="i-lucide-microscope" :message="activeTab === 'trials' ? t('research.noTrials') : t('research.noResearch')" />
+
+    <!-- #381: trial proposals + literature feed are clinical recommendations — cite sources + disclaimer -->
+    <ClinicalSourceFooter
+      :sources="[
+        { label: 'PubMed', url: 'https://pubmed.ncbi.nlm.nih.gov' },
+        { label: 'ClinicalTrials.gov', url: 'https://clinicaltrials.gov' },
+        { label: 'EU Clinical Trials Register', url: 'https://www.clinicaltrialsregister.eu' },
+      ]"
+      compact
+    />
   </div>
 </template>

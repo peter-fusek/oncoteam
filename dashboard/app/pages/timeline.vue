@@ -162,5 +162,8 @@ const drilldown = useDrilldown()
     </div>
 
     <EmptyState v-else-if="!timeline?.error && !timelineError" icon="i-lucide-calendar-clock" :message="$t('timeline.noEvents')" />
+
+    <!-- #381: treatment timeline is a clinical record — cite source + disclaimer -->
+    <ClinicalSourceFooter compact />
   </div>
 </template>

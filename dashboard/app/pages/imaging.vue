@@ -231,5 +231,8 @@ function onDotClick(date: string) {
         <SkeletonLoader variant="cards" />
       </template>
     </ClientOnly>
+
+    <!-- #381: imaging findings are clinical interpretations — cite source + disclaimer -->
+    <ClinicalSourceFooter compact />
   </div>
 </template>

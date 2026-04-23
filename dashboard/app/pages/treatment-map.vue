@@ -418,5 +418,8 @@ function sparklinePath(points: Array<{ left: number; value: number }>, maxVal: n
       <UIcon name="i-lucide-gantt-chart" class="w-10 h-10 text-gray-300 mx-auto mb-3" />
       <p class="text-sm text-gray-500">{{ $t('treatmentMap.noData') }}</p>
     </div>
+
+    <!-- #381: treatment events + chemo timeline are clinical records — cite source + disclaimer -->
+    <ClinicalSourceFooter compact />
   </div>
 </template>
