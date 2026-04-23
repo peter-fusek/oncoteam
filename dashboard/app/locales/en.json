@@ -541,6 +541,7 @@
     "apiDegraded": "Database briefly unavailable.",
     "apiDegradedRetry": "Refreshing in {seconds}s…",
     "apiDegradedHalfOpen": "Reconnecting…",
+    "apiUnreachable": "Data service is offline — oncoteam is up, but oncofiles is unreachable. Cached views still render; new data will resume when the service recovers.",
     "clinicalSource": {
       "disclaimer": "Informational overview — your treating physician verifies.",
       "source": "Source",

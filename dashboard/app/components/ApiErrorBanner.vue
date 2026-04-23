@@ -15,9 +15,13 @@
     <span class="flex-1">
       <template v-if="error">{{ $t('components.apiError') }}</template>
       <template v-else>
-        <!-- Half-open state: "Reconnecting…" only. Countdown is irrelevant while
-             the upstream is probing, and showing both reads noisy. -->
-        <template v-if="breakerState === 'half_open'">
+        <!-- #431 Step 4: outageKind differentiates "breaker open with
+             known cooldown" from "full oncofiles outage (readiness proxy
+             itself failing)". Pre-fix, unreachable state showed no banner. -->
+        <template v-if="outageKind === 'unreachable'">
+          {{ $t('components.apiUnreachable') }}
+        </template>
+        <template v-else-if="outageKind === 'half_open'">
           {{ $t('components.apiDegradedHalfOpen') }}
         </template>
         <template v-else>
@@ -48,5 +52,5 @@ const degradedActive = computed(() =>
 const cooldownSeconds = computed(() =>
   props.cooldownSeconds !== undefined ? props.cooldownSeconds : cb.cooldownSeconds.value
 )
-const breakerState = computed(() => cb.state.value?.state ?? 'closed')
+const outageKind = computed(() => cb.outageKind.value)
 </script>

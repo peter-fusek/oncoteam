@@ -39,10 +39,29 @@ export function useCircuitBreakerStatus() {
   // poll ticks. Reset to cooldown_remaining_s on every successful poll.
   const localRemaining = useState<number>('oncoteam:breaker:localRemaining', () => 0)
 
+  // #431 Step 4: degraded also fires when oncofiles is fully unreachable
+  // (readiness proxy returns 502 or errors). Before this, `state.value=null`
+  // from a 502 looked identical to a healthy closed breaker — dashboard
+  // showed no banner during full outage while every downstream API call
+  // failed. Now: degraded if breaker is open OR if the readiness probe
+  // itself is failing.
   const degraded = computed(() => {
+    if (fetchError.value) return true
     const s = state.value
     if (!s) return false
     return s.state !== 'closed'
+  })
+
+  // Surface the outage kind so the banner can show accurate copy:
+  // "Database temporarily unavailable" (breaker open, known cooldown)
+  // vs. "Oncofiles is offline" (can't reach readiness at all).
+  const outageKind = computed<'breaker_open' | 'unreachable' | 'half_open' | null>(() => {
+    if (fetchError.value) return 'unreachable'
+    const s = state.value
+    if (!s) return null
+    if (s.state === 'half_open') return 'half_open'
+    if (s.state === 'open') return 'breaker_open'
+    return null
   })
 
   const cooldownSeconds = computed(() => Math.max(0, Math.ceil(localRemaining.value)))
@@ -56,6 +75,11 @@ export function useCircuitBreakerStatus() {
       localRemaining.value = cb?.cooldown_remaining_s ?? 0
       fetchError.value = null
     } catch (e) {
+      // Distinguish "proxy up but breaker null" from "proxy itself failing".
+      // The latter is a full-outage signal — we must surface it.
+      state.value = null
+      localRemaining.value = 0
+      lastPolledAt.value = Date.now()
       fetchError.value = e as Error
     }
   }
@@ -84,5 +108,5 @@ export function useCircuitBreakerStatus() {
     }
   }
 
-  return { state, degraded, cooldownSeconds, refresh, start, stop, fetchError, lastPolledAt }
+  return { state, degraded, outageKind, cooldownSeconds, refresh, start, stop, fetchError, lastPolledAt }
 }

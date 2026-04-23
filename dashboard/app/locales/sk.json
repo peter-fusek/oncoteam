@@ -541,6 +541,7 @@
     "apiDegraded": "Databáza je krátko nedostupná.",
     "apiDegradedRetry": "Obnovujem za {seconds} s…",
     "apiDegradedHalfOpen": "Obnovujem spojenie…",
+    "apiUnreachable": "Dátová služba je offline — oncoteam beží, ale oncofiles nie je dostupný. Uložené pohľady sa stále zobrazujú; nové dáta sa obnovia po obnovení služby.",
     "clinicalSource": {
       "disclaimer": "Informatívny prehľad — overí ošetrujúci lekár.",
       "source": "Zdroj",
