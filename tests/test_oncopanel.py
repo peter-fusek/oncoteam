@@ -7,11 +7,17 @@ from datetime import date
 import pytest
 
 from oncoteam.eligibility import (
+    BiomarkerStatus,
     count_pathogenic_variants,
+    get_kras_status,
     get_latest_oncopanel,
     get_variants_for_gene,
+    has_kras_g12c,
     is_biallelic_loss,
+    is_braf_v600e,
     is_ddr_deficient,
+    is_her2_positive,
+    is_msi_high,
 )
 from oncoteam.models import (
     CopyNumberVariant,
@@ -318,3 +324,134 @@ class TestQ1bOncopanelSeed:
         from oncoteam.patient_context import PATIENT_SGU
 
         assert not is_ddr_deficient(PATIENT_SGU)
+
+
+class TestStructuredBiomarkerHelpers:
+    """#398 — structured biomarker queries with flat-dict fallback.
+
+    Oncopanel takes precedence; patients without a panel fall back to
+    the legacy flat dict so single-patient and general-health flows
+    keep working. Each helper also surfaces source traceability so
+    dashboard can show the origin (date + lab) alongside the value.
+    """
+
+    def test_q1b_kras_status_reads_oncopanel(self):
+        """q1b carries KRAS G12S (not G12C, not WT) — oncopanel must win."""
+        from oncoteam.patient_context import PATIENT
+
+        status = get_kras_status(PATIENT)
+        assert isinstance(status, BiomarkerStatus)
+        assert status.value == "G12S"
+        assert status.source.startswith("oncopanel")
+        assert status.detail is not None
+        assert status.detail.gene == "KRAS"
+
+    def test_q1b_is_not_g12c(self):
+        """Critical safety: sotorasib/adagrasib must not fire for G12S."""
+        from oncoteam.patient_context import PATIENT
+
+        assert not has_kras_g12c(PATIENT)
+
+    def test_q1b_is_mss_not_msi_high(self):
+        """Checkpoint monotherapy must not fire for MSS/pMMR patients."""
+        from oncoteam.patient_context import PATIENT
+
+        assert not is_msi_high(PATIENT)
+
+    def test_q1b_braf_is_wt(self):
+        """q1b has no pathogenic BRAF variant — V600E-specific rules stay off."""
+        from oncoteam.patient_context import PATIENT
+
+        assert not is_braf_v600e(PATIENT)
+
+    def test_q1b_her2_negative(self):
+        """q1b has no HER2 amplification in CNVs — HER2-targeted off."""
+        from oncoteam.patient_context import PATIENT
+
+        assert not is_her2_positive(PATIENT)
+
+    def test_patient_without_oncopanel_falls_back_to_dict(self):
+        """Legacy flat-dict pathway — still works for patients with no panel."""
+        legacy = PatientProfile(
+            patient_id="legacy",
+            name="Legacy",
+            diagnosis_code="C18.9",
+            diagnosis_description="CRC",
+            tumor_site="colon",
+            treatment_regimen="FOLFOX",
+            biomarkers={"KRAS": "G12D", "MSI": "MSI-H", "BRAF_V600E": "mutant"},
+        )
+        assert get_kras_status(legacy).value == "G12D"
+        assert get_kras_status(legacy).source == "biomarkers_dict"
+        assert not has_kras_g12c(legacy)
+        assert is_msi_high(legacy)
+        assert is_braf_v600e(legacy)
+
+    def test_patient_with_g12c_in_dict(self):
+        """Dict-only patient with G12C flagged correctly."""
+        legacy = PatientProfile(
+            patient_id="legacy",
+            name="Legacy",
+            diagnosis_code="C34.9",
+            diagnosis_description="NSCLC",
+            tumor_site="lung",
+            treatment_regimen="platinum",
+            biomarkers={"KRAS": "G12C"},
+        )
+        assert has_kras_g12c(legacy)
+
+    def test_oncopanel_with_g12c_variant(self):
+        """Structured oncopanel reporting G12C — G12C predicate fires."""
+        panel = _panel(
+            "g12c_test",
+            date(2026, 1, 1),
+            [_variant("KRAS", protein_short="G12C", significance="pathogenic")],
+        )
+        patient = _profile([panel])
+        assert has_kras_g12c(patient)
+        status = get_kras_status(patient)
+        assert status.value == "G12C"
+        assert status.source.startswith("oncopanel")
+
+    def test_oncopanel_precedence_over_dict(self):
+        """Oncopanel wins when both sources disagree — prevents stale dict data
+        from overriding fresh NGS results."""
+        panel = _panel(
+            "precedence_test",
+            date(2026, 3, 1),
+            [_variant("KRAS", protein_short="G12S", significance="pathogenic")],
+        )
+        patient = _profile([panel])
+        # Legacy dict says G12C but oncopanel says G12S — oncopanel wins
+        patient.biomarkers = {"KRAS": "G12C"}
+        assert not has_kras_g12c(patient)
+        assert get_kras_status(patient).value == "G12S"
+
+    def test_her2_amplification_via_cnv(self):
+        """HER2 positive via CNV amplification in oncopanel."""
+        panel = Oncopanel(
+            panel_id="her2_test",
+            patient_id="test",
+            report_date=date(2026, 2, 1),
+            cnvs=[CopyNumberVariant(gene="ERBB2", alteration="amplification", copies=12)],
+        )
+        patient = _profile([panel])
+        assert is_her2_positive(patient)
+
+    def test_unknown_patient_returns_unknown(self):
+        """Patient with neither oncopanel nor biomarkers dict — unknown, not error."""
+        empty = PatientProfile(
+            patient_id="empty",
+            name="Empty",
+            diagnosis_code="",
+            diagnosis_description="",
+            tumor_site="",
+            treatment_regimen="",
+        )
+        status = get_kras_status(empty)
+        assert status.value == "unknown"
+        assert status.source == "unknown"
+        assert not has_kras_g12c(empty)
+        assert not is_msi_high(empty)
+        assert not is_braf_v600e(empty)
+        assert not is_her2_positive(empty)

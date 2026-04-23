@@ -175,6 +175,135 @@ def is_ddr_deficient(patient: PatientProfile) -> bool:
     return any(is_biallelic_loss(patient, gene) for gene in _DDR_CORE_GENES)
 
 
+# ── Structured biomarker queries with flat-dict fallback (#398) ───────
+# These helpers prefer the structured oncopanel history (variant-level
+# traceability: date, lab, VAF, source document) over the flat biomarkers
+# dict. Patients with no oncopanel fall back to the dict so existing
+# single-patient flows keep working. Returns `(status, source_label)`
+# so the dashboard can render the origin alongside the value.
+
+
+@dataclass(frozen=True)
+class BiomarkerStatus:
+    """Biomarker query result with traceable origin.
+
+    `value`:  normalized status string (e.g. "G12S", "MSS", "negative").
+    `source`: "oncopanel:<report_date>" when read from oncopanel_history,
+              "biomarkers_dict" when from the legacy flat dict,
+              "unknown" when neither has data.
+    `detail`: optional structured extra — e.g. the matched variant for
+              oncopanel-sourced queries, so the dashboard can link to the
+              source document page.
+    """
+
+    value: str
+    source: str
+    detail: OncopanelVariant | None = None
+
+
+def get_kras_status(patient: PatientProfile) -> BiomarkerStatus:
+    """Return patient's KRAS status (e.g. 'G12S', 'G12C', 'WT', 'mutant').
+
+    Reads oncopanel first for the specific allele; falls back to
+    `biomarkers["KRAS"]` for patients without structured panel data.
+    """
+    for variant in get_variants_for_gene(patient, "KRAS"):
+        if variant.significance in _PATHOGENIC_SIGNIFICANCES and variant.protein_short:
+            latest = get_latest_oncopanel(patient)
+            src = (
+                f"oncopanel:{latest.report_date}" if latest and latest.report_date else "oncopanel"
+            )
+            return BiomarkerStatus(
+                value=variant.protein_short,
+                source=src,
+                detail=variant,
+            )
+    # No pathogenic KRAS variant in oncopanel → may be WT, or patient has no panel.
+    latest = get_latest_oncopanel(patient)
+    if latest is not None:
+        src = f"oncopanel:{latest.report_date}" if latest.report_date else "oncopanel"
+        return BiomarkerStatus(value="WT", source=src)
+    raw = (patient.biomarkers.get("KRAS") or "") if patient.biomarkers else ""
+    if raw:
+        return BiomarkerStatus(value=str(raw), source="biomarkers_dict")
+    return BiomarkerStatus(value="unknown", source="unknown")
+
+
+def has_kras_g12c(patient: PatientProfile) -> bool:
+    """True iff the patient's KRAS allele is specifically G12C.
+
+    Matters because sotorasib / adagrasib are G12C-specific inhibitors —
+    prescribing them for any other KRAS allele (e.g. q1b's G12S) would
+    be clinically wrong. Returns False for unknown / non-KRAS patients.
+    """
+    status = get_kras_status(patient)
+    return status.value.upper().replace(".", "") == "G12C"
+
+
+def is_msi_high(patient: PatientProfile) -> bool:
+    """True iff the patient's tumor is microsatellite-unstable / dMMR.
+
+    Checkpoint monotherapy indication requires MSI-H / dMMR. MSS / pMMR
+    patients should not receive single-agent checkpoint inhibitors.
+    Reads structured MSI status from the latest oncopanel; falls back
+    to `biomarkers["MSI"]` then `biomarkers["MMR"]`.
+    """
+    latest = get_latest_oncopanel(patient)
+    if latest is not None:
+        if latest.msi_status == "MSI-H" or latest.mmr_status == "dMMR":
+            return True
+        if latest.msi_status in ("MSS", "MSI-L") or latest.mmr_status == "pMMR":
+            return False
+        # unknown → fall through to legacy dict
+    raw_msi = str(patient.biomarkers.get("MSI", "") if patient.biomarkers else "").upper()
+    if raw_msi in ("MSI-H", "MSI_H", "MSIH", "HIGH"):
+        return True
+    raw_mmr = str(patient.biomarkers.get("MMR", "") if patient.biomarkers else "").upper()
+    return raw_mmr in ("DMMR", "D-MMR")
+
+
+def is_braf_v600e(patient: PatientProfile) -> bool:
+    """True iff the patient carries a pathogenic BRAF V600E variant.
+
+    BRAF V600E is a specific actionable mutation (encorafenib + cetuximab
+    in CRC; dabrafenib + trametinib in other contexts). Any other BRAF
+    status (WT, non-V600E mutant) should NOT trigger V600E-specific
+    recommendations. Reads oncopanel variants first.
+    """
+    for variant in get_variants_for_gene(patient, "BRAF"):
+        if variant.significance not in _PATHOGENIC_SIGNIFICANCES:
+            continue
+        short = variant.protein_short.upper().replace(".", "")
+        if "V600E" in short or variant.hgvs_protein.upper().endswith("VAL600GLU)"):
+            return True
+    # Oncopanel says no V600E — if patient has panel at all, trust it (return False).
+    if get_latest_oncopanel(patient) is not None:
+        return False
+    raw = str(patient.biomarkers.get("BRAF_V600E", "") if patient.biomarkers else "").lower()
+    return raw in ("mutant", "positive", "v600e", "true")
+
+
+def is_her2_positive(patient: PatientProfile) -> bool:
+    """True iff the patient's tumor is HER2-positive (amplification).
+
+    Matters for HER2-targeted therapy (trastuzumab, pertuzumab, T-DM1,
+    T-DXd). Reads oncopanel CNVs first (look for HER2/ERBB2 amplification),
+    then falls back to `biomarkers["HER2"]` for IHC/FISH-only reports.
+    """
+    latest = get_latest_oncopanel(patient)
+    if latest is not None:
+        for cnv in latest.cnvs:
+            if cnv.gene.upper() in {"HER2", "ERBB2"} and cnv.alteration in {
+                "amplification",
+                "gain",
+            }:
+                return True
+        # Oncopanel present but no HER2 amplification — trust it for the CNV axis.
+        # Still check biomarkers dict for IHC/FISH results the panel didn't capture.
+    raw = str(patient.biomarkers.get("HER2", "") if patient.biomarkers else "").lower()
+    return raw in ("positive", "pos", "3+", "amplified", "amp", "her2+")
+
+
 # Drug names mapped to rules
 _ANTI_EGFR = {"cetuximab", "panitumumab"}
 _KRAS_G12C = {"sotorasib", "adagrasib"}
