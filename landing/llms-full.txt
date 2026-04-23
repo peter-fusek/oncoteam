@@ -44,7 +44,7 @@ All your medical documents (lab reports, pathology results, genetic reports, ima
 
 ### Q: Does the AI train on my data?
 
-No. Oncoteam uses the **Anthropic commercial API** (Claude Sonnet 4.6 and Claude Haiku 4.5). Anthropic's Commercial Terms explicitly prohibit training models on customer content submitted via the API. Inputs and outputs are auto-deleted within 30 days and are used solely for Anthropic's safety monitoring. No model training, no data sharing, no advertising use.
+No. Oncoteam uses the **Anthropic commercial API** (Claude Sonnet 4.6 and Claude Haiku 4.5) plus OpenAI Whisper-1 for voice transcription. Anthropic's Commercial Terms explicitly prohibit training models on customer content submitted via the API. Inputs and outputs are auto-deleted within 7 days (reduced from 30 days on 2025-09-15) and are used solely for Anthropic's safety monitoring. 24 autonomous agents run under this guarantee: 13 Sonnet agents, 11 Haiku agents. No model training, no data sharing, no advertising use. Zero Data Retention (ZDR) is available from Anthropic for enterprise and team API customers; Oncoteam currently runs on standard API, which already carries the no-training and 7-day guarantees.
 
 This is radically different from pasting your results into consumer ChatGPT, where inputs may be used for training unless you explicitly opt out.
 

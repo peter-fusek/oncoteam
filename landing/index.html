@@ -141,22 +141,27 @@
       {
         "@type": "Question",
         "name": "Does AI learn from my data?",
-        "acceptedAnswer": {"@type": "Answer", "text": "No. Oncoteam uses the Anthropic commercial API. Their Commercial Terms explicitly state: Anthropic may not train models on Customer Content. API data is auto-deleted within 30 days."}
+        "acceptedAnswer": {"@type": "Answer", "text": "No. Oncoteam uses the Anthropic commercial API. Their Commercial Terms explicitly state: Anthropic may not train models on Customer Content. API data is auto-deleted within 7 days (reduced from 30 days on 2025-09-15). Voice messages are transcribed by OpenAI Whisper-1 via API, also without training."}
       },
       {
         "@type": "Question",
         "name": "Which AI models process my data?",
-        "acceptedAnswer": {"@type": "Answer", "text": "Claude Haiku 4.5 for fast data tasks (document scanning, lab extraction) and Claude Sonnet 4.6 for advanced reasoning (trial analysis, treatment briefings). Both via Anthropic's commercial API with SOC 2 Type II and ISO 27001 certification."}
+        "acceptedAnswer": {"@type": "Answer", "text": "Claude Haiku 4.5 for fast data tasks (document scanning, lab extraction, WhatsApp replies) and Claude Sonnet 4.6 for advanced reasoning (trial analysis, treatment briefings). 24 autonomous agents total: 13 Sonnet, 11 Haiku. Voice transcription uses OpenAI Whisper-1. All via commercial APIs with SOC 2 Type II certification."}
       },
       {
         "@type": "Question",
         "name": "How long does Anthropic keep my data?",
-        "acceptedAnswer": {"@type": "Answer", "text": "API inputs and outputs are automatically deleted within 30 days. This retention is solely for safety monitoring, not training. Zero Data Retention (ZDR) is available for enterprise customers."}
+        "acceptedAnswer": {"@type": "Answer", "text": "API inputs and outputs are automatically deleted within 7 days (reduced from 30 days on 2025-09-15). Retention is solely for safety monitoring, not training. Zero Data Retention (ZDR) is available from Anthropic for enterprise and team API customers; Oncoteam currently runs on standard API, which is already sufficient for the no-training and 7-day guarantees."}
+      },
+      {
+        "@type": "Question",
+        "name": "What data crosses the network when I send a WhatsApp command?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Text commands (predcyklus, labky, otazky, etc.) and your message (max 2000 chars) plus the last 5 exchanges and a patient context block (name, diagnosis, current cycle) go to Anthropic Claude. Original documents stay in your Google Drive; only metadata and extracted values are sent. For voice messages, the audio goes to OpenAI Whisper-1 for transcription, then the transcribed text follows the same flow. Audio is ephemeral."}
       },
       {
         "@type": "Question",
         "name": "How is this different from pasting results into ChatGPT?",
-        "acceptedAnswer": {"@type": "Answer", "text": "Radically different. Consumer ChatGPT trains on your data by default. Oncoteam uses the commercial Anthropic API where training is contractually prohibited, retention is max 30 days, patients have isolated tokens, and the code is fully open-source."}
+        "acceptedAnswer": {"@type": "Answer", "text": "Radically different. Consumer ChatGPT trains on your data by default. Oncoteam uses the commercial Anthropic API where training is contractually prohibited, retention is 7 days (for abuse-prevention review only), patients have isolated tokens, and the code is fully open-source."}
       },
       {
         "@type": "Question",
@@ -962,7 +967,8 @@
           <li>Your documents live in <strong>your own Google Drive</strong> &mdash; we never store originals.</li>
           <li>Oncofiles (the data layer) is <strong>open-source and self-hostable</strong> &mdash; you can run it on your own server if you prefer.</li>
           <li>AI models <strong>never train on your data</strong> &mdash; guaranteed by <a href="https://www.anthropic.com/legal/commercial-terms" target="_blank" rel="noopener">Anthropic&rsquo;s Commercial Terms</a>.</li>
-          <li>API data is <strong>auto-deleted within 30 days</strong> (safety review only, not training).</li>
+          <li>API data is <strong>auto-deleted within 7 days</strong> (safety review only, not training) &mdash; reduced from 30 days on 2025-09-15.</li>
+          <li>Voice messages are transcribed by <strong>OpenAI Whisper-1</strong> via API (no training, audio is ephemeral).</li>
           <li>All communication is <strong>encrypted (HTTPS/TLS)</strong>. Patient IDs are <strong>anonymized</strong> in code.</li>
           <li>Both Anthropic and Railway hold <strong>SOC 2 Type II</strong> certification.</li>
           <li>Source code is 100% <strong>open-source</strong> &mdash; verify everything on <a href="https://github.com/peter-fusek/oncoteam" target="_blank" rel="noopener">GitHub</a>.</li>
@@ -997,7 +1003,7 @@
         <div class="faq-section-label" data-i18n="faq.group.ai">AI Models &amp; Privacy</div>
         <details class="faq-item">
           <summary data-i18n="faq.q2">Does AI learn from my data?</summary>
-          <p data-i18n-html="faq.a2_detailed">No. Oncoteam uses the <strong>Anthropic API</strong> (not consumer Claude.ai). Anthropic&rsquo;s <a href="https://www.anthropic.com/legal/commercial-terms" target="_blank" rel="noopener">Commercial Terms</a> explicitly state: <em>&ldquo;Anthropic may not train models on Customer Content from Services.&rdquo;</em> This is fundamentally different from consumer ChatGPT, which trains on your data by default. Your medical documents are processed in real-time, never stored for training, and auto-deleted within 30 days.</p>
+          <p data-i18n-html="faq.a2_detailed">No. Oncoteam uses the <strong>Anthropic API</strong> (not consumer Claude.ai). Anthropic&rsquo;s <a href="https://www.anthropic.com/legal/commercial-terms" target="_blank" rel="noopener">Commercial Terms</a> explicitly state: <em>&ldquo;Anthropic may not train models on Customer Content from Services.&rdquo;</em> This is fundamentally different from consumer ChatGPT, which trains on your data by default. Your medical documents are processed in real-time, never stored for training, and auto-deleted within 7 days. Voice notes are transcribed by <strong>OpenAI Whisper-1</strong> via API (same no-training guarantee); audio is ephemeral.</p>
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q_models">Which AI models process my data?</summary>
@@ -1005,7 +1011,7 @@
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q_retention">How long does Anthropic keep my data?</summary>
-          <p data-i18n-html="faq.a_retention">API inputs and outputs are <strong>automatically deleted within 30 days</strong>. This retention is solely for safety monitoring (abuse prevention), not training. Anthropic also offers Zero Data Retention (ZDR) for enterprise customers. Details: <a href="https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data" target="_blank" rel="noopener">Anthropic Privacy Center</a>. For comparison, consumer ChatGPT retains data indefinitely unless you manually delete it.</p>
+          <p data-i18n-html="faq.a_retention">API inputs and outputs are <strong>automatically deleted within 7 days</strong> &mdash; Anthropic reduced this from 30 days on <a href="https://platform.claude.com/docs/en/build-with-claude/api-and-data-retention" target="_blank" rel="noopener">September 15, 2025</a>. This retention is solely for safety monitoring (abuse prevention), not training. Anthropic also offers Zero Data Retention (ZDR) for enterprise / team API customers; Oncoteam currently runs on standard API, which is already sufficient for the no-training and 7-day guarantees. Details: <a href="https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data" target="_blank" rel="noopener">Anthropic Privacy Center</a>. For comparison, consumer ChatGPT retains data indefinitely unless you manually delete it.</p>
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q_anon">Are patient identities anonymized?</summary>
@@ -1024,7 +1030,7 @@
         </details>
         <details class="faq-item">
           <summary data-i18n="faq.q_vs_chatgpt">How is this different from pasting results into ChatGPT?</summary>
-          <p data-i18n-html="faq.a_vs_chatgpt"><strong>Radically different.</strong> When you paste lab results into consumer ChatGPT, your data is used for model training by default, retained indefinitely, and has no patient isolation. Oncoteam uses the commercial Anthropic API where training on your data is contractually prohibited, retention is max 30 days, each patient has isolated access tokens, and the entire system is open-source for verification. It&rsquo;s the difference between shouting your diagnosis in a crowd vs. talking to your doctor in a private room.</p>
+          <p data-i18n-html="faq.a_vs_chatgpt"><strong>Radically different.</strong> When you paste lab results into consumer ChatGPT, your data is used for model training by default, retained indefinitely, and has no patient isolation. Oncoteam uses the commercial Anthropic API where training on your data is contractually prohibited, retention is 7 days (for abuse-prevention review only), each patient has isolated access tokens, and the entire system is open-source for verification. It&rsquo;s the difference between shouting your diagnosis in a crowd vs. talking to your doctor in a private room.</p>
         </details>
 
         <!-- General -->

@@ -23,8 +23,8 @@ uv run oncoteam-mcp    # stdio mode
 - `src/oncoteam/request_context.py` — Request-scoped utilities: correlation ID, patient token resolution (extracted to break circular imports)
 - `src/oncoteam/clinical_protocol.py` — Embedded clinical protocol: lab thresholds, reference ranges, dose mods, cumulative dose thresholds, cycle delay rules, nutrition escalation, milestones, safety flags, 2L options
 - `src/oncoteam/autonomous.py` — Claude API autonomous agent loop with extended thinking
-- `src/oncoteam/autonomous_tasks.py` — 18 autonomous task wrappers + document pipeline orchestrator with cooldown guards and WhatsApp notifications
-- `src/oncoteam/agent_registry.py` — AgentConfig Pydantic model, all 18 agent definitions + document_pipeline, schedule/cooldown/model config
+- `src/oncoteam/autonomous_tasks.py` — 24 autonomous task wrappers + document pipeline orchestrator with cooldown guards and WhatsApp notifications (count matches agent_registry.py; update both when adding agents)
+- `src/oncoteam/agent_registry.py` — AgentConfig Pydantic model, all 24 agent definitions + document_pipeline, schedule/cooldown/model config
 - `src/oncoteam/tags.py` — Canonical tag vocabulary with prefix:value format (sys:, clin:, bio:, tx:, res:, task:, safety:, src:)
 - `src/oncoteam/activity_logger.py` — @log_activity decorator, suppressed error buffer, diary helpers
 - `src/oncoteam/eligibility.py` — biomarker-aware trial eligibility checker
