@@ -653,6 +653,45 @@ def get_research_terms_text(patient_id: str = "q1b") -> str:
     return f"# Research Search Terms\n\nCurated PubMed queries for this case:\n\n{terms}\n"
 
 
+def public_patient_view(patient: PatientProfile) -> dict:
+    """Allowlisted projection of PatientProfile for non-localized consumers.
+
+    Sprint 100 / #440 Pattern F — shared with the dashboard /api/detail/patient
+    allowlist (dashboard_api.py), reused here so the MCP tool
+    `get_patient_context` doesn't leak rodné číslo / nou_id / poisťovňa
+    (`patient_ids`), home GPS (`home_region`), per-variant VAF + HGVS
+    (`oncopanel_history`), or operational flags (`agent_whitelist`,
+    `paused`, `notification_policy`). The clinical-profile fields below are
+    the same set `/api/detail/patient` ships post-Sprint-99 (#438 bug 4).
+
+    The full model_dump still lives on `get_patient_localized()` for
+    `/api/patient`, which intentionally surfaces patient_ids + l10n overlays
+    to the session-authed UI — that is the curated per-patient endpoint
+    the dashboard reads end-to-end. This helper exists for the smaller,
+    bearer-authed surfaces where the sensitive fields aren't needed.
+    """
+    return {
+        "patient_id": patient.patient_id,
+        "name": patient.name,
+        "diagnosis_code": patient.diagnosis_code,
+        "diagnosis_description": patient.diagnosis_description,
+        "tumor_site": patient.tumor_site,
+        "tumor_laterality": patient.tumor_laterality,
+        "staging": patient.staging,
+        "histology": patient.histology,
+        "treatment_regimen": patient.treatment_regimen,
+        "current_cycle": patient.current_cycle,
+        "ecog": patient.ecog,
+        "metastases": list(patient.metastases),
+        "comorbidities": list(patient.comorbidities),
+        "hospitals": list(patient.hospitals),
+        "treating_physician": patient.treating_physician,
+        "notes": patient.notes,
+        "biomarkers": dict(patient.biomarkers),
+        "excluded_therapies": dict(patient.excluded_therapies),
+    }
+
+
 def get_context_tags(patient_id: str = "q1b") -> list[str]:
     """Derive research tags from patient context.
 

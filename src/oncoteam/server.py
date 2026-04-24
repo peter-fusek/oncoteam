@@ -152,6 +152,19 @@ def _get_mcp_patient_token() -> tuple[str, str | None]:
     return pid, get_patient_token(pid)
 
 
+def _safe_mcp_error(exc: BaseException) -> dict[str, str]:
+    """Sanitized error payload for MCP tool returns.
+
+    Sprint 100 / #440 Pattern E — previously `json.dumps({"error": str(e)})`
+    leaked raw upstream exception text (oncofiles doc IDs, other patients'
+    UUIDs, internal URL fragments) to any MCP caller that tripped the tool.
+    Mirrors the ``_safe_error_payload`` helper added in Sprint 99 for the
+    dashboard-side sweep (#438 bug 2). Full exception still flows to the
+    `@log_activity` decorator for operator visibility.
+    """
+    return {"error": "upstream_unavailable", "kind": type(exc).__name__}
+
+
 class _UnregisteredBearerPatientError(RuntimeError):
     """Raised when an authenticated MCP bearer names a patient that isn't in the registry.
 
@@ -697,7 +710,7 @@ async def get_lab_trends(limit: int = 10) -> str:
         lab_data = {"documents": docs, "total": len(docs)}
         return json.dumps({"source": "oncofiles", "lab_documents": lab_data})
     except Exception as e:
-        return json.dumps({"error": str(e), "hint": "Oncofiles MCP may not be available"})
+        return json.dumps({**_safe_mcp_error(e), "hint": "Oncofiles MCP may not be available"})
 
 
 @mcp.tool()
@@ -724,7 +737,7 @@ async def store_lab_values(document_id: int, lab_date: str, values_json: str) ->
         )
         return json.dumps(result)
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps(_safe_mcp_error(e))
 
 
 @mcp.tool()
@@ -745,7 +758,7 @@ async def get_lab_trends_by_parameter(parameter: str, limit: int = 20) -> str:
         result = await oncofiles_client.get_lab_trends_data(parameter, limit, token=_tok)
         return json.dumps(result)
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps(_safe_mcp_error(e))
 
 
 @mcp.tool()
@@ -767,7 +780,7 @@ async def search_documents(text: str, category: str | None = None) -> str:
         results = {"documents": docs, "total": len(docs)}
         return json.dumps({"query": text, "category": category, "results": results})
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps(_safe_mcp_error(e))
 
 
 @mcp.tool()
@@ -778,9 +791,17 @@ async def get_patient_context() -> str:
     Returns:
         JSON with patient diagnosis, treatment, biomarkers (enriched from oncofiles), and hospitals.
     """
+    # Sprint 100 / #440 Pattern F — allowlist projection instead of raw
+    # model_dump. Drops patient_ids (rodné číslo), home_region (lat/lon),
+    # oncopanel_history (per-variant VAF + HGVS), agent_whitelist, paused,
+    # notification_policy — none of which a Claude/ChatGPT MCP connector
+    # needs for clinical reasoning. Biomarkers are still overlaid live
+    # from oncofiles below.
+    from .patient_context import public_patient_view
+
     _pid, _tok = _get_mcp_patient_token()
     patient = get_patient(_get_current_patient_id())
-    data = patient.model_dump()
+    data = public_patient_view(patient)
     try:
         genetic = await get_genetic_profile(_pid, token=_tok)
         data["biomarkers"] = genetic
@@ -820,7 +841,7 @@ async def view_document(file_id: str | None = None, document_id: int | str | Non
         result = await oncofiles_client.view_document(resolved_file_id, token=_tok)
         return json.dumps({"file_id": resolved_file_id, "content": result})
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps(_safe_mcp_error(e))
 
 
 @mcp.tool()
@@ -840,7 +861,7 @@ async def analyze_labs(file_id: str | None = None, limit: int = 10) -> str:
         result = await oncofiles_client.analyze_labs(file_id, limit, token=_tok)
         return json.dumps({"analysis": result})
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps(_safe_mcp_error(e))
 
 
 @mcp.tool()
@@ -860,7 +881,7 @@ async def compare_labs(file_id_a: str, file_id_b: str) -> str:
         result = await oncofiles_client.compare_labs(file_id_a, file_id_b, token=_tok)
         return json.dumps({"comparison": result})
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps(_safe_mcp_error(e))
 
 
 @mcp.tool()
@@ -1190,7 +1211,7 @@ async def list_patients() -> str:
         result = await oncofiles_client.list_patients(token=_tok)
         return json.dumps(result, default=str)
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps(_safe_mcp_error(e))
 
 
 @mcp.tool()
@@ -1212,7 +1233,7 @@ async def select_patient(patient_slug: str) -> str:
         result = await oncofiles_client.select_patient(patient_slug, token=_tok)
         return json.dumps(result, default=str)
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps(_safe_mcp_error(e))
 
 
 # ── Health check ────────────────────────────────

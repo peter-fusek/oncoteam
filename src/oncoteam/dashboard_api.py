@@ -66,7 +66,7 @@ from .request_context import (
     set_correlation_id as _set_correlation_id,
 )
 
-VERSION = "0.91.0"
+VERSION = "0.92.0"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
@@ -2682,17 +2682,19 @@ async def api_detail(request: Request) -> JSONResponse:
                     source["gdrive_url"] = f"https://drive.google.com/file/d/{gdrive_id}/view"
 
         elif detail_type == "biomarker":
-            # Static from patient context
-            patient_data = _get_patient_for_request(request).model_dump()
-            biomarkers = patient_data.get("biomarkers", {})
+            # Sprint 100 / #440 Pattern F — direct attribute access instead
+            # of full model_dump(). Only 3 fields are consumed here; the
+            # dump was strictly wasteful exposure surface.
+            profile_for_biomarker = _get_patient_for_request(request)
+            biomarkers = dict(profile_for_biomarker.biomarkers)
             value = biomarkers.get(detail_id, biomarkers.get(detail_id.replace(" ", "_")))
             data = {
                 "name": detail_id,
                 "value": str(value) if value is not None else "unknown",
                 "biomarkers": biomarkers,
-                "excluded_therapies": patient_data.get("excluded_therapies", {}),
-                "diagnosis": patient_data.get("diagnosis_description"),
-                "staging": patient_data.get("staging"),
+                "excluded_therapies": dict(profile_for_biomarker.excluded_therapies),
+                "diagnosis": profile_for_biomarker.diagnosis_description,
+                "staging": profile_for_biomarker.staging,
             }
 
         elif detail_type == "protocol_section":

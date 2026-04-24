@@ -588,3 +588,67 @@ def test_a1_boot_check_dashboard_api_key_required_on_http():
         ]:
             sys.modules.pop(mod, None)
         importlib.import_module("oncoteam.server")
+
+
+# ── Sprint 100 S2 — Patterns E + F ────────────────────────────────────
+
+
+def test_pattern_e_safe_mcp_error_sanitizes_upstream_exception():
+    """Pattern E — _safe_mcp_error strips raw exception text.
+
+    The previous `json.dumps({"error": str(e)})` pattern returned the full
+    exception message to any MCP caller that tripped a tool, which could
+    include oncofiles doc IDs, other patients' UUIDs, or internal URLs.
+    Now collapses to a stable category + exception class.
+    """
+    from oncoteam.server import _safe_mcp_error
+
+    class _LeakyError(RuntimeError):
+        """Fake oncofiles exception carrying cross-tenant info."""
+
+    payload = _safe_mcp_error(
+        _LeakyError("patient_id=e5g not authorized for doc_id=12345 at /internal/x")
+    )
+    assert payload == {"error": "upstream_unavailable", "kind": "_LeakyError"}
+    # Negative: the raw exception text must not appear anywhere.
+    blob = str(payload)
+    assert "e5g" not in blob
+    assert "12345" not in blob
+    assert "/internal/x" not in blob
+
+
+def test_pattern_f_public_patient_view_strips_sensitive_fields():
+    """Pattern F — public_patient_view is the shared allowlist helper.
+
+    Mirrors the /api/detail/patient allowlist Sprint 99 built (#438 bug 4)
+    so the MCP get_patient_context tool and any future bearer-authed surface
+    get the same sanitized projection.
+    """
+    from oncoteam.patient_context import get_patient, public_patient_view
+
+    view = public_patient_view(get_patient("q1b"))
+    # The sensitive fields must not appear.
+    forbidden = {
+        "patient_ids",
+        "home_region",
+        "oncopanel_history",
+        "agent_whitelist",
+        "paused",
+        "notification_policy",
+        "enrollment_preference",
+        "active_therapies",
+    }
+    assert not (forbidden & set(view)), (
+        f"public_patient_view leaked sensitive fields: {forbidden & set(view)}"
+    )
+    # The clinical-profile fields MUST appear (otherwise the view is useless).
+    required = {
+        "patient_id",
+        "name",
+        "diagnosis_code",
+        "diagnosis_description",
+        "biomarkers",
+        "excluded_therapies",
+        "treatment_regimen",
+    }
+    assert required.issubset(set(view))
