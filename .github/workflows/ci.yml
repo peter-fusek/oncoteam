@@ -20,6 +20,20 @@ jobs:
       - run: uv run ruff check
       - run: uv run ruff format --check
 
+  tenant-isolation-grep:
+    # #435 Item 6 — fail the build if any non-test call site passes
+    # token=None without a `# tenant-exempt: <reason>` annotation. Prevents
+    # accidental re-introduction of the silent admin-bearer fallback that
+    # caused oncofiles#478. Patient-scoped callers must route through
+    # get_token_for_patient(patient_id); system-scoped callers must document
+    # why the untenanted scope is intentional.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --extra dev
+      - run: uv run python scripts/check_tenant_exempt.py
+
   test:
     runs-on: ubuntu-latest
     steps:

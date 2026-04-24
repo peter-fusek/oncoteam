@@ -134,21 +134,69 @@ def _get_mcp_patient_token() -> tuple[str, str | None]:
     return pid, get_patient_token(pid)
 
 
-def _get_current_patient_id() -> str:
-    """Get patient_id for the current MCP session.
+class _UnregisteredBearerPatientError(RuntimeError):
+    """Raised when an authenticated MCP bearer names a patient that isn't in the registry.
 
-    Resolves from the MCP session's bearer token via client_id claim.
-    Falls back to DEFAULT_PATIENT_ID for stdio transport or unauthenticated sessions.
+    Exposed so `_enforce_bearer_patient_match` and tests can assert on the
+    exact failure class instead of a generic RuntimeError (#435 Item 7).
+    """
+
+
+def _get_current_patient_id() -> str:
+    """Get patient_id for the current MCP session (#435 Item 7).
+
+    Resolves from the MCP session's bearer token via the `client_id` claim.
+    - stdio transport / no MCP request context → fall back to DEFAULT_PATIENT_ID
+      (local dev + unit tests only)
+    - authenticated HTTP session without client_id → **fail closed**, no silent
+      fallback to q1b — that was the exact anti-pattern oncofiles#478 fixed
+    - authenticated session whose client_id names an unregistered patient →
+      **fail closed**, raise `_UnregisteredBearerPatientError`
     """
     try:
         from fastmcp.server.dependencies import get_access_token
-
+    except ImportError:
+        return DEFAULT_PATIENT_ID  # fastmcp not installed (unit-test path)
+    try:
         token = get_access_token()
-        if token and token.client_id:
-            return token.client_id
-    except (ImportError, RuntimeError):
-        pass
-    return DEFAULT_PATIENT_ID
+    except RuntimeError:
+        return DEFAULT_PATIENT_ID  # Outside a request context (stdio)
+    if token is None:
+        return DEFAULT_PATIENT_ID  # Unauthenticated stdio-HTTP path
+    pid = token.client_id
+    if not pid:
+        raise _UnregisteredBearerPatientError(
+            "MCP bearer has no client_id claim — refusing to default to "
+            f"{DEFAULT_PATIENT_ID!r}. Configure MCP_BEARER_TOKEN_<ID> or an "
+            "OAuth client that issues a patient-scoped client_id."
+        )
+    if pid != DEFAULT_PATIENT_ID:
+        from .patient_context import list_patient_ids
+
+        if pid not in list_patient_ids():
+            raise _UnregisteredBearerPatientError(
+                f"MCP bearer names unregistered patient {pid!r} — refusing "
+                "rather than falling back to default (see #435 Item 7)."
+            )
+    return pid
+
+
+def _enforce_bearer_patient_match(explicit_patient_id: str | None) -> str:
+    """Assert an explicit patient_id tool argument matches the bearer (#435 Item 7).
+
+    Returns the resolved patient_id. If the caller passes an explicit
+    patient_id that diverges from the bearer's identity, raises — preventing
+    the confused-deputy case where a bearer for patient A is used to access
+    patient B's data. No current MCP tool accepts a patient_id arg, but this
+    helper is the contract any new multi-patient tool must adopt.
+    """
+    bearer_pid = _get_current_patient_id()
+    if explicit_patient_id and explicit_patient_id != bearer_pid:
+        raise _UnregisteredBearerPatientError(
+            f"MCP bearer is for {bearer_pid!r} but tool was called with "
+            f"patient_id={explicit_patient_id!r} — refusing cross-tenant call."
+        )
+    return bearer_pid
 
 
 mcp = FastMCP(

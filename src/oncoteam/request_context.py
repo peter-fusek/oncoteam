@@ -58,6 +58,51 @@ def reset_tenant_isolation_stats() -> None:
     _ADMIN_FALLBACK_COUNTS.clear()
 
 
+# ── Agent-state key discipline (#435 Item 5) ──────────────────────────
+#
+# The oncofiles `agent_state` table holds arbitrary key/value pairs that
+# scheduler tasks, audit logs, and runtime state share. Before #435 the
+# keys were ad-hoc strings built with f-strings at the call site — easy
+# to accidentally forget the `patient_id` prefix and land a cross-tenant
+# leak. This helper enforces that every caller declares *exactly* one of
+# two scopes:
+#
+#   - `patient_id=<id>`  — patient-scoped (most keys, e.g. funnel_cards:q1b)
+#   - `system=True`      — untenanted (patient_registry:last_snapshot, role_map)
+#
+# Passing neither or both raises — failure is loud at the call site, so a
+# forgotten patient_id becomes a pytest failure, not a silent q1b read.
+# See `memory/feedback_fail-closed-on-missing-tenant.md`.
+
+
+def build_agent_state_key(
+    prefix: str,
+    *,
+    patient_id: str | None = None,
+    system: bool = False,
+    extra: tuple[str, ...] = (),
+) -> str:
+    """Build a patient-scoped OR system-scoped agent_state key (#435 Item 5).
+
+    Exactly one of `patient_id` or `system=True` must be supplied; the helper
+    raises if the caller is ambiguous. Returns a colon-joined string matching
+    the existing wire format (`prefix:patient_id:extras...` or `prefix:extras...`
+    for system keys), so adopting the helper is non-breaking for keys already
+    in flight.
+    """
+    has_patient = bool(patient_id)
+    if has_patient == system:
+        raise ValueError(
+            "build_agent_state_key requires exactly one of patient_id=<id> or "
+            f"system=True (got patient_id={patient_id!r}, system={system})"
+        )
+    parts: list[str] = [prefix]
+    if has_patient:
+        parts.append(patient_id or "")  # already validated non-empty above
+    parts.extend(extra)
+    return ":".join(parts)
+
+
 def get_token_for_patient(patient_id: str) -> str | None:
     """Get the oncofiles bearer token for a patient. None = default (q1b)."""
     if not patient_id or patient_id == "q1b":

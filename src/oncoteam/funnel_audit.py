@@ -44,11 +44,17 @@ DEFAULT_PROPOSAL_TTL_DAYS = 30
 
 
 def _audit_key(patient_id: str, card_id: str) -> str:
-    return f"funnel_audit:{patient_id}:{card_id}"
+    # #435 Item 5 — build via helper so the patient-scope contract is
+    # enforced at call time (raises if patient_id is empty).
+    from .request_context import build_agent_state_key
+
+    return build_agent_state_key("funnel_audit", patient_id=patient_id, extra=(card_id,))
 
 
 def _cards_key(patient_id: str) -> str:
-    return f"funnel_cards:{patient_id}"
+    from .request_context import build_agent_state_key
+
+    return build_agent_state_key("funnel_cards", patient_id=patient_id)
 
 
 def _new_event_id() -> str:

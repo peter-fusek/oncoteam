@@ -2284,6 +2284,7 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
     started_at = time.time()
 
     try:
+        # tenant-exempt: system-scoped list-across-all-patients (#435 Item 6)
         resp = await oncofiles_client.list_patients(token=None)
     except Exception as e:
         logger.warning("patient_registry_sync: list_patients failed: %s", e)
@@ -2299,7 +2300,15 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
     gate2_ids = set(list_patient_ids())
     now_iso = datetime.now(UTC).isoformat()
 
-    prior_snapshot_raw = await _get_state("patient_registry:last_snapshot", token=None)
+    # #435 Item 5 — system-scoped key built via helper so the `system=True`
+    # declaration is explicit at the call site. Same wire-format as before.
+    from .request_context import build_agent_state_key
+
+    _registry_key = build_agent_state_key("patient_registry", system=True, extra=("last_snapshot",))
+    prior_snapshot_raw = await _get_state(
+        _registry_key,
+        token=None,  # tenant-exempt: system-scoped patient_registry_sync (#435)
+    )
     prior_snapshot: dict = {}
     raw_val = (
         prior_snapshot_raw.get("value")
@@ -2357,6 +2366,7 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
     # per-patient notification_policy.
     for entry in new_gate1_arrivals:
         signature = f"gate1_only:{entry['slug']}"
+        # tenant-exempt: system-scoped dedupe for cross-patient arrival alerts (#435)
         if await _already_notified("system", signature, token=None):
             continue
         msg = format_whatsapp_header(
@@ -2372,6 +2382,7 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
         )
         try:
             await _send_whatsapp(msg, recipient="caregiver", patient_id=None)
+            # tenant-exempt: system-scoped dedupe for cross-patient arrival alerts (#435)
             await _mark_notified("system", signature, token=None)
         except Exception as e:
             record_suppressed_error("patient_registry_sync", "whatsapp_push", e)
@@ -2388,7 +2399,7 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
                 output_summary="local oncoteam data preserved (soft-only deletion policy)",
                 status="warning",
                 tags=["sys:registry", "task:archive-review", f"patient:{slug}"],
-                token=None,
+                token=None,  # tenant-exempt: system-scoped archive audit (#435)
             )
         except Exception as e:
             record_suppressed_error("patient_registry_sync", "archive_log", e)
@@ -2438,6 +2449,7 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
             "current_count": current_count,
             "duration_ms": duration_ms,
         }
+        # tenant-exempt: system-scoped patient_registry_sync run log (#435)
         await _log_task("patient_registry_sync", result, token=None)
         return result
 
@@ -2448,7 +2460,11 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
         "gate2_ok_count": len(gate2_ok),
         "archived_count": len(archived_slugs),
     }
-    await _set_state("patient_registry:last_snapshot", snapshot, token=None)
+    await _set_state(
+        _registry_key,
+        snapshot,
+        token=None,  # tenant-exempt: system-scoped patient_registry_sync (#435)
+    )
 
     duration_ms = int((time.time() - started_at) * 1000)
     result = {
@@ -2467,6 +2483,7 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
         len(new_gate1_arrivals),
         duration_ms,
     )
+    # tenant-exempt: system-scoped patient_registry_sync run log (#435)
     await _log_task("patient_registry_sync", result, token=None)
     return result
 

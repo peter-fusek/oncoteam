@@ -9,35 +9,47 @@ See `memory/feedback_fail-closed-on-missing-tenant.md` for the rule and
 `docs/incidents/2026-04-24-cross-tenant-isolation-audit.md` for the
 postmortem that triggered the sprint.
 
-Scenarios landed in Session 1 (skeleton — rest land in Session 2):
+Scenarios landed:
+
+Session 1:
 - missing patient_id → 400 (Item 1 backend enforcement)
 - cache keys for patient A and patient B are disjoint (Item 4)
 - `get_token_for_patient` admin-bearer fallback bumps the counter (Item 2)
 
-Session 2 will add:
-- session-forge: authenticated-as-q1b cannot forge patient_id=e5g on any
-  patient-scoped endpoint (Item 3 + Item 8)
-- MCP bearer mismatch: bearer for e5g cannot call tools with patient_id=q1b
+Session 2:
+- `build_agent_state_key` requires patient-OR-system scope (Item 5)
+- MCP bearer-vs-arg mismatch rejected by `_enforce_bearer_patient_match`
   (Item 7)
-- agent_state cross-patient invisibility (Item 5)
-- rate-limiter bucket isolation
+- MCP bearer with unregistered `client_id` fails closed (Item 7)
+- Rate-limiter buckets are disjoint per patient
+- Nuxt proxy session-forge scenario documented (Item 3 — full integration
+  test deferred to E2E when Vitest is introduced to the dashboard)
 """
 
 from __future__ import annotations
+
+import collections
 
 import pytest
 from starlette.datastructures import Headers, QueryParams
 
 from oncoteam.dashboard_api import (
     _cache_key,
+    _check_rate_limit,
     _get_patient_id,
     _MissingPatientIdError,
+    _rate_timestamps,
     api_timeline,
 )
 from oncoteam.request_context import (
+    build_agent_state_key,
     get_tenant_isolation_stats,
     get_token_for_patient,
     reset_tenant_isolation_stats,
+)
+from oncoteam.server import (
+    _enforce_bearer_patient_match,
+    _UnregisteredBearerPatientError,
 )
 
 # ── Fixtures ──────────────────────────────────────────────────────────
@@ -181,3 +193,92 @@ def test_empty_patient_id_does_not_trigger_fallback_counter():
     """
     assert get_token_for_patient("") is None
     assert get_tenant_isolation_stats()["admin_bearer_fallbacks_total"] == 0
+
+
+# ── Item 5 — build_agent_state_key scope discipline ───────────────────
+
+
+def test_build_agent_state_key_patient_scoped():
+    """Patient-scoped keys include the patient_id segment."""
+    key = build_agent_state_key("funnel_cards", patient_id="q1b")
+    assert key == "funnel_cards:q1b"
+    key_extra = build_agent_state_key("funnel_audit", patient_id="e5g", extra=("card_123",))
+    assert key_extra == "funnel_audit:e5g:card_123"
+
+
+def test_build_agent_state_key_system_scoped():
+    """System-scoped keys skip the patient_id segment (wire-compatible)."""
+    assert build_agent_state_key("role_map", system=True) == "role_map"
+    assert (
+        build_agent_state_key("patient_registry", system=True, extra=("last_snapshot",))
+        == "patient_registry:last_snapshot"
+    )
+
+
+def test_build_agent_state_key_rejects_missing_scope():
+    """Neither patient_id nor system=True → raise.
+
+    This is the fail-closed guard that stops a new caller from silently
+    writing an untenanted key that should have been patient-scoped.
+    """
+    with pytest.raises(ValueError, match="requires exactly one"):
+        build_agent_state_key("somekey")
+
+
+def test_build_agent_state_key_rejects_double_scope():
+    """Supplying both patient_id and system=True → raise."""
+    with pytest.raises(ValueError, match="requires exactly one"):
+        build_agent_state_key("somekey", patient_id="q1b", system=True)
+
+
+# ── Item 7 — MCP bearer-vs-arg match ──────────────────────────────────
+
+
+def test_enforce_bearer_patient_match_rejects_divergent_arg(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Explicit patient_id arg ≠ bearer identity → refuse (confused-deputy).
+
+    Even though no current MCP tool accepts a patient_id arg, this helper
+    is the contract any new multi-patient tool must adopt. Proves the
+    cross-tenant escalation path is closed.
+    """
+    # Pretend the bearer resolves to q1b.
+    monkeypatch.setattr("oncoteam.server._get_current_patient_id", lambda: "q1b")
+
+    # Matching arg → returns bearer pid.
+    assert _enforce_bearer_patient_match("q1b") == "q1b"
+    # None arg → returns bearer pid (back-compat with tools that don't pass one).
+    assert _enforce_bearer_patient_match(None) == "q1b"
+
+    # Diverging arg → raises.
+    with pytest.raises(_UnregisteredBearerPatientError, match="cross-tenant"):
+        _enforce_bearer_patient_match("e5g")
+
+
+# ── Rate-limiter bucket isolation ─────────────────────────────────────
+
+
+def test_rate_limiter_buckets_are_disjoint_across_patients():
+    """Exhausting one patient's bucket must not deny other patients.
+
+    The rate limiter is per-patient (plus a global safety valve). If a
+    single patient's traffic somehow exhausted another patient's bucket,
+    that would be both a cross-tenant leak (observing A's traffic pattern)
+    and a denial of service. Assert the two are independent.
+    """
+    # Clear in-memory buckets so the test is deterministic regardless
+    # of what earlier tests did.
+    _rate_timestamps.clear()
+
+    # Drain q1b's bucket (120 req/window).
+    for _ in range(120):
+        assert _check_rate_limit("q1b")
+    # q1b is now at its per-patient ceiling.
+    assert not _check_rate_limit("q1b")
+
+    # e5g's bucket must still accept traffic.
+    assert _check_rate_limit("e5g")
+    assert isinstance(_rate_timestamps["e5g"], collections.deque)
+    assert len(_rate_timestamps["e5g"]) == 1
+    assert len(_rate_timestamps["q1b"]) == 120

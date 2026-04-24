@@ -152,6 +152,18 @@ uv run oncoteam-mcp    # stdio mode
 - `PatientProfile.agent_whitelist` — empty list = all agents (backward compat). Scheduler at `scheduler.py:123` skips agents not in whitelist. Non-oncology patients (e.g., e5g) should whitelist only relevant agents.
 - Patient e5g (Peter F.) is a general health patient (Z00.0), NOT oncology. Never apply oncology protocols/agents to non-oncology patients. Check `agent_whitelist` before adding new agents.
 
+### Cross-tenant isolation contract (Sprint 98 / #435)
+
+**Rule**: any code path that needs a `patient_id` and finds none MUST refuse, not fall back to a default. See `docs/incidents/2026-04-24-cross-tenant-isolation-audit.md` + `memory/feedback_fail-closed-on-missing-tenant.md` for context.
+
+- `dashboard_api._get_patient_id` raises `_MissingPatientIdError` when `?patient_id=` is missing. `server._auth_wrap` catches it and emits a CORS-aware 400 with `code: "patient_scope_missing"`. Endpoints that don't need a patient scope (`/api/status`, `/api/diagnostics`, `/api/patients`, `/api/autonomous*`, `/api/agents*`, `/api/agent-runs`, `/api/whatsapp/status`) simply don't call `_get_patient_id`.
+- `request_context.get_token_for_patient` logs a structured warning + bumps `_ADMIN_FALLBACK_COUNTS` when a non-q1b patient has no registered per-patient token. Counter exposed at `/api/diagnostics.tenant_isolation.admin_bearer_fallbacks_total`.
+- `request_context.build_agent_state_key(prefix, *, patient_id=..., system=True, extra=...)` is the **only** blessed way to construct `agent_state` keys. Exactly one of `patient_id` or `system=True` must be supplied; raises on ambiguity. Wire-format is `prefix:patient_id:extras...` (patient-scoped) or `prefix:extras...` (system-scoped) — adopting the helper is non-breaking for keys already in flight. Existing hotspots migrated: `funnel_audit._audit_key/_cards_key`, `autonomous_tasks.run_patient_registry_sync` (via `patient_registry:last_snapshot` system key).
+- Nuxt proxy `dashboard/server/api/oncoteam/[...path].ts` rejects **both** forged and missing `patient_id` when the session has ≥1 allowed patient. System-scoped paths live in the `SYSTEM_SCOPED_PATHS` allowlist — keep it narrow.
+- MCP `_get_current_patient_id()` raises `_UnregisteredBearerPatientError` when the bearer lacks a `client_id` claim OR names an unregistered patient. Stdio / unit-test path still falls back to `DEFAULT_PATIENT_ID`. `_enforce_bearer_patient_match(explicit_patient_id)` is the contract any future MCP tool that accepts an explicit `patient_id` arg must adopt.
+- CI `tenant-isolation-grep` job (`.github/workflows/ci.yml`) runs `scripts/check_tenant_exempt.py` — fails any PR that introduces a `token=None` call site without a `# tenant-exempt: <reason>` comment on the same line or the line above. The only allowlisted callers today live in `autonomous_tasks.run_patient_registry_sync`.
+- Regression gate: `tests/test_tenant_isolation.py` (20 scenarios). Every item in #435 has a test. Don't land a change that touches these surfaces without ensuring the suite stays green.
+
 ### General Health Patient Protocol (e5g / Peter F.)
 
 **Critical**: `build_system_prompt()` in `autonomous.py` currently injects oncology clinical protocol (mFOLFOX6 thresholds, dose mods, treatment milestones, NCCN guidelines) for ALL patients including e5g. This MUST be made conditional on patient profile — e5g should get the general health protocol below instead.
