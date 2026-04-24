@@ -44,7 +44,11 @@ export default defineNuxtConfig({
         clientSecret: process.env.NUXT_OAUTH_GOOGLE_CLIENT_SECRET || '',
       },
     },
-    allowedEmails: process.env.NUXT_ALLOWED_EMAILS || '',
+    // allowedEmails removed (#443 Phase D) — NUXT_ROLE_MAP is now the
+    // sole source of truth. The dual-list architecture allowed emails to
+    // be in allowedEmails without a role_map entry, which the pre-fix
+    // silent fallback in google.get.ts converted into Erika-access
+    // sessions. Collapsed into role_map existence check.
     roleMap: process.env.NUXT_ROLE_MAP || '{}',
     twilioAccountSid: process.env.NUXT_TWILIO_ACCOUNT_SID || '',
     twilioAuthToken: process.env.NUXT_TWILIO_AUTH_TOKEN || '',

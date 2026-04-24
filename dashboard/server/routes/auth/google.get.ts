@@ -5,36 +5,39 @@ export default defineOAuthGoogleEventHandler({
     scope: ['openid', 'email', 'profile'],
   },
   async onSuccess(event, { user }) {
-    const config = useRuntimeConfig()
-    const allowed = config.allowedEmails.split(',').map((e: string) => e.trim())
-
-    if (!allowed.includes(user.email)) {
-      throw createError({ statusCode: 403, message: 'Not authorized' })
-    }
-
+    // #443 / Phase D — NUXT_ROLE_MAP is now the SOLE source of truth for
+    // who can sign in. The previous dual-list architecture (
+    // NUXT_ALLOWED_EMAILS gate + NUXT_ROLE_MAP scope) let the two drift
+    // out of sync — e.g. peter.fusek@instarea.com was in allowedEmails
+    // but never in role_map, and the pre-fix silent fallback granted it
+    // Erika's session on every sign-in. Collapsing to a single list
+    // removes that class of bug: if your email has a role_map entry,
+    // you can sign in; otherwise 403.
     const roleMap = getRoleMapSync()
     const userConfig = roleMap[user.email]
-    // #442 red-team finding — fail closed on missing role-map entry.
-    // Previously silently fell back to { roles: ['advocate'], patient_id: 'q1b' }
-    // — so any Google account in NUXT_ALLOWED_EMAILS but demoted / never
-    // added to NUXT_ROLE_MAP got Erika's full clinical view. Classic
-    // silent-fallback class (#436 / #438 / #440 Patterns A+C) that the
-    // Sprints 98-100 sweep missed in the Nuxt middleware layer.
     if (!userConfig) {
-      throw createError({
-        statusCode: 403,
-        message: 'No patient access configured for this account. Contact your administrator.',
-      })
+      console.warn(
+        `[auth/google] Sign-in rejected: no NUXT_ROLE_MAP entry for ${user.email}`,
+      )
+      // #443 Phase E — dedicated landing page instead of silent bounce
+      // or generic 403 error boundary. The page explains who to contact.
+      return sendRedirect(
+        event,
+        `/auth/forbidden?email=${encodeURIComponent(user.email)}`,
+      )
     }
     const roles = userConfig.roles || ['advocate']
     // Patient scoping: no silent q1b fallback; userConfig must explicitly
     // carry patient_id(s) via patient_roles (new #422 shape) or patient_ids.
     const visibleIds = [...new Set(visiblePatientIds(userConfig))]
     if (visibleIds.length === 0) {
-      throw createError({
-        statusCode: 403,
-        message: 'No patient access configured for this account. Contact your administrator.',
-      })
+      console.warn(
+        `[auth/google] Sign-in rejected: role_map entry for ${user.email} has no patient scope`,
+      )
+      return sendRedirect(
+        event,
+        `/auth/forbidden?email=${encodeURIComponent(user.email)}`,
+      )
     }
     const patientId = userConfig.patient_id || visibleIds[0]
     const patientIds = visibleIds

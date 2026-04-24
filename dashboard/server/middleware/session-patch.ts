@@ -51,16 +51,16 @@ export default defineEventHandler(async (event) => {
   // #442 red-team finding — fail closed on missing role-map entry.
   // The previous `|| { roles: ['advocate'] }` default combined with the
   // `patient_id || 'q1b'` fallback below granted any session-holder whose
-  // email was removed from NUXT_ROLE_MAP (or never added, yet still in
-  // NUXT_ALLOWED_EMAILS) a full Erika session. This was the silent-
-  // fallback class (#436 / #438 / #440 Patterns A+C) the Sprints 98-100
-  // sweep missed in the Nuxt session layer.
+  // email was removed from NUXT_ROLE_MAP a full Erika session. This was
+  // the silent-fallback class (#436 / #438 / #440 Patterns A+C) the
+  // Sprints 98-100 sweep missed in the Nuxt session layer. Post-#443
+  // Phase D, role_map is the single source of truth for authorization.
   if (!userConfig) {
     // Clear the session entirely so the next navigation routes through
     // /login → OAuth callback → 403. Throwing 403 here creates a redirect
     // loop because this middleware runs on every page request.
     await clearUserSession(event)
-    return sendRedirect(event, '/login?error=no_access')
+    return sendRedirect(event, `/auth/forbidden?email=${encodeURIComponent(email)}`)
   }
 
   const roles = userConfig.roles || ['advocate']
@@ -71,7 +71,7 @@ export default defineEventHandler(async (event) => {
     // Role-map entry exists but declares no patient access — same fail-
     // closed treatment as a missing entry.
     await clearUserSession(event)
-    return sendRedirect(event, '/login?error=no_access')
+    return sendRedirect(event, `/auth/forbidden?email=${encodeURIComponent(email)}`)
   }
   const patientId = userConfig.patient_id || visibleIds[0]
   const patientIds = [...new Set(visibleIds)]
