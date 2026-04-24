@@ -16,13 +16,42 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const requestedPatientId = query.patient_id as string | undefined
   const allowedPatientIds = (session.user as { patientIds?: string[] }).patientIds || []
+  const path = getRouterParam(event, 'path') || ''
+
+  // Endpoints that are system-scoped (no patient_id needed). Kept narrow on
+  // purpose — anything not in this list must carry an explicit patient_id so
+  // the backend stays fail-closed per oncoteam#435 Item 3.
+  const SYSTEM_SCOPED_PATHS = new Set([
+    'status',
+    'diagnostics',
+    'agents',
+    'patients',
+    'autonomous',
+    'autonomous/cost',
+    'autonomous/status',
+    'whatsapp/status',
+    'agent-runs',
+  ])
+  const isSystemScoped =
+    SYSTEM_SCOPED_PATHS.has(path) ||
+    path.startsWith('agents/') // /agents/{id}/runs, /agents/{id}/config
+
   if (requestedPatientId && allowedPatientIds.length > 0 && !allowedPatientIds.includes(requestedPatientId)) {
     throw createError({ statusCode: 403, message: 'Access denied to patient' })
   }
+  if (!requestedPatientId && !isSystemScoped && allowedPatientIds.length > 0) {
+    // Session has a patient scope but the browser request didn't carry one —
+    // reject here so a mis-wired composable can never silently read whichever
+    // patient the backend would default to. Defense-in-depth complement to
+    // oncoteam#435 Item 1 (backend raises 400) and feedback_fail-closed-
+    // on-missing-tenant.md.
+    throw createError({
+      statusCode: 400,
+      message: 'patient_id query parameter is required for patient-scoped endpoints',
+    })
+  }
 
   const config = useRuntimeConfig()
-  const path = getRouterParam(event, 'path') || ''
-
   const backendUrl = `${config.oncoteamApiUrl}/api/${path}`
   const qs = new URLSearchParams(query as Record<string, string>).toString()
   const url = qs ? `${backendUrl}?${qs}` : backendUrl

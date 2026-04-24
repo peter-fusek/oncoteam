@@ -11,7 +11,7 @@ from oncoteam.dashboard_api import api_weight
 
 
 class FakeRequest:
-    def __init__(self, method: str = "GET", query: str = ""):
+    def __init__(self, method: str = "GET", query: str = "patient_id=q1b"):
         from starlette.datastructures import QueryParams
 
         self.method = method
@@ -149,7 +149,7 @@ async def test_api_weight_7pct_loss_gets_dietitian_referral(mock_list):
         ],
         [],
     ]
-    request = FakeRequest("GET", query="lang=en")
+    request = FakeRequest("GET", query="patient_id=q1b&lang=en")
     response = await api_weight(request)
     data = json.loads(response.body)
 
@@ -177,7 +177,7 @@ async def test_api_weight_10pct_loss_gets_enteral_nutrition(mock_list):
         ],
         [],
     ]
-    request = FakeRequest("GET", query="lang=en")
+    request = FakeRequest("GET", query="patient_id=q1b&lang=en")
     response = await api_weight(request)
     data = json.loads(response.body)
 
@@ -239,7 +239,7 @@ async def test_toxicity_post_accepts_nutrition_fields(mock_list, mock_add):
         def __init__(self):
             from starlette.datastructures import QueryParams
 
-            self.query_params = QueryParams("")
+            self.query_params = QueryParams("patient_id=q1b")
 
         async def body(self):
             return json.dumps(

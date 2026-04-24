@@ -1224,6 +1224,16 @@ def _auth_wrap(handler):
         _token = _dashboard_mod._CURRENT_REQUEST.set(request)
         try:
             return await handler(request)
+        except _dashboard_mod._MissingPatientIdError as exc:
+            # #435 Item 1 — fail closed when tenant scope is missing on a
+            # patient-scoped endpoint. Emit a CORS-aware 400 so the dashboard
+            # sees a clean error (not a 500) and so forged admin-key callers
+            # never silently read the default patient's data.
+            return _dashboard_mod._cors_json(
+                {"error": str(exc), "code": "patient_scope_missing"},
+                status_code=400,
+                request=request,
+            )
         finally:
             _dashboard_mod._CURRENT_REQUEST.reset(_token)
 

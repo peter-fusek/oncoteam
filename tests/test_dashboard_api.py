@@ -30,7 +30,7 @@ from oncoteam.dashboard_api import (
 
 def _make_request(
     path: str = "/api/test",
-    query_string: str = "",
+    query_string: str = "patient_id=q1b",
     origin: str = "https://dashboard.oncoteam.cloud",
 ) -> object:
     """Create a minimal Starlette-like Request stub."""
@@ -143,7 +143,7 @@ async def test_api_activity_returns_entries(mock_search):
 @patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
 async def test_api_activity_with_limit(mock_search):
     mock_search.return_value = {"entries": []}
-    request = _make_request("/api/activity", "limit=5")
+    request = _make_request("/api/activity", "patient_id=q1b&limit=5")
     response = await api_activity(request)
     data = json.loads(response.body)
 
@@ -406,7 +406,7 @@ async def test_api_timeline_empty_when_both_sources_empty(mock_list, mock_journe
 
 @pytest.mark.anyio
 async def test_api_patient_returns_profile():
-    request = _make_request("/api/patient", query_string="lang=en")
+    request = _make_request("/api/patient", query_string="patient_id=q1b&lang=en")
     response = await api_patient(request)
     data = json.loads(response.body)
 
@@ -427,7 +427,7 @@ async def test_api_patient_has_cors():
 
 @pytest.mark.anyio
 async def test_api_patient_includes_therapy_categories():
-    request = _make_request("/api/patient", query_string="lang=en")
+    request = _make_request("/api/patient", query_string="patient_id=q1b&lang=en")
     response = await api_patient(request)
     data = json.loads(response.body)
 
@@ -443,7 +443,7 @@ async def test_api_patient_includes_therapy_categories():
 
 @pytest.mark.anyio
 async def test_api_patient_therapy_categories_sk():
-    request = _make_request("/api/patient", query_string="lang=sk")
+    request = _make_request("/api/patient", query_string="patient_id=q1b&lang=sk")
     response = await api_patient(request)
     data = json.loads(response.body)
 
@@ -454,7 +454,7 @@ async def test_api_patient_therapy_categories_sk():
 async def test_api_patient_exposes_oncopanel_summary():
     """#415 — physician UI needs every variant + test metadata surfaced from
     the structured oncopanel (not only the DDR subset)."""
-    request = _make_request("/api/patient", query_string="lang=en")
+    request = _make_request("/api/patient", query_string="patient_id=q1b&lang=en")
     response = await api_patient(request)
     data = json.loads(response.body)
 
@@ -587,7 +587,7 @@ async def test_api_research_false_hope_detection(mock_list):
 @patch("oncoteam.api_research.oncofiles_client.list_research_entries", new_callable=AsyncMock)
 async def test_api_research_with_source_filter(mock_list):
     mock_list.return_value = {"entries": []}
-    request = _make_request("/api/research", "source=clinicaltrials&limit=5")
+    request = _make_request("/api/research", "patient_id=q1b&source=clinicaltrials&limit=5")
     response = await api_research(request)
     data = json.loads(response.body)
 
@@ -981,7 +981,7 @@ async def test_api_activity_filters_test_data_by_default(mock_search):
 @patch("oncoteam.dashboard_api.oncofiles_client.search_activity_log", new_callable=AsyncMock)
 async def test_api_activity_shows_test_data_when_requested(mock_search):
     mock_search.return_value = MOCK_ACTIVITY_WITH_TEST
-    request = _make_request("/api/activity", "show_test=true")
+    request = _make_request("/api/activity", "patient_id=q1b&show_test=true")
     response = await api_activity(request)
     data = json.loads(response.body)
 
@@ -1179,7 +1179,7 @@ async def test_api_sessions_classifies_types(mock_search):
 @patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
 async def test_api_sessions_filters_by_type(mock_search):
     mock_search.return_value = MOCK_SESSIONS_MIXED
-    request = _make_request("/api/sessions", query_string="type=clinical")
+    request = _make_request("/api/sessions", query_string="patient_id=q1b&type=clinical")
     response = await api_sessions(request)
     data = json.loads(response.body)
 
@@ -1193,7 +1193,7 @@ async def test_api_sessions_filters_by_type(mock_search):
 @patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
 async def test_api_sessions_filters_technical(mock_search):
     mock_search.return_value = MOCK_SESSIONS_MIXED
-    request = _make_request("/api/sessions", query_string="type=technical")
+    request = _make_request("/api/sessions", query_string="patient_id=q1b&type=technical")
     response = await api_sessions(request)
     data = json.loads(response.body)
 

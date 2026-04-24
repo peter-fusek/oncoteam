@@ -21,7 +21,7 @@ _CB_CLOSED = {
 }
 
 
-def _make_request(query_string: str = "") -> object:
+def _make_request(query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:

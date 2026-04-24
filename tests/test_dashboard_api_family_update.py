@@ -11,7 +11,7 @@ from oncoteam.dashboard_api import _translate_for_family, api_family_update
 
 
 class FakeRequest:
-    def __init__(self, method: str = "GET", query: str = "", body: bytes = b""):
+    def __init__(self, method: str = "GET", query: str = "patient_id=q1b", body: bytes = b""):
         from starlette.datastructures import QueryParams
 
         self.method = method
@@ -97,7 +97,7 @@ async def test_api_family_update_post_generates_sk(mock_list, mock_log):
 async def test_api_family_update_post_generates_en(mock_list, mock_log):
     mock_list.return_value = []
     mock_log.return_value = {"id": 1}
-    request = FakeRequest("POST", query="lang=en", body=b"{}")
+    request = FakeRequest("POST", query="patient_id=q1b&lang=en", body=b"{}")
     response = await api_family_update(request)
     data = json.loads(response.body)
 

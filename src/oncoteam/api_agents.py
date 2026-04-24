@@ -20,7 +20,12 @@ from .config import (
     ONCOFILES_MCP_URL,
 )
 from .locale import get_lang, resolve
-from .request_context import get_token_for_patient as _get_token_for_patient
+from .request_context import (
+    get_tenant_isolation_stats,
+)
+from .request_context import (
+    get_token_for_patient as _get_token_for_patient,
+)
 
 _logger = logging.getLogger("oncoteam.api_agents")
 
@@ -405,6 +410,7 @@ async def api_diagnostics(request: Request) -> JSONResponse:
             "lab_sync_stale": lab_sync_stale,
             "whisper": _get_whisper_diagnostics(),
             "suppressed_errors": get_suppressed_errors()[-10:],
+            "tenant_isolation": get_tenant_isolation_stats(),
         }
     )
 

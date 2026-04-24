@@ -10,7 +10,7 @@ import pytest
 from oncoteam.dashboard_api import _briefing_summary, api_briefings, api_protocol
 
 
-def _make_request(query_string: str = "") -> object:
+def _make_request(query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:
@@ -209,7 +209,7 @@ async def test_api_briefings_returns_entries(mock_search):
 @patch("oncoteam.dashboard_api.oncofiles_client.search_conversations", new_callable=AsyncMock)
 async def test_api_briefings_with_limit(mock_search):
     mock_search.return_value = {"entries": []}
-    request = _make_request("limit=5")
+    request = _make_request("patient_id=q1b&limit=5")
     await api_briefings(request)
     assert mock_search.call_count == 2  # briefings + alerts
 

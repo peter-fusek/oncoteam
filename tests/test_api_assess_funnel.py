@@ -10,7 +10,7 @@ import pytest
 from oncoteam.api_research import api_assess_funnel
 
 
-def _make_post_request(body: dict, query_string: str = "") -> object:
+def _make_post_request(body: dict, query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:

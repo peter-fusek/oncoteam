@@ -9,16 +9,16 @@ import pytest
 from oncoteam.dashboard_api import api_agent_config
 
 
-def _make_request(path_params: dict | None = None) -> object:
+def _make_request(path_params: dict | None = None, query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:
-        def __init__(self, params: dict | None):
-            self.query_params = QueryParams("")
+        def __init__(self, params: dict | None, query: str):
+            self.query_params = QueryParams(query)
             self.headers = Headers({"origin": "https://dashboard.oncoteam.cloud"})
             self.path_params = params or {}
 
-    return FakeRequest(path_params)
+    return FakeRequest(path_params, query_string)
 
 
 @pytest.mark.anyio

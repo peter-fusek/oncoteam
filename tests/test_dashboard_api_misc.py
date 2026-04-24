@@ -10,7 +10,7 @@ import pytest
 from oncoteam.dashboard_api import api_bug_report, api_resolve_patient, api_trigger_agent
 
 
-def _make_post_request(body: dict, query_string: str = "") -> object:
+def _make_post_request(body: dict, query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:

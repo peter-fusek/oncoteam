@@ -16,7 +16,7 @@ def _current_month() -> str:
     return datetime.now(UTC).strftime("%Y-%m")
 
 
-def _make_request(query_string: str = "") -> object:
+def _make_request(query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:

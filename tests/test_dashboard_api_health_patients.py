@@ -11,7 +11,7 @@ from oncoteam.api_admin import api_patients
 from oncoteam.dashboard_api import api_health_deep, api_preventive_care
 
 
-def _make_request(query_string: str = "") -> object:
+def _make_request(query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:

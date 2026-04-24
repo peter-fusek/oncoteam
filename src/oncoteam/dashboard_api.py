@@ -192,15 +192,30 @@ def _show_test(request: Request) -> bool:
     return request.query_params.get("show_test", "").lower() in ("true", "1", "yes")
 
 
+class _MissingPatientIdError(Exception):
+    """Raised when a patient-scoped endpoint is called without ?patient_id=.
+
+    Caught centrally in server._auth_wrap and converted to a CORS-aware 400.
+    Fail-closed rule from feedback_fail-closed-on-missing-tenant.md — never
+    silently fall back to a default when tenant scope is missing (#435 Item 1).
+    """
+
+
 def _get_patient_id(request: Request) -> str:
-    """Extract patient_id from query params. Defaults to Erika."""
-    return request.query_params.get("patient_id", DEFAULT_PATIENT_ID)
+    """Extract patient_id from query params. Raises when missing or empty.
+
+    Endpoints that don't need a patient scope (/api/status, /api/diagnostics,
+    /api/patients, etc.) must not call this helper.
+    """
+    pid = request.query_params.get("patient_id", "")
+    if not pid:
+        raise _MissingPatientIdError("patient_id query parameter is required")
+    return pid
 
 
 def _get_patient_for_request(request: Request):
-    """Get PatientProfile for the request's patient_id. Falls back to default."""
-    pid = _get_patient_id(request)
-    return get_patient(pid)
+    """Get PatientProfile for the request's patient_id. Raises if missing."""
+    return get_patient(_get_patient_id(request))
 
 
 # _get_token_for_patient — moved to request_context.py, imported above.

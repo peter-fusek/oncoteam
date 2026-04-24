@@ -10,7 +10,7 @@ import pytest
 from oncoteam.dashboard_api import api_protocol_cycles
 
 
-def _make_request(query_string: str = "") -> object:
+def _make_request(query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:

@@ -11,7 +11,7 @@ from oncoteam.dashboard_api import api_cumulative_dose
 
 
 class FakeRequest:
-    def __init__(self, query: str = ""):
+    def __init__(self, query: str = "patient_id=q1b"):
         from starlette.datastructures import QueryParams
 
         self.query_params = QueryParams(query)

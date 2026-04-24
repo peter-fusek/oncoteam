@@ -16,11 +16,11 @@ from oncoteam.dashboard_api import (
 
 
 class FakeRequest:
-    def __init__(self, method: str = "POST", body: bytes = b""):
+    def __init__(self, method: str = "POST", body: bytes = b"", query: str = "patient_id=q1b"):
         from starlette.datastructures import QueryParams
 
         self.method = method
-        self.query_params = QueryParams("")
+        self.query_params = QueryParams(query)
         self._body = body
         self.headers = {}
 

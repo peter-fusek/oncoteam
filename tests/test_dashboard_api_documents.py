@@ -10,7 +10,7 @@ import pytest
 from oncoteam.dashboard_api import api_documents
 
 
-def _make_request(query_string: str = "") -> object:
+def _make_request(query_string: str = "patient_id=q1b") -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:
@@ -70,7 +70,7 @@ async def test_documents_returns_list(mock_call):
 async def test_documents_with_filter(mock_call):
     mock_call.return_value = {"documents": []}
 
-    request = _make_request("filter=missing_ocr")
+    request = _make_request("patient_id=q1b&filter=missing_ocr")
     response = await api_documents(request)
     data = json.loads(response.body)
 
@@ -165,7 +165,7 @@ async def test_documents_category_routes_to_search(mock_search):
         ]
     }
 
-    request = _make_request("category=genetics&limit=5")
+    request = _make_request("patient_id=q1b&category=genetics&limit=5")
     response = await api_documents(request)
     data = json.loads(response.body)
 
@@ -184,7 +184,7 @@ async def test_documents_category_does_not_call_status_matrix(mock_search, mock_
     """When ?category= is provided, the status-matrix path must NOT be invoked."""
     mock_search.return_value = {"documents": []}
 
-    request = _make_request("category=pathology")
+    request = _make_request("patient_id=q1b&category=pathology")
     await api_documents(request)
 
     mock_search.assert_called_once()

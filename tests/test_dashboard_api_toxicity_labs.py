@@ -13,7 +13,7 @@ from oncoteam.dashboard_api import _normalize_lab_values, api_labs, api_toxicity
 class FakeRequest:
     """Minimal Starlette Request stub with method and body support."""
 
-    def __init__(self, method: str = "GET", query: str = "", body: bytes = b""):
+    def __init__(self, method: str = "GET", query: str = "patient_id=q1b", body: bytes = b""):
         from starlette.datastructures import QueryParams
 
         self.method = method
@@ -319,7 +319,7 @@ async def test_api_labs_nocache_bypasses_ttl_cache(mock_list):
     assert mock_list.call_count == 1
 
     # Third call WITH nocache=1 — must refetch
-    fresh = await api_labs(FakeRequest("GET", query="nocache=1&_t=123"))
+    fresh = await api_labs(FakeRequest("GET", query="patient_id=q1b&nocache=1&_t=123"))
     assert fresh.status_code == 200
     assert mock_list.call_count == 2
 

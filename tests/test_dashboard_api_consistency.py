@@ -27,7 +27,7 @@ from oncoteam.dashboard_api import (
 )
 
 
-def _make_request(query_string: str = "", method: str = "GET", body: bytes = b""):
+def _make_request(query_string: str = "patient_id=q1b", method: str = "GET", body: bytes = b""):
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:
@@ -89,7 +89,7 @@ async def test_briefings_returns_date_field():
             return_value={"state": "closed"},
         ),
     ):
-        request = _make_request("limit=1")
+        request = _make_request("patient_id=q1b&limit=1")
         response = await api_briefings(request)
         data = json.loads(response.body)
 

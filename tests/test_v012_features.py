@@ -22,7 +22,7 @@ from oncoteam.patient_context import PATIENT
 class FakeRequest:
     """Minimal Starlette Request stub."""
 
-    def __init__(self, method: str = "GET", query: str = "", body: bytes = b""):
+    def __init__(self, method: str = "GET", query: str = "patient_id=q1b", body: bytes = b""):
         from starlette.datastructures import QueryParams
 
         self.method = method

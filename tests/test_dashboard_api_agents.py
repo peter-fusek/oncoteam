@@ -10,7 +10,7 @@ import pytest
 from oncoteam.dashboard_api import api_agent_runs, api_agent_runs_all, api_agents
 
 
-def _make_request(query_string: str = "", path_params: dict | None = None) -> object:
+def _make_request(query_string: str = "patient_id=q1b", path_params: dict | None = None) -> object:
     from starlette.datastructures import Headers, QueryParams
 
     class FakeRequest:
@@ -105,7 +105,7 @@ async def test_agents_lang_en():
         new_callable=AsyncMock,
         return_value=[],
     ):
-        request = _make_request("lang=en")
+        request = _make_request("patient_id=q1b&lang=en")
         response = await api_agents(request)
         data = json.loads(response.body)
 
@@ -151,7 +151,7 @@ async def test_agent_runs_returns_traces():
         new_callable=AsyncMock,
         return_value=mock_result,
     ):
-        request = _make_request("limit=5", path_params={"id": "daily_research"})
+        request = _make_request("patient_id=q1b&limit=5", path_params={"id": "daily_research"})
         response = await api_agent_runs(request)
         data = json.loads(response.body)
 
@@ -189,7 +189,7 @@ async def test_agent_runs_handles_invalid_content():
         new_callable=AsyncMock,
         return_value=mock_result,
     ):
-        request = _make_request("", path_params={"id": "file_scan"})
+        request = _make_request("patient_id=q1b", path_params={"id": "file_scan"})
         response = await api_agent_runs(request)
         data = json.loads(response.body)
 
@@ -208,7 +208,7 @@ async def test_agent_runs_error_returns_502():
         new_callable=AsyncMock,
         side_effect=ConnectionError("timeout"),
     ):
-        request = _make_request("", path_params={"id": "trial_monitor"})
+        request = _make_request("patient_id=q1b", path_params={"id": "trial_monitor"})
         response = await api_agent_runs(request)
         data = json.loads(response.body)
 
@@ -236,7 +236,7 @@ async def test_agent_runs_list_view_lightweight():
         new_callable=AsyncMock,
         return_value=mock_result,
     ):
-        request = _make_request("", path_params={"id": "test"})
+        request = _make_request("patient_id=q1b", path_params={"id": "test"})
         response = await api_agent_runs(request)
         data = json.loads(response.body)
 
@@ -279,7 +279,7 @@ async def test_agent_runs_all_returns_traces():
         new_callable=AsyncMock,
         return_value=mock_result,
     ) as mock_search:
-        request = _make_request("limit=50")
+        request = _make_request("patient_id=q1b&limit=50")
         response = await api_agent_runs_all(request)
         data = json.loads(response.body)
 

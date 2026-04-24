@@ -12,7 +12,7 @@ from oncoteam.dashboard_api import api_detail
 class FakeRequest:
     """Minimal Starlette Request stub with path_params."""
 
-    def __init__(self, path_params: dict, query: str = ""):
+    def __init__(self, path_params: dict, query: str = "patient_id=q1b"):
         from starlette.datastructures import QueryParams
 
         self.method = "GET"
