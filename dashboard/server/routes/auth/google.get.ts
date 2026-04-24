@@ -1,4 +1,5 @@
 import { getRoleMapSync, visiblePatientIds } from '../../utils/access-rights'
+import { buildAuthAuditEvent, logAuthAuditEvent } from '../../utils/auth-audit'
 
 export default defineOAuthGoogleEventHandler({
   config: {
@@ -19,6 +20,17 @@ export default defineOAuthGoogleEventHandler({
       console.warn(
         `[auth/google] Sign-in rejected: no NUXT_ROLE_MAP entry for ${user.email}`,
       )
+      // Sprint 101 S1.2 — forensic audit trail. Closes the postmortem
+      // gap where historical exposure of peter.fusek@instarea.com was
+      // unknowable because Nuxt logs no OAuth callbacks by default.
+      logAuthAuditEvent(
+        buildAuthAuditEvent({
+          email: user.email,
+          outcome: 'rejected_no_role_map',
+          roleMapHit: false,
+          patientCount: 0,
+        }),
+      )
       // #443 Phase E — dedicated landing page instead of silent bounce
       // or generic 403 error boundary. The page explains who to contact.
       return sendRedirect(
@@ -33,6 +45,15 @@ export default defineOAuthGoogleEventHandler({
     if (visibleIds.length === 0) {
       console.warn(
         `[auth/google] Sign-in rejected: role_map entry for ${user.email} has no patient scope`,
+      )
+      logAuthAuditEvent(
+        buildAuthAuditEvent({
+          email: user.email,
+          outcome: 'rejected_empty_scope',
+          roleMapHit: true,
+          patientCount: 0,
+          roles,
+        }),
       )
       return sendRedirect(
         event,
@@ -54,6 +75,16 @@ export default defineOAuthGoogleEventHandler({
         patientIds,
       },
     })
+
+    logAuthAuditEvent(
+      buildAuthAuditEvent({
+        email: user.email,
+        outcome: 'allowed',
+        roleMapHit: true,
+        patientCount: patientIds.length,
+        roles,
+      }),
+    )
 
     // Redirect to role-appropriate landing page
     const landingPages: Record<string, string> = {
