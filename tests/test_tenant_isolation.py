@@ -617,6 +617,56 @@ def test_pattern_e_safe_mcp_error_sanitizes_upstream_exception():
     assert "/internal/x" not in blob
 
 
+def test_red_team_442_no_hardcoded_admin_emails_in_access_control():
+    """Red-team #442 — access control must never depend on a hardcoded email.
+
+    Every admin / per-patient binding flows through the role_map
+    (`NUXT_ROLE_MAP` env → oncofiles agent_state → `_load_access_rights` →
+    Nuxt proxy session). If any Python file hardcodes a specific email as
+    admin-or-advocate, the red-team exercise filed as #442 becomes
+    un-runnable: revoking the email via env change wouldn't actually
+    demote the identity.
+
+    The only legitimate email reference in Python is the suppressed-error
+    log / contact output — never in access-control paths. This grep-gate
+    fails if a regression sneaks one in.
+    """
+    import pathlib
+    import re
+
+    src = pathlib.Path(__file__).resolve().parent.parent / "src" / "oncoteam"
+    # The two identities the red-team plan (#442) splits.
+    forbidden = [
+        "peter.fusek@instarea.sk",
+        "peterfusek1980@gmail.com",
+    ]
+    # Access-control keywords that would indicate a hardcoded binding.
+    control_keywords = re.compile(r"(admin|role|caregiver|advocate|is_admin|ADMIN)", re.I)
+
+    offenders: list[str] = []
+    for path in sorted(src.rglob("*.py")):
+        text = path.read_text()
+        lines = text.splitlines()
+        for idx, line in enumerate(lines):
+            if not any(email in line for email in forbidden):
+                continue
+            # Allow if the line is a comment OR doesn't sit in an
+            # access-control context (i.e. the surrounding ±3 lines don't
+            # mention admin/role/etc.).
+            stripped = line.strip()
+            if stripped.startswith("#") or stripped.startswith('"""'):
+                continue
+            context = "\n".join(lines[max(0, idx - 3) : idx + 4])
+            if control_keywords.search(context):
+                offenders.append(f"{path.name}:{idx + 1}: {line.strip()}")
+
+    assert not offenders, (
+        "Hardcoded email in an access-control context — this breaks the "
+        "#442 red-team contract (access must derive from role_map, not "
+        "from a constant). Offending lines:\n" + "\n".join(offenders)
+    )
+
+
 def test_pattern_f_public_patient_view_strips_sensitive_fields():
     """Pattern F — public_patient_view is the shared allowlist helper.
 
