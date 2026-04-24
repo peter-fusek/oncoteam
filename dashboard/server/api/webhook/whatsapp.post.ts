@@ -1,5 +1,5 @@
 import twilio from 'twilio'
-import { handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
+import { appendMedicalDisclaimer, handleWhatsAppCommand, type CommandResult } from '../../utils/whatsapp-commands'
 import { getOnboardingState, setOnboardingState, isOnboarding, getActiveSessionCount } from '../../utils/onboarding-state'
 import { handleOnboardingMessage } from '../../utils/onboarding-handler'
 import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone, getActivePatientForPhone, getUserInfoForPhone } from '../../utils/approved-phones'
@@ -431,7 +431,7 @@ export default defineEventHandler(async (event) => {
           const voicePrefix = `\ud83c\udfa4 \u201e${text.slice(0, 200)}\u201c\n\n`
 
           // Route transcribed text through normal command pipeline
-          const result: CommandResult = await handleWhatsAppCommand(text, oncoteamUrl, from, {
+          const rawResult: CommandResult = await handleWhatsAppCommand(text, oncoteamUrl, from, {
             patientId,
             allowedPatientIds: allowedIds,
             hasMultiplePatients: allowedIds.length > 1,
@@ -439,6 +439,11 @@ export default defineEventHandler(async (event) => {
             userName: userInfo.name,
             userRoles: userInfo.roles,
           })
+          // #382 — append medical-info-traceability disclaimer to every
+          // synchronous command reply. Claude-conversational (async)
+          // replies already get the disclaimer from api_whatsapp.py.
+          const voiceLang: 'sk' | 'en' = text.match(/[čďľňŕšťžáéíóúôä]/i) ? 'sk' : 'en'
+          const result = appendMedicalDisclaimer(rawResult, voiceLang)
 
           if (result.type === 'reply') {
             await sendWhatsApp({ to: from, body: (voicePrefix + result.text).slice(0, 1600) })
@@ -578,7 +583,13 @@ export default defineEventHandler(async (event) => {
   const hasMultiplePatients = allowedPatientIds.length > 1
   const userInfo = getUserInfoForPhone(from, roleMap)
   const patientNameMap = await getPatientNameMap(oncoteamApiUrl, apiKey)
-  const result: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds, hasMultiplePatients, patientNameMap, userName: userInfo.name, userRoles: userInfo.roles })
+  const rawCommandResult: CommandResult = await handleWhatsAppCommand(messageBody, oncoteamApiUrl, from, { patientId: whatsappPatientId, allowedPatientIds, hasMultiplePatients, patientNameMap, userName: userInfo.name, userRoles: userInfo.roles })
+  // #382 — append medical-info-traceability disclaimer to every
+  // synchronous command reply. Async (Claude-conversational) path keeps
+  // the disclaimer it already gets from api_whatsapp.py — see
+  // `appendMedicalDisclaimer` implementation which skips type='async'.
+  const cmdLang: 'sk' | 'en' = messageBody.match(/[čďľňŕšťžáéíóúôä]/i) ? 'sk' : 'en'
+  const result: CommandResult = appendMedicalDisclaimer(rawCommandResult, cmdLang)
 
   if (result.type === 'async') {
     // Conversational message — respond immediately, send Claude's answer async.

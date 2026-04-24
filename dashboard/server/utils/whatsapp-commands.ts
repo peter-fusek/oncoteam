@@ -713,6 +713,42 @@ export type CommandResult =
   | { type: 'multi'; segments: string[] }
   | { type: 'async'; lang: Lang; message: string }
 
+/**
+ * Medical-info traceability disclaimer (#382).
+ *
+ * Conversational (async) replies already get this disclaimer appended
+ * server-side in `api_whatsapp.py` — see the matching regex + language
+ * branch there. For synchronous command replies (labáky / lieky /
+ * predcyklus / …) we append here instead, in one place, so every
+ * medical message the user sees carries the informative-only framing.
+ *
+ * Idempotent: if the message body already ends in one of the known
+ * disclaimer strings, we skip appending a duplicate.
+ */
+const DISCLAIMER_SK = '\n\n— Informatívne, overí lekár.'
+const DISCLAIMER_EN = '\n\n— Informational, your physician verifies.'
+const DISCLAIMER_MARKERS = ['overí lekár', 'physician verifies', 'Informatívne', 'Informational']
+
+export function appendMedicalDisclaimer(result: CommandResult, lang: Lang): CommandResult {
+  if (result.type === 'async') return result
+  const disclaimer = lang === 'sk' ? DISCLAIMER_SK : DISCLAIMER_EN
+  const hasDisclaimer = (s: string) => DISCLAIMER_MARKERS.some(m => s.includes(m))
+  if (result.type === 'reply') {
+    if (hasDisclaimer(result.text)) return result
+    return { type: 'reply', text: `${result.text.trimEnd()}${disclaimer}` }
+  }
+  if (result.type === 'multi') {
+    const segments = [...result.segments]
+    if (!segments.length) return result
+    const lastIdx = segments.length - 1
+    if (!hasDisclaimer(segments.join(' '))) {
+      segments[lastIdx] = `${segments[lastIdx].trimEnd()}${disclaimer}`
+    }
+    return { type: 'multi', segments }
+  }
+  return result
+}
+
 function extractAdminPhones(roleMapRaw: string | Record<string, { phone?: string; roles?: string[] }>): Set<string> {
   try {
     const roleMap = typeof roleMapRaw === 'string' ? JSON.parse(roleMapRaw || '{}') : roleMapRaw || {}
