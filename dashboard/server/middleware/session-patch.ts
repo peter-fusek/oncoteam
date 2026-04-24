@@ -46,14 +46,35 @@ export default defineEventHandler(async (event) => {
   const roleMap = getRoleMapSync()
 
   const email = session.user.email as string
-  const userConfig = roleMap[email] || { roles: ['advocate'] }
-  const roles = userConfig.roles || ['advocate']
+  const userConfig = roleMap[email]
 
+  // #442 red-team finding — fail closed on missing role-map entry.
+  // The previous `|| { roles: ['advocate'] }` default combined with the
+  // `patient_id || 'q1b'` fallback below granted any session-holder whose
+  // email was removed from NUXT_ROLE_MAP (or never added, yet still in
+  // NUXT_ALLOWED_EMAILS) a full Erika session. This was the silent-
+  // fallback class (#436 / #438 / #440 Patterns A+C) the Sprints 98-100
+  // sweep missed in the Nuxt session layer.
+  if (!userConfig) {
+    // Clear the session entirely so the next navigation routes through
+    // /login → OAuth callback → 403. Throwing 403 here creates a redirect
+    // loop because this middleware runs on every page request.
+    await clearUserSession(event)
+    return sendRedirect(event, '/login?error=no_access')
+  }
+
+  const roles = userConfig.roles || ['advocate']
   // Visible patient set — union of both legacy and new shape so users
   // don't silently lose access during migration.
   const visibleIds = visiblePatientIds(userConfig)
-  const patientId = userConfig.patient_id || visibleIds[0] || 'q1b'
-  const patientIds = visibleIds.length ? [...new Set(visibleIds)] : [patientId]
+  if (visibleIds.length === 0) {
+    // Role-map entry exists but declares no patient access — same fail-
+    // closed treatment as a missing entry.
+    await clearUserSession(event)
+    return sendRedirect(event, '/login?error=no_access')
+  }
+  const patientId = userConfig.patient_id || visibleIds[0]
+  const patientIds = [...new Set(visibleIds)]
   const patientRoles = buildPatientRoles(userConfig)
 
   // replaceUserSession to avoid deep-merge accumulating roles array
