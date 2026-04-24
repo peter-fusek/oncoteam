@@ -103,8 +103,11 @@ async def api_bug_report(request: Request) -> JSONResponse:
         )
         return _cors_json({"created": True, **result})
     except Exception as e:
+        # Sprint 99 / #438 bug 2 — sanitize upstream exception text.
         record_suppressed_error("api_bug_report", "create_issue", e)
-        return _cors_json({"error": str(e)}, status_code=502)
+        return _cors_json(
+            {"error": "upstream_unavailable", "kind": type(e).__name__}, status_code=502
+        )
 
 
 async def api_document_webhook(request: Request) -> JSONResponse:

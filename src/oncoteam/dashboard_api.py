@@ -555,6 +555,26 @@ def _parse_limit(request: Request, default: int = 50, max_val: int = 500) -> int
         return default
 
 
+def _safe_error_payload(category: str, exc: BaseException | None = None, **extra: object) -> dict:
+    """Return a sanitized error payload safe to ship to any authenticated caller.
+
+    Sprint 99 / #438 bug 2 — `str(e)` leaked raw exception text into dashboard
+    responses. Exception messages from oncofiles / downstream services can
+    carry other patients' IDs, document IDs, or internal URL fragments; a
+    cross-tenant caller can observe them even when the endpoint itself is
+    tenant-scoped. This helper collapses that surface: the caller sees a
+    stable code + optional exception class name; the full exception goes to
+    ``record_suppressed_error`` + server logs for operators.
+
+    Mirrors the oncofiles ``_safe_error`` helper (oncofiles#489).
+    """
+    payload: dict[str, object] = {"error": category}
+    if exc is not None:
+        payload["kind"] = type(exc).__name__
+    payload.update(extra)
+    return payload
+
+
 def _cors_json(
     data: dict, status_code: int = 200, *, request: Request | None = None
 ) -> JSONResponse:
@@ -873,7 +893,10 @@ async def api_activity(request: Request) -> JSONResponse:
         )
     except Exception as e:
         record_suppressed_error("api_activity", "fetch", e)
-        return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
+        return _cors_json(
+            {"error": "upstream_unavailable", "kind": type(e).__name__, "entries": [], "total": 0},
+            status_code=502,
+        )
 
 
 async def api_stats(request: Request) -> JSONResponse:
@@ -907,7 +930,9 @@ async def api_stats(request: Request) -> JSONResponse:
         return _cors_json({"stats": stats})
     except Exception as e:
         record_suppressed_error("api_stats", "fetch", e)
-        return _cors_json({"error": str(e)}, status_code=502)
+        return _cors_json(
+            {"error": "upstream_unavailable", "kind": type(e).__name__}, status_code=502
+        )
 
 
 # Document category → timeline event_type. Used when treatment_events are
@@ -1278,7 +1303,13 @@ async def api_facts(request: Request) -> JSONResponse:
         if cache_key in _facts_cache:
             return _facts_cache[cache_key][1]
         return _cors_json(
-            {"error": str(exc), "facts": [], "total": 0, "has_more": False},
+            {
+                "error": "upstream_unavailable",
+                "kind": type(exc).__name__,
+                "facts": [],
+                "total": 0,
+                "has_more": False,
+            },
             status_code=502,
         )
 
@@ -1495,7 +1526,13 @@ async def api_sessions(request: Request) -> JSONResponse:
         record_suppressed_error("api_sessions", "fetch", e)
         empty_counts = {"clinical": 0, "technical": 0}
         return _cors_json(
-            {"error": str(e), "sessions": [], "total": 0, "type_counts": empty_counts},
+            {
+                "error": "upstream_unavailable",
+                "kind": type(e).__name__,
+                "sessions": [],
+                "total": 0,
+                "type_counts": empty_counts,
+            },
             status_code=502,
         )
 
@@ -1864,7 +1901,14 @@ async def api_protocol_cycles(request: Request) -> JSONResponse:
         chemo_entries = _extract_list(chemo_result, "entries")
     except Exception as e:
         record_suppressed_error("api_protocol_cycles", "fetch", e)
-        return _cors_json({"cycles": [], "current_cycle": cycle, "error": str(e)})
+        return _cors_json(
+            {
+                "cycles": [],
+                "current_cycle": cycle,
+                "error": "upstream_unavailable",
+                "kind": type(e).__name__,
+            }
+        )
 
     # Build a map: cycle_number -> chemo date
     chemo_by_cycle: dict[int, str] = {}
@@ -2049,7 +2093,15 @@ async def api_briefings(request: Request) -> JSONResponse:
         record_suppressed_error("api_briefings", "fetch", e)
         if cache_key in _briefings_cache:
             return _briefings_cache[cache_key][1]
-        return _cors_json({"error": str(e), "briefings": [], "total": 0}, status_code=502)
+        return _cors_json(
+            {
+                "error": "upstream_unavailable",
+                "kind": type(e).__name__,
+                "briefings": [],
+                "total": 0,
+            },
+            status_code=502,
+        )
 
 
 async def api_toxicity(request: Request) -> JSONResponse:
@@ -2102,7 +2154,9 @@ async def api_toxicity(request: Request) -> JSONResponse:
             return _cors_json({"created": True, "result": result})
         except Exception as e:
             record_suppressed_error("api_toxicity", "create", e)
-            return _cors_json({"error": str(e)}, status_code=502)
+            return _cors_json(
+                {"error": "upstream_unavailable", "kind": type(e).__name__}, status_code=502
+            )
 
     # GET: list toxicity logs
     limit = _parse_limit(request, default=50)
@@ -2128,7 +2182,10 @@ async def api_toxicity(request: Request) -> JSONResponse:
         )
     except Exception as e:
         record_suppressed_error("api_toxicity", "fetch", e)
-        return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
+        return _cors_json(
+            {"error": "upstream_unavailable", "kind": type(e).__name__, "entries": [], "total": 0},
+            status_code=502,
+        )
 
 
 async def api_labs(request: Request) -> JSONResponse:
@@ -2179,7 +2236,9 @@ async def api_labs(request: Request) -> JSONResponse:
             return _cors_json({"created": True, "result": result})
         except Exception as e:
             record_suppressed_error("api_labs", "create", e)
-            return _cors_json({"error": str(e)}, status_code=502)
+            return _cors_json(
+                {"error": "upstream_unavailable", "kind": type(e).__name__}, status_code=502
+            )
 
     # GET: list lab results
     limit = _parse_limit(request, default=50)
@@ -2484,7 +2543,10 @@ async def api_labs(request: Request) -> JSONResponse:
         # Serve stale cache on error
         if cache_key in _labs_cache:
             return _labs_cache[cache_key][1]
-        return _cors_json({"error": str(e), "entries": [], "total": 0}, status_code=502)
+        return _cors_json(
+            {"error": "upstream_unavailable", "kind": type(e).__name__, "entries": [], "total": 0},
+            status_code=502,
+        )
 
 
 async def api_detail(request: Request) -> JSONResponse:
@@ -2671,9 +2733,38 @@ async def api_detail(request: Request) -> JSONResponse:
                     data["metadata"] = json.loads(meta)
 
         elif detail_type == "patient":
-            # mode="json" auto-serializes all date/datetime fields (including
-            # nested oncopanel_history per #398) to ISO strings.
-            data = _get_patient_for_request(request).model_dump(mode="json")
+            # Sprint 99 / #438 bug 4 — allowlisted projection instead of a
+            # full model_dump. The raw PatientProfile carries rodné číslo,
+            # nou_id, poisťovňa (inside patient_ids), lat/lon coordinates
+            # (home_region), full oncopanel variant VAFs + HGVS strings —
+            # none of which the drill-down panel needs. /api/patient already
+            # returns the curated view the UI consumes; here we ship only
+            # the fields the drill-down reads.
+            profile = _get_patient_for_request(request)
+            data = {
+                "patient_id": profile.patient_id,
+                "name": profile.name,
+                "diagnosis_code": profile.diagnosis_code,
+                "diagnosis_description": profile.diagnosis_description,
+                "tumor_site": profile.tumor_site,
+                "tumor_laterality": profile.tumor_laterality,
+                "staging": profile.staging,
+                "histology": profile.histology,
+                "treatment_regimen": profile.treatment_regimen,
+                "current_cycle": profile.current_cycle,
+                "ecog": profile.ecog,
+                "metastases": list(profile.metastases),
+                "comorbidities": list(profile.comorbidities),
+                "hospitals": list(profile.hospitals),
+                "treating_physician": profile.treating_physician,
+                "notes": profile.notes,
+                # Biomarkers are keys+values only (gene mutations the patient
+                # knows) — already surfaced on /api/patient, safe to include.
+                "biomarkers": dict(profile.biomarkers),
+                # Excluded therapies feed the "not eligible" banner — same UI
+                # copy the patient sees on /patient, no extra exposure.
+                "excluded_therapies": dict(profile.excluded_therapies),
+            }
 
         else:
             return _cors_json({"error": f"Unknown detail type: {detail_type}"}, status_code=400)
@@ -2690,7 +2781,9 @@ async def api_detail(request: Request) -> JSONResponse:
 
     except Exception as e:
         record_suppressed_error("api_detail", f"{detail_type}/{detail_id}", e)
-        return _cors_json({"error": str(e)}, status_code=502)
+        return _cors_json(
+            {"error": "upstream_unavailable", "kind": type(e).__name__}, status_code=502
+        )
 
 
 # _get_whisper_diagnostics, api_diagnostics moved to api_agents.py
@@ -2812,7 +2905,8 @@ async def api_documents(request: Request) -> JSONResponse:
             return _documents_cache[cache_key][1]
         return _cors_json(
             {
-                "error": str(e),
+                "error": "upstream_unavailable",
+                "kind": type(e).__name__,
                 "documents": [],
                 "total": 0,
                 "filter": filter_param,
@@ -2863,7 +2957,9 @@ async def api_medications(request: Request) -> JSONResponse:
                 )
             except Exception as e:
                 record_suppressed_error("api_medications", "create_adherence", e)
-                return _cors_json({"error": str(e)}, status_code=502)
+                return _cors_json(
+                    {"error": "upstream_unavailable", "kind": type(e).__name__}, status_code=502
+                )
 
         # Regular medication log
         if not body.get("date") or not body.get("name"):
@@ -2885,7 +2981,9 @@ async def api_medications(request: Request) -> JSONResponse:
             return _cors_json({"created": True, "result": result})
         except Exception as e:
             record_suppressed_error("api_medications", "create", e)
-            return _cors_json({"error": str(e)}, status_code=502)
+            return _cors_json(
+                {"error": "upstream_unavailable", "kind": type(e).__name__}, status_code=502
+            )
 
     # GET: list medication logs + adherence data
     limit = _parse_limit(request, default=50)
@@ -2968,7 +3066,8 @@ async def api_medications(request: Request) -> JSONResponse:
         lang = get_lang(request)
         return _cors_json(
             {
-                "error": str(e),
+                "error": "upstream_unavailable",
+                "kind": type(e).__name__,
                 "medications": [],
                 "default_medications": resolve(_DEFAULT_MEDICATIONS, lang),
                 "adherence": {"last_7_days": [], "compliance_pct": None, "missed": []},
@@ -3229,7 +3328,8 @@ async def api_preventive_care(request: Request) -> JSONResponse:
         record_suppressed_error("api_preventive_care", "fetch", e)
         return _cors_json(
             {
-                "error": str(e),
+                "error": "upstream_unavailable",
+                "kind": type(e).__name__,
                 "screenings": [],
                 "summary": {"up_to_date": 0, "due": 0, "overdue": 0, "unknown": 0, "total": 0},
             },
@@ -3349,7 +3449,8 @@ async def api_weight(request: Request) -> JSONResponse:
         lang = get_lang(request)
         return _cors_json(
             {
-                "error": str(e),
+                "error": "upstream_unavailable",
+                "kind": type(e).__name__,
                 "entries": [],
                 "baseline_weight_kg": baseline,
                 "total": 0,
@@ -3862,7 +3963,9 @@ async def api_family_update(request: Request) -> JSONResponse:
             return _cors_json({"created": True, "content": content, "lang": post_lang})
         except Exception as e:
             record_suppressed_error("api_family_update", "generate", e)
-            return _cors_json({"error": str(e)}, status_code=502)
+            return _cors_json(
+                {"error": "upstream_unavailable", "kind": type(e).__name__}, status_code=502
+            )
 
     # GET: list past family updates
     limit = _parse_limit(request, default=20)
@@ -3884,7 +3987,10 @@ async def api_family_update(request: Request) -> JSONResponse:
         return _cors_json({"updates": updates, "total": len(updates)})
     except Exception as e:
         record_suppressed_error("api_family_update", "fetch", e)
-        return _cors_json({"error": str(e), "updates": [], "total": 0}, status_code=502)
+        return _cors_json(
+            {"error": "upstream_unavailable", "kind": type(e).__name__, "updates": [], "total": 0},
+            status_code=502,
+        )
 
 
 # api_agents, api_agent_config, api_agent_runs, api_agent_runs_all moved to api_agents.py

@@ -1448,6 +1448,19 @@ def main() -> None:
                 await self.app(scope, receive, send_with_headers)
 
         async def _run_http():
+            # Sprint 99 / #438 bug 5 — fail closed on missing CORS origins.
+            # Previously ``allow_origins=DASHBOARD_ALLOWED_ORIGINS or ["*"]``
+            # silently opened CORS to every origin when the env var was
+            # unset. Low-severity today (allow_credentials=False), but a
+            # time bomb the day we add cookie auth or a new origin-bound
+            # privilege. Matches the oncofiles v5.15 startup-fail-closed
+            # contract (oncofiles#485).
+            if not DASHBOARD_ALLOWED_ORIGINS:
+                raise RuntimeError(
+                    "DASHBOARD_ALLOWED_ORIGINS must be set for HTTP transport "
+                    "(non-empty comma-separated list of origins)."
+                )
+
             # FastMCP 3.x lifespan is broken in HTTP transport (double-wrap bug).
             # Start the autonomous scheduler explicitly within the event loop.
             start_scheduler()
@@ -1486,7 +1499,10 @@ def main() -> None:
                     Middleware(SecurityHeadersMiddleware),
                     Middleware(
                         CORSMiddleware,
-                        allow_origins=DASHBOARD_ALLOWED_ORIGINS or ["*"],
+                        # Empty-list fallback removed (Sprint 99 / #438 bug 5) —
+                        # startup above raises RuntimeError before we get here
+                        # if the env var is unset on HTTP transport.
+                        allow_origins=DASHBOARD_ALLOWED_ORIGINS,
                         allow_credentials=False,
                         allow_methods=["GET", "POST", "OPTIONS", "DELETE"],
                         allow_headers=["Authorization", "Content-Type", "mcp-protocol-version"],

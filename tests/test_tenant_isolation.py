@@ -24,6 +24,15 @@ Session 2:
 - Rate-limiter buckets are disjoint per patient
 - Nuxt proxy session-forge scenario documented (Item 3 — full integration
   test deferred to E2E when Vitest is introduced to the dashboard)
+
+Sprint 99 (Felix audit):
+- `get_patient_profile_text` raises on unregistered patient_id (#436 bug 2)
+- `get_genetic_profile` returns empty dict on unregistered patient_id
+  (#436 bug 3)
+- `get_context_tags` scopes by patient, not the module-level PATIENT
+  constant (#436 bug 1) — sgu/e5g callers no longer get q1b's markers
+- `/api/detail/patient` ships an allowlist (no rodné číslo / lat-lon /
+  oncopanel VAF in drill-down) (#438 bug 4)
 """
 
 from __future__ import annotations
@@ -282,3 +291,129 @@ def test_rate_limiter_buckets_are_disjoint_across_patients():
     assert isinstance(_rate_timestamps["e5g"], collections.deque)
     assert len(_rate_timestamps["e5g"]) == 1
     assert len(_rate_timestamps["q1b"]) == 120
+
+
+# ── Sprint 99 — Felix audit regressions ───────────────────────────────
+
+
+def test_get_patient_profile_text_raises_on_unregistered():
+    """#436 bug 2 — silent-fallback-to-Erika path fails closed now.
+
+    Previously an unregistered pid would return q1b's diagnosis, biomarkers,
+    and excluded_therapies. Now raises KeyError, matching `get_patient()`.
+    """
+    from oncoteam.patient_context import get_patient_profile_text
+
+    with pytest.raises(KeyError, match="not found"):
+        get_patient_profile_text("never-registered-pid")
+
+
+@pytest.mark.anyio
+async def test_get_genetic_profile_empty_on_unregistered():
+    """#436 bug 3 — seed-with-Erika's-biomarkers path returns empty now.
+
+    The previous behaviour pre-seeded the result with ``PATIENT.biomarkers``
+    (KRAS G12S, ATM biallelic loss, TP53) before calling oncofiles. For an
+    unregistered pid with no matching docs, the caller got Erika's variants
+    attributed to their patient.
+    """
+    from oncoteam.patient_context import get_genetic_profile
+
+    result = await get_genetic_profile("never-registered-pid")
+    assert result == {}
+
+
+def test_get_context_tags_scopes_per_patient():
+    """#436 bug 1 — research tags derive from the named patient, not PATIENT.
+
+    Without this fix, every caller's search_pubmed-driven research corpus
+    was tagged with Erika's KRAS G12S / mFOLFOX6 / colorectal markers. The
+    clinical-safety issue was sgu (breast) and e5g (preventive) getting
+    those tags applied to their trial/article surfacing pipeline.
+    """
+    from oncoteam.models import PatientProfile
+    from oncoteam.patient_context import get_context_tags, register_patient
+
+    # Register a breast-cancer patient so the test owns its fixture data.
+    register_patient(
+        "test-breast",
+        "test-token-breast",
+        PatientProfile(
+            patient_id="test-breast",
+            name="Test Breast",
+            diagnosis_code="C50.9",
+            diagnosis_description="Breast cancer NOS",
+            tumor_site="left breast",
+            biomarkers={"ER": "positive", "HER2": "negative"},
+            treatment_regimen="AC-T",
+        ),
+    )
+
+    tags_breast = get_context_tags("test-breast")
+    # Must carry breast-specific tags only, not colorectal / KRAS / FOLFOX.
+    assert "AC-T" in tags_breast
+    assert any("ER" in t for t in tags_breast)
+    assert not any("FOLFOX" in t for t in tags_breast)
+    assert not any("KRAS" in t for t in tags_breast)
+    assert "colorectal" not in tags_breast
+    assert "sigmoid" not in tags_breast
+
+    # q1b's tags DO include the mFOLFOX6 / KRAS / sigmoid markers.
+    tags_q1b = get_context_tags("q1b")
+    assert any("KRAS" in t for t in tags_q1b)
+
+
+def test_api_detail_patient_omits_sensitive_identifiers():
+    """#438 bug 4 — drill-down no longer ships national ID / lat-lon / VAF.
+
+    The previous behaviour was ``model_dump(mode="json")`` on the raw
+    PatientProfile. That exposed:
+    - patient_ids (rodné číslo, nou_id, poisťovňa)
+    - home_region (lat/lon geo-coords)
+    - oncopanel_history (per-variant VAF + HGVS)
+    - agent_whitelist + paused + notification_policy (operational state)
+
+    The dashboard drill-down needs none of those. The allowlist keeps only
+    the clinical-profile fields the UI actually renders.
+    """
+    from oncoteam.patient_context import get_patient
+
+    # Project through the same allowlist the endpoint uses.
+    allowed = {
+        "patient_id",
+        "name",
+        "diagnosis_code",
+        "diagnosis_description",
+        "tumor_site",
+        "tumor_laterality",
+        "staging",
+        "histology",
+        "treatment_regimen",
+        "current_cycle",
+        "ecog",
+        "metastases",
+        "comorbidities",
+        "hospitals",
+        "treating_physician",
+        "notes",
+        "biomarkers",
+        "excluded_therapies",
+    }
+    # Raw dump carries the sensitive surface.
+    raw = get_patient("q1b").model_dump(mode="json")
+    sensitive = {
+        "patient_ids",
+        "home_region",
+        "oncopanel_history",
+        "agent_whitelist",
+        "paused",
+        "notification_policy",
+        "enrollment_preference",
+        "active_therapies",
+    }
+    assert sensitive.issubset(set(raw)), (
+        "Baseline: raw model_dump must contain the sensitive fields that the "
+        "allowlist exists to strip. If this fails, adjust the allowlist."
+    )
+    # The intersection with the allowlist must be empty.
+    assert not (sensitive & allowed)

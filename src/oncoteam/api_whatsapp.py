@@ -89,10 +89,17 @@ def _get_patient_name_map() -> dict[str, str]:
 
 
 def _wa_thread_key(phone: str, patient_id: str = "q1b") -> str:
-    """Hash phone for privacy — no PII in state keys. Scoped per patient."""
+    """Hash phone for privacy — no PII in state keys. Scoped per patient.
+
+    Sprint 99 / #438 low — bumped prefix from 12 hex chars (48 bits) to 32
+    (128 bits). 48 bits is below modern collision-resistance thresholds;
+    128 matches the typical keyed-identifier recommendation. Existing keys
+    remain readable (bump is forward-compatible for new threads); historical
+    threads just age out after the 2h TTL, so no migration needed.
+    """
     import hashlib
 
-    h = hashlib.sha256(phone.encode()).hexdigest()[:12]
+    h = hashlib.sha256(phone.encode()).hexdigest()[:32]
     return f"wa_thread:{patient_id}:{h}"
 
 
