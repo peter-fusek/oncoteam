@@ -240,6 +240,50 @@ class TestPatientRegistrySync:
         assert result["ok"] is False
         assert "oncofiles unreachable" in result["error"]
 
+    @pytest.mark.asyncio
+    async def test_suspicious_shrink_refuses_to_corrupt_snapshot(self, mock_state):
+        """#433 defense: if list_patients returns <½ of the prior snapshot
+        and the new set doesn't overlap sensibly, refuse the write and
+        alert instead. Guards against silent no-access-sentinel regressions
+        from oncofiles multi-patient contract change (2026-04-24)."""
+        # Seed a prior snapshot with 4 known patients.
+        mock_state["patient_registry:last_snapshot"] = {
+            "timestamp": "2026-04-23T00:00:00+00:00",
+            "patients": [
+                {"slug": "q1b", "classification": "gate2_ok"},
+                {"slug": "e5g", "classification": "gate2_ok"},
+                {"slug": "nora-antalova", "classification": "gate1_only"},
+                {"slug": "mattias-cesnak", "classification": "gate1_only"},
+            ],
+        }
+        # Now list_patients returns NOTHING (simulates sentinel path —
+        # admin bearer post-#433 returning no-access and oncofiles listing
+        # zero patients).
+        list_patients_mock = AsyncMock(return_value={"patients": []})
+        whatsapp_mock = AsyncMock()
+        with (
+            patch("oncoteam.autonomous_tasks.oncofiles_client.list_patients", list_patients_mock),
+            patch("oncoteam.autonomous_tasks._send_whatsapp", whatsapp_mock),
+            patch("oncoteam.autonomous_tasks.oncofiles_client.add_activity_log", AsyncMock()),
+            patch("oncoteam.autonomous_tasks.oncofiles_client.log_conversation", AsyncMock()),
+            patch("oncoteam.patient_context.list_patient_ids", lambda: ["q1b", "e5g"]),
+        ):
+            result = await run_patient_registry_sync()
+
+        # Snapshot must NOT be rewritten — prior state is preserved.
+        snap = mock_state["patient_registry:last_snapshot"]
+        assert snap["timestamp"] == "2026-04-23T00:00:00+00:00"  # unchanged
+        # Result signals the refusal cleanly.
+        assert result["ok"] is False
+        assert result["error"] == "suspicious_shrink_skipping_snapshot"
+        assert result["prior_count"] == 4
+        assert result["current_count"] == 0
+        # A loud alert was sent so Peter notices the auth regression.
+        assert whatsapp_mock.call_count == 1
+        assert whatsapp_mock.call_args.kwargs.get("patient_id") is None  # system-scope
+        alert_body = whatsapp_mock.call_args.args[0]
+        assert "#433" in alert_body or "sentinel" in alert_body.lower()
+
 
 class TestOnboardingQueueEndpoint:
     @pytest.mark.asyncio

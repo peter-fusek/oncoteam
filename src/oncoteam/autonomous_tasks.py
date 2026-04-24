@@ -2393,6 +2393,54 @@ async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
         except Exception as e:
             record_suppressed_error("patient_registry_sync", "archive_log", e)
 
+    # #433 defense: oncofiles no longer auto-resolves default-patient for the
+    # admin static bearer in multi-patient mode. A silent auth regression
+    # would manifest here as `list_patients` returning fewer (or zero)
+    # patients than we had in the prior snapshot — which the archival
+    # branch would then happily record as "all patients archived",
+    # corrupting downstream state. Refuse to write a snapshot that
+    # loses ≥ half of the previously-seen patients unless the new set
+    # genuinely contains them. Emit a loud WhatsApp alert instead.
+    prior_count = len(prior_slugs)
+    current_count = len(current_slugs)
+    # Trigger when we lose more than half of previously-seen patients. Real
+    # archival is always one-at-a-time; a mass disappearance is always
+    # either a multi-patient oncofiles outage, or the #433 no-access
+    # sentinel silently kicking in.
+    suspicious_shrink = prior_count >= 2 and current_count < prior_count / 2
+    if suspicious_shrink:
+        logger.warning(
+            "patient_registry_sync: suspicious shrink (%d → %d) — skipping "
+            "snapshot write; #433 no-access sentinel suspected",
+            prior_count,
+            current_count,
+        )
+        try:
+            msg = format_whatsapp_header(
+                "Registry sync anomaly",
+                date_str=datetime.now(UTC).strftime("%Y-%m-%d %H:%M"),
+            )
+            msg += (
+                f"⚠️ `list_patients` returned {current_count} (was {prior_count}).\n"
+                "Snapshot NOT written to avoid corrupting downstream state.\n"
+                "Likely cause: oncofiles #433 no-access sentinel — admin bearer\n"
+                "no longer auto-resolves default patient in multi-patient mode.\n"
+                "Check ONCOFILES_MCP_TOKEN scope on Railway."
+            )
+            await _send_whatsapp(msg, recipient="caregiver", patient_id=None)
+        except Exception as e:
+            record_suppressed_error("patient_registry_sync", "shrink_alert", e)
+        duration_ms = int((time.time() - started_at) * 1000)
+        result = {
+            "ok": False,
+            "error": "suspicious_shrink_skipping_snapshot",
+            "prior_count": prior_count,
+            "current_count": current_count,
+            "duration_ms": duration_ms,
+        }
+        await _log_task("patient_registry_sync", result, token=None)
+        return result
+
     snapshot = {
         "timestamp": now_iso,
         "patients": gate1_only + gate2_ok,
