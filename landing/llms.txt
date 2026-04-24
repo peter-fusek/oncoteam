@@ -82,3 +82,9 @@ An [Instarea](https://www.instarea.com) project.
 - Oncofiles: https://github.com/peter-fusek/oncofiles
 - Author: Peter Fusek (https://www.linkedin.com/in/peterfusek/)
 - Company: Instarea (https://www.instarea.com)
+
+## Slovak guides for patient advocates
+
+- Správa lekárskych dokumentov (managing medical documents): https://oncoteam.cloud/sprava-lekarskych-dokumentov.html
+- Pred návštevou onkológa (before the oncology visit): https://oncoteam.cloud/pred-navstevou-onkologa.html
+- Molekulárny profil nádoru — NGS vysvetlený (molecular profile explained — KRAS, BRAF, MSI, BRCA, ATM): https://oncoteam.cloud/molekularny-profil-vysvetlenie.html

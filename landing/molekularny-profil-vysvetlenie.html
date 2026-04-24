@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Molekulárny profil nádoru — čo znamenajú výsledky NGS (KRAS, BRAF, MSI, BRCA) | Oncoteam</title>
+  <meta name="description" content="Pacientsky zrozumiteľný sprievodca molekulárnym vyšetrením nádoru. Čo znamená KRAS G12S, BRAF V600E, MSI-H/dMMR, BRCA1/2 a ATM — a ako tieto výsledky menia liečbu pri kolorektálnom a prsnom karcinóme.">
+  <meta name="keywords" content="molekulárny profil, NGS vyšetrenie, oncopanel, KRAS mutácia, BRAF V600E, MSI-H, MMR deficit, BRCA1 BRCA2, ATM mutácia, kolorektálny karcinóm, prsný karcinóm, cielená liečba, Slovensko">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Molekulárny profil nádoru — čo znamenajú výsledky NGS pre pacienta">
+  <meta property="og:description" content="KRAS, BRAF, MSI, BRCA — sprievodca jazykom onkopanelu, napísaný pre pacientov a rodinných advokátov.">
+  <meta property="og:image" content="https://oncoteam.cloud/og-image.png">
+  <meta property="og:url" content="https://oncoteam.cloud/molekularny-profil-vysvetlenie.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://oncoteam.cloud/molekularny-profil-vysvetlenie.html">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script type="application/ld+json">
+  [{
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Molekulárny profil nádoru — čo znamenajú výsledky NGS (KRAS, BRAF, MSI, BRCA)",
+    "description": "Pacientsky zrozumiteľný sprievodca molekulárnym vyšetrením nádoru a tým, ako výsledky menia liečbu.",
+    "author": {"@type": "Person", "name": "Peter Fusek", "url": "https://www.linkedin.com/in/peterfusek/"},
+    "publisher": {"@type": "Organization", "name": "Instarea", "url": "https://www.instarea.com"},
+    "datePublished": "2026-04-24",
+    "dateModified": "2026-04-24",
+    "inLanguage": "sk",
+    "image": "https://oncoteam.cloud/og-image.png",
+    "mainEntityOfPage": "https://oncoteam.cloud/molekularny-profil-vysvetlenie.html"
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "Ako rozumieť výsledkom molekulárneho profilu nádoru",
+    "description": "Päť krokov pre pacienta alebo rodinného advokáta, ako prečítať onkopanel a pochopiť, čo znamená pre liečbu.",
+    "step": [
+      {"@type": "HowToStep", "name": "Získajte kópiu celej správy", "text": "Pýtajte si elektronickú PDF kópiu celej správy, nie len súhrn. V celej správe sú VAF (frekvencia mutácie), tier (klinická významnosť I-III) a referenčné čísla transkriptov, ktoré onkológ potrebuje pre rozhodnutie."},
+      {"@type": "HowToStep", "name": "Identifikujte typ vzorky", "text": "Tkanivo (FFPE) vs. tekutá biopsia (ctDNA). Tkanivová vzorka je presnejšia pri nízkom nádorovom zaťažení; ctDNA je užitočnejšia pri sledovaní reziduálneho ochorenia po liečbe."},
+      {"@type": "HowToStep", "name": "Prečítajte tier klasifikáciu", "text": "Tier IA/IB = klinicky actionable (existuje schválená alebo odporúčaná liečba). IIC/IID = klinický dôkaz v inom type nádoru alebo v skorej fáze štúdie. III = neznámy význam (VUS). Variantov s tierom III nepanikárite — neovplyvňujú okamžité rozhodnutie."},
+      {"@type": "HowToStep", "name": "Skontrolujte MSI/MMR stav", "text": "MSI-H alebo dMMR znamená, že nádor odpovedá na imunoterapiu (checkpoint inhibítory). MSS/pMMR znamená, že imunoterapia samotná pravdepodobne nefunguje — je potrebná kombinácia."},
+      {"@type": "HowToStep", "name": "Napíšte si tri otázky pre onkológa", "text": "Na vizitu si pripravte presné otázky: 1) ktorý variant je actionable a aká je schválená liečba? 2) ktorá klinická štúdia zohľadňuje tento profil? 3) ktorá liečba je vylúčená kvôli tomuto nálezu?"}
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {"@type": "Question", "name": "Čo je to molekulárny profil nádoru?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Molekulárny profil (tzv. oncopanel alebo NGS — next-generation sequencing) je laboratórne vyšetrenie, ktoré dekóduje DNA nádorového tkaniva a hľadá mutácie a prestavby génov dôležitých pre rast nádoru. Typický panel obsahuje 50–500 génov. Výsledkom je správa s variantmi (SNV, indel, splice, CNV), ich frekvenciou a klinickou významnosťou. Vyšetrenie je pri pokročilom kolorektálnom alebo prsnom karcinóme štandard, pretože mení voľbu liečby."}},
+      {"@type": "Question", "name": "Čo znamená KRAS G12S?",
+       "acceptedAnswer": {"@type": "Answer", "text": "KRAS je gén, ktorého mutácie spúšťajú rast nádoru. G12S znamená, že v pozícii 12 aminokyseliny sa glycín (G) zmenil na serín (S). Dôsledky: (1) vylúčenie anti-EGFR liečby (cetuximab, panitumumab) — tieto lieky fungujú len pri KRAS/NRAS/BRAF wild-type; (2) G12S NIE je variant, na ktorý fungujú lieky ako sotorasib alebo adagrasib (tie sú špecifické pre G12C); (3) pacient môže byť kandidátom na pan-KRAS inhibítory vo fáze II štúdií (RMC-6236 daraxonrasib). Iné KRAS mutácie (G12D, G12V, G13D) majú podobný vplyv na liečbu."}},
+      {"@type": "Question", "name": "Čo znamená BRAF V600E?",
+       "acceptedAnswer": {"@type": "Answer", "text": "BRAF V600E je aktivujúca mutácia, ktorá sa najčastejšie vyskytuje pri melanóme, ale aj pri 7–10 % kolorektálnych karcinómov. Pri BRAF V600E kolorektálnom karcinóme sa odporúča kombinácia encorafenib + cetuximab (EXPRESS prístup po NCCN 2024) po zlyhaní prvej línie. Prognóza je vo všeobecnosti horšia ako pri BRAF wild-type, ale cielená liečba predlžuje prežívanie. Iné BRAF varianty (non-V600, napríklad BRAF K601E) neodpovedajú na tieto lieky rovnako."}},
+      {"@type": "Question", "name": "Čo znamená MSI-H alebo dMMR?",
+       "acceptedAnswer": {"@type": "Answer", "text": "MSI-H (microsatellite instability high) a dMMR (mismatch repair deficient) sú dve vzájomne zameniteľné značky toho, že nádor má poškodený systém opravy DNA. Pri MSI-H/dMMR kolorektálnom karcinóme odpovedá pacient na imunoterapiu (pembrolizumab, nivolumab) veľmi dobre — v prvej línii pri metastatickom ochorení sa odporúča ako jednolieková liečba (KEYNOTE-177 štúdia). Približne 5 % metastatických kolorektálnych karcinómov je MSI-H. Pri MSS/pMMR (mikrosatelitne stabilný) pacient NEODPOVEDÁ na imunoterapiu samotnú — treba kombináciu s chemoterapiou alebo inými liekmi."}},
+      {"@type": "Question", "name": "Čo znamená mutácia BRCA1 alebo BRCA2?",
+       "acceptedAnswer": {"@type": "Answer", "text": "BRCA1/2 sú gény opravy DNA. Ich mutácie (germline, teda zdedené) zvyšujú riziko prsného, vaječníkového, pankreatického a prostaty. Dôsledky pre liečbu: (1) pacientky s BRCA mutáciou odpovedajú mimoriadne dobre na inhibítory PARP (olaparib, talazoparib) — platí aj pri prsnom karcinóme s pokročilým ochorením aj po chemoterapii; (2) pre blízkych príbuzných má zmysel genetické poradenstvo a test — BRCA je dedičná v 50 % prípadov pri každom potomkovi; (3) rozhodovanie o profylaktickej chirurgii (mastektómia, ooforektómia) patrí do rúk multidisciplinárneho tímu, nie AI."}},
+      {"@type": "Question", "name": "Čo znamená ATM mutácia alebo ATM biallelic loss?",
+       "acceptedAnswer": {"@type": "Answer", "text": "ATM je gén opravy DNA podobný BRCA. Biallelic loss znamená, že obe kópie génu sú nefunkčné — nádor sa stáva DDR-deficient (porucha opravy dvojreťazcových zlomov). Dôsledky: (1) pacient je kandidátom na PARP inhibítory alebo ATR inhibítory v rámci klinickej štúdie (napr. ceralasertib); (2) nádor má zvyčajne dobrú odpoveď na platinovú chemoterapiu (oxaliplatina, cisplatina) — synergizmus s poruchou opravy DNA; (3) ide o silný signál pre zváženie klinickej štúdie, aj keď sa nejedná o schválenú liečbu."}},
+      {"@type": "Question", "name": "Čo znamená VAF a prečo je dôležité?",
+       "acceptedAnswer": {"@type": "Answer", "text": "VAF (variant allele frequency, frekvencia alely variantu) ukazuje, aký podiel DNA z nádorovej vzorky nesie konkrétnu mutáciu. VAF okolo 50 % býva pri germinálnych (zdedených) mutáciách. VAF pod 20 % typicky značí somatickú mutáciu v časti nádorových buniek — môže znamenať subklonálnu mutáciu, nízku čistotu vzorky, alebo skorú kloninu. Pri ctDNA (tekutej biopsii) je VAF nízky (často pod 5 %), pretože nádorová DNA je zriedená krvou."}},
+      {"@type": "Question", "name": "Čo je to tier IA/IB/IIC/III?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Tier klasifikácia podľa AMP/ASCO/CAP guidelines 2017 hovorí, ako dobre je variant klinicky overený. Tier IA = existuje schválená cielená liečba pri tomto type nádoru. Tier IB = existuje konsenzus expertov, ale bez schválenia. Tier IIC = liečba je schválená pre iný typ nádoru alebo je v klinickej štúdii. Tier IID = predklinická evidencia alebo kazuistika. Tier III = variant neznámej klinickej významnosti (VUS) — nedá sa rozhodnúť, či je patogénny alebo benígny. Pre rozhodovanie o liečbe sú dôležité najmä Tier IA a IIC."}},
+      {"@type": "Question", "name": "Ako často treba molekulárne vyšetrenie opakovať?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Vo všeobecnosti raz — pri pokročilom ochorení alebo progresii. Nádor sa počas liečby vyvíja (klonálna evolúcia), takže pri zlyhaní druhej alebo tretej línie liečby má zmysel znovu odobrať vzorku (re-biopsia alebo tekutá biopsia). Často sa objavia nové varianty (napr. získaná rezistencia na anti-EGFR liečbu cez KRAS/NRAS mutácie). Opakované vyšetrenie je odôvodnené, ak zmení terapeutický plán."}},
+      {"@type": "Question", "name": "Preplatí to zdravotná poisťovňa?",
+       "acceptedAnswer": {"@type": "Answer", "text": "Na Slovensku je molekulárne vyšetrenie (oncopanel) pri pokročilom ochorení indikovaným pacientom hradené z verejného zdravotného poistenia. Indikácia vyžaduje, aby onkológ požiadal o výkon. Sú centrá (napr. NOÚ Bratislava, Ústav klinickej onkológie Prešov), kde sa vyšetrenie robí rutinne. Ak onkológ vyšetrenie neponúka, pacient má právo sa ho spýtať — pri kolorektálnom, prsnom, pľúcnom a niektorých ďalších nádoroch je štandardom starostlivosti."}}
+    ]
+  }]
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css?v=58">
+  <style>
+    .article { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; line-height: 1.65; }
+    .article h1 { font-family: 'DM Serif Display', serif; font-size: 2.25rem; line-height: 1.15; margin: 0 0 8px; }
+    .article .lede { color: var(--text-muted); font-size: 1.1rem; margin: 0 0 32px; }
+    .article h2 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; margin: 40px 0 12px; }
+    .article h3 { font-size: 1.05rem; margin: 24px 0 8px; font-weight: 600; }
+    .article p, .article li { color: var(--text-default); }
+    .article ul, .article ol { padding-left: 20px; margin: 12px 0; }
+    .article li { margin: 6px 0; }
+    .article .meta { color: var(--text-muted); font-size: 0.85rem; margin: 24px 0 32px; }
+    .article .source { border-top: 1px solid var(--border-light); padding-top: 16px; margin-top: 40px; font-size: 0.85rem; color: var(--text-muted); }
+    .article .source a { color: var(--accent); }
+    .article .cta-box { border: 1px solid var(--border-light); border-radius: 12px; padding: 20px 22px; margin: 32px 0; background: #fafafa; }
+    .article .cta-box h3 { margin-top: 0; }
+    .article .breadcrumb { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; }
+    .article .breadcrumb a { color: var(--text-muted); }
+    .article .marker-row { border-left: 3px solid var(--primary); padding: 10px 16px; margin: 16px 0; background: #fafafa; border-radius: 0 6px 6px 0; }
+    .article .marker-row h3 { margin: 0 0 4px; font-family: 'DM Mono', ui-monospace, monospace; color: var(--primary-dark); }
+    .article .marker-row .tier-chip { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; margin-left: 8px; background: #e5e7eb; color: var(--text); vertical-align: middle; }
+    .article .marker-row .tier-chip-ia { background: #fee2e2; color: #991b1b; }
+    .article .marker-row .tier-chip-iic { background: #fef3c7; color: #92400e; }
+    .article .disclaimer { border-top: 1px solid var(--border-light); padding-top: 16px; margin-top: 32px; font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <div class="container nav-container">
+      <div class="nav-left">
+        <a href="/" class="logo">oncoteam</a>
+      </div>
+      <div class="nav-right">
+        <a href="https://dashboard.oncoteam.cloud/demo" class="btn btn-primary btn-sm">Skúsiť demo</a>
+        <a href="https://github.com/peter-fusek/oncoteam" class="btn btn-sm btn-ghost">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <article class="article">
+    <div class="breadcrumb"><a href="/">Oncoteam</a> / Sprievodca</div>
+    <h1>Molekulárny profil nádoru — čo znamenajú KRAS, BRAF, MSI, BRCA a ATM</h1>
+    <p class="lede">Onkológ vám povie „máte KRAS G12S, BRAF wild-type, MSS a ATM biallelic loss". Čo to znamená pre liečbu a akú ďalšiu otázku položiť? Pacientsky zrozumiteľný sprievodca pre rodinných advokátov — napísaný na pochopenie, nie na impozantnosť.</p>
+    <p class="meta">Publikované 24. apríla 2026 · Autor: Peter Fusek, zakladateľ Oncoteamu</p>
+
+    <h2>Čo to vlastne je?</h2>
+    <p>
+      Molekulárny profil (tiež <em>oncopanel</em> alebo <em>NGS vyšetrenie</em>, skratka pre <em>next-generation sequencing</em>) je laboratórne vyšetrenie DNA nádorového tkaniva alebo cirkulujúcej nádorovej DNA v krvi. Výsledkom je správa obsahujúca varianty — mutácie, delécie, duplikácie, zmeny počtu kópií, prestavby — v 50 až 500 génoch, ktoré majú klinický význam pri rozhodovaní o liečbe.
+    </p>
+    <p>
+      Pre pacienta to znamená: namiesto toho, aby onkológ zvolil chemoterapiu podľa „typu nádoru" (napr. „kolorektálny, podáme mFOLFOX6"), dokáže vybrať liek cielený na konkrétnu mutáciu vo vašom nádore. Niekedy to otvorí cestu k imunoterapii alebo k cielenej terapii, ktorá má výrazne lepšiu odpoveď než štandardná chemoterapia. Niekedy to naopak <strong>vylúči</strong> liek, ktorý by sa inak použil — a to je rovnako cenná informácia.
+    </p>
+
+    <h2>Typy vzoriek</h2>
+    <ul>
+      <li><strong>Tkanivová vzorka (FFPE)</strong> — z biopsie alebo chirurgického resekátu. Fixovaná vo formalíne. Presnejšia pri nízkej nádorovej čistote vzorky, ale vyžaduje invazívny odber.</li>
+      <li><strong>Tekutá biopsia (ctDNA)</strong> — fragmenty nádorovej DNA z krvi. Rýchly opakovateľný odber. Užitočná pri sledovaní reziduálneho ochorenia, získanej rezistencii a heterogenite nádoru. Slabšia pri nízkej nádorovej záťaži (môže vrátiť „negatívny" výsledok aj pri známych mutáciách).</li>
+      <li><strong>Germline test</strong> — zo slín alebo krvi zdravého tkaniva. Hľadá zdedené mutácie (napr. BRCA1/2, Lynch syndróm) — dôležité pre prognózu, voľbu liečby a poradenstvo pre rodinu.</li>
+    </ul>
+
+    <h2>Kľúčové markery — čo znamenajú a ako menia liečbu</h2>
+
+    <div class="marker-row">
+      <h3>KRAS <span class="tier-chip tier-chip-ia">Tier IA</span></h3>
+      <p>
+        Najčastejšia mutácia pri kolorektálnom karcinóme (cca 40 % pacientov). Aktivujúca mutácia — núti bunky množiť sa.
+        <br><strong>Liečebné dôsledky:</strong> mutácia = vylúčenie anti-EGFR liečby (cetuximab, panitumumab). G12C špecifický variant (častejšie pri NSCLC) = kandidát na sotorasib/adagrasib — ale len G12C, nie G12D/G12V/G12S. Pan-KRAS inhibítory (RMC-6236) sú v klinických štúdiách fázy II a reálnym bodom nádeje pri all-KRAS mutantoch.
+      </p>
+    </div>
+
+    <div class="marker-row">
+      <h3>NRAS, BRAF <span class="tier-chip tier-chip-ia">Tier IA</span></h3>
+      <p>
+        Podobný signálny systém ako KRAS. Pri kolorektálnom karcinóme: mutácia v ktoromkoľvek z KRAS/NRAS/BRAF = bez anti-EGFR. BRAF V600E má vlastnú cielenú liečbu — kombinácia <em>encorafenib + cetuximab</em> (prípadne + binimetinib). Bez tohto variantu sa BRAF inhibítory nepoužívajú rovnako efektívne.
+      </p>
+    </div>
+
+    <div class="marker-row">
+      <h3>MSI / MMR stav <span class="tier-chip tier-chip-ia">Tier IA</span></h3>
+      <p>
+        <strong>MSI-H / dMMR</strong> = nádor má poškodený systém opravy DNA. Výborne odpovedá na imunoterapiu (pembrolizumab, nivolumab) — pri metastatickom kolorektálnom karcinóme je v prvej línii štandardom monoterapia (KEYNOTE-177). Asi 5 % pacientov s pokročilým CRC.
+        <br><strong>MSS / pMMR</strong> = stabilný stav. Imunoterapia samotná NEfunguje. Treba kombinovať s chemoterapiou alebo inými liekmi. Väčšina pacientov je v tejto skupine.
+      </p>
+    </div>
+
+    <div class="marker-row">
+      <h3>TMB (Tumor Mutation Burden) <span class="tier-chip tier-chip-iic">Tier IIC</span></h3>
+      <p>
+        Počet mutácií na megabázu DNA. <strong>TMB-H</strong> (&ge; 10 Mut/Mb) = potenciálny kandidát pre imunoterapiu naprieč typmi nádoru (pembrolizumab podľa FDA tissue-agnostic indikácie 2020). <strong>TMB-low</strong> = imunoterapia menej pravdepodobne zaberie. Treba interpretovať spolu s MSI stavom — TMB-H pri MSS je silnejší prediktor než samotné TMB.
+      </p>
+    </div>
+
+    <div class="marker-row">
+      <h3>BRCA1 / BRCA2 <span class="tier-chip tier-chip-ia">Tier IA</span></h3>
+      <p>
+        Gény opravy DNA. Zdedené (germinálne) mutácie zvyšujú riziko prsného, vaječníkového, pankreatického a prostaty. Somatické mutácie (v nádore) majú podobné liečebné dôsledky.
+        <br><strong>Liečebné dôsledky:</strong> excelentná odpoveď na <em>PARP inhibítory</em> (olaparib, talazoparib, niraparib). Pri prsnom karcinóme s pokročilým ochorením je PARP schválený po chemoterapii. Pri vaječníkovom v udržiavacej liečbe po odpovedi na platinu.
+        <br><strong>Pre rodinu:</strong> BRCA je dedičná v 50 % prípadov pre každého potomka — otestovanie blízkych príbuzných má zmysel.
+      </p>
+    </div>
+
+    <div class="marker-row">
+      <h3>ATM <span class="tier-chip tier-chip-iic">Tier IIC</span></h3>
+      <p>
+        Gén opravy DNA, podobný BRCA. <strong>Biallelic loss</strong> (obe kópie nefunkčné) = nádor je DDR-deficient.
+        <br><strong>Liečebné dôsledky:</strong> kandidát na PARP inhibítory alebo ATR inhibítory (ceralasertib) — často v rámci klinickej štúdie. Zvyčajne dobrá odpoveď na platinovú chemoterapiu (oxaliplatina, cisplatina). Toto je signál pre <strong>vyhľadanie klinickej štúdie</strong>, aj keď neexistuje schválená cielená liečba.
+      </p>
+    </div>
+
+    <div class="marker-row">
+      <h3>TP53 <span class="tier-chip tier-chip-iic">Tier IIC</span></h3>
+      <p>
+        „Strážca genómu". Mutácie sú veľmi časté (okolo 50 % nádorov). Spravidla nie priamo actionable — nemá schválenú cielenú liečbu. Ale TP53 mutácie bývajú spojené s agresívnejšou biológiou nádoru a horšou prognózou. V kombinácii s inými markermi (napr. ATM biallelic + TP53) posilňujú argument pre DDR-cielenú liečbu.
+      </p>
+    </div>
+
+    <div class="marker-row">
+      <h3>HER2 <span class="tier-chip tier-chip-ia">Tier IA</span></h3>
+      <p>
+        Rastový receptor. <strong>HER2-positive</strong> (amplifikácia alebo nadmerná expresia) = kandidát na anti-HER2 liečbu (trastuzumab, pertuzumab, T-DM1, T-DXd). Klasicky pri prsnom karcinóme (15 – 20 %), ale aj pri gastrickom a kolorektálnom (približne 3 %). <strong>HER2-low</strong> (novinka od 2022) = kandidát na trastuzumab-deruxtecan pri prsnom karcinóme — výrazne mení krajinu liečby pre pacientky s „HER2-negatívnym" statusom po starom.
+      </p>
+    </div>
+
+    <h2>Čo znamená „tier"?</h2>
+    <p>
+      Klasifikácia podľa AMP/ASCO/CAP guidelines 2017 hovorí, ako dobre je variant klinicky overený:
+    </p>
+    <ul>
+      <li><strong>Tier IA</strong> — existuje schválená cielená liečba pre tento typ nádoru.</li>
+      <li><strong>Tier IB</strong> — konsenzus expertov pre liečbu, ale bez formálneho schválenia.</li>
+      <li><strong>Tier IIC</strong> — liečba je schválená pre iný typ nádoru alebo je v klinickej štúdii.</li>
+      <li><strong>Tier IID</strong> — predklinická evidencia alebo kazuistika; liečebný signál je slabý.</li>
+      <li><strong>Tier III</strong> — neznámy klinický význam (VUS, variant of uncertain significance). Tier III varianty neovplyvňujú okamžité rozhodnutie — nepanikárite pri nich.</li>
+    </ul>
+    <p>
+      Pri rozhodovaní o liečbe sú kľúčové hlavne Tier IA a IIC varianty.
+    </p>
+
+    <h2>Tri otázky pre onkológa po obdržaní výsledkov</h2>
+    <ol>
+      <li><strong>Ktorý variant je actionable a aká je schválená liečba?</strong> Odpoveď by mala identifikovať konkrétny liek (alebo kombinaciu) a líniu liečby, kde by sa mal použiť.</li>
+      <li><strong>Ktorá klinická štúdia zohľadňuje tento profil?</strong> Ak máte Tier IIC variant (napr. ATM biallelic), existuje často otvorená štúdia s cielenou liečbou. Onkológ by mal vedieť alebo odporučiť vyhľadanie na ClinicalTrials.gov / EU-CTR.</li>
+      <li><strong>Ktorá liečba je vylúčená kvôli tomuto nálezu?</strong> Rovnako dôležité — napr. anti-EGFR pri KRAS-mutant CRC je strata času a peňazí. Mali by ste mať zapísané, ktoré lieky sú kontraindikované.</li>
+    </ol>
+
+    <h2>Keď výsledky nevyzerajú dobré</h2>
+    <p>
+      Správa typu „KRAS G12S + TP53 splice + MSS + TMB-low" znamená, že klasické imunoterapeutické cesty sú zatvorené a anti-EGFR je vylúčené. Ale to NIE je dôvod na rezignáciu — otvára sa priestor pre:
+    </p>
+    <ul>
+      <li><strong>Pan-KRAS inhibítory v štúdiách fázy II</strong> (RMC-6236 daraxonrasib a podobné).</li>
+      <li><strong>Kombinácie cielenej liečby s chemoterapiou</strong> (napr. bevacizumab-založené režimy).</li>
+      <li><strong>DDR-cielené lieky</strong> pri súčasnej ATM alebo BRCA mutácii (PARP, ATR inhibítory).</li>
+      <li><strong>Štúdie s novými mechanizmami</strong> (bispecifické protilátky, ADC, TIL terapia) — ktoré často neformalizujú biomarkery do vstupných kritérií.</li>
+    </ul>
+
+    <div class="cta-box">
+      <h3>Oncoteam prenesie váš oncopanel do plain jazyka</h3>
+      <p>
+        Nahrajte PDF správu z molekulárneho vyšetrenia do Oncoteamu — AI vyextrahuje všetky varianty, priradí tier, a onkológ potom potvrdí každú interpretáciu. Všetky dôsledky pre liečbu (ktoré lieky sú vylúčené, ktoré sú actionable) uvidíte v jednom prehľade. Liečebné odporúčania informatívne; klinické rozhodnutie patrí vášmu ošetrujúcemu lekárovi.
+      </p>
+      <p><a href="https://dashboard.oncoteam.cloud/demo" class="btn btn-primary btn-sm">Skúsiť demo</a> <a href="/" class="btn btn-secondary btn-sm">Späť na úvod</a></p>
+    </div>
+
+    <div class="source">
+      <strong>Zdroje:</strong>
+      <a href="https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer">ESMO 2022 mCRC Living Guidelines</a> ·
+      <a href="https://www.nccn.org/guidelines/category_1">NCCN Colon Cancer v3.2024</a> ·
+      <a href="https://www.esmo.org/guidelines/guidelines-by-topic/breast-cancer">ESMO 2023 Breast Cancer Living Guideline</a> ·
+      <a href="https://pubmed.ncbi.nlm.nih.gov/28218839/">AMP/ASCO/CAP tier guidelines 2017 (PMID 28218839)</a> ·
+      <a href="https://clinicaltrials.gov">ClinicalTrials.gov</a>
+    </div>
+
+    <div class="disclaimer">
+      Tento článok je informatívny prehľad pre pacientov a rodinných advokátov. Nenahrádza odborné onkologické konzílium. Každé rozhodnutie o liečbe robí ošetrujúci onkológ na základe celkového klinického obrazu, komorbidít, doterajšej liečby a preferencií pacienta.
+    </div>
+  </article>
+</body>
+</html>
