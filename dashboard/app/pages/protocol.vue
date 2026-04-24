@@ -10,8 +10,9 @@ const { fetchApi } = useOncoteamApi()
 const drilldown = useDrilldown()
 
 const { data: protocol, status: protocolStatus, error: protocolError, refresh } = fetchApi<{
-  lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; note?: string; action: string }>
+  lab_thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; note?: string; action: string; source?: string; source_url?: string }>
   dose_modifications: Record<string, string>
+  dose_mod_sources?: Record<string, { source: string; source_url: string }>
   milestones: Array<{ cycle: number; action: string; description: string }>
   monitoring_schedule: Record<string, string>
   safety_flags: Record<string, { rule: string; source: string; label?: string; active?: boolean; severity?: string }>
@@ -194,7 +195,12 @@ const tabs = computed(() => [
           class="cursor-pointer hover:ring-1 hover:ring-teal-500/30 rounded-xl transition-all"
           @click="drilldown.open({ type: 'protocol_section', id: `dosemod-${toxicity}`, label: String(toxicity).replace(/_/g, ' '), data: { toxicity, action, source: 'ESMO/NCCN mFOLFOX6 guidelines' } })"
         >
-          <DoseModCard :toxicity="toxicity" :action="action" />
+          <DoseModCard
+            :toxicity="toxicity"
+            :action="action"
+            :source="protocol.dose_mod_sources?.[toxicity]?.source"
+            :source-url="protocol.dose_mod_sources?.[toxicity]?.source_url"
+          />
         </div>
       </div>
 

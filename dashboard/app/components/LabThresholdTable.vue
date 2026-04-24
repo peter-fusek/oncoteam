@@ -1,18 +1,12 @@
 <script setup lang="ts">
 defineProps<{
-  thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; note?: string; action: string }>
+  thresholds: Record<string, { min?: number; max_ratio?: number; unit?: string; note?: string; action: string; source?: string; source_url?: string }>
   lastValues?: Record<string, { value: number; sample_date?: string; sync_date?: string; date?: string; status: 'safe' | 'warning' | 'critical' }>
 }>()
 
 defineEmits<{
   rowClick: [param: string]
 }>()
-
-const statusColors: Record<string, string> = {
-  safe: 'bg-green-500/20 text-green-400',
-  warning: 'bg-amber-500/20 text-amber-400',
-  critical: 'bg-red-500/20 text-red-400',
-}
 </script>
 
 <template>
@@ -46,6 +40,9 @@ const statusColors: Record<string, string> = {
             <template v-else-if="t.max_ratio">
               &lt;= {{ t.max_ratio }}x ULN
             </template>
+            <div v-if="t.source_url" class="mt-0.5">
+              <a :href="t.source_url" target="_blank" rel="noopener" class="text-[10px] text-teal-600 hover:underline" @click.stop>{{ t.source }}</a>
+            </div>
           </td>
           <td v-if="lastValues" class="py-2 pr-4">
             <template v-if="lastValues[String(name)]">

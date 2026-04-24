@@ -47,19 +47,97 @@ DOSE_MODIFICATION_RULES: dict[str, dict] = {
     ),
 }
 
+# Source attribution for dose modification rules (#382 inline citations).
+# Keyed identically to DOSE_MODIFICATION_RULES.
+DOSE_MOD_SOURCES: dict[str, dict] = {
+    "neuropathy_grade_2": {
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": "https://www.nccn.org/guidelines/category_1",
+    },
+    "neuropathy_grade_3": {
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": "https://www.nccn.org/guidelines/category_1",
+    },
+    "neuropathy_grade_4": {
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": "https://www.nccn.org/guidelines/category_1",
+    },
+    "plt_below_75k": {
+        "source": "NCCN v3.2024 / ASH 2021 VTE",
+        "source_url": "https://ashpublications.org/bloodadvances/article/5/4/927/475154",
+    },
+    "anc_below_1500": {
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": "https://www.nccn.org/guidelines/category_1",
+    },
+    "alt_ast_above_5x": {
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": "https://www.nccn.org/guidelines/category_1",
+    },
+    "diarrhea_grade_3": {
+        "source": "ESMO 2022 mCRC §4.3",
+        "source_url": "https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer",
+    },
+}
+
 # Pre-cycle lab safety thresholds.
 # source: NCCN Colon Cancer v3.2024 §TOX-1; ESMO 2022 mCRC Living Guidelines §4.3;
 # ASCO VTE 2023 (PLT threshold under LMWH); ASH 2021 VTE in Cancer.
-# Full per-value source metadata lives in memory/reference_clinical-protocol-sources.md.
-# See issue #382 for the inline-structured-sources roll-out.
+# Per-value source fields added for #382 inline UI citations.
+_NCCN_URL = "https://www.nccn.org/guidelines/category_1"
+_ESMO_MCRC_URL = "https://www.esmo.org/guidelines/guidelines-by-topic/gastrointestinal-cancers/metastatic-colorectal-cancer"
+_ASH_VTE_URL = "https://ashpublications.org/bloodadvances/article/5/4/927/475154"
+
 LAB_SAFETY_THRESHOLDS: dict[str, dict] = {
-    "ANC": {"min": 1500, "unit": "/uL", "action": "hold_chemo"},
-    "PLT": {"min": 75000, "unit": "/uL", "action": "hold_chemo"},
-    "PLT_anticoag": {"min": 50000, "unit": "/uL", "action": "flag_hematology"},
-    "creatinine": {"max_ratio": 1.5, "note": "vs ULN", "action": "hold_chemo"},
-    "ALT": {"max_ratio": 5.0, "note": "vs ULN, liver mets allowed", "action": "hold_chemo"},
-    "AST": {"max_ratio": 5.0, "note": "vs ULN, liver mets allowed", "action": "hold_chemo"},
-    "bilirubin": {"max_ratio": 1.5, "note": "vs ULN", "action": "hold_chemo"},
+    "ANC": {
+        "min": 1500,
+        "unit": "/uL",
+        "action": "hold_chemo",
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": _NCCN_URL,
+    },
+    "PLT": {
+        "min": 75000,
+        "unit": "/uL",
+        "action": "hold_chemo",
+        "source": "NCCN v3.2024 / ASH 2021 VTE",
+        "source_url": _ASH_VTE_URL,
+    },
+    "PLT_anticoag": {
+        "min": 50000,
+        "unit": "/uL",
+        "action": "flag_hematology",
+        "source": "ASH 2021 VTE in Cancer",
+        "source_url": _ASH_VTE_URL,
+    },
+    "creatinine": {
+        "max_ratio": 1.5,
+        "note": "vs ULN",
+        "action": "hold_chemo",
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": _NCCN_URL,
+    },
+    "ALT": {
+        "max_ratio": 5.0,
+        "note": "vs ULN, liver mets allowed",
+        "action": "hold_chemo",
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": _NCCN_URL,
+    },
+    "AST": {
+        "max_ratio": 5.0,
+        "note": "vs ULN, liver mets allowed",
+        "action": "hold_chemo",
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": _NCCN_URL,
+    },
+    "bilirubin": {
+        "max_ratio": 1.5,
+        "note": "vs ULN",
+        "action": "hold_chemo",
+        "source": "NCCN v3.2024 §TOX-1",
+        "source_url": _NCCN_URL,
+    },
 }
 
 # Treatment timeline milestones
@@ -513,6 +591,7 @@ def _resolve_protocol_cached(lang: str) -> dict:
         "reference_ranges": LAB_REFERENCE_RANGES,
         "health_direction": PARAMETER_HEALTH_DIRECTION,
         "dose_modifications": resolve(DOSE_MODIFICATION_RULES, lang),
+        "dose_mod_sources": DOSE_MOD_SOURCES,
         "milestones": resolve(TREATMENT_MILESTONES, lang),
         "monitoring_schedule": resolve(MONITORING_SCHEDULE, lang),
         "watched_trials": WATCHED_TRIALS,
@@ -536,6 +615,7 @@ PROTOCOL_SECTIONS = {
     "reference_ranges",
     "health_direction",
     "dose_modifications",
+    "dose_mod_sources",
     "milestones",
     "monitoring_schedule",
     "watched_trials",
