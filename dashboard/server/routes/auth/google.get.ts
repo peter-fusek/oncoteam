@@ -27,7 +27,6 @@ export default defineOAuthGoogleEventHandler({
         buildAuthAuditEvent({
           email: user.email,
           outcome: 'rejected_no_role_map',
-          roleMapHit: false,
           patientCount: 0,
         }),
       )
@@ -50,7 +49,6 @@ export default defineOAuthGoogleEventHandler({
         buildAuthAuditEvent({
           email: user.email,
           outcome: 'rejected_empty_scope',
-          roleMapHit: true,
           patientCount: 0,
           roles,
         }),
@@ -80,7 +78,6 @@ export default defineOAuthGoogleEventHandler({
       buildAuthAuditEvent({
         email: user.email,
         outcome: 'allowed',
-        roleMapHit: true,
         patientCount: patientIds.length,
         roles,
       }),

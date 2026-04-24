@@ -14,13 +14,15 @@
  * import it without a Nuxt runtime.
  */
 
+export const AUTH_AUDIT_TAG = 'auth.google.callback' as const
+
 export type AuthAuditOutcome =
   | 'allowed'
   | 'rejected_no_role_map'
   | 'rejected_empty_scope'
 
 export interface AuthAuditEvent {
-  tag: 'auth.google.callback'
+  tag: typeof AUTH_AUDIT_TAG
   email: string
   outcome: AuthAuditOutcome
   role_map_hit: boolean
@@ -37,7 +39,6 @@ export interface AuthAuditEvent {
 export interface BuildAuthAuditEventOpts {
   email: string
   outcome: AuthAuditOutcome
-  roleMapHit: boolean
   patientCount: number
   roles?: string[] | null
   /** Override for tests; defaults to process.env.NUXT_ALLOWED_EMAILS. */
@@ -66,10 +67,13 @@ export function buildAuthAuditEvent(opts: BuildAuthAuditEventOpts): AuthAuditEve
     : allowedList.includes(opts.email.trim().toLowerCase())
   const ts = (opts.now || (() => new Date().toISOString()))()
   return {
-    tag: 'auth.google.callback',
+    tag: AUTH_AUDIT_TAG,
     email: opts.email,
     outcome: opts.outcome,
-    role_map_hit: opts.roleMapHit,
+    // role_map_hit is fully implied by outcome: only rejected_no_role_map
+    // means the lookup missed. Deriving here prevents call sites from
+    // passing a mismatched outcome+hit pair.
+    role_map_hit: opts.outcome !== 'rejected_no_role_map',
     patient_count: opts.patientCount,
     roles: opts.roles ?? null,
     in_allowed_emails_deprecated: inAllowedEmails,

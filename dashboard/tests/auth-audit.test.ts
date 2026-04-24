@@ -18,7 +18,6 @@ describe('buildAuthAuditEvent — shape + outcome handling', () => {
     const event = buildAuthAuditEvent({
       email: 'peterfusek1980@gmail.com',
       outcome: 'allowed',
-      roleMapHit: true,
       patientCount: 2,
       roles: ['admin', 'advocate'],
       allowedEmailsEnv: undefined,
@@ -40,7 +39,6 @@ describe('buildAuthAuditEvent — shape + outcome handling', () => {
     const event = buildAuthAuditEvent({
       email: 'peter.fusek@instarea.sk',
       outcome: 'rejected_no_role_map',
-      roleMapHit: false,
       patientCount: 0,
       allowedEmailsEnv: undefined,
       now: fixedNow,
@@ -55,7 +53,6 @@ describe('buildAuthAuditEvent — shape + outcome handling', () => {
     const event = buildAuthAuditEvent({
       email: 'pending@example.com',
       outcome: 'rejected_empty_scope',
-      roleMapHit: true,
       patientCount: 0,
       roles: ['advocate'],
       allowedEmailsEnv: undefined,
@@ -74,7 +71,6 @@ describe('buildAuthAuditEvent — shape + outcome handling', () => {
       const event = buildAuthAuditEvent({
         email: 'x@test',
         outcome,
-        roleMapHit: outcome !== 'rejected_no_role_map',
         patientCount: outcome === 'allowed' ? 1 : 0,
         now: fixedNow,
       })
@@ -88,7 +84,6 @@ describe('buildAuthAuditEvent — NUXT_ALLOWED_EMAILS deprecation signal', () =>
     const event = buildAuthAuditEvent({
       email: 'anyone@example.com',
       outcome: 'rejected_no_role_map',
-      roleMapHit: false,
       patientCount: 0,
       allowedEmailsEnv: undefined,
       now: fixedNow,
@@ -100,7 +95,6 @@ describe('buildAuthAuditEvent — NUXT_ALLOWED_EMAILS deprecation signal', () =>
     const event = buildAuthAuditEvent({
       email: 'anyone@example.com',
       outcome: 'rejected_no_role_map',
-      roleMapHit: false,
       patientCount: 0,
       allowedEmailsEnv: '',
       now: fixedNow,
@@ -115,7 +109,6 @@ describe('buildAuthAuditEvent — NUXT_ALLOWED_EMAILS deprecation signal', () =>
     const event = buildAuthAuditEvent({
       email: 'peter.fusek@instarea.com',
       outcome: 'rejected_no_role_map',
-      roleMapHit: false,
       patientCount: 0,
       allowedEmailsEnv: 'peterfusek1980@gmail.com,peter.fusek@instarea.com',
       now: fixedNow,
@@ -127,7 +120,6 @@ describe('buildAuthAuditEvent — NUXT_ALLOWED_EMAILS deprecation signal', () =>
     const event = buildAuthAuditEvent({
       email: 'random@attacker.com',
       outcome: 'rejected_no_role_map',
-      roleMapHit: false,
       patientCount: 0,
       allowedEmailsEnv: 'peterfusek1980@gmail.com',
       now: fixedNow,
@@ -139,7 +131,6 @@ describe('buildAuthAuditEvent — NUXT_ALLOWED_EMAILS deprecation signal', () =>
     const event = buildAuthAuditEvent({
       email: 'Peter.Fusek@Instarea.COM',
       outcome: 'rejected_no_role_map',
-      roleMapHit: false,
       patientCount: 0,
       allowedEmailsEnv: 'peter.fusek@instarea.com',
       now: fixedNow,
@@ -151,7 +142,6 @@ describe('buildAuthAuditEvent — NUXT_ALLOWED_EMAILS deprecation signal', () =>
     const event = buildAuthAuditEvent({
       email: 'peter.fusek@instarea.com',
       outcome: 'rejected_no_role_map',
-      roleMapHit: false,
       patientCount: 0,
       allowedEmailsEnv: 'peterfusek1980@gmail.com\npeter.fusek@instarea.com',
       now: fixedNow,
@@ -166,7 +156,6 @@ describe('buildAuthAuditEvent — NUXT_ALLOWED_EMAILS deprecation signal', () =>
       const event = buildAuthAuditEvent({
         email: 'from-env@example.com',
         outcome: 'rejected_no_role_map',
-        roleMapHit: false,
         patientCount: 0,
         now: fixedNow,
       })
@@ -193,7 +182,6 @@ describe('logAuthAuditEvent — single-line JSON output', () => {
     const event = buildAuthAuditEvent({
       email: 'peterfusek1980@gmail.com',
       outcome: 'allowed',
-      roleMapHit: true,
       patientCount: 2,
       roles: ['admin', 'advocate'],
       allowedEmailsEnv: undefined,
@@ -219,7 +207,6 @@ describe('logAuthAuditEvent — single-line JSON output', () => {
         buildAuthAuditEvent({
           email: 'x@test',
           outcome: 'allowed',
-          roleMapHit: true,
           patientCount: 1,
           now: fixedNow,
         }),
