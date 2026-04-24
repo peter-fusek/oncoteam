@@ -130,6 +130,16 @@ export function useExportPackage() {
           patient_id: opts.patientId,
           lang: opts.lang,
           partial_errors: errors.length > 0 ? errors : undefined,
+          // #382 — medical-info disclaimer machine-readable alongside the
+          // HTML export footer, so downstream consumers (automations, LLM
+          // prompts fed this as input) carry the informative-only framing
+          // and cannot lose it during re-serialisation.
+          _disclaimer: {
+            notice: opts.lang === 'sk'
+              ? 'Informatívny prehľad — overí ošetrujúci lekár. Oncoteam nie je zdravotnícka pomôcka podľa EÚ MDR 2017/745.'
+              : 'Informational overview — verified by the treating physician. Oncoteam is not a medical device under EU MDR 2017/745 or FDA SaMD.',
+            full_legal_url: 'https://oncoteam.cloud/pravne-upozornenie.html',
+          },
           ...data,
         }
         blob = new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' })
@@ -282,9 +292,12 @@ function buildHtml(
   ul { padding-left: 20px; }
   li { margin: 2px 0; }
   .warn { background: #fef3c7; border: 1px solid #fbbf24; border-radius: 6px; padding: 8px 12px; font-size: 12px; margin: 12px 0; }
+  .disclaimer { margin-top: 32px; padding: 14px 16px; border-top: 2px solid #ccfbf1; background: #f0fdfa; border-radius: 0 0 6px 6px; font-size: 11px; line-height: 1.5; color: #374151; }
+  .disclaimer strong { color: #0d9488; }
   @media print {
     body { padding: 0; }
     section { break-inside: avoid; }
+    .disclaimer { break-before: avoid; page-break-inside: avoid; }
   }
 </style>
 </head>
@@ -293,6 +306,11 @@ function buildHtml(
   <p class="meta">Patient: ${esc(opts.patientId)} | Exported: ${esc(now)} | Language: ${esc(opts.lang)}</p>
   ${errBlock}
   ${sections}
+  <div class="disclaimer">
+    ${opts.lang === 'sk'
+      ? '<strong>Informatívny prehľad — overí ošetrujúci lekár.</strong> Tento export je agregácia dát vedených v Oncoteame pre účely konzultácie s onkológom. Oncoteam nie je zdravotnícka pomôcka podľa EÚ MDR 2017/745; všetky rozhodnutia o liečbe patria ošetrujúcemu lekárovi. Úplné právne upozornenie: <a href="https://oncoteam.cloud/pravne-upozornenie.html">oncoteam.cloud/pravne-upozornenie.html</a>.'
+      : '<strong>Informational overview — verified by the treating physician.</strong> This export aggregates data tracked in Oncoteam to support your oncology visit. Oncoteam is not a medical device under EU MDR 2017/745 or FDA SaMD classification; all treatment decisions rest with the treating physician. Full legal notice: <a href="https://oncoteam.cloud/pravne-upozornenie.html">oncoteam.cloud/pravne-upozornenie.html</a>.'}
+  </div>
 </body>
 </html>`
 }
