@@ -3891,6 +3891,7 @@ from .api_admin import api_access_rights_get as api_access_rights_get  # noqa: E
 from .api_admin import api_access_rights_set as api_access_rights_set  # noqa: E402, F811
 from .api_admin import api_approve_user as api_approve_user  # noqa: E402, F811
 from .api_admin import api_onboard_patient as api_onboard_patient  # noqa: E402, F811
+from .api_admin import api_onboarding_queue as api_onboarding_queue  # noqa: E402, F811
 from .api_admin import api_onboarding_status as api_onboarding_status  # noqa: E402, F811
 from .api_admin import api_patients as api_patients  # noqa: E402, F811
 

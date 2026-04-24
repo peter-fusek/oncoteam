@@ -97,6 +97,24 @@ _AGENTS: list[AgentConfig] = [
         prompt_template="[No prompt — direct health checks, no Claude API call]",
     ),
     AgentConfig(
+        id="patient_registry_sync",
+        name=L("Detekcia nových pacientov", "Patient registry sync"),
+        description=L(
+            "Porovná zoznam pacientov v oncofiles s oncoteam registrom; "
+            "upozorní admina na Gate-1-only pacientov (NIKDY ich sám neregistruje)",
+            "Diff oncofiles patient list against oncoteam registry; notify admin "
+            "for Gate-1-only patients (NEVER auto-registers)",
+        ),
+        schedule_display=L("denne 01:45 UTC (02:45 CET)", "daily 01:45 UTC (02:45 CET)"),
+        category=AgentCategory.SYSTEM,
+        schedule_type=ScheduleType.CRON,
+        schedule_params={"hour": 1, "minute": 45},
+        misfire_grace_time=86400,
+        cooldown_hours=12,
+        max_turns=0,
+        prompt_template="[No prompt — direct oncofiles list_patients + diff, no Claude API call]",
+    ),
+    AgentConfig(
         id="self_improvement",
         name=L("Analýza zlepšení", "Self-improvement analysis"),
         description=L(

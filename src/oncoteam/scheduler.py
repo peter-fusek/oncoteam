@@ -51,6 +51,7 @@ def _get_task_functions() -> dict:
         run_lab_sync,
         run_medication_adherence_check,
         run_mtb_preparation,
+        run_patient_registry_sync,
         run_pre_cycle_check,
         run_protocol_review,
         run_response_assessment,
@@ -65,6 +66,7 @@ def _get_task_functions() -> dict:
     return {
         "keepalive_ping": _keepalive_ping,
         "health_monitor": run_health_monitor,
+        "patient_registry_sync": run_patient_registry_sync,
         "file_scan": run_file_scan,
         "lab_sync": run_lab_sync,
         "toxicity_extraction": run_toxicity_extraction,
@@ -113,7 +115,7 @@ def _create_scheduler():
         )
 
         # System agents run once, not per-patient
-        if agent_id in ("keepalive_ping", "health_monitor"):
+        if agent_id in ("keepalive_ping", "health_monitor", "patient_registry_sync"):
             trigger = trigger_cls(**config.schedule_params)
             scheduler.add_job(
                 func,

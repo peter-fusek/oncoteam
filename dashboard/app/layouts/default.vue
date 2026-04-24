@@ -404,6 +404,7 @@ async function logout() {
     <!-- Main content -->
     <main class="flex-1 overflow-auto p-4 md:p-6 pt-14 md:pt-6">
       <ApiErrorBanner v-if="circuitBreaker.degraded.value" class="mb-3" />
+      <OnboardingQueueBanner />
       <slot />
       <DrilldownPanel />
       <BugReportButton />

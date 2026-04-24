@@ -2249,6 +2249,180 @@ async def run_health_monitor(patient_id: str = "q1b") -> dict:
     return {"ok": True, "alerts": alerts, "alert_count": len(alerts)}
 
 
+async def run_patient_registry_sync(patient_id: str | None = None) -> dict:
+    """Detect Gate-1-only patients in oncofiles + notify admin (#422).
+
+    Two-gate visibility rule: a patient appears in the clinical dropdown only
+    when they exist in oncofiles (Gate 1) AND have a PatientProfile +
+    ROLE_MAP entry in oncoteam (Gate 2). Gate-2-missing patients need manual
+    onboarding — this agent NEVER calls register_patient().
+
+    The `patient_id` argument is ignored (system-scope); kept for scheduler
+    signature parity.
+
+    Behavior on each run:
+      1. list_patients() from oncofiles admin.
+      2. Load previous snapshot from agent_state `patient_registry:last_snapshot`.
+      3. For each oncofiles patient classify as:
+         - gate1_only  — in oncofiles, not in oncoteam registry → queue for
+           manual onboarding + system-level WhatsApp push (once per patient;
+           dedup via signature).
+         - gate2_ok    — in both layers → no-op.
+         - archived    — was in oncofiles before but is not anymore → log
+           session note; never delete local data (soft-only per deletion
+           policy).
+      4. Persist the fresh snapshot so /api/internal/onboarding-queue and
+         the dashboard banner can read it without re-hitting oncofiles.
+
+    Returns a diff summary; error-tolerant — transient oncofiles outage
+    simply means the next run retries.
+    """
+    del patient_id  # system-scope — ignore per-patient invocations
+    from .patient_context import list_patient_ids
+
+    logger.info(">>> Starting task: patient_registry_sync")
+    started_at = time.time()
+
+    try:
+        resp = await oncofiles_client.list_patients(token=None)
+    except Exception as e:
+        logger.warning("patient_registry_sync: list_patients failed: %s", e)
+        record_suppressed_error("patient_registry_sync", "list_patients", e)
+        return {"ok": False, "error": str(e)}
+
+    oncofiles_patients: list[dict] = []
+    if isinstance(resp, dict):
+        oncofiles_patients = resp.get("patients") or resp.get("items") or []
+    elif isinstance(resp, list):
+        oncofiles_patients = resp
+
+    gate2_ids = set(list_patient_ids())
+    now_iso = datetime.now(UTC).isoformat()
+
+    prior_snapshot_raw = await _get_state("patient_registry:last_snapshot", token=None)
+    prior_snapshot: dict = {}
+    raw_val = (
+        prior_snapshot_raw.get("value")
+        if isinstance(prior_snapshot_raw, dict)
+        else prior_snapshot_raw
+    )
+    if isinstance(raw_val, str):
+        try:
+            prior_snapshot = json.loads(raw_val)
+        except (json.JSONDecodeError, TypeError):
+            prior_snapshot = {}
+    elif isinstance(raw_val, dict):
+        prior_snapshot = raw_val
+    prior_patients = prior_snapshot.get("patients") or []
+    prior_slugs = {p.get("slug") for p in prior_patients if isinstance(p, dict)}
+    prior_gate1_only = {
+        p.get("slug")
+        for p in prior_patients
+        if isinstance(p, dict) and p.get("classification") == "gate1_only"
+    }
+
+    gate1_only: list[dict] = []
+    gate2_ok: list[dict] = []
+    new_gate1_arrivals: list[dict] = []
+
+    current_slugs: set[str] = set()
+    for p in oncofiles_patients:
+        if not isinstance(p, dict):
+            continue
+        slug = p.get("slug") or p.get("patient_id") or p.get("id")
+        if not slug:
+            continue
+        current_slugs.add(slug)
+        entry = {
+            "slug": slug,
+            "name": p.get("name", ""),
+            "patient_type": p.get("patient_type", ""),
+            "documents": p.get("documents") or p.get("doc_count") or 0,
+            "first_seen_in_oncofiles": p.get("created_at") or p.get("first_seen", ""),
+            "flagged_at": now_iso,
+        }
+        if slug in gate2_ids:
+            entry["classification"] = "gate2_ok"
+            gate2_ok.append(entry)
+        else:
+            entry["classification"] = "gate1_only"
+            gate1_only.append(entry)
+            if slug not in prior_gate1_only:
+                new_gate1_arrivals.append(entry)
+
+    archived_slugs = prior_slugs - current_slugs
+
+    # WhatsApp push once per newly-detected Gate-1-only patient (dedup via
+    # _already_notified). System-scope message — patient_id=None bypasses
+    # per-patient notification_policy.
+    for entry in new_gate1_arrivals:
+        signature = f"gate1_only:{entry['slug']}"
+        if await _already_notified("system", signature, token=None):
+            continue
+        msg = format_whatsapp_header(
+            "Nový pacient v oncofiles",
+            date_str=datetime.now(UTC).strftime("%Y-%m-%d"),
+        )
+        msg += (
+            f"🆕 **{entry.get('name') or entry['slug']}** "
+            f"({entry['slug']}, {entry.get('patient_type') or 'unknown'}, "
+            f"{entry.get('documents', 0)} dok.)\n\n"
+            "Čaká na oncoteam onboarding — priradiť profil + rolu v "
+            "dashboarde.\n\nhttps://dashboard.oncoteam.cloud/admin/onboarding"
+        )
+        try:
+            await _send_whatsapp(msg, recipient="caregiver", patient_id=None)
+            await _mark_notified("system", signature, token=None)
+        except Exception as e:
+            record_suppressed_error("patient_registry_sync", "whatsapp_push", e)
+
+    # Session note for archived-in-oncofiles patients — local data is not
+    # deleted (soft-only), but the physician needs to know.
+    for slug in archived_slugs:
+        try:
+            await oncofiles_client.add_activity_log(
+                session_id=get_session_id(),
+                agent_id="patient_registry_sync",
+                tool_name="list_patients",
+                input_summary=f"patient archived in oncofiles: {slug}",
+                output_summary="local oncoteam data preserved (soft-only deletion policy)",
+                status="warning",
+                tags=["sys:registry", "task:archive-review", f"patient:{slug}"],
+                token=None,
+            )
+        except Exception as e:
+            record_suppressed_error("patient_registry_sync", "archive_log", e)
+
+    snapshot = {
+        "timestamp": now_iso,
+        "patients": gate1_only + gate2_ok,
+        "gate1_only_count": len(gate1_only),
+        "gate2_ok_count": len(gate2_ok),
+        "archived_count": len(archived_slugs),
+    }
+    await _set_state("patient_registry:last_snapshot", snapshot, token=None)
+
+    duration_ms = int((time.time() - started_at) * 1000)
+    result = {
+        "ok": True,
+        "gate1_only": [e["slug"] for e in gate1_only],
+        "gate1_new_arrivals": [e["slug"] for e in new_gate1_arrivals],
+        "gate2_ok": [e["slug"] for e in gate2_ok],
+        "archived": sorted(archived_slugs),
+        "duration_ms": duration_ms,
+    }
+    logger.info(
+        "<<< patient_registry_sync: gate1=%d gate2=%d archived=%d new=%d (%dms)",
+        len(gate1_only),
+        len(gate2_ok),
+        len(archived_slugs),
+        len(new_gate1_arrivals),
+        duration_ms,
+    )
+    await _log_task("patient_registry_sync", result, token=None)
+    return result
+
+
 async def run_funnel_assess(patient_id: str = "q1b") -> dict:
     """Auto-classify new clinical trials into funnel stages."""
     token = get_patient_token(patient_id)

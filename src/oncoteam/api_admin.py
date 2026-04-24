@@ -107,6 +107,70 @@ async def api_patients(request: Request) -> JSONResponse:
         return _cors_json({"patients": patients, "source": "local"}, request=request)
 
 
+async def api_onboarding_queue(request: Request) -> JSONResponse:
+    """GET /api/internal/onboarding-queue — Gate-1-only patients awaiting manual onboarding.
+
+    Source of truth is the `patient_registry:last_snapshot` agent_state key
+    written by the `patient_registry_sync` agent (#422). We read it directly
+    instead of re-calling `list_patients` + diffing — that keeps this
+    endpoint cheap and consistent with the banner count.
+
+    Falls back to an empty queue + `stale=true` if the snapshot is missing
+    (e.g. fresh deploy, agent hasn't fired yet). UI can show "snapshot
+    pending" instead of an empty "you're caught up" state that would be
+    misleading.
+    """
+    try:
+        raw = await oncofiles_client.get_agent_state(
+            key="patient_registry:last_snapshot", agent_id="oncoteam"
+        )
+    except Exception as exc:
+        record_suppressed_error("api_onboarding_queue", "get_snapshot", exc)
+        return _cors_json(
+            {"queue": [], "count": 0, "stale": True, "error": "snapshot unavailable"},
+            request=request,
+        )
+
+    snapshot: dict = {}
+    value = raw.get("value") if isinstance(raw, dict) else raw
+    if isinstance(value, str):
+        try:
+            snapshot = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            snapshot = {}
+    elif isinstance(value, dict):
+        snapshot = value
+
+    if not snapshot or not snapshot.get("timestamp"):
+        return _cors_json(
+            {"queue": [], "count": 0, "stale": True, "snapshot_timestamp": None},
+            request=request,
+        )
+
+    patients = snapshot.get("patients") or []
+    queue = [
+        {
+            "slug": p.get("slug", ""),
+            "name": p.get("name", ""),
+            "patient_type": p.get("patient_type", ""),
+            "documents": p.get("documents", 0),
+            "first_seen_in_oncofiles": p.get("first_seen_in_oncofiles", ""),
+            "flagged_at": p.get("flagged_at", ""),
+        }
+        for p in patients
+        if isinstance(p, dict) and p.get("classification") == "gate1_only"
+    ]
+    return _cors_json(
+        {
+            "queue": queue,
+            "count": len(queue),
+            "stale": False,
+            "snapshot_timestamp": snapshot.get("timestamp"),
+        },
+        request=request,
+    )
+
+
 async def api_onboard_patient(request: Request) -> JSONResponse:
     """POST /api/internal/onboard-patient — create a new patient in oncofiles and register locally.
 

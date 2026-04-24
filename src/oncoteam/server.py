@@ -59,6 +59,7 @@ from .dashboard_api import (
     api_log_whatsapp,
     api_medications,
     api_onboard_patient,
+    api_onboarding_queue,
     api_onboarding_status,
     api_patient,
     api_patients,
@@ -1271,6 +1272,9 @@ mcp.custom_route("/api/internal/onboard-patient", methods=["OPTIONS"])(api_cors_
 _onboarding_status = _auth_wrap(api_onboarding_status)
 mcp.custom_route("/api/internal/onboarding-status", methods=["POST"])(_onboarding_status)
 mcp.custom_route("/api/internal/onboarding-status", methods=["OPTIONS"])(api_cors_preflight)
+_onboarding_queue = _auth_wrap(api_onboarding_queue)
+mcp.custom_route("/api/internal/onboarding-queue", methods=["GET"])(_onboarding_queue)
+mcp.custom_route("/api/internal/onboarding-queue", methods=["OPTIONS"])(api_cors_preflight)
 _approve_user = _auth_wrap(api_approve_user)
 mcp.custom_route("/api/internal/approve-user", methods=["POST"])(_approve_user)
 mcp.custom_route("/api/internal/approve-user", methods=["OPTIONS"])(api_cors_preflight)

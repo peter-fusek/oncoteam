@@ -19,7 +19,9 @@ class TestAgentRegistry:
     def test_all_agents_loaded(self):
         # 21 historical + document_pipeline_drain (Sprint 92 cost reduction)
         # + ddr_monitor (#392 DDR pivot, Sprint 92 Session 2)
-        assert len(AGENT_REGISTRY) == 23
+        # + patient_registry_sync (#422 Sprint 96 S2 — detection only, never
+        #   auto-registers)
+        assert len(AGENT_REGISTRY) == 24
 
     def test_no_duplicate_ids(self):
         ids = list(AGENT_REGISTRY.keys())
@@ -99,13 +101,13 @@ class TestGetCooldown:
 class TestGetEnabledAgents:
     def test_returns_all_enabled(self):
         agents = get_enabled_agents()
-        assert len(agents) == 23
+        assert len(agents) == 24
 
     def test_exclude_system(self):
         agents = get_enabled_agents(exclude_system=True)
         for a in agents:
             assert a.category != AgentCategory.SYSTEM
-        # 17 non-system + document_pipeline_drain + ddr_monitor = 19
+        # Non-system count is unchanged — patient_registry_sync is SYSTEM.
         assert len(agents) == 19
 
 
