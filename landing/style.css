@@ -1507,6 +1507,169 @@ html[lang="sk"] .hiw-num::before {
   color: var(--text-muted);
 }
 
+/* ── Paper chaos → phone → answer (#423) ───── */
+.paper-chaos {
+  padding: 88px 0 72px;
+  background: var(--bg-warm);
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+.paper-chaos .section-title { margin-bottom: 10px; }
+.paper-chaos .section-subtitle { margin-bottom: 40px; }
+
+.pc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  align-items: stretch;
+}
+
+.pc-beat {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  position: relative;
+}
+
+.pc-beat img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  background: #fff;
+  border: 1px solid var(--border-light);
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.pc-beat figcaption {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding: 0 4px;
+}
+
+.pc-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.pc-caption {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.pc-beat-phone .pc-chat {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  background: #e5ddd5;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  aspect-ratio: 4 / 3;
+  min-height: 0;
+}
+
+.pc-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--primary);
+  color: white;
+}
+
+.pc-chat-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.pc-chat-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.pc-chat-status {
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
+.pc-chat-body {
+  flex: 1;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.pc-chat-msg {
+  max-width: 82%;
+  padding: 7px 10px;
+  border-radius: 9px;
+  word-wrap: break-word;
+  box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
+}
+
+.pc-chat-user {
+  align-self: flex-end;
+  background: #dcf8c6;
+  color: var(--text);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.82rem;
+}
+
+.pc-chat-bot {
+  align-self: flex-start;
+  background: #ffffff;
+  color: var(--text);
+}
+
+.pc-chat-bot em {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.pc-footnote {
+  margin-top: 32px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 900px) {
+  .pc-grid { grid-template-columns: 1fr; gap: 28px; }
+  .pc-beat img, .pc-beat-phone .pc-chat { aspect-ratio: 16 / 11; }
+}
+
 /* ── Product Demo ────────────────────────────── */
 .demo {
   padding: 80px 0 100px;

@@ -534,7 +534,7 @@ export default defineEventHandler(async (event) => {
           )
           const summary = result.summary || 'Dokument bol nahran\u00fd.'
           const pipelineNote = result.pipeline === 'started'
-            ? '\n\ud83d\udd04 Sp\u00fa\u0161\u0165am anal\u00fdzu \u2014 labky a hodnoty sa extrahuj\u00fa automaticky.'
+            ? '\n\ud83d\udd04 Sp\u00fa\u0161\u0165am anal\u00fdzu \u2014 lab\u00e1ky a hodnoty sa extrahuj\u00fa automaticky.'
             : ''
           results.push(`\ud83d\udcc4 ${filename}: ${summary}${pipelineNote}`)
         }
@@ -613,7 +613,7 @@ export default defineEventHandler(async (event) => {
         const errMsg = err instanceof Error ? err.message : String(err)
         console.error('[whatsapp-async] Claude API failed:', errMsg)
         reply = result.lang === 'sk'
-          ? 'Prepáčte, nepodarilo sa spracovať správu. Skúste príkaz ako *labky* alebo *pomoc*.'
+          ? 'Prepáčte, nepodarilo sa spracovať správu. Skúste príkaz ako *labáky* alebo *pomoc*.'
           : 'Sorry, could not process your message. Try a command like *labs* or *help*.'
       }
 

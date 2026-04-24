@@ -425,7 +425,7 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             f"Do NOT list available commands unless the user asks "
             f"for help. "
             f"If you cannot answer with available data, suggest ONE "
-            f"specific command (e.g. 'labky'). "
+            f"specific command (e.g. 'labáky'). "
             f"Max 1500 chars."
         )
 
@@ -471,7 +471,10 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             quality_tags.append(f"user:{user_name}")
         # Detect quality issues for audit
         response_lower = response_text.lower()
-        if any(cmd in response_lower for cmd in ["labky,", "lieky,", "pomoc.", "dostupné príkazy"]):
+        if any(
+            cmd in response_lower
+            for cmd in ["labáky,", "laboráky,", "labky,", "lieky,", "pomoc.", "dostupné príkazy"]
+        ):
             quality_tags.append("wa:quality:command_dump")
         if response_text == result.get("response", ""):
             pass  # normal

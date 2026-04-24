@@ -156,7 +156,7 @@
       {
         "@type": "Question",
         "name": "What data crosses the network when I send a WhatsApp command?",
-        "acceptedAnswer": {"@type": "Answer", "text": "Text commands (predcyklus, labky, otazky, etc.) and your message (max 2000 chars) plus the last 5 exchanges and a patient context block (name, diagnosis, current cycle) go to Anthropic Claude. Original documents stay in your Google Drive; only metadata and extracted values are sent. For voice messages, the audio goes to OpenAI Whisper-1 for transcription, then the transcribed text follows the same flow. Audio is ephemeral."}
+        "acceptedAnswer": {"@type": "Answer", "text": "Text commands (predcyklus, labáky, otazky, etc.) and your message (max 2000 chars) plus the last 5 exchanges and a patient context block (name, diagnosis, current cycle) go to Anthropic Claude. Original documents stay in your Google Drive; only metadata and extracted values are sent. For voice messages, the audio goes to OpenAI Whisper-1 for transcription, then the transcribed text follows the same flow. Audio is ephemeral."}
       },
       {
         "@type": "Question",
@@ -267,6 +267,71 @@
     </div>
   </header>
 
+  <!-- Paper chaos → phone → 3-second answer (#423) -->
+  <section class="paper-chaos" id="paper-chaos" aria-labelledby="paper-chaos-title">
+    <div class="container">
+      <h2 class="section-title" id="paper-chaos-title" data-i18n="pc.title">Same information. From your closet to your phone.</h2>
+      <p class="section-subtitle" data-i18n="pc.subtitle">40+ years of Slovak medical paperwork. One WhatsApp message. A structured answer in seconds — including handwritten notes from 1982.</p>
+
+      <div class="pc-grid">
+        <!-- Beat 1 — the pile -->
+        <figure class="pc-beat pc-beat-pile">
+          <img
+            src="assets/pile-to-dashboard-2026-04-22/02-papers-spread-medical-records-2026-04-22.jpg"
+            alt="Medical records spread across a desk — forty years of paper documents, lab results, and oncology textbook."
+            loading="lazy"
+            width="1200"
+            height="900"
+          />
+          <figcaption>
+            <span class="pc-step">1</span>
+            <span class="pc-caption" data-i18n="pc.beat1">Pile in hand — the chaos every family starts with.</span>
+          </figcaption>
+        </figure>
+
+        <!-- Beat 2 — the phone -->
+        <figure class="pc-beat pc-beat-phone">
+          <div class="pc-chat" role="img" aria-label="WhatsApp conversation showing the labáky command with a structured lab answer.">
+            <div class="pc-chat-header">
+              <span class="pc-chat-avatar">O</span>
+              <div>
+                <div class="pc-chat-name">Oncoteam</div>
+                <div class="pc-chat-status" data-i18n="pc.chat.status">online · WhatsApp</div>
+              </div>
+            </div>
+            <div class="pc-chat-body">
+              <div class="pc-chat-msg pc-chat-user">labáky</div>
+              <div class="pc-chat-msg pc-chat-bot" data-i18n-html="pc.chat.reply1">&#x1F4CA; <strong>Labs (Mar 19):</strong><br>ANC 1,150 &darr;, PLT 269k, HGB 118 &uarr;<br>CEA 733 &darr;62%, CA19-9 22.3k &darr;68%<br><em>ANC below threshold — discuss before C3.</em></div>
+              <div class="pc-chat-msg pc-chat-user" data-i18n="pc.chat.q2">otázky pre onkológa</div>
+              <div class="pc-chat-msg pc-chat-bot" data-i18n-html="pc.chat.reply2">&#x1F4DD; <strong>For your next visit:</strong><br>1. ANC hold — dose reduction for C3?<br>2. CEA response excellent — imaging timeline?<br>3. Iron supplementation given HGB trend?</div>
+            </div>
+          </div>
+          <figcaption>
+            <span class="pc-step">2</span>
+            <span class="pc-caption" data-i18n="pc.beat2">Phone in hand — one word, one answer.</span>
+          </figcaption>
+        </figure>
+
+        <!-- Beat 3 — the 1982 note -->
+        <figure class="pc-beat pc-beat-ocr">
+          <img
+            src="assets/pile-to-dashboard-2026-04-22/04-dashboard-1982-handwritten-ocr-detail-2026-04-22.jpg"
+            alt="Oncoteam dashboard rendering a 1982 Slovak handwritten doctor's note, with the OCR-extracted structured text alongside the scanned page."
+            loading="lazy"
+            width="1200"
+            height="900"
+          />
+          <figcaption>
+            <span class="pc-step">3</span>
+            <span class="pc-caption" data-i18n="pc.beat3">We read everything — including a handwritten note from 1982.</span>
+          </figcaption>
+        </figure>
+      </div>
+
+      <p class="pc-footnote" data-i18n="pc.footnote">Real desk. Real documents. The dashboard layer is powered by Oncofiles; the WhatsApp + reasoning layer is Oncoteam.</p>
+    </div>
+  </section>
+
   <!-- Product Demo -->
   <section class="demo" id="demo">
     <div class="container">
@@ -366,7 +431,7 @@
             <div class="demo-mockup demo-mockup-chat">
               <div class="mock-label" data-i18n="demo.mock.whatsapp">WHATSAPP</div>
               <div class="mock-chat">
-                <div class="mock-chat-msg mock-chat-user">labky</div>
+                <div class="mock-chat-msg mock-chat-user">labáky</div>
                 <div class="mock-chat-msg mock-chat-bot" data-i18n-html="demo.mock.chatreply1">&#x1F4CA; <strong>Labs (Mar 19):</strong> ANC 1,150 &#x2193;, PLT 269k, HGB 118 &#x2191;<br>CEA 733 &#x2193;62%, CA19-9 22.3k &#x2193;68%<br><em>ANC below threshold &mdash; discuss with oncologist before C3</em></div>
                 <div class="mock-chat-msg mock-chat-user" data-i18n="demo.mock.chatq2">next cycle?</div>
                 <div class="mock-chat-msg mock-chat-bot" data-i18n-html="demo.mock.chatreply2">&#x1F4C5; Cycle 3 mFOLFOX6 &mdash; pending physician review (ANC hold).<br>Pre-cycle checklist: 1/4 flags. Ask oncologist about dose reduction.</div>
@@ -394,7 +459,7 @@
           <div class="uc-icon">🩸</div>
           <h3 data-i18n="uc.1.title">What did the last labs say?</h3>
           <p data-i18n="uc.1.story">Mom used to bring a folder of papers to the doctor without understanding them. Now she types one word and gets a clear summary with trends.</p>
-          <div class="uc-cmd">labky</div>
+          <div class="uc-cmd">labáky</div>
         </div>
         <div class="uc-card">
           <div class="uc-icon">🩺</div>

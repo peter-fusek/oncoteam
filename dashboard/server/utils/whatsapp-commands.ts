@@ -13,12 +13,16 @@ const _roleLabels: Record<string, Record<string, string>> = {
   en: { advocate: 'caregiver', patient: 'patient', doctor: 'doctor' },
 }
 
-const SLOVAK_COMMANDS = new Set(['labky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval', 'prepni', 'pacienti', 'predcyklus', 'rodina', 'otazky', 'toxicita', 'vaha', 'davka'])
+// `labáky` / `laboráky` are the correct SK forms (#423 copy audit); `labky` is
+// kept as a legacy alias because existing users have been trained to type it.
+const SLOVAK_COMMANDS = new Set(['labky', 'labáky', 'laboráky', 'lieky', 'stav', 'pomoc', 'casovka', 'naklady', 'studie', 'cyklus', 'schval', 'prepni', 'pacienti', 'predcyklus', 'rodina', 'otazky', 'toxicita', 'vaha', 'davka'])
 const ENGLISH_COMMANDS = new Set(['labs', 'meds', 'medications', 'status', 'briefing', 'timeline', 'help', 'cost', 'trials', 'cycle', 'approve', 'switch', 'patients', 'precycle', 'family', 'questions', 'toxicity', 'weight', 'dose'])
 
 const COMMAND_MAP: Record<string, string> = {
   // Slovak
-  labky: 'labs',
+  labky: 'labs',       // legacy alias — trained users; see #423
+  labáky: 'labs',      // correct SK informal form (#423)
+  laboráky: 'labs',    // correct SK formal form (#423)
   lieky: 'meds',
   stav: 'status',
   pomoc: 'help',
@@ -136,7 +140,7 @@ function formatLabs(data: Record<string, unknown>, lang: Lang, subarg: string = 
   const entries = (data.entries || []) as Array<Record<string, unknown>>
   if (!entries.length) {
     return [t(L(
-      'Zatial ziadne labky v systeme.\n\nLab data sa syncne po prvom analyze_labs cez Oncoteam.',
+      'Zatial ziadne labáky v systeme.\n\nLab data sa syncne po prvom analyze_labs cez Oncoteam.',
       'No lab data in the system yet.\n\nLab data will sync after the first analyze_labs via Oncoteam.',
     ), lang)]
   }
@@ -157,7 +161,7 @@ function formatLabs(data: Record<string, unknown>, lang: Lang, subarg: string = 
   const pageEntries = entries.slice(startIdx, startIdx + perPage)
   if (!pageEntries.length) {
     return [t(L(
-      `Žiadne ďalšie labky (strana ${page}).`,
+      `Žiadne ďalšie labáky (strana ${page}).`,
       `No more lab data (page ${page}).`,
     ), lang)]
   }
@@ -354,7 +358,7 @@ function formatCycle(data: Record<string, unknown>, lang: Lang): string {
 
   const labs = protocol.last_lab_values as Record<string, Record<string, unknown>> | undefined
   if (labs) {
-    text += `\n${t(L('Posledné labky:', 'Latest labs:'), lang)}\n`
+    text += `\n${t(L('Posledné labáky:', 'Latest labs:'), lang)}\n`
     for (const [param, info] of Object.entries(labs)) {
       if (info?.value != null) {
         const status = info.status === 'critical' ? '🔴' : info.status === 'warning' ? '🟡' : '🟢'
@@ -377,7 +381,7 @@ function formatPrecycle(data: Record<string, unknown>, lang: Lang): string {
   )
 
   if (!labs || !Object.keys(labs).length) {
-    text += `\n${t(L('Ziadne labky k dispozicii.', 'No lab data available.'), lang)}`
+    text += `\n${t(L('Ziadne labáky k dispozicii.', 'No lab data available.'), lang)}`
     return truncate(text)
   }
 
@@ -659,7 +663,7 @@ function helpText(lang: Lang, hasMultiplePatients: boolean = true): string {
     return `*Oncoteam WhatsApp*
 
 Commands:
-• *labs* / *labky* — Latest lab results
+• *labs* / *labáky* — Latest lab results (alias: labky)
 • *precycle* / *predcyklus* — Pre-cycle safety check
 • *meds* / *lieky* — Medications and compliance
 • *cycle* / *cyklus* — Current cycle status
@@ -683,7 +687,7 @@ Send a command or a question.`
   return `*Oncoteam WhatsApp*
 
 Prikazy:
-• *labky* / *labs* — Posledne labky
+• *labáky* / *labs* — Posledne labáky (alias: labky)
 • *predcyklus* / *precycle* — Pred-cyklus kontrola
 • *lieky* / *meds* — Lieky a compliance
 • *cyklus* / *cycle* — Stav aktualneho cyklu
@@ -699,7 +703,7 @@ Prikazy:
 ${patientLines}• *stav* / *status* — Stav systemu
 • *pomoc* / *help* — Tento help
 
-Pod-prikazy: labky cea | labky krv | labky pecen | labky 2 | casovka chemo | studie vsetky
+Pod-prikazy: labáky cea | labáky krv | labáky pecen | labáky 2 | casovka chemo | studie vsetky
 
 Posli prikaz alebo otazku.`
 }

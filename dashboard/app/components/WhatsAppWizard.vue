@@ -171,7 +171,7 @@ function onOpenChat() {
         </p>
         <div class="space-y-2 mb-4">
           <div class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
-            <div class="text-xs font-mono text-emerald-700 mb-0.5">labky</div>
+            <div class="text-xs font-mono text-emerald-700 mb-0.5">labáky</div>
             <div class="text-xs text-gray-600">{{ t('waWizard.exampleLabs', 'Recent labs + trend highlights') }}</div>
           </div>
           <div class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">

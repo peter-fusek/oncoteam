@@ -155,7 +155,7 @@ const show = computed(() => !dismissed.value)
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div class="rounded-lg bg-white border border-gray-200 px-3 py-2">
-          <div class="text-xs font-mono text-emerald-700 mb-1">labky</div>
+          <div class="text-xs font-mono text-emerald-700 mb-1">labáky</div>
           <div class="text-[11px] text-gray-600 leading-tight">
             {{ t('waPromo.example1', 'Recent hematology values · ANC, PLT, HGB trends') }}
           </div>
