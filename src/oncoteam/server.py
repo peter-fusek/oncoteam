@@ -337,7 +337,7 @@ async def search_pubmed(query: str, max_results: int = 10) -> str:
                 external_id=article.pmid,
                 title=article.title,
                 summary=article.abstract[:500] if article.abstract else "",
-                tags=get_context_tags(),
+                tags=get_context_tags(_pid),
                 raw_data=article.model_dump_json(),
                 token=_tok,
             )
@@ -1224,7 +1224,8 @@ async def health(request: Request) -> JSONResponse:
     return JSONResponse(data)
 
 
-mcp.custom_route("/health/deep", methods=["GET"])(api_health_deep)
+# /health/deep registration is deferred to after _auth_wrap is defined —
+# see below (Sprint 99 / #438 bug 1).
 
 
 # ── Dashboard API routes ────────────────────────
@@ -1294,6 +1295,12 @@ for _path, _handler in _API_ROUTES:
     if _path in _POST_ROUTES:
         mcp.custom_route(_path, methods=["POST"])(_auth_wrap(_handler))
     mcp.custom_route(_path, methods=["OPTIONS"])(api_cors_preflight)
+
+# #438 bug 1 — /health/deep was unauth, leaking git hash + RSS + breaker
+# rss_history + scheduler job IDs + raw oncofiles exception strings to any
+# caller. It now rides the same _auth_wrap allowlist as every other API
+# route. Shallow /health stays unauth for Railway's liveness probe.
+mcp.custom_route("/health/deep", methods=["GET"])(_auth_wrap(api_health_deep))
 
 # Parameterized routes (can't go in the loop above)
 mcp.custom_route("/api/detail/{type}/{id}", methods=["GET"])(_auth_wrap(api_detail))

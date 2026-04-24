@@ -155,7 +155,12 @@ async def test_trigger_agent_unknown_agent():
 @pytest.mark.anyio
 @patch("oncoteam.api_webhooks.oncofiles_client.set_agent_state", new_callable=AsyncMock)
 async def test_trigger_agent_success(mock_set):
-    """Should trigger a known agent and return success."""
+    """Should trigger a known agent and return success.
+
+    Sprint 99 / #438 bug 3 — callers must now pass patient_id explicitly
+    for patient-scoped agents. daily_research is patient-scoped, so the
+    body includes patient_id=q1b.
+    """
     mock_set.return_value = {}
 
     # Mock the task function
@@ -163,9 +168,41 @@ async def test_trigger_agent_success(mock_set):
     mock_task_functions = {"daily_research": mock_func}
 
     with patch("oncoteam.scheduler._get_task_functions", return_value=mock_task_functions):
-        response = await api_trigger_agent(_make_post_request({"agent_id": "daily_research"}))
+        response = await api_trigger_agent(
+            _make_post_request({"agent_id": "daily_research", "patient_id": "q1b"})
+        )
     data = json.loads(response.body)
 
     assert response.status_code == 200
     assert data["status"] == "triggered"
     assert data["agent_id"] == "daily_research"
+
+
+@pytest.mark.anyio
+async def test_trigger_agent_requires_patient_id():
+    """Sprint 99 / #438 bug 3 — patient-scoped agent without patient_id → 400.
+
+    Closes the webhook-ACL vector Felix called out: previously any
+    DASHBOARD_API_KEY holder could POST without patient_id and the agent
+    ran silently under DEFAULT_PATIENT_ID (q1b).
+    """
+    response = await api_trigger_agent(_make_post_request({"agent_id": "daily_research"}))
+    data = json.loads(response.body)
+    assert response.status_code == 400
+    assert data["code"] == "patient_scope_missing"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.api_webhooks.oncofiles_client.set_agent_state", new_callable=AsyncMock)
+async def test_trigger_agent_system_agent_no_patient_id(mock_set):
+    """System-category agents (keepalive_ping) still run without patient_id."""
+    mock_set.return_value = {}
+
+    mock_func = AsyncMock()
+    mock_task_functions = {"keepalive_ping": mock_func}
+
+    with patch("oncoteam.scheduler._get_task_functions", return_value=mock_task_functions):
+        response = await api_trigger_agent(_make_post_request({"agent_id": "keepalive_ping"}))
+    data = json.loads(response.body)
+    assert response.status_code == 200
+    assert data["status"] == "triggered"

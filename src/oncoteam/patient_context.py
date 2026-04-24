@@ -599,8 +599,17 @@ RESEARCH_TERMS: list[str] = [
 
 
 def get_patient_profile_text(patient_id: str = "q1b") -> str:
-    """Return formatted patient profile for MCP resource."""
-    p = _patient_registry.get(patient_id, PATIENT)
+    """Return formatted patient profile for MCP resource.
+
+    Sprint 99 / #436 bug 2 — fail closed on unregistered patient_id.
+    Previously fell back to ``PATIENT`` (Erika), quietly serving her full
+    clinical profile to any caller whose pid hadn't been registered yet.
+    Now raises ``KeyError`` to match ``get_patient()`` — this is the same
+    fail-closed contract adopted in Sprint 98 (#435).
+    """
+    p = _patient_registry.get(patient_id)
+    if p is None:
+        raise KeyError(f"Patient '{patient_id}' not found")
     biomarkers = "\n".join(f"  - {k}: {v}" for k, v in p.biomarkers.items())
     hospitals = ", ".join(p.hospitals)
     metastases = ", ".join(p.metastases) if p.metastases else "none listed"
@@ -644,20 +653,30 @@ def get_research_terms_text(patient_id: str = "q1b") -> str:
     return f"# Research Search Terms\n\nCurated PubMed queries for this case:\n\n{terms}\n"
 
 
-def get_context_tags() -> list[str]:
-    """Derive research tags from patient context."""
+def get_context_tags(patient_id: str = "q1b") -> list[str]:
+    """Derive research tags from patient context.
+
+    Sprint 99 / #436 bug 1 — previously read the module-level ``PATIENT``
+    constant, which tagged every caller's research corpus with Erika's
+    KRAS G12S / mFOLFOX6 / mCRC markers. For non-q1b patients (sgu breast,
+    e5g preventive) this was a clinical-safety issue because the tags drive
+    downstream surfacing. Now resolves the registered patient; falls back to
+    ``PATIENT`` only for the default q1b path (preserves legacy callers +
+    tests that invoke with no args).
+    """
+    patient = _patient_registry.get(patient_id) or PATIENT
     tags = []
-    if PATIENT.treatment_regimen:
-        tags.append(PATIENT.treatment_regimen)
-    if PATIENT.tumor_site:
-        tags.append(PATIENT.tumor_site.lower().replace(" ", "_"))
-    if PATIENT.diagnosis_description:
+    if patient.treatment_regimen:
+        tags.append(patient.treatment_regimen)
+    if patient.tumor_site:
+        tags.append(patient.tumor_site.lower().replace(" ", "_"))
+    if patient.diagnosis_description:
         # Extract key terms from diagnosis
         for term in ["colorectal", "sigmoid", "rectal", "colon"]:
-            if term in PATIENT.diagnosis_description.lower():
+            if term in patient.diagnosis_description.lower():
                 tags.append(term)
                 break
-    for marker, value in PATIENT.biomarkers.items():
+    for marker, value in patient.biomarkers.items():
         tags.append(f"{marker}_{value}")
     return tags
 
@@ -949,8 +968,17 @@ async def get_genetic_profile(
     """Fetch genetic/biomarker data from oncofiles documents.
 
     Uses semaphore-bounded concurrency to avoid overwhelming oncofiles.
+
+    Sprint 99 / #436 bug 3 — fail closed on unregistered patient_id.
+    Previously seeded the result with Erika's biomarkers (KRAS G12S, ATM
+    biallelic loss, TP53 splice) before querying oncofiles. If oncofiles
+    returned no docs, the caller got her profile back under another pid.
+    Now returns an empty dict when the pid is unregistered — no data is
+    safer than wrong data (extends Sprint 98 fail-closed contract).
     """
-    patient = _patient_registry.get(patient_id, PATIENT)
+    patient = _patient_registry.get(patient_id)
+    if patient is None:
+        return {}
     profile = dict(patient.biomarkers)
 
     # Search with bounded concurrency (3 at a time)

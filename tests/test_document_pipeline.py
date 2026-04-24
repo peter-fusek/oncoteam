@@ -473,7 +473,8 @@ async def test_webhook_starts_pipeline():
     """Valid webhook call should return pipeline_started (CEE night window)."""
     from oncoteam.dashboard_api import api_document_webhook
 
-    request = _make_request({"document_id": 42, "category": "lab"})
+    # Sprint 99 / #438 bug 3 — patient_id is now required in webhook body.
+    request = _make_request({"document_id": 42, "patient_id": "q1b", "category": "lab"})
     with (
         patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
         patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"),
@@ -504,7 +505,8 @@ async def test_webhook_deduplication():
     """Webhook should return already_processed for duplicate document_id."""
     from oncoteam.dashboard_api import api_document_webhook
 
-    request = _make_request({"document_id": 42})
+    # Sprint 99 / #438 bug 3 — patient_id is now required in webhook body.
+    request = _make_request({"document_id": 42, "patient_id": "q1b"})
     with (
         patch("oncoteam.dashboard_api.DASHBOARD_API_KEY", ""),
         patch("oncoteam.dashboard_api.MCP_TRANSPORT", "stdio"),

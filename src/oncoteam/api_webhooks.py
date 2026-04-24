@@ -140,7 +140,20 @@ async def api_document_webhook(request: Request) -> JSONResponse:
             {"error": "document_id must be a positive integer"}, status_code=400, request=request
         )
 
-    patient_id = body.get("patient_id", DEFAULT_PATIENT_ID)
+    # Sprint 99 / #438 bug 3 — no more silent fallback to DEFAULT_PATIENT_ID.
+    # Previously any DASHBOARD_API_KEY holder could POST without patient_id
+    # and have the document pipeline run against Erika's oncofiles. The
+    # Sprint 98 residual-cleanup note explicitly flagged this line; Felix
+    # confirmed it from the outside. Require the tenant scope in the body —
+    # same fail-closed contract as _MissingPatientIdError on GET endpoints.
+    patient_id = body.get("patient_id")
+    if not isinstance(patient_id, str) or not patient_id.strip():
+        return _cors_json(
+            {"error": "patient_id is required", "code": "patient_scope_missing"},
+            status_code=400,
+            request=request,
+        )
+    patient_id = patient_id.strip()
 
     # Non-destructive pause gate: data stays in oncofiles, no Claude spend.
     try:
@@ -289,16 +302,38 @@ async def api_trigger_agent(request: Request) -> JSONResponse:
     agent_id = body.get("agent_id", "")
     trigger_patient_id = body.get("patient_id", "")
 
+    # Validate agent exists first — cleaner error surface for bad agent_id
+    # regardless of patient scoping below.
+    from .agent_registry import AgentCategory as _AgentCategory
+
+    agent_cfg = AGENT_REGISTRY.get(agent_id)
+    if agent_cfg is None:
+        return _cors_json(
+            {"error": f"Unknown agent: {agent_id}", "available": list(AGENT_REGISTRY.keys())},
+            status_code=400,
+            request=request,
+        )
+
+    # Sprint 99 / #438 bug 3 — system-category agents (e.g. keepalive_ping)
+    # still run without patient scope. Patient-scoped agents require the
+    # caller to name the tenant, matching the same fail-closed contract as
+    # /api/internal/document-webhook. This closes the body-fallback vector
+    # Sprint 98 residual-cleanup flagged at line 318.
+    is_system_agent = agent_cfg.category == _AgentCategory.SYSTEM
+    if not is_system_agent and (
+        not isinstance(trigger_patient_id, str) or not trigger_patient_id.strip()
+    ):
+        return _cors_json(
+            {"error": "patient_id is required", "code": "patient_scope_missing"},
+            status_code=400,
+            request=request,
+        )
+    trigger_patient_id = trigger_patient_id.strip() if isinstance(trigger_patient_id, str) else ""
+
     if not _check_fup_agent_run(trigger_patient_id or "global"):
         return _cors_json(
             {"error": f"Monthly agent run limit reached ({FUP_AGENT_RUNS_PER_MONTH})."},
             status_code=429,
-            request=request,
-        )
-    if agent_id not in AGENT_REGISTRY:
-        return _cors_json(
-            {"error": f"Unknown agent: {agent_id}", "available": list(AGENT_REGISTRY.keys())},
-            status_code=400,
             request=request,
         )
 
