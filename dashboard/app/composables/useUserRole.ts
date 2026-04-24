@@ -19,6 +19,7 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/documents': ['advocate'],
   '/export': ['advocate', 'doctor'],
   '/oncofiles': ['advocate'],
+  '/admin/onboarding': ['advocate', 'doctor'],
 }
 
 const LANDING_PAGES: Record<string, string> = {

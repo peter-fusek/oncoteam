@@ -124,6 +124,149 @@ async def test_onboard_patient_invalid_json():
     assert "Invalid JSON" in data["error"]
 
 
+# ── #422 Part E: register_locally_only flow ──────────────
+
+
+@pytest.mark.anyio
+@patch("oncoteam.api_admin.oncofiles_client.create_patient_via_api", new_callable=AsyncMock)
+@patch("oncoteam.patient_context.register_patient")
+async def test_onboard_patient_register_locally_only_skips_oncofiles(mock_register, mock_create):
+    """register_locally_only=true must NOT call oncofiles create_patient_via_api."""
+    request = FakeRequest(
+        {
+            "patient_id": "nora-antalova",
+            "display_name": "Nora A.",
+            "diagnosis_code": "C50.9",
+            "diagnosis_summary": "Metastatic breast carcinoma",
+            "treatment_regimen": "palliative hormone",
+            "notification_policy": "silent",
+            "register_locally_only": True,
+        }
+    )
+    response = await api_onboard_patient(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "registered_locally"
+    assert data["patient_id"] == "nora-antalova"
+    # The oncofiles create path must NOT be taken — Gate 1 already passed.
+    mock_create.assert_not_called()
+    # Local registry must still be updated.
+    mock_register.assert_called_once()
+    # PatientProfile fields from the body flow through to the register call.
+    kwargs = mock_register.call_args.kwargs
+    profile = kwargs.get("profile") or (
+        mock_register.call_args.args[0] if mock_register.call_args.args else None
+    )
+    assert profile is not None
+    assert profile.diagnosis_code == "C50.9"
+    assert profile.treatment_regimen == "palliative hormone"
+    assert profile.notification_policy == "silent"
+
+
+@pytest.mark.anyio
+@patch("oncoteam.api_admin.oncofiles_client.create_patient_via_api", new_callable=AsyncMock)
+async def test_onboard_patient_conflict_hints_at_register_locally_only(mock_create):
+    """409 response should now hint at register_locally_only path for Gate-1-only patients."""
+    mock_response = MagicMock()
+    mock_response.status_code = 409
+    mock_create.side_effect = httpx.HTTPStatusError(
+        "Conflict", request=MagicMock(), response=mock_response
+    )
+
+    request = FakeRequest({"patient_id": "nora-antalova", "display_name": "Nora A."})
+    response = await api_onboard_patient(request)
+    data = json.loads(response.body)
+
+    assert response.status_code == 200
+    assert data["status"] == "exists"
+    assert "register_locally_only" in data.get("hint", "")
+
+
+@pytest.mark.anyio
+async def test_onboard_patient_bad_notification_policy_falls_back_to_silent():
+    """Unknown notification_policy values must default to silent, not raise."""
+    with (
+        patch("oncoteam.api_admin.oncofiles_client.create_patient_via_api", new_callable=AsyncMock),
+        patch("oncoteam.patient_context.register_patient") as mock_register,
+    ):
+        request = FakeRequest(
+            {
+                "patient_id": "test-slug",
+                "display_name": "Test",
+                "notification_policy": "spam-everyone",
+                "register_locally_only": True,
+            }
+        )
+        response = await api_onboard_patient(request)
+        assert response.status_code == 200
+    kwargs = mock_register.call_args.kwargs
+    profile = kwargs.get("profile")
+    assert profile.notification_policy == "silent"
+
+
+# ── #422 Part B: patient_roles shape validation ──────────────
+
+
+@pytest.mark.anyio
+@patch("oncoteam.api_admin.oncofiles_client.set_agent_state", new_callable=AsyncMock)
+async def test_access_rights_accepts_patient_roles_shape(mock_set):
+    """New patient_roles dict shape persists without error."""
+    request = FakeRequest(
+        {
+            "role_map": {
+                "peter@example.com": {
+                    "name": "Peter",
+                    "roles": ["advocate"],
+                    "patient_ids": ["q1b", "nora-antalova"],
+                    "patient_roles": {"q1b": "advocate", "nora-antalova": "admin-readonly"},
+                }
+            }
+        }
+    )
+    response = await api_access_rights_set(request)
+    assert response.status_code == 200
+    data = json.loads(response.body)
+    assert data["status"] == "updated"
+    assert data["entries"] == 1
+    mock_set.assert_awaited_once()
+
+
+@pytest.mark.anyio
+async def test_access_rights_rejects_non_dict_patient_roles():
+    """patient_roles=list should be rejected with a clear 400."""
+    request = FakeRequest(
+        {
+            "role_map": {
+                "peter@example.com": {
+                    "roles": ["advocate"],
+                    "patient_roles": ["q1b", "nora-antalova"],
+                }
+            }
+        }
+    )
+    response = await api_access_rights_set(request)
+    assert response.status_code == 400
+    data = json.loads(response.body)
+    assert "patient_roles" in data["error"]
+
+
+@pytest.mark.anyio
+async def test_access_rights_rejects_non_string_role():
+    """patient_roles[pid] must be a string."""
+    request = FakeRequest(
+        {
+            "role_map": {
+                "peter@example.com": {
+                    "patient_roles": {"q1b": 1, "e5g": True},
+                }
+            }
+        }
+    )
+    response = await api_access_rights_set(request)
+    assert response.status_code == 400
+
+
 # ── POST /api/internal/onboarding-status ──────────────
 
 

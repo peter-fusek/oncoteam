@@ -174,8 +174,22 @@ async def api_onboarding_queue(request: Request) -> JSONResponse:
 async def api_onboard_patient(request: Request) -> JSONResponse:
     """POST /api/internal/onboard-patient — create a new patient in oncofiles and register locally.
 
-    Expects JSON body: {patient_id, display_name, diagnosis_summary?, preferred_lang?, phone?}
+    Expects JSON body:
+        patient_id, display_name, diagnosis_summary?, preferred_lang?, phone?
+        diagnosis_code?, treatment_regimen?, notification_policy?  (extended profile fields)
+        register_locally_only?  (skip oncofiles creation — Gate-2 completion for an
+                                 already-existing Gate-1 patient per #422)
+
     Returns: {patient_id, bearer_token, status: "created"} or {status: "exists"} on 409.
+
+    When `register_locally_only=true`, skips the oncofiles API call entirely.
+    Used by the /admin/onboarding flow (#422 Part E) to complete Gate 2 for
+    a patient that is already present in oncofiles (Gate 1) but missing
+    from oncoteam's `_patient_registry`. An empty bearer token is passed
+    to `register_patient()` — dashboard reads then fall back to the admin
+    token. Railway env var `ONCOFILES_MCP_TOKEN_<ID>` is still required
+    for per-patient scoped reads once the user is promoted from
+    admin-readonly to advocate/patient.
     """
     import httpx as _httpx
 
@@ -199,45 +213,66 @@ async def api_onboard_patient(request: Request) -> JSONResponse:
 
     diagnosis_summary = body.get("diagnosis_summary", body.get("diagnosis", ""))
     preferred_lang = body.get("preferred_lang", body.get("lang", "sk"))
+    register_locally_only = bool(body.get("register_locally_only", False))
+    diagnosis_code = (body.get("diagnosis_code") or "").strip()
+    treatment_regimen = (body.get("treatment_regimen") or "").strip()
+    notification_policy_raw = (body.get("notification_policy") or "silent").strip()
+    notification_policy = (
+        notification_policy_raw
+        if notification_policy_raw in ("silent", "admin", "patient+admin")
+        else "silent"
+    )
 
-    try:
-        result = await oncofiles_client.create_patient_via_api(
-            patient_id=patient_id,
-            display_name=display_name,
-            diagnosis_summary=diagnosis_summary,
-            preferred_lang=preferred_lang,
-            caregiver_email="",
-        )
-    except _httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 409:
-            _logger.info("Patient %s already exists in oncofiles", patient_id)
+    bearer_token = ""
+    if register_locally_only:
+        _logger.info("Onboarding patient %s in local registry only (Gate-2 completion)", patient_id)
+    else:
+        try:
+            result = await oncofiles_client.create_patient_via_api(
+                patient_id=patient_id,
+                display_name=display_name,
+                diagnosis_summary=diagnosis_summary,
+                preferred_lang=preferred_lang,
+                caregiver_email="",
+            )
+        except _httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 409:
+                _logger.info("Patient %s already exists in oncofiles", patient_id)
+                return _cors_json(
+                    {
+                        "patient_id": patient_id,
+                        "status": "exists",
+                        "hint": (
+                            "Patient exists in oncofiles (Gate 1). To complete Gate 2 "
+                            "(oncoteam local registry), re-send with register_locally_only=true."
+                        ),
+                    },
+                    request=request,
+                )
+            record_suppressed_error("api_onboard_patient", "create_patient", exc)
             return _cors_json(
-                {"patient_id": patient_id, "status": "exists"},
+                {"error": f"Oncofiles error: {exc.response.status_code}"},
+                status_code=502,
                 request=request,
             )
-        record_suppressed_error("api_onboard_patient", "create_patient", exc)
-        return _cors_json(
-            {"error": f"Oncofiles error: {exc.response.status_code}"},
-            status_code=502,
-            request=request,
-        )
-    except Exception as exc:
-        record_suppressed_error("api_onboard_patient", "create_patient", exc)
-        return _cors_json(
-            {"error": f"Failed to create patient: {exc}"},
-            status_code=502,
-            request=request,
-        )
+        except Exception as exc:
+            record_suppressed_error("api_onboard_patient", "create_patient", exc)
+            return _cors_json(
+                {"error": f"Failed to create patient: {exc}"},
+                status_code=502,
+                request=request,
+            )
+        bearer_token = result.get("bearer_token", "")
 
     # Register in oncoteam's in-memory patient registry
-    bearer_token = result.get("bearer_token", "")
     profile = PatientProfile(
         patient_id=patient_id,
         name=display_name,
-        diagnosis_code="",
+        diagnosis_code=diagnosis_code,
         diagnosis_description=diagnosis_summary,
         tumor_site="",
-        treatment_regimen="",
+        treatment_regimen=treatment_regimen,
+        notification_policy=notification_policy,  # type: ignore[arg-type]
     )
     try:
         register_patient(patient_id=patient_id, token=bearer_token, profile=profile)
@@ -249,13 +284,15 @@ async def api_onboard_patient(request: Request) -> JSONResponse:
     if bearer_token:
         asyncio.ensure_future(_persist_patient_token(patient_id, bearer_token))
 
-    _logger.info("Onboarded patient %s", patient_id)
+    _logger.info(
+        "Onboarded patient %s (register_locally_only=%s)", patient_id, register_locally_only
+    )
 
     return _cors_json(
         {
             "patient_id": patient_id,
             "bearer_token": bearer_token,
-            "status": "created",
+            "status": "registered_locally" if register_locally_only else "created",
         },
         request=request,
     )
@@ -330,6 +367,15 @@ async def api_access_rights_set(request: Request) -> JSONResponse:
     """POST /api/internal/access-rights — update the role map in database.
 
     Expects JSON body: {role_map: {...}}
+
+    Supports both shapes per #422 Part B:
+      Legacy: {email: {phone, name, roles[], patient_ids[]}}
+      New:    {email: {..., patient_roles: {patient_id: role_string, ...}}}
+
+    Shape validation is intentionally light — the reader treats unknown
+    fields as pass-through and the two shapes coexist during migration.
+    We reject only entries where `patient_roles` is present but not a
+    flat dict of strings, since that would corrupt downstream readers.
     """
     global _access_rights_cache, _access_rights_ts
     try:
@@ -342,6 +388,35 @@ async def api_access_rights_set(request: Request) -> JSONResponse:
         return _cors_json(
             {"error": "role_map must be a JSON object"}, status_code=400, request=request
         )
+
+    for email, uc in role_map.items():
+        if not isinstance(uc, dict):
+            continue
+        pr = uc.get("patient_roles")
+        if pr is None:
+            continue
+        if not isinstance(pr, dict):
+            return _cors_json(
+                {
+                    "error": (
+                        f"patient_roles for {email} must be an object; got {type(pr).__name__}"
+                    )
+                },
+                status_code=400,
+                request=request,
+            )
+        for pid, role in pr.items():
+            if not isinstance(pid, str) or not isinstance(role, str):
+                return _cors_json(
+                    {
+                        "error": (
+                            f"patient_roles entries for {email} must be "
+                            f"string-to-string; got {pid!r}→{role!r}"
+                        )
+                    },
+                    status_code=400,
+                    request=request,
+                )
 
     from datetime import UTC
     from datetime import datetime as _dt

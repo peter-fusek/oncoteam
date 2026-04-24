@@ -65,12 +65,17 @@ const visible = computed(
           <span class="text-gray-600">
             existujú v oncofiles, ale nemajú klinický profil. Priradiť profil + rolu.
           </span>
+          <NuxtLink
+            to="/admin/onboarding"
+            class="ml-auto text-amber-900 font-semibold underline decoration-dotted hover:decoration-solid"
+          >
+            Open onboarding →
+          </NuxtLink>
           <UButton
             icon="i-lucide-refresh-cw"
             variant="ghost"
             size="xs"
             color="neutral"
-            class="ml-auto"
             :disabled="status === 'pending'"
             @click="refresh"
           />

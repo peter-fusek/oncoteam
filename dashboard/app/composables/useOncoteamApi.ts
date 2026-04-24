@@ -143,6 +143,17 @@ export function useOncoteamApi() {
   }
 
   async function postApi<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    // Read-only patient guard (#422 Part C). UI components use this flag
+    // to disable buttons; the throw here is a defense-in-depth net that
+    // mirrors the backend 403 so a stale UI state can't silently
+    // mutate. The backend is still the hard gate.
+    const { isReadOnlyActivePatient } = useActivePatient()
+    if (isReadOnlyActivePatient.value) {
+      const err: ApiFetchError = new Error('HTTP 403')
+      err.status = 403
+      ;(err as ApiFetchError & { code?: string }).code = 'read_only_patient'
+      throw err
+    }
     const q: Record<string, string> = { lang: locale.value }
     if (showTestData.value) q.show_test = 'true'
     q.patient_id = effectivePatientId.value

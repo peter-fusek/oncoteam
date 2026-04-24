@@ -4,7 +4,10 @@ const { showTestData } = useTestDataToggle()
 const { t, locale } = useI18n()
 const { setLocale } = useI18n()
 const { activeRole, roles, hasMultipleRoles, canAccess, landingPage } = useUserRole()
-const { activePatientId, activePatient, patients, hasMultiplePatients, canSwitchPatient, switchPatient } = useActivePatient()
+const { activePatientId, activePatient, patients, writablePatients, readOnlyPatients, hasMultiplePatients, canSwitchPatient, switchPatient, isReadOnlyActivePatient } = useActivePatient()
+const readOnlySeparatorLabel = computed(() => (
+  locale.value === 'sk' ? '— Admin (len na čítanie) —' : '— Admin (read-only) —'
+))
 const { waNumber, waLink, track: trackWa } = useWhatsAppOnboarding()
 const { isOncology } = usePatientType()
 
@@ -167,22 +170,43 @@ async function logout() {
             class="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 transition-colors hover:border-gray-300"
             @click="patientSwitcherOpen = !patientSwitcherOpen"
           >
-            <span class="truncate">{{ activePatient?.name || 'Patient' }}</span>
+            <span class="truncate">
+              <span v-if="isReadOnlyActivePatient" class="mr-1">🔒</span>{{ activePatient?.name || 'Patient' }}
+            </span>
             <UIcon name="i-lucide-chevrons-up-down" class="w-3 h-3 opacity-50 shrink-0" />
           </button>
           <div
             v-if="patientSwitcherOpen"
             class="absolute top-full left-0 right-0 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg z-10 overflow-hidden"
           >
+            <!-- Writable group (Gate-2 full-role patients) -->
             <button
-              v-for="p in patients"
+              v-for="p in writablePatients"
               :key="p.id"
               class="w-full flex flex-col items-start px-2.5 py-1.5 text-xs transition-colors hover:bg-gray-50"
               :class="p.id === activePatientId ? 'text-gray-900 font-medium' : 'text-gray-500'"
               @click="switchPatient(p.id); patientSwitcherOpen = false"
             >
               <span>{{ p.name }}</span>
-              <span class="text-[10px] opacity-60">{{ p.diagnosis }}</span>
+              <span class="text-[10px] opacity-60">{{ p.diagnosis }} · {{ p.role }}</span>
+            </button>
+            <!-- Read-only group separator — rendered only when both groups are non-empty -->
+            <div
+              v-if="writablePatients.length > 0 && readOnlyPatients.length > 0"
+              class="px-2.5 py-1 text-[10px] uppercase tracking-wider text-gray-400 bg-gray-50 border-t border-gray-100"
+            >
+              {{ readOnlySeparatorLabel }}
+            </div>
+            <!-- Read-only group (admin-readonly / family-readonly) with 🔒 prefix -->
+            <button
+              v-for="p in readOnlyPatients"
+              :key="p.id"
+              class="w-full flex flex-col items-start px-2.5 py-1.5 text-xs transition-colors hover:bg-gray-50"
+              :class="p.id === activePatientId ? 'text-amber-800 font-medium' : 'text-gray-500'"
+              @click="switchPatient(p.id); patientSwitcherOpen = false"
+            >
+              <span>🔒 {{ p.name }}</span>
+              <span class="text-[10px] opacity-60">{{ p.diagnosis }} · {{ p.role }}</span>
             </button>
           </div>
         </div>
@@ -322,16 +346,23 @@ async function logout() {
             </button>
           </div>
 
-          <!-- Patient switcher (mobile) -->
+          <!-- Patient switcher (mobile) — grouped by writable + read-only -->
           <div v-if="canSwitchPatient && hasMultiplePatients" class="px-3 pb-2">
             <select
               class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700"
               :value="activePatientId"
               @change="switchPatient(($event.target as HTMLSelectElement).value)"
             >
-              <option v-for="p in patients" :key="p.id" :value="p.id">
-                {{ p.name }} — {{ p.diagnosis }}
-              </option>
+              <optgroup v-if="writablePatients.length" label="Patients">
+                <option v-for="p in writablePatients" :key="p.id" :value="p.id">
+                  {{ p.name }} — {{ p.diagnosis }}
+                </option>
+              </optgroup>
+              <optgroup v-if="readOnlyPatients.length" :label="readOnlySeparatorLabel">
+                <option v-for="p in readOnlyPatients" :key="p.id" :value="p.id">
+                  🔒 {{ p.name }} — {{ p.diagnosis }}
+                </option>
+              </optgroup>
             </select>
           </div>
 
@@ -405,6 +436,22 @@ async function logout() {
     <main class="flex-1 overflow-auto p-4 md:p-6 pt-14 md:pt-6">
       <ApiErrorBanner v-if="circuitBreaker.degraded.value" class="mb-3" />
       <OnboardingQueueBanner />
+      <div
+        v-if="isReadOnlyActivePatient"
+        class="mb-3 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 flex items-center gap-2"
+        role="status"
+      >
+        <span class="text-base leading-none">🔒</span>
+        <span>
+          <span class="font-semibold">{{ locale === 'sk' ? 'Len na čítanie' : 'Read-only view' }}</span>
+          <span class="opacity-70 ml-2">
+            {{ locale === 'sk'
+              ? `Máte prístup k pacientovi ${activePatient?.name || ''} len na čítanie — mutácie sú blokované.`
+              : `You have read-only access to ${activePatient?.name || 'this patient'} — mutations are blocked.`
+            }}
+          </span>
+        </span>
+      </div>
       <slot />
       <DrilldownPanel />
       <BugReportButton />
