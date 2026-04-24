@@ -88,3 +88,7 @@ An [Instarea](https://www.instarea.com) project.
 - Správa lekárskych dokumentov (managing medical documents): https://oncoteam.cloud/sprava-lekarskych-dokumentov.html
 - Pred návštevou onkológa (before the oncology visit): https://oncoteam.cloud/pred-navstevou-onkologa.html
 - Molekulárny profil nádoru — NGS vysvetlený (molecular profile explained — KRAS, BRAF, MSI, BRCA, ATM): https://oncoteam.cloud/molekularny-profil-vysvetlenie.html
+
+## Regulatory framing
+
+Oncoteam is NOT a medical device under EU MDR 2017/745 or FDA SaMD classification. It is patient-engagement and information-aggregation software. All clinical decisions are made by the treating oncology team. Full legal notice (SK + EN) at: https://oncoteam.cloud/pravne-upozornenie.html
