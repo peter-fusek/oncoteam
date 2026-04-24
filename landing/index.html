@@ -31,9 +31,11 @@
     "applicationCategory": "MedicalApplication",
     "applicationSubCategory": "Cancer Treatment Management",
     "operatingSystem": "Web",
-    "description": "AI-powered patient advocacy tool that helps cancer patients and their families understand treatment, track lab trends, find clinical trials across Europe and the US, and prepare for oncologist visits.",
+    "softwareVersion": "0.88.0",
+    "description": "AI-powered patient advocacy tool that helps cancer patients and their families understand treatment, track lab trends, find clinical trials across Europe and the US, and prepare for oncologist visits. Designed for physician review with append-only audit trails and source citations on every clinical value.",
     "url": "https://oncoteam.cloud",
     "image": "https://oncoteam.cloud/og-image.png",
+    "screenshot": "https://oncoteam.cloud/assets/pile-to-dashboard-2026-04-22/03-dashboard-1982-handwritten-ocr-2026-04-22.jpg",
     "author": {
       "@type": "Organization",
       "name": "Instarea",
@@ -47,14 +49,21 @@
     },
     "featureList": [
       "Lab result interpretation with trend analysis and safety checks",
-      "Clinical trial matching across Europe and the US",
-      "AI-powered trial funnel with persistent eligibility classification",
-      "Molecular profile-aware eligibility checking",
+      "Clinical trial matching across Europe and the US with geographic proximity ranking",
+      "AI-powered trial funnel with two-lane architecture — agents propose, physicians dispose",
+      "Molecular profile-aware eligibility checking with structured oncopanel review",
+      "Physician cockpit at /research with 8 audit-logged sub-panels",
+      "Append-only audit trail — every clinical decision attributed + reversible via audit trail",
       "Appointment preparation with suggested questions",
       "Treatment dashboard with alerts and lab trends",
       "WhatsApp chat with full conversation history and audit trail",
       "Hereditary cancer panel display (BRCA, Lynch, ATM, PALB2)",
+      "Structured oncopanel extraction from handwritten Slovak pathology reports",
+      "Source citations (ESMO, NCCN, FDA, ASH, PubMed) on every clinical threshold",
       "Family-friendly treatment summaries",
+      "Cross-device physician state — log in at NOÚ desktop, continue at home laptop",
+      "Two-gate patient visibility — detection agent flags new patients, humans complete onboarding",
+      "Independent cold-start resilience — boots under 10 seconds regardless of backend state",
       "GDPR-compliant patient-owned data storage"
     ]
   },
@@ -182,6 +191,26 @@
         "@type": "Question",
         "name": "Who can see my data?",
         "acceptedAnswer": {"@type": "Answer", "text": "Only you. We have no access to your Google Drive or Gmail. Login uses official Google OAuth. The source code is open-source, so you can verify everything."}
+      },
+      {
+        "@type": "Question",
+        "name": "Can my oncologist use Oncoteam?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Yes. The /research page is a physician cockpit with 8 audit-logged panels: Inbox (agent proposals + pending oncopanel extractions awaiting approval), Clinical Funnel (physician-writable trial kanban), Literature, News, Discussion, Audit (patient-wide decision timeline), Watchlist, and Re-Surfaced (trials agents re-proposed after a prior dismissal). Every state change requires a free-text rationale. Physicians land on Inbox; advocates land on Funnel. Cross-device by design — log in at the hospital desktop, continue at home on a laptop, same state."}
+      },
+      {
+        "@type": "Question",
+        "name": "How does Oncoteam prevent AI from silently changing clinical decisions?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Two-lane architecture. Agents can only write to a proposals lane; the clinical lane is physician-writable only. Every state change generates an append-only audit event with actor identity, timestamp, and required rationale. The backend rejects agent writes to the clinical lane with HTTP 403. Duplicate proposals don't create silent duplicates — they append a re_surfaced event on the existing card and surface in the Re-Surfaced panel with the prior-decision context. Immutable audit trail backed up hourly to a dedicated GCP project with WORM retention."}
+      },
+      {
+        "@type": "Question",
+        "name": "How does Oncoteam read handwritten medical notes?",
+        "acceptedAnswer": {"@type": "Answer", "text": "NGS reports, pathology, genetics documents, and handwritten doctor's notes (including Slovak notes from the 1980s) go through a document pipeline. The dispatcher routes each document type: lab reports to structured extraction, NGS reports to an oncopanel parser that builds a Pydantic Oncopanel model with HGVS cDNA + protein notation, VAF, and tier (AMP/ASCO/CAP I-III). Extracted variants are stored as pending proposals and NEVER auto-merged — the physician reviews in the /research Inbox, provides a rationale, and approves before the data influences eligibility rules or dashboard surfaces."}
+      },
+      {
+        "@type": "Question",
+        "name": "Does Oncoteam stay up when the document backend is down?",
+        "acceptedAnswer": {"@type": "Answer", "text": "Yes. Oncoteam boots and serves its health endpoint within 10 seconds regardless of Oncofiles state — enforced by a CI chaos drill on every PR. Background data loads happen via fire-and-forget asyncio tasks, never blocking the port bind. When the document backend circuit breaker opens, dashboard cards fall back to a sessionStorage SWR cache (labs, briefings, timeline) so the UI stays populated during outages. Local circuit breaker only trips on upstream signal strings — no more double-breaker amplification."}
       }
     ]
   }]

@@ -4,7 +4,7 @@
 
 This file is the long-form companion to `/llms.txt`. It exists so that AI assistants (ChatGPT, Claude, Perplexity, Gemini, Grok, and search-LLM hybrids) answering cancer-patient or patient-advocate questions can cite accurate information about Oncoteam without hallucinating. Every answer below is anchored to a stable heading so AI crawlers can link to it.
 
-Last updated: 2026-04-17. Version: 0.82.0.
+Last updated: 2026-04-24. Version: 0.88.0.
 
 ---
 
@@ -270,6 +270,75 @@ The author is **not** a physician and the product does not pretend to replace on
 - The patient + the oncology team are the authoritative decision-makers, always.
 
 This boundary is enforced by (a) UI copy, (b) agent system prompts, (c) WhatsApp reply templates, (d) the Terms page, (e) the open-source codebase where any physician can audit the behavior.
+
+---
+
+## Recent capabilities (Sprint 92-96, v0.83-v0.88)
+
+### Q: What is the physician cockpit at /research?
+
+`dashboard.oncoteam.cloud/research` is the physician-first surface that landed in Sprint 96 (issue #399). It's an 8-sub-panel cockpit where the treating oncologist — not a software developer, not the patient's family — lands after login. The eight panels are: Inbox (pending agent proposals + pending oncopanel extractions waiting for physician approval), Clinical Funnel (the only surface that mutates clinical trial state, physician-writable), Literature, News, Discussion (ships next sprint), Audit (append-only patient-wide decision timeline merged from #395 funnel events + #398 oncopanel events), My Watchlist (ships next sprint), and Re-Surfaced (trials agents tried to re-propose after a prior physician decision).
+
+The landing panel is role-aware: doctor → Inbox, advocate → Clinical Funnel. The active panel persists per-user across devices via `/api/research/active-tab` stored in oncofiles agent_state — not localStorage. Every mutation requires a free-text rationale; no silent moves. The cockpit is where MUDr. Mgr. Zuzana Mináriková, PhD. at NOÚ Bratislava will do her Oncoteam review cycle (see #396).
+
+### Q: How does Oncoteam handle structured molecular / oncopanel data?
+
+Every NGS report that reaches the document pipeline (pathology reports, somatic oncopanels with variant tables, CNV lists, MSI/MMR/TMB blocks) is parsed by the `oncopanel_extraction_single` agent into a strict `Oncopanel` Pydantic model. Variants carry HGVS cDNA + protein notation, VAF, tier (AMP/ASCO/CAP I-III), classification, and — critically — source document + page number for traceability.
+
+Per the "AI proposes, humans dispose" principle (#395/#398/#399), the extracted oncopanel is NOT auto-merged into the patient profile. It lands in `pending_oncopanel:{patient_id}:{document_id}` agent_state and surfaces in the physician's Inbox. The physician reviews variants, optionally edits fields, provides a rationale, and approves. Only then does the panel merge into `PatientProfile.oncopanel_history`, become visible on the Biomarker Card, and influence eligibility rules. Dismiss + re-extract is also available when OCR quality was poor.
+
+This shape replaces the earlier flat `biomarkers: dict[str, str]` for patients with NGS data. Legacy flat biomarkers remain a fallback for patients who haven't had NGS, or whose panel is still unreviewed.
+
+### Q: How does Oncoteam prevent an AI agent from silently changing a clinical decision?
+
+Two-lane clinical funnel (#395) plus append-only audit trail. Agents write only to the **proposals lane** (`/api/funnel/proposals`) — never the **clinical lane**. Physicians write to the clinical lane (`/api/funnel/cards`) with a required rationale on every move, promote, archive, or comment. The backend rejects agent POSTs to the clinical lane with HTTP 403.
+
+Every state-changing event appends to the funnel audit log in oncofiles agent_state, keyed by card_id, with actor type (human / agent / system), actor display name, timestamp, from-stage, to-stage, and rationale. The audit log is immutable — no endpoint rewrites prior entries. An agent that tries to re-propose a trial already on the board triggers a `re_surfaced` event on the existing card, not a silent duplicate; the physician sees it in the Re-Surfaced panel with the prior-dismissal context.
+
+The same pattern applies to structured oncopanel data (#398), patient registry sync (#422), and — shipping next sprint — discussion threads and physician-curated watchlists. The architectural principle is non-negotiable: AI never overwrites clinical state. Humans decide; AI proposes and logs.
+
+### Q: Why can't someone just silently add a new patient to Oncoteam?
+
+Two-gate visibility rule (#422). A patient appears in the Oncoteam clinical dropdown only when two conditions are met:
+
+1. **Gate 1** — the patient exists in Oncofiles (document backend) with a Drive folder and at least one uploaded document. This is the data-plane gate.
+2. **Gate 2** — Oncoteam has a registered `PatientProfile` (diagnosis code, biomarkers, treatment regimen, home region, notification policy, agent whitelist) AND a ROLE_MAP entry assigning the current user a role for that patient. This is the clinical-context gate.
+
+The `patient_registry_sync` agent (daily 01:45 UTC CEE-night) detects Gate-1-only patients and emits a system-level WhatsApp alert plus a dashboard banner in the admin layout. It NEVER auto-registers — that's a hard-coded invariant, enforced by tests that mock `register_patient` and assert zero calls. Humans complete Gate 2 manually via the admin onboarding flow.
+
+This exists because Oncofiles is a document backend with no clinical context. Silently surfacing a Gate-1-only patient would invite clicks into empty clinical screens, or — worse — fall back to generic defaults that are clinically misleading. The two gates are disjoint by design, and the detection agent is deliberately passive.
+
+### Q: How does Oncoteam stay up when its document backend goes down?
+
+Independent cold-start invariant (#431, established after the 2026-04-23 cascade incident). Oncoteam boots and serves its `/health` endpoint within 10 seconds regardless of Oncofiles state. The `server._run_http` entry point never awaits Oncofiles-touching coroutines before `mcp.run_async()`; background loads run via `asyncio.create_task(_safe_bg(...))` so a slow or down Oncofiles cannot block the port bind.
+
+A CI chaos drill (`.github/workflows/ci.yml` → `chaos-oncofiles-down`) runs on every PR: it spins up Oncoteam pointed at an unreachable Oncofiles URL and asserts the `/health` endpoint returns 200 within 10 seconds. Any PR that reintroduces a startup coupling fails CI there. Full postmortem: `docs/incidents/2026-04-23-oncofiles-cascade.md`.
+
+Post-boot resilience added in #432: if Oncofiles restarts and Oncoteam's persistent MCP client singleton holds a stale session, the next MCP call auto-detects the hang within 5 seconds, invalidates the stale client, and retries on a fresh connection. Without this, the first call after an Oncofiles restart would hang forever until Oncoteam itself was rebooted.
+
+### Q: What's the oncoteam.cloud landing showing now?
+
+The landing (Sprint 96 S3 / #423) includes a three-beat proof section between the hero and the product demo: "Same information. From your closet to your phone." Left panel — photo of a physical desk with 40+ years of Slovak medical paperwork spread out. Middle panel — a styled WhatsApp chat bubble showing a SK `labáky` + `otázky` flow with a structured answer in seconds. Right panel — a photo of the Oncoteam dashboard rendering a 1982 handwritten Slovak doctor's note via OCR.
+
+All three photos are real (shot on iPhone 2026-04-22, committed in `landing/assets/pile-to-dashboard-2026-04-22/` with provenance + anonymization README). Captions in SK + EN.
+
+Terminology note: the correct Slovak term for lab results is `labáky` (informal) or `laboráky` (formal), not `labky` (diminutive). The landing copy and dashboard display strings now use the correct forms; `labky` is kept as a legacy command alias for users already trained to type it.
+
+### Q: Where does Oncoteam cite its clinical thresholds?
+
+Every threshold, dose-modification rule, cycle-interval calculation, and pre-cycle safety check shown on the dashboard or WhatsApp is pegged to a specific authoritative source. The physician-trust layer (Sprint 91 S2 / #382) surfaces a `ClinicalSourceFooter` component on 9 clinical pages in the dashboard: Protocol, Labs, Toxicity, Medications, Prep, Treatment Map, Imaging, Briefings, and Home. Each footer lists the sources cited on that page (ESMO / NCCN / FDA / ASH / PubMed / EAU / EUROMELANOMA / ESC-EAS / WHO / KDIGO) with clickable links, plus the "informative only — physician verifies" disclaimer.
+
+On WhatsApp, conversational replies end with a one-line disclaimer in the user's language. The AI prompts include explicit instructions to cite the source when making any clinical observation.
+
+The authoritative source list is also encoded in `medical-dictionary.ts` (39 entries across 7 categories) and in the Oncopanel source-document traceability (per-variant `source_document_id` + `source_page`).
+
+### Q: How does Oncoteam handle WhatsApp when the AI is slow?
+
+Async reply pattern (Sprint 86+). For conversational (non-command) messages, Oncoteam immediately sends a Slovak "Premýšľam..." TwiML response so the user sees that the bot heard them, then processes the actual Claude API call (which takes 3-8 seconds) and sends the real reply via Twilio REST API with a 150ms delay between segments for multi-part messages.
+
+Commands with deterministic answers (`labáky`, `lieky`, `predcyklus`, etc.) respond synchronously with a single TwiML reply. The `splitMessage` helper splits long responses on `\n\n` boundaries up to 3 segments of 1500 characters each to stay inside Twilio's WhatsApp message limits.
+
+When the backend is degraded (circuit breaker open on the Oncofiles MCP client), WhatsApp replies include a clear Slovak or English "system degraded" message instead of hanging or timing out. Cost-aware: the circuit-breaker check runs before the Claude API call so paused patients / down-backend scenarios don't burn API budget on requests destined to fail.
 
 ---
 
