@@ -17,7 +17,6 @@ from .config import (
     AUTONOMOUS_MODEL_LIGHT,
     FUP_AI_QUERIES_PER_MONTH,
 )
-from .patient_context import DEFAULT_PATIENT_ID
 from .request_context import get_token_for_patient as _get_token_for_patient
 
 _logger = logging.getLogger("oncoteam.api_whatsapp")
@@ -354,7 +353,20 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
         lang = body.get("lang", "sk")
         if lang not in ("sk", "en"):
             lang = "sk"
+        # Sprint 100 / #440 Pattern C — fail closed on missing tenant scope.
+        # Nuxt proxy derives patient_id from the phone→patient map before
+        # forwarding; empty body.patient_id only happens when that lookup
+        # failed (unknown phone, mis-configured role map). Previously we
+        # silently chatted as DEFAULT_PATIENT_ID in that case — same Felix
+        # pattern we closed for document-webhook + trigger-agent.
         patient_id = body.get("patient_id", "")
+        if not isinstance(patient_id, str) or not patient_id.strip():
+            return _cors_json(
+                {"error": "patient_id is required", "code": "patient_scope_missing"},
+                status_code=400,
+                request=request,
+            )
+        patient_id = patient_id.strip()
         user_name = body.get("user_name", "")
         user_roles = body.get("user_roles", [])
     except Exception:
@@ -386,7 +398,8 @@ async def api_whatsapp_chat(request: Request) -> JSONResponse:
             )
             return _cors_json({"response": msg, "cost": 0})
 
-        pid = patient_id or DEFAULT_PATIENT_ID
+        # patient_id validated non-empty above; no more `or DEFAULT_PATIENT_ID`.
+        pid = patient_id
         token = _get_token_for_patient(pid)
 
         # Load conversation thread (non-blocking, 3s timeout)
@@ -536,6 +549,16 @@ async def api_whatsapp_media(request: Request) -> JSONResponse:
             request=request,
         )
 
+    # Sprint 100 / #440 Pattern C — fail closed on missing tenant scope
+    # before any upload. Empty patient_id previously silently attributed the
+    # document wherever oncofiles decided to drop it.
+    if not patient_id:
+        return _cors_json(
+            {"error": "patient_id is required", "code": "patient_scope_missing"},
+            status_code=400,
+            request=request,
+        )
+
     # Content type allowlist — prevent content injection
     allowed_types = {
         "image/jpeg",
@@ -605,7 +628,8 @@ async def api_whatsapp_media(request: Request) -> JSONResponse:
         try:
             from .autonomous_tasks import run_document_pipeline
 
-            pid = patient_id or DEFAULT_PATIENT_ID
+            # patient_id validated above; no silent q1b fallback.
+            pid = patient_id
             doc_id_int = int(document_id)
             metadata = {
                 "filename": filename,
@@ -662,11 +686,22 @@ async def api_whatsapp_voice(request: Request) -> JSONResponse:
 
     audio_b64 = body.get("audio_base64", "")
     content_type = body.get("content_type", "audio/ogg")
-    patient_id = body.get("patient_id", "q1b")
+    # Sprint 100 / #440 Pattern C — no more "q1b" default. Voice-note
+    # transcriptions are logged against the patient; an empty body previously
+    # attributed them to q1b silently.
+    patient_id = body.get("patient_id", "")
     lang_hint = body.get("lang_hint", "sk")
 
     if not audio_b64:
         return _cors_json({"error": "Missing audio_base64"}, status_code=400, request=request)
+
+    if not isinstance(patient_id, str) or not patient_id.strip():
+        return _cors_json(
+            {"error": "patient_id is required", "code": "patient_scope_missing"},
+            status_code=400,
+            request=request,
+        )
+    patient_id = patient_id.strip()
 
     import base64
 

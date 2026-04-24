@@ -429,14 +429,18 @@ async def test_whatsapp_media_success(mock_fup, mock_upload, mock_enhance):
 @pytest.mark.anyio
 @patch("oncoteam.api_whatsapp._check_fup_ai_query", return_value=False)
 async def test_whatsapp_media_fup_exceeded(mock_fup):
-    """429 when monthly FUP limit is exceeded."""
+    """429 when monthly FUP limit is exceeded.
+
+    Sprint 100 / #440 Pattern C — patient_id now required; supply it so the
+    test exercises the FUP gate, not the tenant-scope gate.
+    """
     request = FakeRequest(
         {
             "media_base64": "aGVsbG8=",
             "content_type": "image/jpeg",
             "filename": "test.jpg",
             "phone": "+421900111222",
-            "patient_id": "",
+            "patient_id": "q1b",
         }
     )
     response = await api_whatsapp_media(request)
@@ -475,13 +479,14 @@ async def test_whatsapp_media_upload_failure(mock_fup, mock_upload):
     """502 when upload to oncofiles fails."""
     mock_upload.side_effect = ConnectionError("oncofiles unreachable")
 
+    # Sprint 100 / #440 Pattern C — patient_id now required.
     request = FakeRequest(
         {
             "media_base64": "aGVsbG8=",
             "content_type": "application/pdf",
             "filename": "report.pdf",
             "phone": "+421900111222",
-            "patient_id": "",
+            "patient_id": "q1b",
         }
     )
     response = await api_whatsapp_media(request)

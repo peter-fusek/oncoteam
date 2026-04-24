@@ -128,6 +128,24 @@ elif MCP_TRANSPORT != "stdio":
     )
 
 
+# Sprint 100 / #440 Pattern A.1 — fail closed at boot, not per-request.
+# Previously `_check_api_auth` returned 500 on every request when
+# DASHBOARD_API_KEY was unset on HTTP transport. That leaves the process
+# healthy-looking (liveness /health stays 200) while every real API call
+# fails — a misleading failure mode oncofiles closed in v5.15 (#485) and
+# Sprint 99 closed for CORS (#438 bug 5). Crash at boot instead so the
+# operator sees the misconfig immediately.
+if MCP_TRANSPORT != "stdio":
+    from .config import DASHBOARD_API_KEY as _DASHBOARD_API_KEY_BOOT_CHECK
+
+    if not _DASHBOARD_API_KEY_BOOT_CHECK:
+        raise RuntimeError(
+            "DASHBOARD_API_KEY must be set for HTTP transport. All /api/* "
+            "routes gate on this shared key; an unset key would otherwise "
+            "return 500 per request instead of failing fast at boot."
+        )
+
+
 def _get_mcp_patient_token() -> tuple[str, str | None]:
     """Get (patient_id, token) for the current MCP session."""
     pid = _get_current_patient_id()

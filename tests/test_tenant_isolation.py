@@ -417,3 +417,174 @@ def test_api_detail_patient_omits_sensitive_identifiers():
     )
     # The intersection with the allowlist must be empty.
     assert not (sensitive & allowed)
+
+
+# ── Sprint 100 — oncofiles#484 pattern propagation ────────────────────
+
+
+@pytest.mark.anyio
+async def test_whatsapp_chat_requires_patient_id():
+    """Pattern C — api_whatsapp_chat fails closed without body.patient_id.
+
+    Previously line 389 of api_whatsapp.py had `pid = patient_id or
+    DEFAULT_PATIENT_ID` — any caller whose Nuxt-side phone→patient lookup
+    failed was silently chatted with as q1b. Fails closed now.
+    """
+    import json as _json
+
+    from oncoteam.api_whatsapp import api_whatsapp_chat
+
+    class _PostReq:
+        method = "POST"
+        headers: dict[str, str] = {}
+
+        def __init__(self, body: bytes):
+            from starlette.datastructures import QueryParams
+
+            self._body = body
+            self.query_params = QueryParams("")
+
+        async def body(self) -> bytes:
+            return self._body
+
+    resp = await api_whatsapp_chat(_PostReq(_json.dumps({"message": "hi", "lang": "sk"}).encode()))
+    assert resp.status_code == 400
+    body = _json.loads(resp.body)
+    assert body["code"] == "patient_scope_missing"
+
+
+@pytest.mark.anyio
+async def test_whatsapp_voice_requires_patient_id():
+    """Pattern C — api_whatsapp_voice fails closed without body.patient_id.
+
+    Previously line 665 had `body.get("patient_id", "q1b")` — an explicit
+    q1b default that attributed every voice transcription without a pid to
+    Erika.
+    """
+    import base64
+    import json as _json
+
+    from oncoteam.api_whatsapp import api_whatsapp_voice
+
+    class _PostReq:
+        method = "POST"
+        headers: dict[str, str] = {}
+
+        def __init__(self, body: bytes):
+            from starlette.datastructures import QueryParams
+
+            self._body = body
+            self.query_params = QueryParams("")
+
+        async def body(self) -> bytes:
+            return self._body
+
+    audio_b64 = base64.b64encode(b"\x00" * 2000).decode()
+    resp = await api_whatsapp_voice(_PostReq(_json.dumps({"audio_base64": audio_b64}).encode()))
+    assert resp.status_code == 400
+    body = _json.loads(resp.body)
+    assert body["code"] == "patient_scope_missing"
+
+
+@pytest.mark.anyio
+async def test_whatsapp_media_requires_patient_id():
+    """Pattern C — api_whatsapp_media rejects empty patient_id.
+
+    The previous behaviour stripped body.patient_id to empty and passed it
+    through to oncofiles upload, which would silently drop the document
+    under whatever default scope oncofiles chose. Fails closed at the
+    oncoteam layer now.
+    """
+    import json as _json
+
+    from oncoteam.api_whatsapp import api_whatsapp_media
+
+    class _PostReq:
+        method = "POST"
+        headers: dict[str, str] = {}
+
+        def __init__(self, body: bytes):
+            from starlette.datastructures import QueryParams
+
+            self._body = body
+            self.query_params = QueryParams("")
+
+        async def json(self) -> dict:
+            return _json.loads(self._body)
+
+        async def body(self) -> bytes:
+            return self._body
+
+    resp = await api_whatsapp_media(
+        _PostReq(
+            _json.dumps(
+                {
+                    "media_base64": "aGVsbG8=",
+                    "content_type": "image/jpeg",
+                    "filename": "x.jpg",
+                    "phone": "+421",
+                    "patient_id": "",
+                }
+            ).encode()
+        )
+    )
+    assert resp.status_code == 400
+    body = _json.loads(resp.body)
+    assert body["code"] == "patient_scope_missing"
+
+
+def test_a1_boot_check_dashboard_api_key_required_on_http():
+    """Pattern A.1 — importing server.py under HTTP transport with an unset
+    DASHBOARD_API_KEY must raise RuntimeError at module load, not leave the
+    process healthy while every /api/* call 500s.
+
+    Mirrors the oncofiles#485 Phase 1 fail-closed startup contract + the
+    existing MCP_BEARER_TOKEN boot check at server.py line 123.
+    """
+    import importlib
+    import os
+    import sys
+
+    # Copy and mutate env for the forked import. Restore after.
+    saved_transport = os.environ.get("MCP_TRANSPORT")
+    saved_api_key = os.environ.get("DASHBOARD_API_KEY")
+    saved_bearer = os.environ.get("MCP_BEARER_TOKEN")
+
+    try:
+        os.environ["MCP_TRANSPORT"] = "streamable-http"
+        os.environ["MCP_BEARER_TOKEN"] = "dummy-bearer-for-boot-check"
+        os.environ.pop("DASHBOARD_API_KEY", None)
+
+        # Fresh import — drop any cached server/config so the new env wins.
+        for mod in [
+            "oncoteam.server",
+            "oncoteam.config",
+            "oncoteam.dashboard_api",
+        ]:
+            sys.modules.pop(mod, None)
+
+        with pytest.raises(RuntimeError, match="DASHBOARD_API_KEY"):
+            importlib.import_module("oncoteam.server")
+    finally:
+        # Restore env before re-importing so other tests see clean state.
+        if saved_transport is None:
+            os.environ.pop("MCP_TRANSPORT", None)
+        else:
+            os.environ["MCP_TRANSPORT"] = saved_transport
+        if saved_api_key is None:
+            os.environ.pop("DASHBOARD_API_KEY", None)
+        else:
+            os.environ["DASHBOARD_API_KEY"] = saved_api_key
+        if saved_bearer is None:
+            os.environ.pop("MCP_BEARER_TOKEN", None)
+        else:
+            os.environ["MCP_BEARER_TOKEN"] = saved_bearer
+        # Re-import server cleanly so subsequent tests in this process get a
+        # valid module rather than the half-imported state the raise left.
+        for mod in [
+            "oncoteam.server",
+            "oncoteam.config",
+            "oncoteam.dashboard_api",
+        ]:
+            sys.modules.pop(mod, None)
+        importlib.import_module("oncoteam.server")

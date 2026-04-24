@@ -110,7 +110,9 @@ async def test_log_whatsapp_defaults_phone():
 )
 async def test_whatsapp_chat_success(mock_run, _mock_save, _mock_load, _mock_cb):
     mock_run.return_value = {"response": "Lab values look normal.", "cost": 0.002}
-    body = json.dumps({"message": "Ako su labky?", "phone": "+421", "lang": "sk"}).encode()
+    body = json.dumps(
+        {"message": "Ako su labky?", "phone": "+421", "lang": "sk", "patient_id": "q1b"}
+    ).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -142,7 +144,7 @@ async def test_whatsapp_chat_english_gets_english_disclaimer(
 ):
     """EN replies get the English disclaimer; SK replies get the Slovak one (#382)."""
     mock_run.return_value = {"response": "Your ANC is within safe range.", "cost": 0.001}
-    body = json.dumps({"message": "How are my labs?", "lang": "en"}).encode()
+    body = json.dumps({"message": "How are my labs?", "lang": "en", "patient_id": "q1b"}).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -169,7 +171,7 @@ async def test_whatsapp_chat_does_not_duplicate_disclaimer(
         "response": "ANC is normal. Informatívne, overí lekár.",
         "cost": 0.001,
     }
-    body = json.dumps({"message": "labky", "lang": "sk"}).encode()
+    body = json.dumps({"message": "labky", "lang": "sk", "patient_id": "q1b"}).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -186,7 +188,7 @@ async def test_whatsapp_chat_does_not_duplicate_disclaimer(
 )
 async def test_whatsapp_chat_circuit_breaker_open(_mock_cb):
     """Should return clear message when oncofiles is down instead of wasting API call."""
-    body = json.dumps({"message": "record Clexane", "lang": "sk"}).encode()
+    body = json.dumps({"message": "record Clexane", "lang": "sk", "patient_id": "q1b"}).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -199,7 +201,7 @@ async def test_whatsapp_chat_circuit_breaker_open(_mock_cb):
 @pytest.mark.anyio
 @patch("oncoteam.api_whatsapp.ANTHROPIC_API_KEY", "")
 async def test_whatsapp_chat_no_api_key():
-    body = json.dumps({"message": "hello"}).encode()
+    body = json.dumps({"message": "hello", "patient_id": "q1b"}).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -225,7 +227,7 @@ async def test_whatsapp_chat_empty_response_gives_fallback(
     mock_run, _mock_save, _mock_load, _mock_cb
 ):
     mock_run.return_value = {"response": "", "cost": 0}
-    body = json.dumps({"message": "?", "lang": "en"}).encode()
+    body = json.dumps({"message": "?", "lang": "en", "patient_id": "q1b"}).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -249,7 +251,7 @@ async def test_whatsapp_chat_empty_response_gives_fallback(
 )
 async def test_whatsapp_chat_truncates_long_response(mock_run, _mock_save, _mock_load, _mock_cb):
     mock_run.return_value = {"response": "a" * 2000, "cost": 0}
-    body = json.dumps({"message": "tell me everything"}).encode()
+    body = json.dumps({"message": "tell me everything", "patient_id": "q1b"}).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -272,7 +274,7 @@ async def test_whatsapp_chat_truncates_long_response(mock_run, _mock_save, _mock
     side_effect=RuntimeError("API down"),
 )
 async def test_whatsapp_chat_error_returns_fallback(mock_run, _mock_save, _mock_load, _mock_cb):
-    body = json.dumps({"message": "test"}).encode()
+    body = json.dumps({"message": "test", "patient_id": "q1b"}).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -297,7 +299,7 @@ async def test_whatsapp_chat_error_returns_fallback(mock_run, _mock_save, _mock_
 async def test_whatsapp_chat_sk_fallback_message(mock_run, _mock_save, _mock_load, _mock_cb):
     """Slovak fallback when response is empty."""
     mock_run.return_value = {"response": "", "cost": 0}
-    body = json.dumps({"message": "?", "lang": "sk"}).encode()
+    body = json.dumps({"message": "?", "lang": "sk", "patient_id": "q1b"}).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)
@@ -325,7 +327,9 @@ async def test_whatsapp_chat_sk_fallback_message(mock_run, _mock_save, _mock_loa
 async def test_whatsapp_chat_includes_thread_context(mock_run, _mock_save, _mock_load, _mock_cb):
     """Conversation thread history is included in prompt."""
     mock_run.return_value = {"response": "PLT is 180k, within range.", "cost": 0.001}
-    body = json.dumps({"message": "A trombocyty?", "phone": "+421", "lang": "sk"}).encode()
+    body = json.dumps(
+        {"message": "A trombocyty?", "phone": "+421", "lang": "sk", "patient_id": "q1b"}
+    ).encode()
     request = FakeRequest(body=body)
     response = await api_whatsapp_chat(request)
     data = json.loads(response.body)

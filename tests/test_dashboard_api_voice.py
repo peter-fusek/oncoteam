@@ -77,7 +77,9 @@ async def test_voice_endpoint_missing_audio():
 
 @pytest.mark.anyio
 async def test_voice_endpoint_invalid_base64():
-    req = _make_request({"audio_base64": "not-valid-base64!!!"})
+    # Sprint 100 / #440 Pattern C — patient_id required; supply here so the
+    # test exercises the downstream base64 validation, not the tenant-scope gate.
+    req = _make_request({"audio_base64": "not-valid-base64!!!", "patient_id": "q1b"})
     response = await api_whatsapp_voice(req)
     assert response.status_code == 400
     data = json.loads(response.body)
@@ -90,7 +92,7 @@ async def test_voice_endpoint_invalid_base64():
 @pytest.mark.anyio
 async def test_voice_endpoint_audio_too_short():
     audio_b64 = base64.b64encode(b"\x00" * 100).decode()
-    req = _make_request({"audio_base64": audio_b64})
+    req = _make_request({"audio_base64": audio_b64, "patient_id": "q1b"})
     response = await api_whatsapp_voice(req)
     assert response.status_code == 400
     data = json.loads(response.body)
@@ -104,7 +106,7 @@ async def test_voice_endpoint_audio_too_short():
 async def test_voice_endpoint_audio_too_large():
     # 10.1MB raw → base64 is ~13.5MB, under 15MB JSON limit but over 10MB binary
     audio_b64 = base64.b64encode(b"\x00" * (10 * 1024 * 1024 + 1)).decode()
-    req = _make_request({"audio_base64": audio_b64})
+    req = _make_request({"audio_base64": audio_b64, "patient_id": "q1b"})
     response = await api_whatsapp_voice(req)
     assert response.status_code == 400
     data = json.loads(response.body)
@@ -122,7 +124,9 @@ async def test_voice_endpoint_audio_too_large():
 async def test_voice_endpoint_transcription_error(mock_transcribe):
     mock_transcribe.return_value = {"error": "Whisper circuit breaker open"}
     audio_b64 = base64.b64encode(b"\x00" * 2000).decode()
-    req = _make_request({"audio_base64": audio_b64, "content_type": "audio/ogg"})
+    req = _make_request(
+        {"audio_base64": audio_b64, "content_type": "audio/ogg", "patient_id": "q1b"}
+    )
     response = await api_whatsapp_voice(req)
     assert response.status_code == 503
     data = json.loads(response.body)
