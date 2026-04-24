@@ -774,6 +774,26 @@ def get_patient_token(patient_id: str = DEFAULT_PATIENT_ID) -> str | None:
     return _patient_tokens.get(patient_id)
 
 
+def append_approved_oncopanel(patient_id: str, panel: Oncopanel) -> None:
+    """Append a physician-approved oncopanel to the in-memory registry.
+
+    Durable persistence lives in oncofiles agent_state under
+    `approved_oncopanel:{patient_id}:{panel_id}` — this function is the
+    best-effort in-process mirror so eligibility rules + dashboard
+    surfaces pick up the approval immediately without a restart. On
+    restart the in-memory registry rehydrates from agent_state via the
+    caller's startup path (tracked as a Sprint 96 follow-up).
+
+    Idempotent: replaces any prior entry with the same panel_id.
+    """
+    profile = _patient_registry.get(patient_id)
+    if profile is None:
+        return
+    history = [p for p in profile.oncopanel_history if p.panel_id != panel.panel_id]
+    history.append(panel)
+    profile.oncopanel_history = history
+
+
 def get_patient_recipients(
     patient_id: str = DEFAULT_PATIENT_ID,
 ) -> dict[str, Recipient]:

@@ -1312,6 +1312,30 @@ mcp.custom_route("/api/research/funnel-stages", methods=["POST"])(
 )
 mcp.custom_route("/api/research/funnel-stages", methods=["OPTIONS"])(api_cors_preflight)
 
+# Oncopanel Inbox API (#399 Sprint 96 S1) — physician approval of
+# pending_oncopanel:* agent_state entries extracted by the document pipeline.
+from .api_oncopanel import (  # noqa: E402
+    api_oncopanel_audit_get,
+    api_oncopanel_pending_get,
+    api_oncopanel_pending_post,
+    api_research_active_tab_get,
+    api_research_active_tab_post,
+)
+
+mcp.custom_route("/api/oncopanel/pending", methods=["GET"])(_auth_wrap(api_oncopanel_pending_get))
+mcp.custom_route("/api/oncopanel/pending", methods=["POST"])(_auth_wrap(api_oncopanel_pending_post))
+mcp.custom_route("/api/oncopanel/pending", methods=["OPTIONS"])(api_cors_preflight)
+mcp.custom_route("/api/oncopanel/audit", methods=["GET"])(_auth_wrap(api_oncopanel_audit_get))
+mcp.custom_route("/api/oncopanel/audit", methods=["OPTIONS"])(api_cors_preflight)
+
+mcp.custom_route("/api/research/active-tab", methods=["GET"])(
+    _auth_wrap(api_research_active_tab_get)
+)
+mcp.custom_route("/api/research/active-tab", methods=["POST"])(
+    _auth_wrap(api_research_active_tab_post)
+)
+mcp.custom_route("/api/research/active-tab", methods=["OPTIONS"])(api_cors_preflight)
+
 
 # ── Entry point ─────────────────────────────────
 
