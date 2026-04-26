@@ -1,5 +1,9 @@
 [deploy]
-overlapSeconds = 15
+# overlapSeconds must be >= healthcheckTimeout. Per 9da85a6: when 15 < 30,
+# Railway cuts the old pod before the new pod's first /api/health probe
+# completes on cold start, causing 502s during deploy. Lost in a rollback,
+# restored 2026-04-27 alongside the vue@3.5.33 fix in #447.
+overlapSeconds = 30
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
