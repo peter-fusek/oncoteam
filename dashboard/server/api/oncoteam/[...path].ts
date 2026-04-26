@@ -45,8 +45,9 @@ export default defineEventHandler(async (event) => {
     headers['Content-Type'] = 'application/json'
   }
 
+  let response: Response | undefined
   try {
-    const response = await fetch(url, fetchOpts)
+    response = await fetch(url, fetchOpts)
     const data = await response.json()
     setResponseStatus(event, response.status)
     return data
@@ -54,6 +55,15 @@ export default defineEventHandler(async (event) => {
     const message = err instanceof Error ? err.message : 'Backend unavailable'
     console.error(`[oncoteam-proxy] ${method} ${url} failed: ${message}`)
     setResponseStatus(event, 502)
+    // 3rd leak vector (#447): undici keeps the response body in memory until
+    // it is consumed or cancelled. If response.json() above threw (e.g. backend
+    // returned an HTML 502 instead of JSON, or the stream errored mid-read),
+    // we have a `response` reference whose body stream is still pinned. Drain
+    // it explicitly to release the buffers. .cancel() is fire-and-forget; if
+    // it rejects (already-consumed body etc.) we don't care.
+    if (response?.body && !response.bodyUsed) {
+      response.body.cancel().catch(() => { /* already consumed */ })
+    }
     return { error: message, data: [] }
   } finally {
     clearTimeout(tid)
