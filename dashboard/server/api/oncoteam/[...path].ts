@@ -61,6 +61,11 @@ export default defineEventHandler(async (event) => {
     // we have a `response` reference whose body stream is still pinned. Drain
     // it explicitly to release the buffers. .cancel() is fire-and-forget; if
     // it rejects (already-consumed body etc.) we don't care.
+    //
+    // Credit: @m13v on the #447 thread —
+    // https://github.com/peter-fusek/oncoteam/issues/447#issuecomment-4322984724
+    // ("undici keeps the response body in memory until you actually consume or
+    // cancel it. ... shaved another ~30MB/req that way after the timer fix landed")
     if (response?.body && !response.bodyUsed) {
       response.body.cancel().catch(() => { /* already consumed */ })
     }
