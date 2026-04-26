@@ -29,7 +29,15 @@ export default defineEventHandler(async (event) => {
   }
 
   const method = event.method
-  const fetchOpts: RequestInit = { method, headers, signal: AbortSignal.timeout(25_000) }
+
+  // AbortController + clearTimeout instead of AbortSignal.timeout(): the latter
+  // keeps its internal timer alive for the full 25s after the fetch settles,
+  // retaining the response object in memory. Under 7-8 parallel page-load calls
+  // this accumulates dozens of live timers, blocking GC (#447).
+  const ac = new AbortController()
+  const tid = setTimeout(() => ac.abort(new DOMException('Upstream timeout', 'TimeoutError')), 25_000)
+
+  const fetchOpts: RequestInit = { method, headers, signal: ac.signal }
 
   if (method === 'POST') {
     const body = await readBody(event)
@@ -47,5 +55,7 @@ export default defineEventHandler(async (event) => {
     console.error(`[oncoteam-proxy] ${method} ${url} failed: ${message}`)
     setResponseStatus(event, 502)
     return { error: message, data: [] }
+  } finally {
+    clearTimeout(tid)
   }
 })
