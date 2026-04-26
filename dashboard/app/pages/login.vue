@@ -28,17 +28,16 @@ if (loggedIn.value) {
       </div>
 
       <div class="flex flex-col items-center gap-4">
-        <UButton
-          to="/auth/google"
-          external
-          icon="i-lucide-log-in"
-          size="lg"
-          color="primary"
-          variant="solid"
-          class="px-8"
+        <!-- Plain <a> on purpose: NuxtLink/UButton with external=true was being -->
+        <!-- classified as a popup by Chrome's blocker on some setups. A bare anchor -->
+        <!-- with same-origin href guarantees a normal top-level navigation. -->
+        <a
+          href="/auth/google"
+          class="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-medium text-base shadow-sm transition-colors"
         >
+          <span class="i-lucide-log-in w-5 h-5" aria-hidden="true" />
           Sign in with Google
-        </UButton>
+        </a>
       </div>
 
       <p class="text-xs text-gray-400">Authorized accounts only</p>
