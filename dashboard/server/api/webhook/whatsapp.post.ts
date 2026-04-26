@@ -5,6 +5,7 @@ import { handleOnboardingMessage } from '../../utils/onboarding-handler'
 import { isApproved, checkApprovedWithBackend, resolvePatientIdFromPhone, setPhonePatient, getAllowedPatientIdsForPhone, getActivePatientForPhone, getUserInfoForPhone } from '../../utils/approved-phones'
 import { recordInbound, sendWhatsApp } from '../../utils/twilio-send'
 import { getRoleMap } from '../../utils/access-rights'
+import { purgeExpiredRateLimitEntries } from '../../utils/rate-limit'
 import type { OnboardingState } from '../../utils/onboarding-state'
 
 const RATE_LIMIT_MAX = 20
@@ -233,6 +234,8 @@ export default defineEventHandler(async (event) => {
     rateEntry.count++
   }
   else {
+    // Sweep expired entries before inserting — prevents unbounded growth (#447)
+    purgeExpiredRateLimitEntries(rateLimitMap, now)
     rateLimitMap.set(from, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
   }
 

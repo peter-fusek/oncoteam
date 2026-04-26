@@ -1,5 +1,21 @@
 import twilio from 'twilio'
+import type { Twilio } from 'twilio'
 import { getRoleMapSync } from './access-rights'
+
+// Twilio v5 internally allocates an HTTP keep-alive agent on every construction
+// and never releases it. Constructing one per sendWhatsApp() call leaks the
+// agent + open sockets (#447 Felix #3). Singleton pattern below.
+let _twilioClient: Twilio | null = null
+let _twilioSid = ''
+let _twilioToken = ''
+
+export function getTwilioClient(sid: string, token: string): Twilio {
+  if (_twilioClient && _twilioSid === sid && _twilioToken === token) return _twilioClient
+  _twilioClient = twilio(sid, token)
+  _twilioSid = sid
+  _twilioToken = token
+  return _twilioClient
+}
 
 /**
  * Shared WhatsApp message sender with template + session window support.
@@ -79,7 +95,7 @@ export async function sendWhatsApp(options: SendWhatsAppOptions): Promise<SendRe
     return { ok: false, error: 'WhatsApp not configured' }
   }
 
-  const client = twilio(config.twilioAccountSid, config.twilioAuthToken)
+  const client = getTwilioClient(config.twilioAccountSid, config.twilioAuthToken)
   const fromNumber = String(config.twilioWhatsappFrom).startsWith('whatsapp:')
     ? config.twilioWhatsappFrom
     : `whatsapp:${config.twilioWhatsappFrom}`

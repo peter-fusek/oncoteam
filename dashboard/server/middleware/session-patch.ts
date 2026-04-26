@@ -6,9 +6,18 @@
 import { getRoleMapSync } from '../utils/access-rights'
 
 export default defineEventHandler(async (event) => {
-  // Only patch page requests, not API calls or static assets
+  // Only patch page requests, not API calls or static assets.
+  // /auth/ excluded per Felix #447: H3 sendRedirect resolves to undefined which
+  // H3 treats as "continue chain", so the OAuth handler was firing AFTER this
+  // middleware closed the response socket — accumulating in-flight contexts
+  // and unresolvable Google HTTPS connections under load.
   const path = getRequestURL(event).pathname
-  if (path.startsWith('/api/') || path.startsWith('/_nuxt/') || path.startsWith('/__nuxt')) return
+  if (
+    path.startsWith('/api/')
+    || path.startsWith('/_nuxt/')
+    || path.startsWith('/__nuxt')
+    || path.startsWith('/auth/')
+  ) return
 
   const session = await getUserSession(event)
   if (!session.user?.email) return

@@ -1,4 +1,5 @@
 import { sendWhatsApp } from '../../utils/twilio-send'
+import { purgeExpiredRateLimitEntries } from '../../utils/rate-limit'
 
 const RATE_LIMIT_MAX = 10
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
@@ -21,6 +22,8 @@ export default defineEventHandler(async (event) => {
     }
     rateEntry.count++
   } else {
+    // Sweep expired entries before inserting — prevents unbounded growth (#447)
+    purgeExpiredRateLimitEntries(rateLimitMap, now)
     rateLimitMap.set(userKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
   }
 
