@@ -11,7 +11,7 @@ export default defineNuxtConfig({
     ],
     defaultLocale: 'sk',
     langDir: '../app/locales',
-    lazy: false,
+    lazy: true,
     strategy: 'no_prefix',
     detectBrowserLanguage: {
       useCookie: true,
