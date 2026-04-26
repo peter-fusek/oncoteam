@@ -5,16 +5,15 @@ export default defineOAuthGoogleEventHandler({
     scope: ['openid', 'email', 'profile'],
   },
   async onSuccess(event, { user }) {
-    // NUXT_ROLE_MAP is the single auth gate (NUXT_ALLOWED_EMAILS was deprecated
-    // in Sprint 101 and removed from Railway env). No silent fallback to
-    // advocate/q1b — unknown emails get 403, fail-closed (matches #443 P0 fix).
-    const roleMap = getRoleMapSync()
-    const userConfig = roleMap[user.email]
+    const config = useRuntimeConfig()
+    const allowed = config.allowedEmails.split(',').map((e: string) => e.trim())
 
-    if (!userConfig) {
+    if (!allowed.includes(user.email)) {
       throw createError({ statusCode: 403, message: 'Not authorized' })
     }
 
+    const roleMap = getRoleMapSync()
+    const userConfig = roleMap[user.email] || { roles: ['advocate'] }
     const roles = userConfig.roles || ['advocate']
     // Patient scoping: advocate sees all patient_ids, others see only their own
     const patientId = userConfig.patient_id || 'q1b'
