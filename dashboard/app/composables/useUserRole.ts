@@ -38,12 +38,22 @@ export function useUserRole() {
 
   function canAccess(path: string): boolean {
     // Login page is always accessible
-    if (path === '/login') return true
+    if (path === '/login' || activeRole.value === 'admin') {
+      return true
+    }
+
     const allowed = PAGE_ACCESS[path]
     // Deny access to unlisted pages (secure by default)
     if (!allowed) return activeRole.value === 'advocate'
     return allowed.includes(activeRole.value)
   }
 
-  return { activeRole, roles, hasMultipleRoles, landingPage, canAccess, PAGE_ACCESS }
+  return {
+    activeRole,
+    roles,
+    hasMultipleRoles,
+    landingPage,
+    canAccess,
+    PAGE_ACCESS,
+  }
 }
