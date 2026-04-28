@@ -12,6 +12,8 @@ import re
 import resource
 import sys
 import time
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -66,7 +68,10 @@ from .request_context import (
     set_correlation_id as _set_correlation_id,
 )
 
-VERSION = "0.93.0"
+try:
+    VERSION = _pkg_version("oncoteam")
+except PackageNotFoundError:
+    VERSION = "0.0.0+unknown"
 
 _logger = logging.getLogger("oncoteam.dashboard_api")
 
